@@ -5,6 +5,7 @@
   "refmap": "mm.refmap.json",
   "mixins": [
     "DediServerMixin",
+    "ServerLifecycleHooksMixin",
     "ServerMixin"
   ],
   "minVersion": "0.8"

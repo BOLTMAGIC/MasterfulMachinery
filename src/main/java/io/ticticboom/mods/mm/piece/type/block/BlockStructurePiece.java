@@ -36,6 +36,10 @@ public class BlockStructurePiece extends StructurePiece {
 
     @Override
     public boolean formed(Level level, BlockPos pos, StructureModel model) {
+        //just in case if block was not initialized yet
+        if(block == null) {
+            block = ForgeRegistries.BLOCKS.getValue(blockId);
+        }
         return level.getBlockState(pos).is(block);
     }
 
