@@ -1,10 +1,13 @@
-# Masterful Machinery
+<p align="center"><img src="./.idea/panel.png" alt="Masterful Machinery Logo"/></p>
 
-### What is it?
 
-Masterful Machinery is a utility-tech mod for Minecraft 1.16+
+### What is Masterful Machinery?
+
+Masterful Machinery is a utility-tech mod for Modern Minecraft version.
 
 The mod allows mod-pack developers to create custom multi-block machines.
+
+Masterful Machinery is built around integrations with popular mods to allow modpack developers top unify the players experience.
 
 
 ### Documentation

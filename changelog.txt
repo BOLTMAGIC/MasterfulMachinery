@@ -1,10 +1,10 @@
 ## Change Log [VERSION_NAME]
 
 Merged PRs:
-- ticticboooomer/MasterfulMachinery/pull/92
+- ticticboooomer/MasterfulMachinery/pull/93
 
 Resolved Issues:
-- ticticboooomer/MasterfulMachinery/issues/86
+- ticticboooomer/MasterfulMachinery/issues/89
 
 Summary:
-Fixed kubejs structure/recipes not loading on world-load without additional need to run /reload command
+- Add Create 6.x.x support
