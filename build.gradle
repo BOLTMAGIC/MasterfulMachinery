@@ -160,6 +160,10 @@ repositories {
     //     dir 'libs'
     // }
     maven {
+        name = "latvian"
+        url = "https://maven.latvian.dev/releases"
+    }
+    maven {
         // location of the maven that hosts JEI files before January 2023
         name = "Progwml6's maven"
         url = 'https://dvs1.progwml6.com/files/maven/'
@@ -225,10 +229,10 @@ dependencies {
     implementation fg.deobf("com.jozufozu.flywheel:flywheel-forge-${flywheel_minecraft_version}:${flywheel_version}")
     implementation fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}")
 
-    implementation fg.deobf("vazkii.botania:Botania:${botania_version}")
+    compileOnly fg.deobf("vazkii.botania:Botania:${botania_version}")
 
-    runtimeOnly fg.deobf("curse.maven:patchouli-306770:4892162")
-    runtimeOnly fg.deobf("curse.maven:curios-309927:5367944")
+//    runtimeOnly fg.deobf("curse.maven:patchouli-306770:4892162")
+//    runtimeOnly fg.deobf("curse.maven:curios-309927:5367944")
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
