@@ -1,12 +1,13 @@
 package io.ticticboom.mods.mm.port.item.feature;
 
+import io.ticticboom.mods.mm.port.common.IHandlerCoupling;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
 
-public class ItemHandlerPairing {
+public class ItemHandlerCoupling implements IHandlerCoupling {
 
     @Getter
     private final LazyOptional<IItemHandler> fromHandler;
@@ -15,7 +16,7 @@ public class ItemHandlerPairing {
     @Setter
     private LazyOptional<IItemHandler> toHandler;
 
-    public ItemHandlerPairing(LazyOptional<IItemHandler> fromHandler, LazyOptional<IItemHandler> toHandler) {
+    public ItemHandlerCoupling(LazyOptional<IItemHandler> fromHandler, LazyOptional<IItemHandler> toHandler) {
         this.fromHandler = fromHandler;
         this.toHandler = toHandler;
     }

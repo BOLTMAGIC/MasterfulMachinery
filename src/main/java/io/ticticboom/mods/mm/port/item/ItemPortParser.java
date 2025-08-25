@@ -7,7 +7,9 @@ import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.IPortParser;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
 import io.ticticboom.mods.mm.util.ParserUtils;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class ItemPortParser implements IPortParser {
@@ -15,11 +17,7 @@ public class ItemPortParser implements IPortParser {
     public IPortStorageFactory parseStorage(JsonObject json) {
         int rows = json.get("rows").getAsInt();
         int columns = json.get("columns").getAsInt();
-        Supplier<Boolean> autoPushSupplier = () -> MMConfig.DEFAULT_PORT_AUTO_PUSH;
-        if (json.has("autoPush")) {
-            boolean autoPush = json.get("autoPush").getAsBoolean();
-            autoPushSupplier = () -> autoPush;
-        }
+        Supplier<Boolean> autoPushSupplier = ParserUtils.parseOrDefaultSupplier(json, "autoPush", () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, JsonElement::getAsBoolean);
         return new ItemPortStorageFactory(new ItemPortStorageModel(rows, columns, autoPushSupplier));
     }
 

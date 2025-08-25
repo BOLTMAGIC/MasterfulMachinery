@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlock;
+import io.ticticboom.mods.mm.port.item.register.ItemPortBlockEntity;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.PortUtils;
@@ -13,9 +14,12 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
@@ -47,5 +51,24 @@ public class EnergyPortBlock extends Block implements IPortBlock, EntityBlock {
     @Override
     public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         return BlockUtils.commonUse(state, level, pos, player, hand, hitResult, EnergyPortBlockEntity.class, null);
+    }
+
+    @Override
+    public @Nullable <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> entityType) {
+        return (a,b,c,d ) -> {
+            if (d instanceof EnergyPortBlockEntity pbe) {
+                pbe.tick();
+            }
+        };
+    }
+
+    @Override
+    public void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
+        super.onNeighborChange(state, level, pos, neighbor);
+
+        var thisBe = level.getBlockEntity(pos);
+        if (thisBe instanceof EnergyPortBlockEntity pbe) {
+            pbe.neighborsChanged();
+        }
     }
 }

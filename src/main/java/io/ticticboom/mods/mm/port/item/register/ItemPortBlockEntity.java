@@ -1,11 +1,8 @@
 package io.ticticboom.mods.mm.port.item.register;
 
-import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
-import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
-import io.ticticboom.mods.mm.port.item.feature.ItemHandlerPairing;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
 import io.ticticboom.mods.mm.port.item.feature.ItemPortAutoPushAddon;
@@ -17,16 +14,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 
-import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.HashMap;
 import java.util.Optional;
 
 public class ItemPortBlockEntity extends AbstractPortBlockEntity {

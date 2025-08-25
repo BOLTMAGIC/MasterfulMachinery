@@ -1,20 +1,35 @@
-package io.ticticboom.mods.mm.port.item.feature;
+package io.ticticboom.mods.mm.port.energy.feature;
 
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortAutoPushFeature;
-import io.ticticboom.mods.mm.port.item.register.ItemPortBlockEntity;
+import io.ticticboom.mods.mm.port.energy.register.EnergyPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.energy.IEnergyStorage;
 
-public class ItemPortAutoPushAddon extends AbstractPortAutoPushFeature<ItemHandlerCoupling> {
+public class EnergyPortAutoPushFeature extends AbstractPortAutoPushFeature<EnergyHandlerCoupling> {
 
-    public ItemPortAutoPushAddon(ItemPortBlockEntity portBlockEntity, PortModel model) {
+    public EnergyPortAutoPushFeature(EnergyPortBlockEntity portBlockEntity, PortModel model) {
         super(portBlockEntity, model);
+    }
+
+    public void tick() {
+        var level = portBlockEntity.getLevel();
+        if (level == null) {
+            return;
+        }
+
+        if (level.isClientSide) {
+            return;
+        }
+
+        for (var cap : autoPushNeighbors.values()) {
+            cap.attemptTransfer();
+        }
     }
 
     @Override
@@ -29,17 +44,17 @@ public class ItemPortAutoPushAddon extends AbstractPortAutoPushFeature<ItemHandl
             return;
         }
 
-        LazyOptional<IItemHandler> neighborCap = neighborBe.getCapability(MMCapabilities.ITEM, neighborFace);
+        LazyOptional<IEnergyStorage> neighborCap = neighborBe.getCapability(MMCapabilities.ENERGY, neighborFace);
         if (!neighborCap.isPresent()) {
             return;
         }
 
         if (autoPushNeighbors.containsKey(neighborPos)) {
-            ItemHandlerCoupling pairing = autoPushNeighbors.get(neighborPos);
+            EnergyHandlerCoupling pairing = autoPushNeighbors.get(neighborPos);
             pairing.setToHandler(neighborCap);
         } else {
-            LazyOptional<IItemHandler> capability = this.portBlockEntity.getCapability(MMCapabilities.ITEM);
-            autoPushNeighbors.put(neighborPos, new ItemHandlerCoupling(capability, neighborCap));
+            LazyOptional<IEnergyStorage> capability = this.portBlockEntity.getCapability(MMCapabilities.ENERGY);
+            autoPushNeighbors.put(neighborPos, new EnergyHandlerCoupling(capability, neighborCap));
         }
     }
 
