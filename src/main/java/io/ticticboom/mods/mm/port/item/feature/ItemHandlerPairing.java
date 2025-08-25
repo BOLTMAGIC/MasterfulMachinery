@@ -1,4 +1,4 @@
-package io.ticticboom.mods.mm.port.item;
+package io.ticticboom.mods.mm.port.item.feature;
 
 import lombok.Getter;
 import lombok.Setter;

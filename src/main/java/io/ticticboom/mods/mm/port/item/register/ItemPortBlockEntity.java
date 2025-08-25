@@ -5,9 +5,10 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
-import io.ticticboom.mods.mm.port.item.ItemHandlerPairing;
+import io.ticticboom.mods.mm.port.item.feature.ItemHandlerPairing;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
+import io.ticticboom.mods.mm.port.item.feature.ItemPortAutoPushAddon;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
@@ -25,8 +26,8 @@ import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Optional;
 
 public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     private final RegistryGroupHolder groupHolder;
@@ -37,10 +38,7 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     @Getter
     private final boolean input;
 
-    private final boolean shouldAutoPush;
-
-    private final HashMap<BlockPos, ItemHandlerPairing> autoPushNeighbors = new HashMap<>();
-    private final ArrayList<BlockPos> neighborsPaired = new ArrayList<>();
+    private final Optional<ItemPortAutoPushAddon> autoPushAddon;
 
     public ItemPortBlockEntity(RegistryGroupHolder groupHolder, PortModel model, boolean input, BlockPos pos,
                                BlockState state) {
@@ -49,7 +47,12 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
         this.model = model;
         storage = (ItemPortStorage) model.config().createPortStorage(this::setChanged);
         this.input = input;
-        this.shouldAutoPush = !input && ((ItemPortStorageModel) storage.getStorageModel()).autoPush().get();
+        var shouldAutoPush = !input && ((ItemPortStorageModel) storage.getStorageModel()).autoPush().get();
+        if (shouldAutoPush) {
+            autoPushAddon = Optional.of(new ItemPortAutoPushAddon(this, this.model));
+        } else {
+            autoPushAddon = Optional.empty();
+        }
     }
 
     @Override
@@ -79,66 +82,15 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     }
 
     public void tick() {
-        if (level.isClientSide) {
-            return;
-        }
-
-        if (shouldAutoPush) {
-            for (var cap : autoPushNeighbors.values()) {
-                cap.attemptTransfer();
-            }
-        }
-    }
-
-    public void tryAddNeighboringHandlers() {
-        if (!shouldAutoPush) {
-            return;
-        }
-
-        if (!hasLevel()) {
-            return;
-        }
-
-        for (Direction direction : Direction.values()) {
-            BlockPos otherPos = getBlockPos().relative(direction, 1);
-            tryAddNeighborHandler(otherPos);
-        }
+        autoPushAddon.ifPresent(ItemPortAutoPushAddon::tick);
     }
 
     @Override
     public void onLoad() {
-        tryAddNeighboringHandlers();
+        autoPushAddon.ifPresent(ItemPortAutoPushAddon::onLoad);
     }
 
-    private void tryAddNeighborHandler(BlockPos neighborPos) {
-        BlockEntity neighborBe = level.getBlockEntity(neighborPos);
-        if (neighborBe == null) {
-            return;
-        }
-
-        var valid = canAddAsNeighbor(neighborPos, neighborBe);
-        if (!valid) {
-            return;
-        }
-
-        LazyOptional<IItemHandler> neighborCap = neighborBe.getCapability(MMCapabilities.ITEM);
-        if (!neighborCap.isPresent()) {
-            return;
-        }
-
-        if (autoPushNeighbors.containsKey(neighborPos)) {
-            ItemHandlerPairing pairing = autoPushNeighbors.get(neighborPos);
-            pairing.setToHandler(neighborCap);
-        } else {
-            LazyOptional<IItemHandler> capability = this.getCapability(MMCapabilities.ITEM);
-            autoPushNeighbors.put(neighborPos, new ItemHandlerPairing(capability, neighborCap));
-        }
-    }
-
-    private boolean canAddAsNeighbor(BlockPos pos, BlockEntity be) {
-        if (be instanceof IPortBlockEntity pbe) {
-            return pbe.isInput();
-        }
-        return true;
+    public void neighborsChanged() {
+        autoPushAddon.ifPresent(ItemPortAutoPushAddon::tryAddNeighboringHandlers);
     }
 }

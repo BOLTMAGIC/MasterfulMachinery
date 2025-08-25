@@ -85,7 +85,7 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
 
         var thisBe = level.getBlockEntity(pos);
         if (thisBe instanceof ItemPortBlockEntity pbe) {
-            pbe.tryAddNeighboringHandlers();
+            pbe.neighborsChanged();
         }
     }
 }
