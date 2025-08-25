@@ -1,17 +1,26 @@
 package io.ticticboom.mods.mm.port.item;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.IPortParser;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
 import io.ticticboom.mods.mm.util.ParserUtils;
+
+import java.util.function.Supplier;
 
 public class ItemPortParser implements IPortParser {
     @Override
     public IPortStorageFactory parseStorage(JsonObject json) {
         int rows = json.get("rows").getAsInt();
         int columns = json.get("columns").getAsInt();
-        return new ItemPortStorageFactory(new ItemPortStorageModel(rows, columns));
+        Supplier<Boolean> autoPushSupplier = () -> MMConfig.DEFAULT_PORT_AUTO_PUSH;
+        if (json.has("autoPush")) {
+            boolean autoPush = json.get("autoPush").getAsBoolean();
+            autoPushSupplier = () -> autoPush;
+        }
+        return new ItemPortStorageFactory(new ItemPortStorageModel(rows, columns, autoPushSupplier));
     }
 
     @Override
