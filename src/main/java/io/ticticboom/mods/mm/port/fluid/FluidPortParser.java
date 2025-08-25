@@ -1,6 +1,8 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.IPortParser;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
@@ -12,7 +14,8 @@ public class FluidPortParser implements IPortParser {
         var rows = json.get("rows").getAsInt();
         var columns = json.get("columns").getAsInt();
         var slotCapacity = json.get("slotCapacity").getAsInt();
-        return new FluidPortStorageFactory(new FluidPortStorageModel(rows, columns, slotCapacity));
+        var autoPush = ParserUtils.parseOrDefaultSupplier(json, "autoPush", () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, JsonElement::getAsBoolean);
+        return new FluidPortStorageFactory(new FluidPortStorageModel(rows, columns, slotCapacity, autoPush));
     }
 
     @Override
