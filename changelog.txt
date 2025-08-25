@@ -1,10 +1,11 @@
 ## Change Log [VERSION_NAME]
 
 Merged PRs:
-- ticticboooomer/MasterfulMachinery/pull/93
+- ticticboooomer/MasterfulMachinery/pull/94
 
-Resolved Issues:
-- ticticboooomer/MasterfulMachinery/issues/89
+Resolved Issues: []
 
 Summary:
-- Add Create 6.x.x support
+- Add Blueprint items with new creative mode tab for structures.
+- When interacting with blueprint items (using jei `uses` and `recipe` keybinds), player will be taken to structure render in jei.
+- Some small refactoring efforts around jei integration
