@@ -4,20 +4,14 @@ import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
-import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemHandlerPairing;
-import io.ticticboom.mods.mm.port.item.ItemPortHandler;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import lombok.Getter;
-import net.createmod.catnip.nbt.NBTHelper;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -33,7 +27,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Set;
 
 public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     private final RegistryGroupHolder groupHolder;
@@ -97,7 +90,7 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
         }
     }
 
-    public void tryAddNeighborHandler(BlockPos neighborPos) {
+    public void tryAddNeighboringHandlers() {
         if (!shouldAutoPush) {
             return;
         }
@@ -106,6 +99,18 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
             return;
         }
 
+        for (Direction direction : Direction.values()) {
+            BlockPos otherPos = getBlockPos().relative(direction, 1);
+            tryAddNeighborHandler(otherPos);
+        }
+    }
+
+    @Override
+    public void onLoad() {
+        tryAddNeighboringHandlers();
+    }
+
+    private void tryAddNeighborHandler(BlockPos neighborPos) {
         BlockEntity neighborBe = level.getBlockEntity(neighborPos);
         if (neighborBe == null) {
             return;
@@ -135,33 +140,5 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
             return pbe.isInput();
         }
         return true;
-    }
-
-    @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
-        tag.put("neighborHandlers", saveAutoPushNeighbors());
-    }
-
-    @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        loadAutoPushNeighbors(tag.get("neighborHandlers"));
-    }
-
-    private Tag saveAutoPushNeighbors() {
-        var result = new ListTag();
-        this.autoPushNeighbors.forEach((pos, ignored) -> {
-            result.add(NBTHelper.writeVec3i(pos));
-        });
-        return result;
-    }
-
-    private void loadAutoPushNeighbors(Tag tag) {
-        var list = ((ListTag) tag);
-        for (Tag item : list) {
-            var pos = new BlockPos(NBTHelper.readVec3i((ListTag) item));
-            tryAddNeighborHandler(pos);
-        }
     }
 }

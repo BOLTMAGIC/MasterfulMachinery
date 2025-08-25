@@ -1,18 +1,14 @@
 package io.ticticboom.mods.mm.port.item.register;
 
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlock;
-import io.ticticboom.mods.mm.port.IPortBlockEntity;
-import io.ticticboom.mods.mm.port.item.ItemPortHandler;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.PortUtils;
 import net.minecraft.core.BlockPos;
-import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -21,16 +17,11 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -94,7 +85,7 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
 
         var thisBe = level.getBlockEntity(pos);
         if (thisBe instanceof ItemPortBlockEntity pbe) {
-            pbe.tryAddNeighborHandler(neighbor);
+            pbe.tryAddNeighboringHandlers();
         }
     }
 }
