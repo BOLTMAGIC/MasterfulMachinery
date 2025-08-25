@@ -1,6 +1,5 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.structure.GuiCountedItemStack;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
@@ -8,10 +7,8 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
-import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.GLScissor;
-import mezz.jei.api.gui.builder.IIngredientAcceptor;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -26,11 +23,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.crafting.Ingredient;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
-import java.util.List;
 
 public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
@@ -90,7 +84,9 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         }
 
         builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)
-                .addIngredients(Ingredient.of(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe)));
+                .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
+            builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
+                .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
     }
 
     @Override

@@ -74,7 +74,7 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
 
     private static void storeStructure(ResourceLocation id, StructureModel structure) {
         STRUCTURES.put(id, structure);
-        STRUCTURE_BLUEPRINTS.put(id, MMRegisters.BLUEPRINT.get().getStructureInstance(structure));
+        STRUCTURE_BLUEPRINTS.put(id, MMRegisters.BLUEPRINT.get().getStructureInstance(id));
     }
 
 }

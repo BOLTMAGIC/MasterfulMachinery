@@ -30,13 +30,13 @@ public class BlueprintItem extends Item {
         texts.add(Component.literal("Structure: " + structure.name()));
     }
 
-    public ItemStack getStructureInstance(StructureModel structure) {
+    public ItemStack getStructureInstance(ResourceLocation structureId) {
         ItemStack defaultInstance = getDefaultInstance();
-        defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE, structure.id().toString());
+        defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE, structureId.toString());
         return defaultInstance;
     }
 
-    private StructureModel getStructure(ItemStack stack) {
+    public static StructureModel getStructure(ItemStack stack) {
         if (!stack.hasTag()) {
             return null;
         }
