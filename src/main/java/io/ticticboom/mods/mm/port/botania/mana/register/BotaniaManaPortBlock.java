@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.port.botania.mana.register;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlock;
@@ -9,12 +10,15 @@ import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.PortUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityTicker;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class BotaniaManaPortBlock extends Block implements IPortBlock, EntityBlock {

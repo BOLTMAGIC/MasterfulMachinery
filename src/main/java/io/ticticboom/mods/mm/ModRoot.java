@@ -19,7 +19,7 @@ import net.minecraftforge.fml.loading.FMLEnvironment;
 public class ModRoot {
 
     public ModRoot() {
-//        MMConfigSetup.setup();
+        MMConfigSetup.setup();
         MMNetwork.init();
         MMPortRegistry.init();
         MMControllerRegistry.init();

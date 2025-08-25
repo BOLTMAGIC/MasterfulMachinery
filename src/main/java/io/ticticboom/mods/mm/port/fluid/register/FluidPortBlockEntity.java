@@ -9,6 +9,10 @@ import io.ticticboom.mods.mm.port.IPortPart;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
+import io.ticticboom.mods.mm.port.fluid.FluidPortStorageModel;
+import io.ticticboom.mods.mm.port.fluid.feature.FluidPortAutoPushFeature;
+import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
+import io.ticticboom.mods.mm.port.item.feature.ItemPortAutoPushAddon;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -35,6 +39,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.charset.Charset;
+import java.util.Optional;
 
 public class FluidPortBlockEntity extends AbstractPortBlockEntity {
 
@@ -43,6 +48,7 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     private final boolean isInput;
 
     private final FluidPortStorage storage;
+    private final Optional<FluidPortAutoPushFeature> autoPushAddon;
 
     public FluidPortBlockEntity(PortModel model, RegistryGroupHolder groupHolder, boolean isInput, BlockPos pos,
                                 BlockState state) {
@@ -51,6 +57,12 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
         this.groupHolder = groupHolder;
         this.isInput = isInput;
         storage = (FluidPortStorage) model.config().createPortStorage(this::setChanged);
+        var shouldAutoPush = !isInput && ((FluidPortStorageModel) storage.getStorageModel()).autoPush().get();
+        if (shouldAutoPush) {
+            autoPushAddon = Optional.of(new FluidPortAutoPushFeature(this, this.model));
+        } else {
+            autoPushAddon = Optional.empty();
+        }
     }
 
     @Override
@@ -83,5 +95,18 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
         return storage.getCapability(cap);
+    }
+
+    public void tick() {
+        autoPushAddon.ifPresent(FluidPortAutoPushFeature::tick);
+    }
+
+    @Override
+    public void onLoad() {
+        autoPushAddon.ifPresent(FluidPortAutoPushFeature::onLoad);
+    }
+
+    public void neighborsChanged() {
+        autoPushAddon.ifPresent(FluidPortAutoPushFeature::tryAddNeighboringHandlers);
     }
 }

@@ -6,6 +6,7 @@
   "config": {
     "rows": 3,
     "columns": 3,
-    "slotCapacity": 1000000
+    "slotCapacity": 1000000,
+    "autoPush": true
   }
 }

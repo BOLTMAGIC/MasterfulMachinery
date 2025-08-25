@@ -3,7 +3,8 @@
 Merged PRs:
 - ticticboooomer/MasterfulMachinery/pull/94
 
-Resolved Issues: []
+Resolved Issues:
+- ticticboooomer/MasterfulMachinery/issues/42
 
 Summary:
 - Add Blueprint items with new creative mode tab for structures.

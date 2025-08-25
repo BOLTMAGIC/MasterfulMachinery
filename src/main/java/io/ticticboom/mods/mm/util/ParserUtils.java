@@ -40,6 +40,16 @@ public class ParserUtils {
         return defaultSupplier.get();
     }
 
+    public static <T> Supplier<T> parseOrDefaultSupplier(JsonObject json, String key, Supplier<T> defaultSupplier, Function<JsonElement, T> getter) {
+        Supplier<T> autoPushSupplier = defaultSupplier;
+        if (json.has(key)) {
+            T autoPush = getter.apply(json.get(key));
+            autoPushSupplier = () -> autoPush;
+        }
+        return autoPushSupplier;
+    }
+
+
     public static <T extends Enum<T>> T parseEnum(JsonObject json, String key, Class<T> cls) {
         var name = json.get(key).getAsString();
         return T.valueOf(cls, name.toUpperCase());

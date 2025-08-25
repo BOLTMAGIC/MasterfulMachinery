@@ -17,7 +17,6 @@ import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 import vazkii.botania.api.BotaniaAPI;
@@ -39,6 +38,7 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
     private final PortModel model;
     private final RegistryGroupHolder groupHolder;
     private final BotaniaManaPortStorage storage;
+
 
     public BotaniaManaPortBlockEntity(PortModel model, RegistryGroupHolder groupHolder, BlockPos pos, BlockState state) {
         super(groupHolder.getBe().get(), pos, state);
@@ -63,6 +63,7 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
     public IPortStorage getStorage() {
         return storage;
     }
+
 
     @Override
     public boolean isInput() {

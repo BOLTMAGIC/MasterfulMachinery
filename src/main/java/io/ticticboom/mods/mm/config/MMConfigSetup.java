@@ -26,8 +26,8 @@ public class MMConfigSetup {
 
     @SubscribeEvent
     public static void on(final ModConfigEvent event) {
-        if (event.getConfig().getSpec() == commonSpec) {
-            MMConfig.bake(event.getConfig());
+        if (event.getConfig().getType() == ModConfig.Type.COMMON) {
+            MMConfig.bake();
         }
     }
 }
