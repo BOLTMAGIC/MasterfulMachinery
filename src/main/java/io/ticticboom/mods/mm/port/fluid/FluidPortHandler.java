@@ -105,6 +105,9 @@ public class FluidPortHandler implements IFluidHandler {
         for (int slot = 0; slot < stacks.size(); slot++) {
             var innerDrained = innerDrain(slot, stack.getFluid(), stack.getAmount(), action.simulate());
             drained += innerDrained.getAmount();
+            if (drained >= stack.getAmount()) {
+                break;
+            }
         }
         return new FluidStack(stack.getFluid(), drained);
     }
@@ -138,6 +141,9 @@ public class FluidPortHandler implements IFluidHandler {
         for (int slot = 0; slot < stacks.size(); slot++) {
             var innerDrained = innerDrain(slot, fluid, i, action.simulate());
             drained += innerDrained.getAmount();
+            if (drained >= i) {
+                break;
+            }
         }
         return new FluidStack(fluid, drained);
     }
