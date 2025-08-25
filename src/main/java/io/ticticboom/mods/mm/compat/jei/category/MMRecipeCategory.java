@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableAnimated;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
+import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -82,6 +84,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
         }
+
         recipe.inputSlots().addAll(inGrid.getSlots());
         recipe.inputSlots().addAll(outGrid.getSlots());
     }

@@ -7,34 +7,24 @@ import io.ticticboom.mods.mm.compat.jei.category.MMStructureCategory;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyIngredientRenderer;
-import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyStack;
 import io.ticticboom.mods.mm.compat.jei.ingredient.mana.BotaniaManaIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.mana.BotaniaManaIngredientRenderer;
 import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientRender;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
-import io.ticticboom.mods.mm.recipe.RecipeModel;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import me.desht.pneumaticcraft.common.core.ModItems;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
-import mezz.jei.api.recipe.RecipeType;
-import mezz.jei.api.registration.IModIngredientRegistration;
-import mezz.jei.api.registration.IRecipeCatalystRegistration;
-import mezz.jei.api.registration.IRecipeCategoryRegistration;
-import mezz.jei.api.registration.IRecipeRegistration;
+import mezz.jei.api.registration.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Stream;
 
 @JeiPlugin
 public class MMJeiPlugin implements IModPlugin {
@@ -50,17 +40,19 @@ public class MMJeiPlugin implements IModPlugin {
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
         if (MMConfig.JEI_RECIPE_SPLIT) {
-            for (StructureModel value : StructureManager.STRUCTURES.values()) {
-                MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), value);
-                registration.addRecipeCategories(category);
-                recipeCategories.add(category);
+            for (StructureModel parentStructure : StructureManager.STRUCTURES.values()) {
+                registerProcessRecipe(registration, parentStructure);
             }
         } else {
-            MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), null);
-            registration.addRecipeCategories(category);
-            recipeCategories.add(category);
+            registerProcessRecipe(registration, null);
         }
         registration.addRecipeCategories(new MMStructureCategory(registration.getJeiHelpers().getGuiHelper()));
+    }
+
+    private void registerProcessRecipe(IRecipeCategoryRegistration registration, StructureModel parent) {
+        MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), parent);
+        registration.addRecipeCategories(category);
+        recipeCategories.add(category);
     }
 
     @Override
@@ -83,7 +75,6 @@ public class MMJeiPlugin implements IModPlugin {
         registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer());
     }
 
-
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
         for (var entry : recipeCategories) {
@@ -91,5 +82,10 @@ public class MMJeiPlugin implements IModPlugin {
             ItemStack stack = ForgeRegistries.ITEMS.getValue(location).getDefaultInstance();
             registration.addRecipeCatalyst(stack,entry.getRecipeType());
         }
+    }
+
+    @Override
+    public void registerItemSubtypes(ISubtypeRegistration registration) {
+        registration.useNbtForSubtypes(MMRegisters.BLUEPRINT.get());
     }
 }

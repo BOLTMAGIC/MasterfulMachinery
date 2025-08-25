@@ -1,4 +1,6 @@
 {
   "config.jade.plugin_mm.controller_progress": "Progress",
-  "item.mm.debug_tool": "Debug Tool"
+  "item.mm.debug_tool": "Debug Tool",
+  "tab.mm.main": "Masterful Machinery",
+  "tab.mm.structures": "MM Structures"
 }
