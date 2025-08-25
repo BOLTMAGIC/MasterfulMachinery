@@ -272,6 +272,9 @@ dependencies {
     // JEI
     runtimeOnly(fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}"))
 
+    //EMI
+//    runtimeOnly(fg.deobf("curse.maven:emi-580555:6420945"))
+
     //JADE (WAILA)
     runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_id}")
 

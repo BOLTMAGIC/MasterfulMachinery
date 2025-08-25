@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.GLScissor;
 import mezz.jei.api.gui.builder.IIngredientAcceptor;
@@ -25,6 +26,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.crafting.Ingredient;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -86,6 +88,9 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 b.add(b.size() - 2, countedItemStack.getDetail());
             });
         }
+
+        builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)
+                .addIngredients(Ingredient.of(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe)));
     }
 
     @Override

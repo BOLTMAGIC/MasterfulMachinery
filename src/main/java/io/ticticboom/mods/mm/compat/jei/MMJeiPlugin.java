@@ -50,17 +50,19 @@ public class MMJeiPlugin implements IModPlugin {
     @Override
     public void registerCategories(IRecipeCategoryRegistration registration) {
         if (MMConfig.JEI_RECIPE_SPLIT) {
-            for (StructureModel value : StructureManager.STRUCTURES.values()) {
-                MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), value);
-                registration.addRecipeCategories(category);
-                recipeCategories.add(category);
+            for (StructureModel parentStructure : StructureManager.STRUCTURES.values()) {
+                registerProcessRecipe(registration, parentStructure);
             }
         } else {
-            MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), null);
-            registration.addRecipeCategories(category);
-            recipeCategories.add(category);
+            registerProcessRecipe(registration, null);
         }
         registration.addRecipeCategories(new MMStructureCategory(registration.getJeiHelpers().getGuiHelper()));
+    }
+
+    private void registerProcessRecipe(IRecipeCategoryRegistration registration, StructureModel parent) {
+        MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), parent);
+        registration.addRecipeCategories(category);
+        recipeCategories.add(category);
     }
 
     @Override
@@ -82,7 +84,6 @@ public class MMJeiPlugin implements IModPlugin {
         registration.register(MMJeiIngredients.PNEUMATIC_AIR, ImmutableList.of(), new PneumaticAirIngredientHelper(), new PneumaticAirIngredientRender());
         registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer());
     }
-
 
     @Override
     public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
