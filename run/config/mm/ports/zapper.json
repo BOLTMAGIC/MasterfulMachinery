@@ -1,12 +1,11 @@
 {
-  "id": "energy_port",
+  "id": "my_zapper",
   "controllerIds": "mm:controller_a",
-  "name": "My energy Port",
+  "name": "Zapper",
   "type": "mm:energy",
   "config": {
     "capacity": 1000000,
     "maxReceive": 1000,
-    "maxExtract": 1000,
-    "autoPush": true
+    "maxExtract": 1000
   }
 }
