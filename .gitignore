@@ -21,7 +21,7 @@ build
 eclipse
 run/*
 !/run/config/mm/
-!/run/config/mm/*
+!/run/config/mm/**/*
 !/run/kubejs/*_scripts/
 
 # Files from Forge MDK

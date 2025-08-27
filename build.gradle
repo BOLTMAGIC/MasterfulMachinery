@@ -291,6 +291,9 @@ dependencies {
 
     // IMMERSIVE ENGINEERING
     runtimeOnly fg.deobf("curse.maven:immersive-engineering-231951:6206989")
+
+    //BOTANIA
+    runtimeOnly fg.deobf("vazkii.botania:Botania:${botania_version}")
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
