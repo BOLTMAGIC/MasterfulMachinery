@@ -53,7 +53,6 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {
                 Ref.LCTX.push(String.format("Loading Structure: %s", entry.getKey().toString()));
                 var model = StructureModel.parse(entry.getValue().getAsJsonObject(), entry.getKey());
-
                 storeStructure(entry.getKey(), model);
                 Ref.LCTX.pop();
             }
