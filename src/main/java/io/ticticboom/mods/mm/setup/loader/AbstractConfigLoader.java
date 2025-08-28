@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.setup.loader;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.ticticboom.mods.mm.Ref;
 import lombok.SneakyThrows;
 import net.minecraftforge.fml.loading.FMLPaths;
 
@@ -33,13 +34,16 @@ public abstract class AbstractConfigLoader<TModel> {
         if (!Files.exists(root)) {
             Files.createDirectories(root);
         }
-        return Files.walk(root, FileVisitOption.FOLLOW_LINKS).filter(x -> x.toString().endsWith(".json")).map(x -> {
-            try {
-                var file = Files.readString(x);
-                return JsonParser.parseString(file).getAsJsonObject();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).toList();
+        return Files.walk(root, FileVisitOption.FOLLOW_LINKS).filter(x -> x.toString().endsWith(".json")).map(AbstractConfigLoader::parseJson).toList();
+    }
+
+    private static JsonObject parseJson(Path path) {
+        try {
+            var file = Files.readString(path);
+            return JsonParser.parseString(file).getAsJsonObject();
+        } catch (IOException e) {
+            Ref.LOG.fatal("Failed to read file {}", path);
+            throw new RuntimeException(e);
+        }
     }
 }

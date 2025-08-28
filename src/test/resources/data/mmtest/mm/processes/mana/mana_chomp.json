@@ -1,0 +1,23 @@
+{
+  "ticks": 200,
+  "structureId": "mmtest:mana/mana_chomp",
+  "inputs": [
+    {
+      "type": "mm:input/consume",
+      "ingredient": {
+        "type": "mm:botania/mana",
+        "mana": 100
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "mm:output/simple",
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:diamond",
+        "count": 1
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "Mana Generator",
+  "controllerIds": "mm:mana_controller",
+  "layout": [
+    [
+      "CA"
+    ]
+  ],
+  "key": {
+    "A": {
+      "portType": "mm:botania/mana",
+      "input": false
+    }
+  }
+}

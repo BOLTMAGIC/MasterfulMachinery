@@ -1,0 +1,19 @@
+{
+  "name": "Mana Chomper",
+  "controllerIds": "mm:mana_controller",
+  "layout": [
+    [
+      "ACB"
+    ]
+  ],
+  "key": {
+    "A": {
+      "portType": "mm:botania/mana",
+      "input": true
+    },
+    "B": {
+      "portType": "mm:item",
+      "input": false
+    }
+  }
+}

@@ -43,9 +43,9 @@ public class MMPortRegistry {
             register(Ref.Ports.PNEUMATIC_AIR, new PneumaticAirPortType());
         }
 
-//        if (ModList.get().isLoaded("botania")) {
-//            register(Ref.Ports.BOTANIA_MANA, new BotaniaManaPortType());
-//        }
+        if (ModList.get().isLoaded("botania")) {
+            register(Ref.Ports.BOTANIA_MANA, new BotaniaManaPortType());
+        }
     }
 
     public static PortType get(ResourceLocation id) {

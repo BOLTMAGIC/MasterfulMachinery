@@ -1,0 +1,14 @@
+{
+  "ticks": 20,
+  "structureId": "mmtest:mana/mana_gen",
+  "inputs": [],
+  "outputs": [
+    {
+      "type": "mm:output/simple",
+      "ingredient": {
+        "type": "mm:botania/mana",
+        "mana": 10
+      }
+    }
+  ]
+}
