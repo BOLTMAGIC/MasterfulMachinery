@@ -1,0 +1,35 @@
+{
+  "name": "Airy Tings",
+  "controllerIds": "mm:controller_a",
+  "layout": [
+    [
+      "IOCU"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false
+    },
+    "U": {
+      "states": {
+        "logs": {
+          "tag": "minecraft:logs"
+        },
+        "planks": {
+          "tag": "minecraft:planks"
+        },
+        "air": {
+          "anything": true
+        },
+        "diamond": {
+          "block": "minecraft:diamond_block"
+        }
+      }
+    }
+  }
+}
