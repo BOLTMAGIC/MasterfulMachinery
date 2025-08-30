@@ -31,9 +31,6 @@ example:
   },
   "stateLists": {
     "speedUpgrades": {
-      "default": {
-        "optional": true
-      },
       "logs": {
         "tag": "minecraft:logs"
       },
@@ -51,7 +48,7 @@ example:
 needed:
 - stateLists on structure (attachments in StructureModel)
 - StatesStructurePiece - `U: {states: "speedUpgrades"}`
-- 
+- add ignored structure piece for allowing pieces explicitly ignored
 
 ## Phase 2
 

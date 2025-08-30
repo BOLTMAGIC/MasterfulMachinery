@@ -35,7 +35,7 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
 
     public static void validateAllPieces() {
         for (StructureModel value : STRUCTURES.values()) {
-            value.layout().validate(value);
+            value.validate();
         }
     }
 

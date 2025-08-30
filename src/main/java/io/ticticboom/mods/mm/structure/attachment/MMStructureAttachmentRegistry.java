@@ -17,8 +17,8 @@ public class MMStructureAttachmentRegistry {
         register(new StateListsStructureAttachmentType());
     }
 
-    public static List<MMStructureAttachment> parseStructureAttachments(JsonObject json) {
-        var result = new ArrayList<MMStructureAttachment>();
+    public static List<StructureAttachment> parseStructureAttachments(JsonObject json) {
+        var result = new ArrayList<StructureAttachment>();
         for (final var type : TYPES) {
             if (type.identify(json)) {
                 var attachment = type.parse(json);

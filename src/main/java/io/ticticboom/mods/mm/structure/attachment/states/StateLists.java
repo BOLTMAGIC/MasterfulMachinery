@@ -11,6 +11,10 @@ public record StateLists(Map<String, NamedStateList> states) {
         return states.get(name);
     }
 
+    public boolean has(String name) {
+        return states.containsKey(name);
+    }
+
     public static StateLists parse(JsonObject states) {
         var map = new HashMap<String, NamedStateList>();
         for (Map.Entry<String, JsonElement> entry : states.entrySet()) {
