@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.client.structure.PositionedCyclingBlockRenderer;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.model.IdList;
+import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachments;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
@@ -102,6 +103,12 @@ public class StructureModel {
         json.add("controllerIds", controllerIds.serialize());
         layout.serialize(json);
         return json;
+    }
+
+    public void validate() {
+        var meta = new StructurePieceSetupMetadata(id, this);
+        layout.validate(meta);
+        attachments.validate(meta);
     }
 
     public boolean formed(Level level, BlockPos controllerPos) {

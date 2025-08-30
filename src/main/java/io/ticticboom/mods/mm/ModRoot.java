@@ -10,6 +10,7 @@ import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.piece.MMStructurePieceRegistry;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.attachment.MMStructureAttachmentRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.common.Mod;
@@ -26,6 +27,7 @@ public class ModRoot {
         MMExtraBlockRegistry.init();
         MMRegisters.register();
         MMStructurePieceRegistry.init();
+        MMStructureAttachmentRegistry.init();
         DataGenManager.registerDataProviders();
         registerClientPack();
     }

@@ -6,5 +6,5 @@ import com.google.gson.JsonObject;
 public abstract class MMStructureAttachmentType {
     public abstract boolean identify(JsonObject json);
 
-    public abstract MMStructureAttachment parse(JsonObject json);
+    public abstract StructureAttachment parse(JsonObject json);
 }
