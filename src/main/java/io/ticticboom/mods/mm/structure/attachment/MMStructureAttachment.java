@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.structure.attachment;
 
-public interface MMStructureAttachment {
+import net.minecraft.resources.ResourceLocation;
 
+public interface MMStructureAttachment {
+    ResourceLocation getId();
 }

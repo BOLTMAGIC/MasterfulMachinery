@@ -54,6 +54,10 @@ public class Ref {
         public static final ResourceLocation WEATHER = id("weather");
     }
 
+    public static class StructureAttachments {
+        public static final ResourceLocation STATE_LISTS = id("state_lists");
+    }
+
     public static class ExtraBlocks {
         public static final ResourceLocation CIRCUIT = id("circuit");
         public static final ResourceLocation GEARBOX = id("gearbox");
