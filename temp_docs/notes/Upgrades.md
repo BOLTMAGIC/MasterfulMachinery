@@ -31,6 +31,7 @@ example:
   },
   "stateLists": {
     "speedUpgrades": {
+      "defaultIgnored": true,
       "logs": {
         "tag": "minecraft:logs"
       },

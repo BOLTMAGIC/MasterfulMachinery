@@ -25,7 +25,7 @@ public class StatesStructurePiece extends StructurePiece {
     private final String listName;
     private final String translationKey;
     private StateListPieceFormedResult activeState = StateListPieceFormedResult.NOT_FORMED;
-    private Lazy<List<Block>> blocksSupplier;
+    private List<Block> blockList;
 
     public StatesStructurePiece(String listName, String translationKey) {
         this.listName = listName;
@@ -62,7 +62,7 @@ public class StatesStructurePiece extends StructurePiece {
             entry.getValue().validateSetup(meta);
         }
 
-        this.blocksSupplier = Lazy.of(() -> stateList.pieces().values().stream().map(StructurePiece::createBlocksSupplier).flatMap(a -> a.get().stream()).toList());
+        this.blockList = stateList.pieces().values().stream().map(StructurePiece::createBlocksSupplier).flatMap(a -> a.get().stream()).toList();
     }
 
     @Override
@@ -76,7 +76,7 @@ public class StatesStructurePiece extends StructurePiece {
 
     @Override
     public Supplier<List<Block>> createBlocksSupplier() {
-        return this.blocksSupplier;
+        return () -> this.blockList;
     }
 
     @Override

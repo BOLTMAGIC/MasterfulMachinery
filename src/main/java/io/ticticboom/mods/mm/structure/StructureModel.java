@@ -188,4 +188,9 @@ public class StructureModel {
         countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.literal("Controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
         return countedPartItems;
     }
+
+    @Override
+    public String toString() {
+        return "StructureModel{id=" + id + ", name=" + name + "}";
+    }
 }
