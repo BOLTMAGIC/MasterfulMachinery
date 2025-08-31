@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachment;
 import net.minecraft.resources.ResourceLocation;
 
+//TODO: add rendering object add rendering extras to controller screen.
 public class StateListsStructureAttachment extends StructureAttachment {
     private final StateLists lists;
 

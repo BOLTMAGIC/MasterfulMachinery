@@ -50,7 +50,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     @Override
     public IDrawable getBackground() {
-        return helper.createDrawable(Ref.Textures.GUI_LARGE_JEI, 0, 0, 162, 170);
+        return helper.createDrawable(Ref.Textures.GUI_LARGE_JEI, 0, 0, 182, 170);
     }
 
     @Override

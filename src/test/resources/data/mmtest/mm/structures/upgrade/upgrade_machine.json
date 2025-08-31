@@ -1,5 +1,5 @@
 {
-  "name": "Airy Tings",
+  "name": "Upgradeable Fish",
   "controllerIds": "mm:controller_a",
   "layout": [
     [
@@ -21,9 +21,7 @@
   },
   "stateLists": {
     "speedUpgrades": {
-      "default": {
-        "optional": true
-      },
+      "defaultIgnored": true,
       "logs": {
         "tag": "minecraft:logs"
       },
