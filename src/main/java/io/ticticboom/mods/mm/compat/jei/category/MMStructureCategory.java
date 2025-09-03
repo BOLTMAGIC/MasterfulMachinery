@@ -79,7 +79,9 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             var slot = builder.addSlot(RecipeIngredientRole.INPUT, next.x, next.y);
             slot.addItemStacks(countedItemStack.getStacks());
             slot.addTooltipCallback((a, b) -> {
-                b.add(b.size() - 2, countedItemStack.getDetail());
+                int size = b.size();
+                int insertIndex = (size >= 2) ? (size - 2) : size;
+                b.add(insertIndex, countedItemStack.getDetail());
             });
         }
 
