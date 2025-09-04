@@ -1,17 +1,17 @@
 package io.ticticboom.mods.mm.client.gui;
 
 import lombok.Getter;
-import net.minecraft.client.gui.GuiGraphics;
+import lombok.Setter;
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.narration.NarratableEntry;
 
-public class AbstractWidget implements IWidget {
+public abstract class AbstractWidget implements IWidget, GuiEventListener, NarratableEntry {
 
     @Getter
+    @Setter
     protected int xPos = 0;
+    @Setter
     @Getter
     protected int yPos = 0;
 
-
-    @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-    }
 }

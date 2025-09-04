@@ -39,9 +39,9 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     public MMRecipeCategory(IJeiHelpers helpers, StructureModel parent) {
         this.helpers = helpers;
-        bgProgressBar = helpers.getGuiHelper().createDrawable(Ref.Textures.SLOT_PARTS, 26, 0, 24, 17);
+        bgProgressBar = helpers.getGuiHelper().createDrawable(Ref.UiTextures.SLOT_PARTS, 26, 0, 24, 17);
         this.structureModel = parent;
-        var staticProgressBar = helpers.getGuiHelper().createDrawable(Ref.Textures.SLOT_PARTS, 26, 17, 24, 17);
+        var staticProgressBar = helpers.getGuiHelper().createDrawable(Ref.UiTextures.SLOT_PARTS, 26, 17, 24, 17);
         fgProgressBar = helpers.getGuiHelper().createAnimatedDrawable(staticProgressBar, 16, IDrawableAnimated.StartDirection.LEFT, false);
         if (structureModel != null) {
             recipeType = RecipeType.create("mm", parent.id().getPath() + "_recipe", RecipeModel.class);
@@ -101,7 +101,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
 
         if (structureModel == null) {
-            gfx.blit(Ref.Textures.SLOT_PARTS, 75, 28, 19, 26, 7, 9);
+            gfx.blit(Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9);
             if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 75, 28, 7, 9)) {
                 gfx.renderTooltip(Minecraft.getInstance().font, Component.literal("Structure: " + recipe.structureId().toString()), (int) mouseX, (int) mouseY);
             }
@@ -109,7 +109,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             if (inputSlot.used()) {
-                gfx.blit(Ref.Textures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18);
+                gfx.blit(Ref.UiTextures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18);
             }
         }
     }

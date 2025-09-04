@@ -28,7 +28,7 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.Textures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
     }
 
     @Override
@@ -41,14 +41,14 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
         renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partialTick);
         renderTooltip(gfx, mouseX, mouseY);
-        gfx.blit(Ref.Textures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80);
+        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80);
         EnergyPortBlockEntity be = menu.getBlockEntity();
         EnergyPortStorage storage = (EnergyPortStorage) be.getStorage();
         EnergyPortStorageModel storageModel = be.getStorageModel();
         var filledValue = (double)storage.getStoredEnergy() / (double)storageModel.capacity();
         var filledHeight = (int)(Math.min(filledValue, 1) * 78);
         var start = 129 - filledHeight;
-        gfx.blit(Ref.Textures.SLOT_PARTS, this.leftPos + 8, this.topPos + start, 90, 0, 160, filledHeight);
+        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 8, this.topPos + start, 90, 0, 160, filledHeight);
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + 7, this.topPos + 50, 162, 80)) {
             var tooltip = new ArrayList<Component>();
             tooltip.add(Component.literal(String.format("Stored Energy: %sFE", storage.getStoredEnergy())));

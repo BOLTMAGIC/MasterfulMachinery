@@ -68,13 +68,6 @@ public class Ref {
         public static final ResourceLocation BASE_BLOCK = id("block/base_block");
         public static final ResourceLocation CONTROLLER_OVERLAY = id("block/controller_cutout");
 
-        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/gui_large_jei.png");
-        public static final ResourceLocation GUI_LARGE = id("textures/gui/gui_large.png");
-        public static final ResourceLocation PORT_GUI = id("textures/gui/port_gui.png");
-        public static final ResourceLocation SCANNER_GUI = id("textures/gui/scanner_gui.png");
-        public static final ResourceLocation SLOT_PARTS = id("textures/gui/slot_parts.png");
-        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/tab_item_search.png");
-
         public static final ResourceLocation INPUT_ITEM_PORT_OVERLAY = id("block/base_ports/item_input_cutout");
         public static final ResourceLocation OUTPUT_ITEM_PORT_OVERLAY = id("block/base_ports/item_output_cutout");
 
@@ -108,6 +101,17 @@ public class Ref {
 
         public static final ResourceLocation INPUT_BOTANIA_MANA_PORT_OVERLAY = id("block/compat_ports/botania_mana_input_cutout");
         public static final ResourceLocation OUTPUT_BOTANIA_MANA_PORT_OVERLAY = id("block/compat_ports/botania_mana_output_cutout");
+    }
+    public static class UiTextures {
+        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/gui_large_jei.png");
+        public static final ResourceLocation GUI_LARGE = id("textures/gui/gui_large.png");
+        public static final ResourceLocation PORT_GUI = id("textures/gui/port_gui.png");
+        public static final ResourceLocation SCANNER_GUI = id("textures/gui/scanner_gui.png");
+        public static final ResourceLocation SLOT_PARTS = id("textures/gui/slot_parts.png");
+        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/tab_item_search.png");
+        public static final ResourceLocation BUTTON_ACTIVE = id("textures/gui/button_active.png");
+        public static final ResourceLocation BUTTON_PRESSED = id("textures/gui/button_pressed.png");
+        public static final ResourceLocation TILING_GUI = id("textures/gui/gui_bg_tile_borders.png");
     }
 
 }
