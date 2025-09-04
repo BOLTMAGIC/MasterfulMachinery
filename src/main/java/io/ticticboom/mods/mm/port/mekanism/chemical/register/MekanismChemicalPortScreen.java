@@ -40,8 +40,8 @@ public class MekanismChemicalPortScreen<CHEMICAL extends Chemical<CHEMICAL>, STA
 
     @Override
     protected void renderBg(GuiGraphics gfx, float v, int i, int i1) {
-        gfx.blit(Ref.Textures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
-        gfx.blit(Ref.Textures.SLOT_PARTS, this.leftPos + 80, this.topPos + 60, 0, 26, 18, 18);
+        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 80, this.topPos + 60, 0, 26, 18, 18);
     }
 
     @Override

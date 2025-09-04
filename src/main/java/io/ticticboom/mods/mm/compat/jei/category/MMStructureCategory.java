@@ -50,7 +50,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     @Override
     public IDrawable getBackground() {
-        return helper.createDrawable(Ref.Textures.GUI_LARGE_JEI, 0, 0, 182, 170);
+        return helper.createDrawable(Ref.UiTextures.GUI_LARGE_JEI, 0, 0, 182, 170);
     }
 
     @Override
@@ -101,7 +101,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             if (!slot.used()) {
                 continue;
             }
-            guiGraphics.blit(Ref.Textures.SLOT_PARTS, slot.x -1, slot.y - 1, 0, 26, 18, 18);
+            guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, slot.x -1, slot.y - 1, 0, 26, 18, 18);
         }
         var fText = FormattedText.of(recipe.name());
         guiGraphics.pose().pushPose();

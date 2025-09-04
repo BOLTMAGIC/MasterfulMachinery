@@ -13,7 +13,7 @@ public class PneumaticAirIngredientRender  implements IIngredientRenderer<Pneuma
 
     @Override
     public void render(GuiGraphics guiGraphics, PneumaticAirStack pneumaticAirStack) {
-        guiGraphics.blit(Ref.Textures.SLOT_PARTS, 0, 0, 1, 62, 16, 16);
+        guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 1, 62, 16, 16);
     }
 
     @Override

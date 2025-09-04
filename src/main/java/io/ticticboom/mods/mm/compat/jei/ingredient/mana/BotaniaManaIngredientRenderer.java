@@ -13,7 +13,7 @@ public class BotaniaManaIngredientRenderer implements IIngredientRenderer<Botani
 
     @Override
     public void render(GuiGraphics guiGraphics, BotaniaManaStack stack) {
-        guiGraphics.blit(Ref.Textures.SLOT_PARTS, 0, 0, 18, 79, 16, 16);
+        guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 18, 79, 16, 16);
     }
 
     @Override
