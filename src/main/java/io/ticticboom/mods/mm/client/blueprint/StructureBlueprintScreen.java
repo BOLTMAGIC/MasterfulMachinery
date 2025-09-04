@@ -10,7 +10,12 @@ public class StructureBlueprintScreen extends Screen {
 
     protected StructureBlueprintScreen() {
         super(Component.empty());
-        addRenderableWidget(new TilingBackgroundGui(0, 0, 100, 20, 10));
+
+    }
+
+    @Override
+    protected void init() {
+        addRenderableWidget(new TilingBackgroundGui(0, 0, this.width, this.height, 10));
     }
 
     @Override
