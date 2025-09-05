@@ -1,11 +1,9 @@
 ## Change Log [VERSION_NAME]
 
 Merged PRs:
-- ticticboooomer/MasterfulMachinery/pull/95
+- ticticboooomer/MasterfulMachinery/pull/100
 
-Resolved Issues:
-- ticticboooomer/MasterfulMachinery/issues/42
+Resolved Issues: []
 
 Summary:
-- Add autoPush field (with global default in config) to allow fluid, energy and item ports to auto extract into neighbouring storage
-- Fix fluid handler draining fluid from every slot
+- only add jei tooltip at -2 position if more than 2 lines of tooltip exist (avoid out of bounds crashes)
