@@ -111,6 +111,8 @@ public class Ref {
         public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/tab_item_search.png");
         public static final ResourceLocation BUTTON_ACTIVE = id("textures/gui/button_active.png");
         public static final ResourceLocation BUTTON_PRESSED = id("textures/gui/button_pressed.png");
+        public static final ResourceLocation ARROW_LEFT = id("textures/gui/arrow_left.png");
+        public static final ResourceLocation ARROW_RIGHT = id("textures/gui/arrow_right.png");
         public static final ResourceLocation TILING_GUI = id("textures/gui/gui_bg_tile_borders.png");
     }
 

@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.client.gui.widgets;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
+import io.ticticboom.mods.mm.client.texture.GuiTextures;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 
@@ -15,11 +16,14 @@ public class ArrowButtonWidget extends AbstractWidget {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        var texture = Ref.UiTextures.BUTTON_ACTIVE;
         if (pressed) {
-            texture = Ref.UiTextures.BUTTON_PRESSED;
+            GuiTextures.BUTTON_PRESSED.blit(guiGraphics, xPos, yPos);
+        } else {
+            GuiTextures.BUTTON_ACTIVE.blit(guiGraphics, xPos, yPos);
         }
-//        guiGraphics.blit(texturere, this.xPos, this.yPos, 0, 0f, 0f, 0, 0, 4,4, 64, 32);
+        if (this.direction == ArrowDirection.LEFT) {
+
+        }
     }
 
     @Override
@@ -43,6 +47,7 @@ public class ArrowButtonWidget extends AbstractWidget {
     }
 
     public enum ArrowDirection {
-        UP, DOWN
+        LEFT,
+        RIGHT;
     }
 }
