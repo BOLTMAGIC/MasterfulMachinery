@@ -1,5 +1,9 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
+import io.ticticboom.mods.mm.client.gui.util.GuiAlignment;
+import io.ticticboom.mods.mm.client.gui.util.GuiPos;
+import io.ticticboom.mods.mm.client.gui.util.GuiPosHelper;
+import io.ticticboom.mods.mm.client.gui.widgets.ArrowOptionSelectWidget;
 import io.ticticboom.mods.mm.client.gui.widgets.TilingBackgroundGui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -8,6 +12,8 @@ import net.minecraft.network.chat.Component;
 
 public class StructureBlueprintScreen extends Screen {
 
+    private GuiPosHelper guiHelper;
+
     protected StructureBlueprintScreen() {
         super(Component.empty());
 
@@ -15,7 +21,14 @@ public class StructureBlueprintScreen extends Screen {
 
     @Override
     protected void init() {
-        addRenderableWidget(new TilingBackgroundGui(0, 0, this.width, this.height, 10));
+        this.guiHelper = new GuiPosHelper(this.width, this.height, 10);
+        addRenderableOnly(new TilingBackgroundGui(guiHelper.getGuiPos()));
+
+        addRenderableWidget(new ArrowOptionSelectWidget(
+                guiHelper.offset(
+                        GuiAlignment.LEFT_TOP,
+                        GuiPos.of(5, 5, guiHelper.getGuiWidth() - 10, 20))));
+
     }
 
     @Override

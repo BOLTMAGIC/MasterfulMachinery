@@ -19,7 +19,6 @@ public class BlueprintScreenEvents {
             return;
         }
 
-        Player player = event.getEntity();
         Minecraft.getInstance().setScreen(new StructureBlueprintScreen());
     }
 }

@@ -102,18 +102,19 @@ public class Ref {
         public static final ResourceLocation INPUT_BOTANIA_MANA_PORT_OVERLAY = id("block/compat_ports/botania_mana_input_cutout");
         public static final ResourceLocation OUTPUT_BOTANIA_MANA_PORT_OVERLAY = id("block/compat_ports/botania_mana_output_cutout");
     }
+
     public static class UiTextures {
-        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/gui_large_jei.png");
-        public static final ResourceLocation GUI_LARGE = id("textures/gui/gui_large.png");
-        public static final ResourceLocation PORT_GUI = id("textures/gui/port_gui.png");
-        public static final ResourceLocation SCANNER_GUI = id("textures/gui/scanner_gui.png");
-        public static final ResourceLocation SLOT_PARTS = id("textures/gui/slot_parts.png");
-        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/tab_item_search.png");
-        public static final ResourceLocation BUTTON_ACTIVE = id("textures/gui/button_active.png");
-        public static final ResourceLocation BUTTON_PRESSED = id("textures/gui/button_pressed.png");
-        public static final ResourceLocation ARROW_LEFT = id("textures/gui/arrow_left.png");
-        public static final ResourceLocation ARROW_RIGHT = id("textures/gui/arrow_right.png");
-        public static final ResourceLocation TILING_GUI = id("textures/gui/gui_bg_tile_borders.png");
+        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/parts/gui_large_jei.png");
+        public static final ResourceLocation GUI_LARGE = id("textures/gui/parts/gui_large.png");
+        public static final ResourceLocation PORT_GUI = id("textures/gui/parts/port_gui.png");
+        public static final ResourceLocation SCANNER_GUI = id("textures/gui/parts/scanner_gui.png");
+        public static final ResourceLocation SLOT_PARTS = id("textures/gui/parts/slot_parts.png");
+        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/parts/tab_item_search.png");
+        public static final ResourceLocation BUTTON_ACTIVE = id("textures/gui/parts/button_active.png");
+        public static final ResourceLocation BUTTON_PRESSED = id("textures/gui/parts/button_pressed.png");
+        public static final ResourceLocation ARROW_LEFT = id("textures/gui/parts/arrow_left.png");
+        public static final ResourceLocation ARROW_RIGHT = id("textures/gui/parts/arrow_right.png");
+        public static final ResourceLocation TILING_GUI = id("textures/gui/parts/gui_bg_tile_borders.png");
     }
 
 }
