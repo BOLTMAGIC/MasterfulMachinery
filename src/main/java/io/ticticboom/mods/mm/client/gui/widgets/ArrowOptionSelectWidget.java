@@ -18,7 +18,7 @@ public class ArrowOptionSelectWidget extends AbstractWidget {
 
     public ArrowOptionSelectWidget(GuiPos pos, List<String> options) {
         super(pos);
-        this.state = new ArrowOptionSelectWidgetState(options);
+        this.state = new ArrowOptionSelectWidgetState(options, changeEmitter);
         this.leftButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT));
         this.rightButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT));
         this.textBar = addWidget(new TextBarWidget(GuiPos.of(pos.x() + 18, pos.y() + 6, pos.w() - 36, 16), state::getSelectedOption));

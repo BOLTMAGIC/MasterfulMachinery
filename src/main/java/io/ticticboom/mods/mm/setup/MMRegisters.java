@@ -3,24 +3,15 @@ package io.ticticboom.mods.mm.setup;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.debug.tool.DebugToolItem;
 import io.ticticboom.mods.mm.item.BlueprintItem;
-import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.structure.StructureManager;
-import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.*;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.function.Supplier;
 
 public class MMRegisters {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, Ref.ID);

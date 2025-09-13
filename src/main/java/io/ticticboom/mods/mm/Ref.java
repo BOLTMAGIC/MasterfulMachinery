@@ -13,7 +13,7 @@ public class Ref {
     public static final Gson GSON = new Gson();
 
     public static ResourceLocation id(String path) {
-        return new ResourceLocation(ID, path);
+        return ResourceLocation.tryBuild(ID, path);
     }
 
     public static final ResourceLocation SCANNER_CAP = id("scanner_selection");
@@ -104,12 +104,12 @@ public class Ref {
     }
 
     public static class UiTextures {
-        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/parts/gui_large_jei.png");
-        public static final ResourceLocation GUI_LARGE = id("textures/gui/parts/gui_large.png");
-        public static final ResourceLocation PORT_GUI = id("textures/gui/parts/port_gui.png");
-        public static final ResourceLocation SCANNER_GUI = id("textures/gui/parts/scanner_gui.png");
-        public static final ResourceLocation SLOT_PARTS = id("textures/gui/parts/slot_parts.png");
-        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/parts/tab_item_search.png");
+        public static final ResourceLocation GUI_LARGE_JEI = id("textures/gui/gui_large_jei.png");
+        public static final ResourceLocation GUI_LARGE = id("textures/gui/gui_large.png");
+        public static final ResourceLocation PORT_GUI = id("textures/gui/port_gui.png");
+        public static final ResourceLocation SCANNER_GUI = id("textures/gui/scanner_gui.png");
+        public static final ResourceLocation SLOT_PARTS = id("textures/gui/slot_parts.png");
+        public static final ResourceLocation CREATIVE_TAB_BG = id("textures/gui/tab_item_search.png");
         public static final ResourceLocation BUTTON_ACTIVE = id("textures/gui/parts/button_active.png");
         public static final ResourceLocation BUTTON_PRESSED = id("textures/gui/parts/button_pressed.png");
         public static final ResourceLocation ARROW_LEFT = id("textures/gui/parts/arrow_left.png");
