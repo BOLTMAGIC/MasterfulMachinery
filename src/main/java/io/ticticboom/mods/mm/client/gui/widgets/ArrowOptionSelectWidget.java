@@ -5,7 +5,6 @@ import io.ticticboom.mods.mm.client.gui.GuiEventHandler;
 import io.ticticboom.mods.mm.client.gui.event.ArrowOptionSelectChangeEvent;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.gui.widgets.state.ArrowOptionSelectWidgetState;
-import net.minecraft.client.gui.GuiGraphics;
 
 import java.util.List;
 
@@ -20,26 +19,11 @@ public class ArrowOptionSelectWidget extends AbstractWidget {
     public ArrowOptionSelectWidget(GuiPos pos, List<String> options) {
         super(pos);
         this.state = new ArrowOptionSelectWidgetState(options);
-        this.leftButton = new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT);
-        this.rightButton = new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT);
-        this.textBar = new TextBarWidget(GuiPos.of(pos.x() + 18, pos.y() + 6, pos.w() - 36, 16), state::getSelectedOption);
+        this.leftButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT));
+        this.rightButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT));
+        this.textBar = addWidget(new TextBarWidget(GuiPos.of(pos.x() + 18, pos.y() + 6, pos.w() - 36, 16), state::getSelectedOption));
 
         this.leftButton.clickEmitter.addListener(e -> state.previous());
         this.rightButton.clickEmitter.addListener(e -> state.next());
-    }
-
-    @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        leftButton.render(guiGraphics, mouseX, mouseY, partialTicks);
-        rightButton.render(guiGraphics, mouseX, mouseY, partialTicks);
-        textBar.render(guiGraphics, mouseX, mouseY, partialTicks);
-    }
-
-    @Override
-    public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
-        if (leftButton.mouseClicked(pMouseX, pMouseY, pButton)) {
-            return true;
-        }
-        return rightButton.mouseClicked(pMouseX, pMouseY, pButton);
     }
 }

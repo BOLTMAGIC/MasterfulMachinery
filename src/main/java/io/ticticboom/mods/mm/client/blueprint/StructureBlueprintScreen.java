@@ -5,11 +5,8 @@ import io.ticticboom.mods.mm.client.gui.util.GuiAlignment;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.gui.util.GuiPosHelper;
 import io.ticticboom.mods.mm.client.gui.widgets.TilingBackgroundGui;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
 
 public class StructureBlueprintScreen extends Screen {
 
@@ -31,20 +28,5 @@ public class StructureBlueprintScreen extends Screen {
 
         structureSelector.changeEmitter
                 .addListener(e -> viewModel.setStructure(e.index()));
-    }
-
-    @Override
-    public void renderBackground(@NotNull GuiGraphics guiGraphics) {
-        super.renderBackground(guiGraphics);
-    }
-
-    @Override
-    public void render(@NotNull GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
-    }
-
-    @Override
-    public void resize(@NotNull Minecraft pMinecraft, int pWidth, int pHeight) {
-        super.resize(pMinecraft, pWidth, pHeight);
     }
 }
