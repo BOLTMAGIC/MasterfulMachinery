@@ -23,4 +23,11 @@ public record GuiPos(GuiCoord coord, GuiSize size) {
     public int h() {
         return size.h();
     }
+
+    public boolean contains(int x, int y) {
+        return x >= x()
+                && x <= x() + w()
+                && y >= y()
+                && y <= y() + h();
+    }
 }

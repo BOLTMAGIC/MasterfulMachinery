@@ -1,19 +1,31 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
+import io.ticticboom.mods.mm.client.gui.GuiEventHandler;
+import io.ticticboom.mods.mm.client.gui.event.ArrowOptionSelectChangeEvent;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
+import io.ticticboom.mods.mm.client.gui.widgets.state.ArrowOptionSelectWidgetState;
 import net.minecraft.client.gui.GuiGraphics;
 
-public class ArrowOptionSelectWidget extends AbstractWidget {
-    private final ArrowButtonWidget leftButton;
-    private final ArrowButtonWidget rightButton;
-    private final TextBarWidget textBar;
+import java.util.List;
 
-    public ArrowOptionSelectWidget(GuiPos pos) {
+public class ArrowOptionSelectWidget extends AbstractWidget {
+    protected final ArrowButtonWidget leftButton;
+    protected final ArrowButtonWidget rightButton;
+    protected final TextBarWidget textBar;
+
+    protected final ArrowOptionSelectWidgetState state;
+    public final GuiEventHandler<ArrowOptionSelectChangeEvent> changeEmitter = new GuiEventHandler<>();
+
+    public ArrowOptionSelectWidget(GuiPos pos, List<String> options) {
         super(pos);
+        this.state = new ArrowOptionSelectWidgetState(options);
         this.leftButton = new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT);
         this.rightButton = new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT);
-        this.textBar = new TextBarWidget(GuiPos.of(pos.x(), pos.y() + 6, pos.w() - 32, 16), "Y like jazzzzzz? would you like AMm or FMmmmmmmmmMMMM?");
+        this.textBar = new TextBarWidget(GuiPos.of(pos.x() + 18, pos.y() + 6, pos.w() - 36, 16), state::getSelectedOption);
+
+        this.leftButton.clickEmitter.addListener(e -> state.previous());
+        this.rightButton.clickEmitter.addListener(e -> state.next());
     }
 
     @Override
@@ -21,5 +33,13 @@ public class ArrowOptionSelectWidget extends AbstractWidget {
         leftButton.render(guiGraphics, mouseX, mouseY, partialTicks);
         rightButton.render(guiGraphics, mouseX, mouseY, partialTicks);
         textBar.render(guiGraphics, mouseX, mouseY, partialTicks);
+    }
+
+    @Override
+    public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+        if (leftButton.mouseClicked(pMouseX, pMouseY, pButton)) {
+            return true;
+        }
+        return rightButton.mouseClicked(pMouseX, pMouseY, pButton);
     }
 }

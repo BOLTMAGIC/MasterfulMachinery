@@ -1,27 +1,17 @@
 {
-  "name": "My Funki Recipe",
+  "name": "Something realy realy longs thstqw3refcm m0987ycf142r097m8yc4t3m9780hc3t m89y0m79y8my79804 m89yh m89hy 87n69f 7n68tf n67f8 n967fn67g89",
   "controllerIds": "mm:controller_a",
   "layout": [
     [
-      "   ",
-      " A ",
-      "   "
+      " A "
     ],
     [
-      "   ",
-      "PCD",
-      "   "
+      "PCD"
     ]
   ],
   "key": {
     "A": {
-      "block": "minecraft:oak_log",
-      "properties": [
-        {
-          "property": "axis",
-          "value": "x"
-        }
-      ]
+      "block": "minecraft:oak_log"
     },
     "P": {
       "block": "mm:my_port_a_input"
