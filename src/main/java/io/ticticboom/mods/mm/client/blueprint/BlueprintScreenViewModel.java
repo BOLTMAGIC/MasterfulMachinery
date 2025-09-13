@@ -15,9 +15,11 @@ public class BlueprintScreenViewModel {
 
     public BlueprintScreenViewModel() {
         this.structure = availableStructures.get(0);
+        this.structure.getGuiRenderer().resetTransforms();
     }
 
     public void setStructure(int index) {
         structure = availableStructures.get(index);
+        structure.getGuiRenderer().resetTransforms();
     }
 }

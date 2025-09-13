@@ -42,6 +42,7 @@ public class GuiStructureRenderer {
             StructureManager.validateAllPieces();
             shouldEnsureValidated = false;
         }
+
         mouseTransform.run(mouseX, mouseY);
         for (PositionedCyclingBlockRenderer part : parts) {
             part.part.tick();

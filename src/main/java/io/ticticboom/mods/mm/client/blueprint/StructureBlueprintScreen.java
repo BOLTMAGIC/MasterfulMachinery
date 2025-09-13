@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
+import io.ticticboom.mods.mm.client.blueprint.widgets.StructureRenderWidget;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureSelectWidget;
 import io.ticticboom.mods.mm.client.gui.util.GuiAlignment;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
@@ -28,5 +29,10 @@ public class StructureBlueprintScreen extends Screen {
 
         structureSelector.changeEmitter
                 .addListener(e -> viewModel.setStructure(e.index()));
+
+        addRenderableWidget(new StructureRenderWidget(
+                guiHelper.offset(
+                        GuiAlignment.LEFT_TOP,
+                        GuiPos.of(20, 30, 200, 200)), viewModel::getStructure));
     }
 }

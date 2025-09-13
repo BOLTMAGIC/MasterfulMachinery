@@ -75,8 +75,8 @@ public class AutoTransform {
         float centerY = ((float) maxBound.y - minBound.y) / 2f;
         float centerZ = ((float) maxBound.z - minBound.z) / 2f;
 
-        offset = new Vector3f(minBound.x, minBound.y, minBound.z);
-        offset.add(centerX, centerY, centerZ);
+        pan = new Vector3f(7 + centerX, -6 - centerY, 10 +centerZ);
+        offset = new Vector3f(0,0,0);
         offset.add(-0.5f, -0.5f, -0.5f);
         lastX = mouseX;
         lastY = mouseY;
