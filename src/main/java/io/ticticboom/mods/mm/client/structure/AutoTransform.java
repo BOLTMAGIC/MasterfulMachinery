@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.client.structure;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import lombok.Getter;
@@ -75,21 +77,11 @@ public class AutoTransform {
         float centerY = ((float) maxBound.y - minBound.y) / 2f;
         float centerZ = ((float) maxBound.z - minBound.z) / 2f;
 
-        pan = new Vector3f(7 + centerX, -6 - centerY, 10 +centerZ);
+        pan = new Vector3f(7 + centerX, 6 + centerY, centerZ);
         offset = new Vector3f(0,0,0);
         offset.add(-0.5f, -0.5f, -0.5f);
         lastX = mouseX;
         lastY = mouseY;
-    }
-
-    public Matrix4f transform(Matrix4f m, BlockPos pos) {
-        m.scale(12, -12, 12);
-        m.translate(pan);
-        m.rotate(new Quaternionf(new AxisAngle4f((float) yRotation * ((float) Math.PI / 180f), 1, 0, 0)));
-        m.rotate(new Quaternionf(new AxisAngle4f(-(float) xRotation * ((float) Math.PI / 180f), 0, -1, 0)));
-        m.scale((float) scaleFactor, (float) scaleFactor, (float) scaleFactor);
-        m.translate(pos.getX() + offset.x, pos.getY() + offset.y, pos.getZ() + offset.z);
-        return m;
     }
 
     public void reset() {
@@ -98,7 +90,7 @@ public class AutoTransform {
         lastX = 0;
         lastY = 0;
         scaleFactor = 1.5;
-        float tx = 6.75f, ty = -6, tz = 10;
+        float tx = 6.75f, ty = 10, tz = 10;
         pan = new Vector3f(tx, ty, tz);
     }
 }
