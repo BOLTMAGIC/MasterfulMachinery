@@ -1,11 +1,16 @@
 package io.ticticboom.mods.mm.client.structure;
 
+import io.ticticboom.mods.mm.client.RenderUtil;
+import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Vec3i;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class GuiStructureRenderer {
     public static boolean shouldEnsureValidated = false;
@@ -14,7 +19,8 @@ public class GuiStructureRenderer {
     private final GuiStructureLayout guiLayout;
 
     private AutoTransform mouseTransform;
-
+    private RenderTransform renderTransform = new RenderTransform();
+    int extent = 0;
     private boolean isInitialized = false;
 
 
@@ -33,8 +39,32 @@ public class GuiStructureRenderer {
             for (PositionedCyclingBlockRenderer part : parts) {
                 part.part.setInterval(60);
             }
+            getExtents();
             isInitialized = true;
         }
+    }
+
+    private void getExtents() {
+        var positions = parts.stream().map(x -> x.pos).toList();
+        // min
+        var minX = Math.abs(positions.stream().map(Vec3i::getX).min(Integer::compareTo).orElse(0));
+        var minY = Math.abs(positions.stream().map(Vec3i::getY).min(Integer::compareTo).orElse(0));
+        var minZ = Math.abs(positions.stream().map(Vec3i::getZ).min(Integer::compareTo).orElse(0));
+
+        // max
+        var maxX = Math.abs(positions.stream().map(Vec3i::getX).max(Integer::compareTo).orElse(0));
+        var maxY = Math.abs(positions.stream().map(Vec3i::getY).max(Integer::compareTo).orElse(0));
+        var maxZ = Math.abs(positions.stream().map(Vec3i::getZ).max(Integer::compareTo).orElse(0));
+
+        var extentX = Math.max(maxX, minX);
+        var extentY = Math.max(maxY, minY);
+        var extentZ = Math.max(maxZ, minZ);
+
+        extent = Math.max(extentX, Math.max(extentY, extentZ));
+    }
+
+    public void setViewport(GuiPos viewport) {
+        renderTransform.setViewportPos(viewport);
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
@@ -44,11 +74,14 @@ public class GuiStructureRenderer {
         }
 
         mouseTransform.run(mouseX, mouseY);
+        renderTransform.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), extent);
         for (PositionedCyclingBlockRenderer part : parts) {
             part.part.tick();
             GuiBlockRenderer next = part.part.next();
             next.render(gfx, mouseX, mouseY, mouseTransform);
         }
+        renderTransform.postRender();
+        RenderUtil.resetViewport();
     }
 
     public void resetTransforms() {

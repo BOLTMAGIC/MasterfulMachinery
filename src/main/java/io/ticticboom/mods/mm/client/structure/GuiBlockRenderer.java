@@ -60,20 +60,20 @@ public class GuiBlockRenderer {
     public void render(GuiGraphics gfx, int mouseX, int mouseY, AutoTransform mouseTransform) {
         PoseStack pose = gfx.pose();
         pose.pushPose();
+        pose.mulPoseMatrix(mouseTransform.getModelTransform());
         pose.translate(pos.getX(), pos.getY(), pos.getZ());
         BlockRenderDispatcher brd = mc.getBlockRenderer();
-        ModelBlockRenderer modelRenderer = brd.getModelRenderer();
         MultiBufferSource.BufferSource bufferSource = gfx.bufferSource();
         var model = brd.getBlockModel(state);
         var modeldata = be != null ? be.getModelData() : ModelData.EMPTY;
         var layers = model.getRenderTypes(state, randomSource, modeldata);
         for (RenderType layer : layers) {
-            brd.renderSingleBlock(state, pose, bufferSource, 0xF000F0, OverlayTexture.NO_OVERLAY, modeldata, layer);
+            brd.renderSingleBlock(state, pose, bufferSource, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, modeldata, layer);
         }
 
         if (ber != null) {
             try {
-                ber.render(be, 1.f, gfx.pose(), bufferSource, 0xF000F0, OverlayTexture.NO_OVERLAY);
+                ber.render(be, 1.f, gfx.pose(), bufferSource, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY);
             } catch (Exception ignored) {
 
             }

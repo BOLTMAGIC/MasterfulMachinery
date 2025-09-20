@@ -1,6 +1,9 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.RenderUtil;
+import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.structure.GuiCountedItemStack;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
@@ -95,10 +98,16 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     public void draw(StructureModel recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
         Vector4f zero = new Vector4f(0, 0, 0, 1);
         zero.mul(guiGraphics.pose().last().pose());
-        GLScissor.enable((int) zero.x(), (int) zero.y(), 160, 120);
+//        GLScissor.enable((int) zero.x(), (int) zero.y(), 160, 120);
+
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().setIdentity();
         var renderer = recipe.getGuiRenderer();
+        renderer.setViewport(GuiPos.of((int) zero.x, (int) zero.y, 161, 120));
         renderer.render(guiGraphics, (int) mouseX, (int) mouseY);
-        GLScissor.disable();
+//        GLScissor.disable();
+        guiGraphics.pose().popPose();
+
         for (SlotGridEntry slot : recipe.getGrid().getSlots()) {
             if (!slot.used()) {
                 continue;

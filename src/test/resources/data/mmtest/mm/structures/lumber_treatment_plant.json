@@ -3,19 +3,13 @@
   "controllerIds": "mm:coke_oven",
   "layout": [
     [
-      "     ",
-      "  A  ",
-      "     "
+      "  A                               "
     ],
     [
-      "     ",
-      "1PCD2",
-      "     "
+      "1PCD255555555555555555555555555555"
     ],
     [
-      "     ",
-      "1P D2",
-      "     "
+      "1P D2                             "
     ]
   ],
   "key": {
@@ -34,6 +28,9 @@
     },
     "2": {
       "block": "mm:coke_oven_fluid_3x3_output"
+    },
+    "5": {
+      "block": "minecraft:stone"
     }
   }
 }

@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.client.blueprint;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureRenderWidget;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureSelectWidget;
 import io.ticticboom.mods.mm.client.gui.util.GuiAlignment;
+import io.ticticboom.mods.mm.client.gui.util.GuiCoord;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.gui.util.GuiPosHelper;
 import io.ticticboom.mods.mm.client.gui.widgets.TilingBackgroundGui;
@@ -33,6 +34,7 @@ public class StructureBlueprintScreen extends Screen {
         addRenderableWidget(new StructureRenderWidget(
                 guiHelper.offset(
                         GuiAlignment.LEFT_TOP,
-                        GuiPos.of(20, 30, 200, 200)), viewModel::getStructure));
+                        GuiPos.of(5, 25, 250,
+                                guiHelper.fromBottom(5, 25))), viewModel::getStructure));
     }
 }

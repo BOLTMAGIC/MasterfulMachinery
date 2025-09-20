@@ -21,5 +21,17 @@ public interface IGuiPosHelper {
         return GuiCoord.of(offset(alignment, new Vector2i(offset.x(), offset.y())));
     }
 
+    default int fromBottom(int y) {
+        return (getGuiBottom() - y) - getScreenPadding();
+    }
+
+    default int fromBottom(int y, int subOffset) {
+        return fromBottom(y) - subOffset;
+    }
+
+    default int fromRight(int x) {
+        return getGuiRight() - x - getScreenPadding();
+    }
+
     GuiPos offset(GuiAlignment alignment, GuiPos pos);
 }

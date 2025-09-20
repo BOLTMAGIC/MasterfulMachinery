@@ -1,7 +1,5 @@
 package io.ticticboom.mods.mm.client.structure;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import lombok.Getter;
@@ -77,11 +75,17 @@ public class AutoTransform {
         float centerY = ((float) maxBound.y - minBound.y) / 2f;
         float centerZ = ((float) maxBound.z - minBound.z) / 2f;
 
-        pan = new Vector3f(7 + centerX, 6 + centerY, centerZ);
-        offset = new Vector3f(0,0,0);
-        offset.add(-0.5f, -0.5f, -0.5f);
+        pan = new Vector3f(centerX, centerY, centerZ);
+        offset = new Vector3f(-0.5f, -0.5f, -0.5f);
         lastX = mouseX;
         lastY = mouseY;
+    }
+
+    public Matrix4f getModelTransform() {
+        var m = new Matrix4f().identity();
+        m.translate(offset.x, offset.y, offset.z);
+        m.scale((float) scaleFactor);
+        return m;
     }
 
     public void reset() {
@@ -89,8 +93,7 @@ public class AutoTransform {
         yRotation = 15;
         lastX = 0;
         lastY = 0;
-        scaleFactor = 1.5;
-        float tx = 6.75f, ty = 10, tz = 10;
-        pan = new Vector3f(tx, ty, tz);
+        scaleFactor = 1.01f;
+        pan = new Vector3f(0, 0, 0);
     }
 }

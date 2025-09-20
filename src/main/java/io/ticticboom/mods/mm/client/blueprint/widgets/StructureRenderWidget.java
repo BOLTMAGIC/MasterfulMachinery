@@ -19,24 +19,21 @@ public class StructureRenderWidget extends AbstractWidget {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
-//        guiGraphics.fillGradient(position.x(), position.y(), position.x() + position.w(), position.y() + position.h(), 0x77777777);
+        guiGraphics.fill(position.x(), position.y(), position.x() + position.w(), position.y() + position.h(), 0x77777777);
         StructureModel model = structureSupplier.get();
         if (model == null) {
             Ref.LOG.fatal("Structure model is null in client renderer");
             return;
         }
 
-        preRenderer(position.x(), position.y());
         guiGraphics.pose().pushPose();
+        guiGraphics.pose().setIdentity();
 //        GLScissor.enable(position.x(), position.y(), position.w(), position.h());
         var guiRenderer = model.getGuiRenderer();
+        guiRenderer.setViewport(position);
         guiRenderer.init();
         guiRenderer.render(guiGraphics, mouseX, mouseY);
         guiGraphics.pose().popPose();
 //        GLScissor.disable();
-        postRenderr();
-    }
-
-    em.disableDepthTest();
     }
 }
