@@ -71,11 +71,6 @@ public class AutoTransform {
             pan.add((float) relMoveX * 0.08f, (float) -relMoveY * 0.08f, 0);
         }
 
-        float centerX = ((float) maxBound.x - minBound.x) / 2f;
-        float centerY = ((float) maxBound.y - minBound.y) / 2f;
-        float centerZ = ((float) maxBound.z - minBound.z) / 2f;
-
-        pan = new Vector3f(centerX, centerY, centerZ);
         offset = new Vector3f(-0.5f, -0.5f, -0.5f);
         lastX = mouseX;
         lastY = mouseY;
@@ -85,6 +80,12 @@ public class AutoTransform {
         var m = new Matrix4f().identity();
         m.translate(offset.x, offset.y, offset.z);
         m.scale((float) scaleFactor);
+        return m;
+    }
+
+    public Matrix4f getViewTransform() {
+        var m = new Matrix4f().identity();
+        m.translate(pan.x, pan.y, pan.z);
         return m;
     }
 

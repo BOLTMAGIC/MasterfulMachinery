@@ -74,7 +74,7 @@ public class GuiStructureRenderer {
         }
 
         mouseTransform.run(mouseX, mouseY);
-        renderTransform.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), extent);
+        renderTransform.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), extent, mouseTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             part.part.tick();
             GuiBlockRenderer next = part.part.next();

@@ -23,12 +23,13 @@ public class RenderTransform {
 
 
 
-    public void preRender(float xRot, float yRot, int extent) {
+    public void preRender(float xRot, float yRot, int extent, Matrix4f viewMatrix) {
         PoseStack modelViewStack = RenderSystem.getModelViewStack();
         modelViewStack.pushPose();
         var s = 95.5f;
         modelViewStack.scale(s, s, s);
         modelViewStack.translate(0,0, 100 - extent);
+        modelViewStack.mulPoseMatrix(viewMatrix);
         var quat = new Quaternionf().rotateXYZ((float) Math.toRadians(xRot), (float) Math.toRadians(yRot), 0);
         modelViewStack.mulPose(quat);
         RenderSystem.applyModelViewMatrix();
