@@ -1,19 +1,19 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.client.RenderUtil;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.structure.GuiCountedItemStack;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
+import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import io.ticticboom.mods.mm.util.GLScissor;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
+import mezz.jei.api.gui.drawable.IDrawableStatic;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
@@ -24,9 +24,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
-import org.joml.Vector3f;
+import org.jetbrains.annotations.NotNull;
+import org.joml.Vector2i;
 import org.joml.Vector4f;
 
 public class MMStructureCategory implements IRecipeCategory<StructureModel> {
@@ -35,25 +37,34 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     private final IGuiHelper helper;
 
-    private Vector3f pan = new Vector3f(0, 0, 0);
+    private static final Vector2i PANEL_SIZE = new Vector2i(182, 170);
+    private static final Vector2i RENDER_SIZE = new Vector2i(160, 120);
+    private final IDrawableStatic background;
+    private final MutableComponent title = Component.literal("MM Structure");
 
     public MMStructureCategory(final IGuiHelper helper) {
         this.helper = helper;
+        background = helper.createDrawable(Ref.UiTextures.GUI_LARGE_JEI, 0, 0, 162, 121);
     }
 
     @Override
-    public RecipeType<StructureModel> getRecipeType() {
+    public @NotNull RecipeType<StructureModel> getRecipeType() {
         return RECIPE_TYPE;
     }
 
     @Override
-    public Component getTitle() {
-        return Component.literal("MM Structure");
+    public @NotNull Component getTitle() {
+        return title;
     }
 
     @Override
-    public IDrawable getBackground() {
-        return helper.createDrawable(Ref.UiTextures.GUI_LARGE_JEI, 0, 0, 182, 170);
+    public int getWidth() {
+        return PANEL_SIZE.x;
+    }
+
+    @Override
+    public int getHeight() {
+        return PANEL_SIZE.y;
     }
 
     @Override
@@ -81,10 +92,8 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             next.setUsed();
             var slot = builder.addSlot(RecipeIngredientRole.INPUT, next.x, next.y);
             slot.addItemStacks(countedItemStack.getStacks());
-            slot.addTooltipCallback((a, b) -> {
-                int size = b.size();
-                int insertIndex = (size >= 2) ? (size - 2) : size;
-                b.add(insertIndex, countedItemStack.getDetail());
+            slot.addRichTooltipCallback((a, b) -> {
+                b.add(countedItemStack.getDetail());
             });
         }
 
@@ -96,28 +105,34 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     @Override
     public void draw(StructureModel recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-        Vector4f zero = new Vector4f(0, 0, 0, 1);
-        zero.mul(guiGraphics.pose().last().pose());
-//        GLScissor.enable((int) zero.x(), (int) zero.y(), 160, 120);
+        background.draw(guiGraphics, 0, 0);
+
+        renderStructure(recipe, guiGraphics, mouseX, mouseY);
+
+        var slotDrawable = helper.getSlotDrawable();
+        for (SlotGridEntry slot : recipe.getGrid().getSlots()) {
+            slotDrawable.draw(guiGraphics, slot.x - 1, slot.y - 1);
+        }
+
+        TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+    }
+
+    private void renderStructure(StructureModel recipe, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+        var pos = getGuiPosition(guiGraphics.pose());
 
         guiGraphics.pose().pushPose();
         guiGraphics.pose().setIdentity();
-        var renderer = recipe.getGuiRenderer();
-        renderer.setViewport(GuiPos.of((int) zero.x, (int) zero.y, 161, 120));
-        renderer.render(guiGraphics, (int) mouseX, (int) mouseY);
-//        GLScissor.disable();
-        guiGraphics.pose().popPose();
 
-        for (SlotGridEntry slot : recipe.getGrid().getSlots()) {
-            if (!slot.used()) {
-                continue;
-            }
-            guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, slot.x -1, slot.y - 1, 0, 26, 18, 18);
-        }
-        var fText = FormattedText.of(recipe.name());
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0, 0, 1000);
-        guiGraphics.drawWordWrap(Minecraft.getInstance().font, fText, 5, 5, 160, 0xFFFFFF);
+        var renderer = recipe.getGuiRenderer();
+        renderer.setViewport(GuiPos.of(pos.x + 1, pos.y + 1, RENDER_SIZE.x, RENDER_SIZE.y));
+        renderer.render(guiGraphics, (int) mouseX, (int) mouseY);
+
         guiGraphics.pose().popPose();
+    }
+
+    private Vector2i getGuiPosition(PoseStack poseStack) {
+        var transformedPosition = new Vector4f(0, 0, 0, 1);
+        transformedPosition.mul(poseStack.last().pose());
+        return new Vector2i((int) transformedPosition.x, (int) transformedPosition.y);
     }
 }

@@ -5,12 +5,10 @@ import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
 
 public class GuiStructureRenderer {
     public static boolean shouldEnsureValidated = false;
@@ -18,9 +16,9 @@ public class GuiStructureRenderer {
     private List<PositionedCyclingBlockRenderer> parts;
     private final GuiStructureLayout guiLayout;
 
-    private AutoTransform mouseTransform;
-    private RenderTransform renderTransform = new RenderTransform();
-    int extent = 0;
+    private final AutoTransform mouseTransform;
+    private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
+    private int renderZoomAdjustment = 0;
     private boolean isInitialized = false;
 
 
@@ -60,11 +58,11 @@ public class GuiStructureRenderer {
         var extentY = Math.max(maxY, minY);
         var extentZ = Math.max(maxZ, minZ);
 
-        extent = Math.max(extentX, Math.max(extentY, extentZ));
+        renderZoomAdjustment = Math.max(extentX, Math.max(extentY, extentZ));
     }
 
     public void setViewport(GuiPos viewport) {
-        renderTransform.setViewportPos(viewport);
+        renderSetup.setViewportPos(viewport);
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
@@ -74,13 +72,13 @@ public class GuiStructureRenderer {
         }
 
         mouseTransform.run(mouseX, mouseY);
-        renderTransform.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), extent, mouseTransform.getViewTransform());
+        renderSetup.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), renderZoomAdjustment, mouseTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             part.part.tick();
             GuiBlockRenderer next = part.part.next();
             next.render(gfx, mouseX, mouseY, mouseTransform);
         }
-        renderTransform.postRender();
+        renderSetup.postRender();
         RenderUtil.resetViewport();
     }
 

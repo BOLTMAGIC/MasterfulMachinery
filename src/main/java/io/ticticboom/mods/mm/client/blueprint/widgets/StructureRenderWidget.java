@@ -26,14 +26,18 @@ public class StructureRenderWidget extends AbstractWidget {
             return;
         }
 
+        renderStructure(model, guiGraphics, mouseX, mouseY);
+    }
+
+    private void renderStructure(StructureModel model, GuiGraphics guiGraphics, int mouseX, int mouseY) {
         guiGraphics.pose().pushPose();
         guiGraphics.pose().setIdentity();
-//        GLScissor.enable(position.x(), position.y(), position.w(), position.h());
+
         var guiRenderer = model.getGuiRenderer();
         guiRenderer.setViewport(position);
         guiRenderer.init();
         guiRenderer.render(guiGraphics, mouseX, mouseY);
+
         guiGraphics.pose().popPose();
-//        GLScissor.disable();
     }
 }

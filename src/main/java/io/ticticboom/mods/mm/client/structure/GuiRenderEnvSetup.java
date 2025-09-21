@@ -13,12 +13,12 @@ import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 @Getter
-public class RenderTransform {
+public class GuiRenderEnvSetup {
     @Setter
     private GuiPos viewportPos;
     private static Minecraft mc = Minecraft.getInstance();
 
-    public RenderTransform() {
+    public GuiRenderEnvSetup() {
     }
 
 
