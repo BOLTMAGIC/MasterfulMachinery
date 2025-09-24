@@ -4,8 +4,10 @@ import io.ticticboom.mods.mm.client.RenderUtil;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import lombok.Getter;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.Vec3i;
+import org.joml.Vector3i;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,15 +18,18 @@ public class GuiStructureRenderer {
     private List<PositionedCyclingBlockRenderer> parts;
     private final GuiStructureLayout guiLayout;
 
-    private final AutoTransform mouseTransform;
+    private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
     private int renderZoomAdjustment = 0;
+
+    @Getter
+    private Vector3i structureSize = new Vector3i(0, 0, 0);
     private boolean isInitialized = false;
 
 
     public GuiStructureRenderer(StructureModel model) {
         this.model = model;
-        mouseTransform = new AutoTransform(model);
+        viewTransform = new AutoTransform(model);
         guiLayout = new GuiStructureLayout(model.layout());
         parts = new ArrayList<>();
     }
@@ -54,9 +59,11 @@ public class GuiStructureRenderer {
         var maxY = Math.abs(positions.stream().map(Vec3i::getY).max(Integer::compareTo).orElse(0));
         var maxZ = Math.abs(positions.stream().map(Vec3i::getZ).max(Integer::compareTo).orElse(0));
 
-        var extentX = Math.max(maxX, minX);
-        var extentY = Math.max(maxY, minY);
-        var extentZ = Math.max(maxZ, minZ);
+        var extentX = maxX + minX;
+        var extentY = maxY + minY;
+        var extentZ = maxZ + minZ;
+
+        structureSize = new Vector3i(extentX, extentY, extentZ);
 
         renderZoomAdjustment = Math.max(extentX, Math.max(extentY, extentZ));
     }
@@ -71,19 +78,19 @@ public class GuiStructureRenderer {
             shouldEnsureValidated = false;
         }
 
-        mouseTransform.run(mouseX, mouseY);
-        renderSetup.preRender((float) mouseTransform.getYRotation(), (float) mouseTransform.getXRotation(), renderZoomAdjustment, mouseTransform.getViewTransform());
+        viewTransform.run(mouseX, mouseY);
+        renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), renderZoomAdjustment, viewTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             part.part.tick();
             GuiBlockRenderer next = part.part.next();
-            next.render(gfx, mouseX, mouseY, mouseTransform);
+            next.render(gfx, mouseX, mouseY, viewTransform);
         }
         renderSetup.postRender();
         RenderUtil.resetViewport();
     }
 
     public void resetTransforms() {
-        mouseTransform.reset();
+        viewTransform.reset();
     }
 
 }

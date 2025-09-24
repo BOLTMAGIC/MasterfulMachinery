@@ -1,26 +1,28 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
+import io.ticticboom.mods.mm.client.MMAbstractScreen;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureRenderWidget;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureSelectWidget;
-import io.ticticboom.mods.mm.client.gui.util.GuiAlignment;
-import io.ticticboom.mods.mm.client.gui.util.GuiCoord;
-import io.ticticboom.mods.mm.client.gui.util.GuiPos;
-import io.ticticboom.mods.mm.client.gui.util.GuiPosHelper;
+import io.ticticboom.mods.mm.client.blueprint.widgets.StructureViewOptionsWidget;
+import io.ticticboom.mods.mm.client.gui.IWidget;
+import io.ticticboom.mods.mm.client.gui.util.*;
+import io.ticticboom.mods.mm.client.gui.widgets.ArrowOptionSelectWidget;
 import io.ticticboom.mods.mm.client.gui.widgets.TilingBackgroundGui;
+import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
-public class StructureBlueprintScreen extends Screen {
+import java.util.ArrayList;
+
+public class StructureBlueprintScreen extends MMAbstractScreen {
 
     private final BlueprintScreenViewModel viewModel = new BlueprintScreenViewModel();
-
-    protected StructureBlueprintScreen() {
-        super(Component.empty());
-    }
+    private final ArrayList<IWidget> structureWidgets = new ArrayList<>();
+    private GuiPlacementHelper guiHelper;
 
     @Override
     protected void init() {
-        var guiHelper = new GuiPosHelper(this.width, this.height, 10);
+        guiHelper = new GuiPlacementHelper(this.width, this.height, 10);
         addRenderableOnly(new TilingBackgroundGui(guiHelper.getGuiPos()));
 
         var structureSelector = addRenderableWidget(new StructureSelectWidget(
@@ -28,13 +30,50 @@ public class StructureBlueprintScreen extends Screen {
                         GuiAlignment.LEFT_TOP,
                         GuiPos.of(5, 5, guiHelper.getGuiWidth() - 10, 20)), viewModel.getAvailableStructures()));
 
-        structureSelector.changeEmitter
-                .addListener(e -> viewModel.setStructure(e.index()));
+        setupStructureDependentWidgets(viewModel.getStructure());
 
-        addRenderableWidget(new StructureRenderWidget(
+        structureSelector.changeEmitter
+                .addListener(e ->
+                        schedule(() -> updateStructure(e.index())));
+    }
+
+    private void updateStructure(int index) {
+        viewModel.setStructure(index);
+        resetStructureDependantWidgets();
+        var model = viewModel.getStructure();
+        if (model != null) {
+            setupStructureDependentWidgets(model);
+        }
+    }
+
+    private void resetStructureDependantWidgets() {
+        structureWidgets.forEach(this::removeWidget);
+        structureWidgets.clear();
+    }
+
+    private void setupStructureDependentWidgets(StructureModel model) {
+        int column = guiHelper.columnWidth(3);
+        int fromTop = 25;
+        addStructureDependantWidget(new StructureRenderWidget(
                 guiHelper.offset(
                         GuiAlignment.LEFT_TOP,
-                        GuiPos.of(5, 25, 250,
-                                guiHelper.fromBottom(5, 25))), viewModel::getStructure));
+                        GuiPos.of(5,
+                                fromTop,
+                                column,
+                                guiHelper.fromBottom(5, fromTop))), viewModel.getStructure()));
+
+        var slicer = addStructureDependantWidget(new StructureViewOptionsWidget(
+                guiHelper.offset(
+                        GuiAlignment.LEFT_TOP,
+                        GuiPos.of(column + 5,
+                                fromTop,
+                                column,
+                                guiHelper.fromBottom(5, fromTop))), model));
+    }
+
+    private <T extends IWidget> T addStructureDependantWidget(T widget) {
+        structureWidgets.add(widget);
+        addRenderableWidget(widget);
+        return widget;
     }
 }

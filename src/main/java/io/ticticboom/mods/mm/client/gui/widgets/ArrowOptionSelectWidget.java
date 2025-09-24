@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.client.gui.widgets.state.ArrowOptionSelectWidgetSta
 import java.util.List;
 
 public class ArrowOptionSelectWidget extends AbstractWidget {
+    public static final int DEFAULT_HEIGHT = 16;
     protected final ArrowButtonWidget leftButton;
     protected final ArrowButtonWidget rightButton;
     protected final TextBarWidget textBar;

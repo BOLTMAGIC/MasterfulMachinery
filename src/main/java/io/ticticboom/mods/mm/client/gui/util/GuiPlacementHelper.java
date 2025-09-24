@@ -3,13 +3,13 @@ package io.ticticboom.mods.mm.client.gui.util;
 import lombok.Getter;
 import org.joml.Vector2i;
 
-public class GuiPosHelper implements IGuiPosHelper {
+public class GuiPlacementHelper implements IGuiPlacementHelper {
     @Getter
-    private final int screenWidth;
+    private final int containerWidth;
     @Getter
-    private final int screenHeight;
+    private final int containerHeight;
     @Getter
-    private final int screenPadding;
+    private final int containerPadding;
     @Getter
     private final int guiTop;
     @Getter
@@ -23,14 +23,21 @@ public class GuiPosHelper implements IGuiPosHelper {
     @Getter
     private final int guiHeight;
 
-    public GuiPosHelper(int screenWidth, int screenHeight, int screenPadding) {
-        this.screenWidth = screenWidth;
-        this.screenHeight = screenHeight;
-        this.screenPadding = screenPadding;
-        this.guiTop = screenPadding;
-        this.guiLeft = screenPadding;
-        this.guiHeight = screenHeight - (screenPadding * 2);
-        this.guiWidth = screenWidth - (screenPadding * 2);
+    public GuiPlacementHelper(int containerWidth, int containerHeight, int containerPadding) {
+        this(GuiPos.of(0,
+                        0,
+                        containerWidth,
+                        containerHeight),
+                containerPadding);
+    }
+    public GuiPlacementHelper(GuiPos pos, int padding) {
+        this.containerWidth = pos.w();
+        this.containerHeight = pos.h();
+        this.containerPadding = padding;
+        this.guiTop = pos.y() + padding;
+        this.guiLeft = pos.x() + padding;
+        this.guiHeight = containerHeight - (containerPadding * 2);
+        this.guiWidth = containerWidth - (containerPadding * 2);
         this.guiBottom = guiTop + guiHeight;
         this.guiRight = guiLeft + guiWidth;
     }

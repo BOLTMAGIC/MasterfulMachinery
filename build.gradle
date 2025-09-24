@@ -45,7 +45,7 @@ minecraft {
     // These can be tweaked, removed, or duplicated as needed.
     runs {
         client {
-            workingDirectory project.file('run')
+            workingDirectory project.file('run/client')
             jvmArg "-XX:+AllowEnhancedClassRedefinition"
             // Recommended logging data for a userdev environment
             // The markers can be added/remove as needed separated by commas.
@@ -74,7 +74,7 @@ minecraft {
         }
 
         server {
-            workingDirectory project.file('run')
+            workingDirectory project.file('run/server')
 
             property 'forge.logging.markers', 'REGISTRIES'
 
@@ -98,7 +98,7 @@ minecraft {
         // By default, the server will crash when no gametests are provided.
         // The gametest system is also enabled by default for other run configs under the /test command.
         gameTestServer {
-            workingDirectory project.file('run')
+            workingDirectory project.file('run/test_server')
 
             // Recommended logging data for a userdev environment
             // The markers can be added/remove as needed separated by commas.
@@ -127,7 +127,7 @@ minecraft {
         }
 
         data {
-            workingDirectory project.file('run')
+            workingDirectory project.file('run/data')
 
             property 'forge.logging.markers', 'REGISTRIES'
 

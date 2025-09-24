@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.gui;
 
+import net.minecraft.client.Minecraft;
 import org.apache.commons.compress.utils.Lists;
 
 import java.util.List;
@@ -12,9 +13,10 @@ public class GuiEventHandler<EVENT> {
         listeners.add(listener);
     }
 
-//    public void removeListener(Consumer<EVENT> listener) {
-//        listeners.remove(listener);
-//    }
+    @SuppressWarnings("unused")
+    public void removeListener(Consumer<EVENT> listener) {
+        listeners.remove(listener);
+    }
 
     public void fireEvent(EVENT event) {
         listeners.forEach(l -> l.accept(event));

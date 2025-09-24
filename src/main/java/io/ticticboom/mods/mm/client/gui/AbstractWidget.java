@@ -56,79 +56,58 @@ public abstract class AbstractWidget implements IWidget {
 
     @Override
     public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.mouseClicked(pMouseX, pMouseY, pButton)) {
-                result = true;
-            }
+            child.mouseClicked(pMouseX, pMouseY, pButton);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean mouseReleased(double pMouseX, double pMouseY, int pButton) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.mouseReleased(pMouseX, pMouseY, pButton)) {
-                result = true;
-            }
+            child.mouseReleased(pMouseX, pMouseY, pButton);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean mouseDragged(double pMouseX, double pMouseY, int pButton, double pDragX, double pDragY) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.mouseDragged(pMouseX, pMouseY, pButton, pDragX, pDragY)) {
-                result = true;
-            }
+            child.mouseDragged(pMouseX, pMouseY, pButton, pDragX, pDragY);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean mouseScrolled(double pMouseX, double pMouseY, double pDelta) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.mouseScrolled(pMouseX, pMouseY, pDelta)) {
-                result = true;
-            }
+            child.mouseScrolled(pMouseX, pMouseY, pDelta);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean keyPressed(int pKeyCode, int pScanCode, int pModifiers) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.keyPressed(pKeyCode, pScanCode, pModifiers)) {
-                result = true;
-            }
+            child.keyPressed(pKeyCode, pScanCode, pModifiers);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean keyReleased(int pKeyCode, int pScanCode, int pModifiers) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.keyReleased(pKeyCode, pScanCode, pModifiers)) {
-                result = true;
-            }
+            child.keyReleased(pKeyCode, pScanCode, pModifiers);
         }
-        return result;
+        return false;
     }
 
     @Override
     public boolean charTyped(char pCodePoint, int pModifiers) {
-        var result = false;
         for (IWidget child : children) {
-            if (child.charTyped(pCodePoint, pModifiers)) {
-                result = true;
-            }
+            child.charTyped(pCodePoint, pModifiers);
         }
-        return result;
+        return false;
     }
 
     protected boolean mouseOver(double pMouseX, double pMouseY) {
@@ -140,5 +119,10 @@ public abstract class AbstractWidget implements IWidget {
     @Deprecated(since = "Not enabled for use", forRemoval = true)
     public void mouseMoved(double pMouseX, double pMouseY) {
         IWidget.super.mouseMoved(pMouseX, pMouseY);
+    }
+
+    @Override
+    public boolean isMouseOver(double pMouseX, double pMouseY) {
+        return IWidget.super.isMouseOver(pMouseX, pMouseY);
     }
 }

@@ -44,19 +44,12 @@ public class ArrowButtonWidget extends AbstractWidget {
             pressed = true;
             return true;
         }
-        return false;
+        return super.mouseClicked(pMouseX, pMouseY, pButton);
     }
 
     @Override
     public boolean mouseReleased(double pMouseX, double pMouseY, int pButton) {
         pressed = false;
         return super.mouseReleased(pMouseX, pMouseY, pButton);
-    }
-
-    @Override
-    public boolean mouseOver(double pMouseX, double pMouseY) {
-        int mouseX = (int)pMouseX;
-        int mouseY = (int)pMouseY;
-        return this.position.contains(mouseX, mouseY);
     }
 }

@@ -2,7 +2,7 @@ package io.ticticboom.mods.mm.client.gui.util;
 
 import org.joml.Vector2i;
 
-public interface IGuiPosHelper {
+public interface IGuiPlacementHelper {
     int getGuiLeft();
     int getGuiTop();
     int getGuiRight();
@@ -11,9 +11,9 @@ public interface IGuiPosHelper {
     int getGuiHeight();
     int getGuiCenterX();
     int getGuiCenterY();
-    int getScreenWidth();
-    int getScreenHeight();
-    int getScreenPadding();
+    int getContainerWidth();
+    int getContainerHeight();
+    int getContainerPadding();
     GuiBounds getGuiBounds();
     GuiPos getGuiPos();
     Vector2i offset(GuiAlignment alignment, Vector2i offset);
@@ -22,15 +22,19 @@ public interface IGuiPosHelper {
     }
 
     default int fromBottom(int y) {
-        return (getGuiBottom() - y) - getScreenPadding();
+        return (getGuiBottom() - y) - getContainerPadding();
     }
 
     default int fromBottom(int y, int subOffset) {
         return fromBottom(y) - subOffset;
     }
 
+    default int columnWidth(int numColumns) {
+        return getGuiRight() / numColumns;
+    }
+
     default int fromRight(int x) {
-        return getGuiRight() - x - getScreenPadding();
+        return getGuiRight() - x - getContainerPadding();
     }
 
     GuiPos offset(GuiAlignment alignment, GuiPos pos);
