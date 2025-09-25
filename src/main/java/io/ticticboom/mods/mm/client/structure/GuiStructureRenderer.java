@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.client.structure;
 
 import io.ticticboom.mods.mm.client.RenderUtil;
+import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -17,13 +18,17 @@ public class GuiStructureRenderer {
     private final StructureModel model;
     private List<PositionedCyclingBlockRenderer> parts;
     private final GuiStructureLayout guiLayout;
-
     private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
+    private final StructureRenderYSliceProcessor ySliceProcessor = new StructureRenderYSliceProcessor();
     private int renderZoomAdjustment = 0;
 
     @Getter
-    private Vector3i structureSize = new Vector3i(0, 0, 0);
+    private Vector3i structureSize = new Vector3i(0);
+    @Getter
+    private Vector3i minBound = new Vector3i(0);
+    @Getter
+    private Vector3i maxBound = new Vector3i(0);
     private boolean isInitialized = false;
 
 
@@ -49,19 +54,22 @@ public class GuiStructureRenderer {
 
     private void getExtents() {
         var positions = parts.stream().map(x -> x.pos).toList();
+
         // min
-        var minX = Math.abs(positions.stream().map(Vec3i::getX).min(Integer::compareTo).orElse(0));
-        var minY = Math.abs(positions.stream().map(Vec3i::getY).min(Integer::compareTo).orElse(0));
-        var minZ = Math.abs(positions.stream().map(Vec3i::getZ).min(Integer::compareTo).orElse(0));
+        var minX = positions.stream().map(Vec3i::getX).min(Integer::compareTo).orElse(0);
+        var minY = positions.stream().map(Vec3i::getY).min(Integer::compareTo).orElse(0);
+        var minZ = positions.stream().map(Vec3i::getZ).min(Integer::compareTo).orElse(0);
+        minBound = new Vector3i(minX, minY, minZ);
 
         // max
-        var maxX = Math.abs(positions.stream().map(Vec3i::getX).max(Integer::compareTo).orElse(0));
-        var maxY = Math.abs(positions.stream().map(Vec3i::getY).max(Integer::compareTo).orElse(0));
-        var maxZ = Math.abs(positions.stream().map(Vec3i::getZ).max(Integer::compareTo).orElse(0));
+        var maxX = positions.stream().map(Vec3i::getX).max(Integer::compareTo).orElse(0);
+        var maxY = positions.stream().map(Vec3i::getY).max(Integer::compareTo).orElse(0);
+        var maxZ = positions.stream().map(Vec3i::getZ).max(Integer::compareTo).orElse(0);
+        maxBound = new Vector3i(maxX, maxY, maxZ);
 
-        var extentX = maxX + minX;
-        var extentY = maxY + minY;
-        var extentZ = maxZ + minZ;
+        var extentX = maxX - minX;
+        var extentY = maxY - minY;
+        var extentZ = maxZ - minZ;
 
         structureSize = new Vector3i(extentX, extentY, extentZ);
 
@@ -81,6 +89,9 @@ public class GuiStructureRenderer {
         viewTransform.run(mouseX, mouseY);
         renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), renderZoomAdjustment, viewTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
+            if (!canRenderPart(part)) {
+                continue;
+            }
             part.part.tick();
             GuiBlockRenderer next = part.part.next();
             next.render(gfx, mouseX, mouseY, viewTransform);
@@ -88,6 +99,15 @@ public class GuiStructureRenderer {
         renderSetup.postRender();
         RenderUtil.resetViewport();
     }
+    public void setupViewState(BlueprintStructureViewState state) {
+        ySliceProcessor.setShouldSlice(state.isShouldSlice());
+        ySliceProcessor.setYSlice(state.getYSlice());
+    }
+
+    private boolean canRenderPart(PositionedCyclingBlockRenderer part) {
+        return ySliceProcessor.canProcess(part);
+    }
+
 
     public void resetTransforms() {
         viewTransform.reset();

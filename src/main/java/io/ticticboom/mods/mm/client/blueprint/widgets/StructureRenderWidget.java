@@ -1,17 +1,22 @@
 package io.ticticboom.mods.mm.client.blueprint.widgets;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.client.gui.GuiGraphics;
 
+import java.util.function.Supplier;
+
 public class StructureRenderWidget extends AbstractWidget {
     private final StructureModel model;
+    private final Supplier<BlueprintStructureViewState> viewState;
 
-    public StructureRenderWidget(GuiPos pos, StructureModel model) {
+    public StructureRenderWidget(GuiPos pos, StructureModel model, Supplier<BlueprintStructureViewState> viewState) {
         super(pos);
         this.model = model;
+        this.viewState = viewState;
     }
 
     @Override
@@ -33,6 +38,7 @@ public class StructureRenderWidget extends AbstractWidget {
         var guiRenderer = model.getGuiRenderer();
         guiRenderer.setViewport(position);
         guiRenderer.init();
+        guiRenderer.setupViewState(viewState.get());
         guiRenderer.render(guiGraphics, mouseX, mouseY);
 
         guiGraphics.pose().popPose();

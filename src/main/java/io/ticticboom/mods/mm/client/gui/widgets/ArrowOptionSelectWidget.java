@@ -13,12 +13,14 @@ public class ArrowOptionSelectWidget extends AbstractWidget {
     protected final ArrowButtonWidget leftButton;
     protected final ArrowButtonWidget rightButton;
     protected final TextBarWidget textBar;
+    protected final List<String> options;
 
     protected final ArrowOptionSelectWidgetState state;
     public final GuiEventHandler<ArrowOptionSelectChangeEvent> changeEmitter = new GuiEventHandler<>();
 
     public ArrowOptionSelectWidget(GuiPos pos, List<String> options) {
         super(pos);
+        this.options = options;
         this.state = new ArrowOptionSelectWidgetState(options, changeEmitter);
         this.leftButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT));
         this.rightButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT));

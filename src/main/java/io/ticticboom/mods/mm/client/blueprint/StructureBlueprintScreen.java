@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
 import io.ticticboom.mods.mm.client.MMAbstractScreen;
+import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureRenderWidget;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureSelectWidget;
 import io.ticticboom.mods.mm.client.blueprint.widgets.StructureViewOptionsWidget;
@@ -19,6 +20,7 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
     private final BlueprintScreenViewModel viewModel = new BlueprintScreenViewModel();
     private final ArrayList<IWidget> structureWidgets = new ArrayList<>();
     private GuiPlacementHelper guiHelper;
+    private BlueprintStructureViewState viewState = new BlueprintStructureViewState();
 
     @Override
     protected void init() {
@@ -54,21 +56,26 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
     private void setupStructureDependentWidgets(StructureModel model) {
         int column = guiHelper.columnWidth(3);
         int fromTop = 25;
+        viewState = new BlueprintStructureViewState();
         addStructureDependantWidget(new StructureRenderWidget(
                 guiHelper.offset(
                         GuiAlignment.LEFT_TOP,
                         GuiPos.of(5,
                                 fromTop,
                                 column,
-                                guiHelper.fromBottom(5, fromTop))), viewModel.getStructure()));
+                                guiHelper.fromBottom(5, fromTop))),
+                viewModel.getStructure(),
+                () -> viewState));
 
-        var slicer = addStructureDependantWidget(new StructureViewOptionsWidget(
+        var viewSelect = addStructureDependantWidget(new StructureViewOptionsWidget(
                 guiHelper.offset(
                         GuiAlignment.LEFT_TOP,
                         GuiPos.of(column + 5,
                                 fromTop,
                                 column,
                                 guiHelper.fromBottom(5, fromTop))), model));
+
+        viewSelect.changeEmitter.addListener(e -> viewState = e);
     }
 
     private <T extends IWidget> T addStructureDependantWidget(T widget) {
