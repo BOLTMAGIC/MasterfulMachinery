@@ -12,7 +12,7 @@ public class CreateRotationIngredientRenderer implements IIngredientRenderer<Cre
 
     @Override
     public void render(GuiGraphics guiGraphics, CreateRotationStack createRotationStack) {
-        guiGraphics.blit(Ref.Textures.SLOT_PARTS, 1, 1, 16, 16, 1, 98);
+        guiGraphics.blit(Ref.Textures.SLOT_PARTS, 0, 0, 1, 98, 16, 16);
     }
 
     @Override
