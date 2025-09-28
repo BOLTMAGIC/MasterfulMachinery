@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.util.GLScissor;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableStatic;
@@ -50,6 +51,11 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     @Override
     public @NotNull RecipeType<StructureModel> getRecipeType() {
         return RECIPE_TYPE;
+    }
+
+    @Override
+    public ResourceLocation getRegistryName(StructureModel recipe) {
+        return recipe.id();
     }
 
     @Override
