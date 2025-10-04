@@ -295,6 +295,9 @@ dependencies {
 
     //BOTANIA
     runtimeOnly fg.deobf("vazkii.botania:Botania:${botania_version}")
+
+    // SPARK PROFILER
+    runtimeOnly fg.deobf("curse.maven:spark-361579:4738952");
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
