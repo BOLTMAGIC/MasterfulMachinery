@@ -8,4 +8,5 @@ public class GuiTextures {
     public static final GuiTexture BUTTON_PRESSED = GuiTexture.of(Ref.UiTextures.BUTTON_PRESSED, 0, 0, 16, 16, 16, 16);
     public static final GuiTexture ARROW_LEFT = GuiTexture.of(Ref.UiTextures.ARROW_LEFT, 0, 0, 16, 16, 16, 16);
     public static final GuiTexture ARROW_RIGHT = GuiTexture.of(Ref.UiTextures.ARROW_RIGHT, 0, 0, 16, 16, 16, 16);
+    public static final GuiTexture CREATE_PORT_SLOT = GuiTexture.of(Ref.UiTextures.SLOT_PARTS, 0, 0, 16, 16, 16, 16);
 }
