@@ -16,6 +16,7 @@ import java.util.stream.IntStream;
 public class BlueprintViewYSliceWidget extends ArrowOptionSelectWidget {
 
     public static final String offStateOption = "Y Slice: All";
+    private static final int offStateIndex = 0;
     public final GuiEventHandler<YSliceChangeEvent> changeEmitter = new GuiEventHandler<>();
     private final StructureModel model;
 
@@ -26,8 +27,7 @@ public class BlueprintViewYSliceWidget extends ArrowOptionSelectWidget {
     }
 
     private void onChange(ArrowOptionSelectChangeEvent event) {
-        // is Off State
-        if (event.index() == 0) {
+        if (event.index() == offStateIndex) {
             changeEmitter.fireEvent(new YSliceChangeEvent(0, false));
             return;
         }
@@ -47,7 +47,7 @@ public class BlueprintViewYSliceWidget extends ArrowOptionSelectWidget {
             var layers = IntStream.rangeClosed(0, sliceCountMax).boxed().map(x -> "Y Slice: " + x).toList();
             result.addAll(layers);
         }
-        result.add(0, offStateOption);
+        result.add(offStateIndex, offStateOption);
         return result;
     }
 }
