@@ -29,7 +29,7 @@ public class StructureViewOptionsWidget extends AbstractWidget {
                         GuiAlignment.LEFT_TOP,
                         GuiPos.of(0,
                                 0,
-                                position.w(),
+                                guiHelper.getGuiWidth(),
                                 ArrowOptionSelectWidget.DEFAULT_HEIGHT)), model));
 
         ySlicer.changeEmitter.addListener(e -> {

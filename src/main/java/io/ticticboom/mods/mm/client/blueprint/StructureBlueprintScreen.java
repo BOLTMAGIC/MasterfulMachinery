@@ -24,7 +24,7 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
 
     @Override
     protected void init() {
-        guiHelper = new GuiPlacementHelper(this.width, this.height, 10);
+        guiHelper = new GuiPlacementHelper(320, this.height, 10);
         addRenderableOnly(new TilingBackgroundGui(guiHelper.getGuiPos()));
 
         var structureSelector = addRenderableWidget(new StructureSelectWidget(
@@ -54,7 +54,7 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
     }
 
     private void setupStructureDependentWidgets(StructureModel model) {
-        int column = guiHelper.columnWidth(3);
+        int column = guiHelper.columnWidth(2);
         int fromTop = 25;
         viewState = new BlueprintStructureViewState();
         addStructureDependantWidget(new StructureRenderWidget(
@@ -72,7 +72,7 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
                         GuiAlignment.LEFT_TOP,
                         GuiPos.of(column + 5,
                                 fromTop,
-                                column,
+                                column - 5,
                                 guiHelper.fromBottom(5, fromTop))), model));
 
         viewSelect.changeEmitter.addListener(e -> viewState = e);

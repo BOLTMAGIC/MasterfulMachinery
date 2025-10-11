@@ -30,7 +30,7 @@ public interface IGuiPlacementHelper {
     }
 
     default int columnWidth(int numColumns) {
-        return getGuiRight() / numColumns;
+        return getGuiWidth() / numColumns;
     }
 
     default int fromRight(int x) {
