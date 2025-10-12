@@ -1,6 +1,5 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
-import io.ticticboom.mods.mm.client.gui.AbstractWidget;
 import io.ticticboom.mods.mm.client.gui.GuiEventHandler;
 import io.ticticboom.mods.mm.client.gui.event.ArrowOptionSelectChangeEvent;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
@@ -8,11 +7,8 @@ import io.ticticboom.mods.mm.client.gui.widgets.state.ArrowOptionSelectWidgetSta
 
 import java.util.List;
 
-public class ArrowOptionSelectWidget extends AbstractWidget {
+public class ArrowOptionSelectWidget extends ArrowSelectWidget {
     public static final int DEFAULT_HEIGHT = 16;
-    protected final ArrowButtonWidget leftButton;
-    protected final ArrowButtonWidget rightButton;
-    protected final TextBarWidget textBar;
     protected final List<String> options;
 
     protected final ArrowOptionSelectWidgetState state;
@@ -22,9 +18,7 @@ public class ArrowOptionSelectWidget extends AbstractWidget {
         super(pos);
         this.options = options;
         this.state = new ArrowOptionSelectWidgetState(options, changeEmitter);
-        this.leftButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x(), pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.LEFT));
-        this.rightButton = addWidget(new ArrowButtonWidget(GuiPos.of(pos.x() + pos.w() - 16, pos.y(), 16, 16), ArrowButtonWidget.ArrowDirection.RIGHT));
-        this.textBar = addWidget(new TextBarWidget(GuiPos.of(pos.x() + 18, pos.y() + 6, pos.w() - 36, 16), state::getSelectedOption));
+        setupElements(state::getSelectedOption);
 
         this.leftButton.clickEmitter.addListener(e -> state.previous());
         this.rightButton.clickEmitter.addListener(e -> state.next());

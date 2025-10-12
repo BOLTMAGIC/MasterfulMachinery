@@ -32,6 +32,8 @@ public class StructureViewOptionsWidget extends AbstractWidget {
                                 guiHelper.getGuiWidth(),
                                 ArrowOptionSelectWidget.DEFAULT_HEIGHT)), model));
 
+//        var zoom = addWidget();
+
         ySlicer.changeEmitter.addListener(e -> {
             viewModel.setSlice(e.ySlice(), e.shouldSlice());
             changeEmitter.fireEvent(viewModel);

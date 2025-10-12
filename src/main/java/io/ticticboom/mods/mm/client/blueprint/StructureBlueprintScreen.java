@@ -24,7 +24,8 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
 
     @Override
     protected void init() {
-        guiHelper = new GuiPlacementHelper(320, this.height, 10);
+        var pos = GuiPos.of(this.width / 2 - 155, 0, 310, this.height);
+        guiHelper = new GuiPlacementHelper(pos, 10);
         addRenderableOnly(new TilingBackgroundGui(guiHelper.getGuiPos()));
 
         var structureSelector = addRenderableWidget(new StructureSelectWidget(
