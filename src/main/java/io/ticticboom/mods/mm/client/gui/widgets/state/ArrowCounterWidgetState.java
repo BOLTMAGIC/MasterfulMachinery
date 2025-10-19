@@ -10,11 +10,16 @@ public class ArrowCounterWidgetState {
     private final int start;
     @Getter
     private final int increment;
+    private final int min;
+    private final int max;
     private final GuiEventHandler<ArrowCounterChangeEvent> changeEmitter;
 
-    public ArrowCounterWidgetState(int start, int increment, GuiEventHandler<ArrowCounterChangeEvent> changeEmitter) {
+    public ArrowCounterWidgetState(int start, int increment, int min, int max, GuiEventHandler<ArrowCounterChangeEvent> changeEmitter) {
         this.start = start;
         this.increment = increment;
+        this.min = min;
+        this.max = max;
+        this.selectedIndex = start;
         this.changeEmitter = changeEmitter;
     }
 
@@ -25,11 +30,17 @@ public class ArrowCounterWidgetState {
 
     public void increment() {
         selectedIndex += increment;
+        if (selectedIndex >= max) {
+            selectedIndex = max;
+        }
         changeEmitter.fireEvent(new ArrowCounterChangeEvent(selectedIndex));
     }
 
     public void decrement() {
         selectedIndex -= increment;
+        if (selectedIndex <= min) {
+            selectedIndex = min;
+        }
         changeEmitter.fireEvent(new ArrowCounterChangeEvent(selectedIndex));
     }
 }

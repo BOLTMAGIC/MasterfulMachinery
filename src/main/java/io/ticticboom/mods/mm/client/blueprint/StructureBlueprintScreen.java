@@ -10,6 +10,7 @@ import io.ticticboom.mods.mm.client.gui.util.*;
 import io.ticticboom.mods.mm.client.gui.widgets.ArrowOptionSelectWidget;
 import io.ticticboom.mods.mm.client.gui.widgets.TilingBackgroundGui;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 
 public class StructureBlueprintScreen extends MMAbstractScreen {
 
+    private final Minecraft mc = Minecraft.getInstance();
     private final BlueprintScreenViewModel viewModel = new BlueprintScreenViewModel();
     private final ArrayList<IWidget> structureWidgets = new ArrayList<>();
     private GuiPlacementHelper guiHelper;
@@ -24,7 +26,8 @@ public class StructureBlueprintScreen extends MMAbstractScreen {
 
     @Override
     protected void init() {
-        var pos = GuiPos.of(this.width / 2 - 155, 0, 310, this.height);
+        var scaledWidth = mc.getWindow().getGuiScaledWidth();
+        var pos = GuiPos.of((scaledWidth / 4), 0, scaledWidth / 2 , this.height);
         guiHelper = new GuiPlacementHelper(pos, 10);
         addRenderableOnly(new TilingBackgroundGui(guiHelper.getGuiPos()));
 

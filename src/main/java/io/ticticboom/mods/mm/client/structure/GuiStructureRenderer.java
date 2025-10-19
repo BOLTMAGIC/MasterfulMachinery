@@ -21,6 +21,7 @@ public class GuiStructureRenderer {
     private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
     private final StructureRenderYSliceProcessor ySliceProcessor = new StructureRenderYSliceProcessor();
+
     private int renderZoomAdjustment = 0;
 
     @Getter
@@ -102,6 +103,11 @@ public class GuiStructureRenderer {
     public void setupViewState(BlueprintStructureViewState state) {
         ySliceProcessor.setShouldSlice(state.isShouldSlice());
         ySliceProcessor.setYSlice(state.getYSlice());
+        var zoom = state.getZoom() - 10;
+        if (zoom < 0) {
+            zoom = 1 / Math.abs(zoom);
+        }
+        viewTransform.setZoom(zoom);
     }
 
     private boolean canRenderPart(PositionedCyclingBlockRenderer part) {

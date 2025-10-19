@@ -24,12 +24,14 @@ public class AutoTransform {
     private double yRotation;
 
     private double scrollLastPos = 0;
-    private double scaleFactor = 1;
 
     private Vector3i minBound = new Vector3i(Integer.MAX_VALUE);
     private Vector3i maxBound = new Vector3i(Integer.MIN_VALUE);
     private Vector3f pan;
     private Vector3f offset;
+    private float scaleFactor;
+    @Setter
+    private float zoom = 0;
 
     public AutoTransform(StructureModel model) {
         for (PositionedLayoutPiece piece : model.layout().getPositionedPieces()) {
@@ -47,13 +49,15 @@ public class AutoTransform {
         reset();
     }
 
+
     public void run(int mouseX, int mouseY) {
         if (lastX == 0 && lastY == 0) {
             lastX = mouseX;
             lastY = mouseY;
         }
+
         if (GLFW.glfwGetMouseButton(mc.getWindow().getWindow(), GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS) {
-            scaleFactor += ((double) mouseY - lastY) * 0.05f;
+            scaleFactor += ((float) mouseY - lastY) * 0.05f;
             scaleFactor = Math.max(0.003f, scaleFactor);
         }
 
@@ -79,7 +83,7 @@ public class AutoTransform {
     public Matrix4f getModelTransform() {
         var m = new Matrix4f().identity();
         m.translate(offset.x, offset.y, offset.z);
-        m.scale((float) scaleFactor);
+        m.scale(scaleFactor + zoom);
         return m;
     }
 
@@ -94,7 +98,8 @@ public class AutoTransform {
         yRotation = 15;
         lastX = 0;
         lastY = 0;
-        scaleFactor = 1.01f;
+        scaleFactor = 1.003f;
         pan = new Vector3f(0, 0, 0);
     }
+
 }

@@ -21,6 +21,7 @@ public class StructureViewOptionsWidget extends AbstractWidget {
         guiHelper = new GuiPlacementHelper(pos, 5);
         this.model = model;
         createYSlicer();
+        createZoom();
     }
     
     private void createYSlicer() {
@@ -32,10 +33,21 @@ public class StructureViewOptionsWidget extends AbstractWidget {
                                 guiHelper.getGuiWidth(),
                                 ArrowOptionSelectWidget.DEFAULT_HEIGHT)), model));
 
-//        var zoom = addWidget();
-
         ySlicer.changeEmitter.addListener(e -> {
             viewModel.setSlice(e.ySlice(), e.shouldSlice());
+            changeEmitter.fireEvent(viewModel);
+        });
+
+    }
+
+    private void createZoom() {
+        var verticalSpacing = ArrowOptionSelectWidget.DEFAULT_HEIGHT + 4;
+        var zoom = addWidget(new BlueprintViewZoomWidget(
+                guiHelper.offset(GuiAlignment.LEFT_TOP,
+                        GuiPos.of(0, verticalSpacing, guiHelper.getGuiWidth(), ArrowOptionSelectWidget.DEFAULT_HEIGHT))));
+
+        zoom.changeEmitter.addListener(e -> {
+            viewModel.setZoom(e.zoom());
             changeEmitter.fireEvent(viewModel);
         });
     }

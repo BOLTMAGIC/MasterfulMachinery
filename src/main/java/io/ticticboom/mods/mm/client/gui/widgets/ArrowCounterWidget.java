@@ -9,12 +9,12 @@ public class ArrowCounterWidget extends ArrowSelectWidget {
     private final ArrowCounterWidgetState state;
     public final GuiEventHandler<ArrowCounterChangeEvent> changeEmitter = new GuiEventHandler<>();
 
-    public ArrowCounterWidget(GuiPos pos, int start, int increment) {
+    public ArrowCounterWidget(GuiPos pos, int start, int increment, int min, int max) {
         super(pos);
-        state = new ArrowCounterWidgetState(start, increment, changeEmitter);
+        state = new ArrowCounterWidgetState(start, increment, min, max, changeEmitter);
         setupElements(state::getSelectedOption);
 
-        this.leftButton.clickEmitter.addListener(e -> state.increment());
-        this.rightButton.clickEmitter.addListener(e -> state.decrement());
+        this.leftButton.clickEmitter.addListener(e -> state.decrement());
+        this.rightButton.clickEmitter.addListener(e -> state.increment());
     }
 }
