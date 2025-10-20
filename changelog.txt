@@ -1,10 +1,11 @@
 ## Change Log [VERSION_NAME]
 
 Merged PRs:
-- ticticboooomer/MasterfulMachinery/pull/104
+- ticticboooomer/MasterfulMachinery/pull/106
 
 Resolved Issues:
-[]
+-
 
 Summary:
-- Implement create rotation JEI ingredient type with renderer to fix create-rotation recipe ingredients not showing as anything in JEI
+- Add preview_features to common config
+- Add blueprint screen WIP (preview_feature behind config default: false)
