@@ -38,7 +38,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     private final IGuiHelper helper;
 
-    private static final Vector2i PANEL_SIZE = new Vector2i(182, 170);
+    private static final Vector2i PANEL_SIZE = new Vector2i(162, 170);
     private static final Vector2i RENDER_SIZE = new Vector2i(160, 120);
     private final IDrawableStatic background;
     private final MutableComponent title = Component.literal("MM Structure");
