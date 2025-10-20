@@ -30,8 +30,6 @@ public class AutoTransform {
     private Vector3f pan;
     private Vector3f offset;
     private float scaleFactor;
-    @Setter
-    private float zoom = 0;
 
     public AutoTransform(StructureModel model) {
         for (PositionedLayoutPiece piece : model.layout().getPositionedPieces()) {
@@ -83,7 +81,7 @@ public class AutoTransform {
     public Matrix4f getModelTransform() {
         var m = new Matrix4f().identity();
         m.translate(offset.x, offset.y, offset.z);
-        m.scale(scaleFactor + zoom);
+        m.scale(scaleFactor);
         return m;
     }
 

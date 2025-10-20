@@ -21,7 +21,7 @@ public class StructureViewOptionsWidget extends AbstractWidget {
         guiHelper = new GuiPlacementHelper(pos, 5);
         this.model = model;
         createYSlicer();
-        createZoom();
+//        createZoom();
     }
     
     private void createYSlicer() {
@@ -37,7 +37,6 @@ public class StructureViewOptionsWidget extends AbstractWidget {
             viewModel.setSlice(e.ySlice(), e.shouldSlice());
             changeEmitter.fireEvent(viewModel);
         });
-
     }
 
     private void createZoom() {
