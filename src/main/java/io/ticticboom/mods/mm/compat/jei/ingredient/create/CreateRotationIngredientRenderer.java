@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.create;
 
-import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.texture.GuiTextures;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -12,11 +12,11 @@ public class CreateRotationIngredientRenderer implements IIngredientRenderer<Cre
 
     @Override
     public void render(GuiGraphics guiGraphics, CreateRotationStack createRotationStack) {
-        guiGraphics.blit(Ref.Textures.SLOT_PARTS, 0, 0, 1, 98, 16, 16);
+        GuiTextures.CREATE_PORT_SLOT.blit(guiGraphics, 0, 0);
     }
 
     @Override
-    public List<Component> getTooltip(CreateRotationStack createRotationStack, TooltipFlag tooltipFlag) {
-        return List.of(Component.literal("Speed: " + createRotationStack.speed()));
+    public List<Component> getTooltip(CreateRotationStack ingredient, TooltipFlag tooltipFlag) {
+        return List.of(Component.literal("Create Rotation: " + ingredient.speed()));
     }
 }

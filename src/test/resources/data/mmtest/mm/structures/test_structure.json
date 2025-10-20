@@ -1,27 +1,17 @@
 {
-  "name": "My Funki Recipe",
+  "name": "1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3 1 2 3",
   "controllerIds": "mm:controller_a",
   "layout": [
     [
-      "   ",
-      " A ",
-      "   "
+      " A "
     ],
     [
-      "   ",
-      "PCD",
-      "   "
+      "PCD"
     ]
   ],
   "key": {
     "A": {
-      "block": "minecraft:oak_log",
-      "properties": [
-        {
-          "property": "axis",
-          "value": "x"
-        }
-      ]
+      "block": "minecraft:oak_log"
     },
     "P": {
       "block": "mm:my_port_a_input"

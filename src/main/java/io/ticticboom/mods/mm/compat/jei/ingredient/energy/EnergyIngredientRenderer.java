@@ -13,7 +13,7 @@ public class EnergyIngredientRenderer implements IIngredientRenderer<EnergyStack
 
     @Override
     public void render(GuiGraphics gfx, EnergyStack ingredient) {
-        gfx.blit(Ref.Textures.SLOT_PARTS, 0, 0, 19, 62, 16, 16);
+        gfx.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 19, 62, 16, 16);
     }
 
     @Override

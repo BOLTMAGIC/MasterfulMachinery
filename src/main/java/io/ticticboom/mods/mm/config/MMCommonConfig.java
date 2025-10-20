@@ -6,6 +6,7 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue debugTool;
     public final ForgeConfigSpec.BooleanValue splitRecipesJei;
     public final ForgeConfigSpec.BooleanValue portsAutoExtractByDefault;
+    public final ForgeConfigSpec.BooleanValue previewBlueprintScreen;
 
     public MMCommonConfig(ForgeConfigSpec.Builder builder) {
         debugTool = builder.comment("Enables the Debug Tool Item's functionality (Disable when on server)")
@@ -15,5 +16,12 @@ public class MMCommonConfig {
         portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages")
                 .define("portsAutoExtractByDefault", false);
 
+        builder.comment("Preview features that are not yet stable or ready for use.")
+                .push("preview_features");
+
+        previewBlueprintScreen = builder.comment("Blueprint screen (JEI structure view with more fancy buttons)")
+                .define("previewBlueprintScreen", false);
+
+        builder.pop();
     }
 }

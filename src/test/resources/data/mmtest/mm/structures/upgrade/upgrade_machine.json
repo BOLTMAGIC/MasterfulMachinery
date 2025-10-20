@@ -1,0 +1,36 @@
+{
+  "name": "Upgradeable Fish",
+  "controllerIds": "mm:controller_a",
+  "layout": [
+    [
+      "IOCU"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false
+    },
+    "U": {
+      "stateList": "speedUpgrades"
+    }
+  },
+  "stateLists": {
+    "speedUpgrades": {
+      "defaultIgnored": true,
+      "logs": {
+        "tag": "minecraft:logs"
+      },
+      "planks": {
+        "tag": "minecraft:planks"
+      },
+      "diamond": {
+        "block": "minecraft:diamond_block"
+      }
+    }
+  }
+}

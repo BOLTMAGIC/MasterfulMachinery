@@ -1,9 +1,0 @@
-{
-  "id": "mana_port",
-  "controllerIds": "mm:mana_controller",
-  "name": "Mana Port",
-  "type": "mm:botania/mana",
-  "config": {
-    "capacity": 1000
-  }
-}
