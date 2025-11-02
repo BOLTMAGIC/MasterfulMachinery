@@ -1,8 +1,8 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
 import io.ticticboom.mods.mm.config.MMConfig;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.client.Minecraft;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -16,6 +16,10 @@ public class BlueprintScreenEvents {
     @SubscribeEvent
     public static void onItemUse(PlayerInteractEvent.RightClickItem event) {
         if (!MMConfig.PREVIEW_BP_SCREEN) {
+            return;
+        }
+
+        if (!event.getItemStack().is(MMRegisters.BLUEPRINT.get())) {
             return;
         }
 
