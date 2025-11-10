@@ -97,7 +97,12 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             SlotGridEntry next = grid.next();
             next.setUsed();
             var slot = builder.addSlot(RecipeIngredientRole.INPUT, next.x, next.y);
-            slot.addItemStacks(countedItemStack.getStacks());
+            var stacks = countedItemStack.getStacks().stream().map(s -> {
+                var copy = s.copy();
+                copy.setCount(countedItemStack.getCount());
+                return copy;
+            }).toList();
+            slot.addItemStacks(stacks);
             slot.addRichTooltipCallback((a, b) -> {
                 b.add(countedItemStack.getDetail());
             });
