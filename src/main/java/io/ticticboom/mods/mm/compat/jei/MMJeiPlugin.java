@@ -15,6 +15,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientHe
 import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientRender;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
+import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -27,6 +28,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @JeiPlugin
 public class MMJeiPlugin implements IModPlugin {
@@ -52,7 +54,17 @@ public class MMJeiPlugin implements IModPlugin {
     }
 
     private void registerProcessRecipe(IRecipeCategoryRegistration registration, StructureModel parent) {
-        MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), parent);
+        List<RecipeModel> recipes;
+        if (parent != null) {
+            recipes = MachineRecipeManager.RECIPES.values().stream().filter(x -> x.structureId().equals(parent.id())).collect(Collectors.toList());
+        } else {
+            recipes = new ArrayList<>(MachineRecipeManager.RECIPES.values());
+        }
+        int maxInputRows = recipes.stream().mapToInt(r -> (int) Math.ceil(r.inputs().inputs().size() / 3.0)).max().orElse(1);
+        int maxOutputRows = recipes.stream().mapToInt(r -> (int) Math.ceil(r.outputs().outputs().size() / 3.0)).max().orElse(1);
+        int maxRows = Math.max(maxInputRows, maxOutputRows);
+        int height = maxRows * 16 + 20; // Padding für Progressbar etc.
+        MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), parent, height);
         registration.addRecipeCategories(category);
         recipeCategories.add(category);
     }

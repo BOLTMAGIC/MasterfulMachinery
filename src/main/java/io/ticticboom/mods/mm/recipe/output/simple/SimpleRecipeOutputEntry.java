@@ -64,8 +64,10 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.OUTPUT, slot.getInnerX(), slot.getInnerY());
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
-        var fmtChance = String.format("%.2f", chance * 100) + "% Chance of Output";
-        rSlot.addTooltipCallback((v, list) -> {
+        double percent = chance * 100.0;
+        String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        var fmtChance = percentStr + "% Chance of Output";
+        rSlot.addRichTooltipCallback((v, list) -> {
             if (chance < 1) {
                 list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
             }

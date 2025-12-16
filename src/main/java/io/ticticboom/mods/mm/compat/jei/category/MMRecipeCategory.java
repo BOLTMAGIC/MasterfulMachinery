@@ -32,13 +32,14 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     private final StructureModel structureModel;
     private final IDrawable fgProgressBar;
     private final RecipeType<RecipeModel> recipeType;
+    private final int height;
 
     @Override
     public ResourceLocation getRegistryName(RecipeModel recipe) {
         return recipe.id();
     }
 
-    public MMRecipeCategory(IJeiHelpers helpers, StructureModel parent) {
+    public MMRecipeCategory(IJeiHelpers helpers, StructureModel parent, int height) {
         this.helpers = helpers;
         bgProgressBar = helpers.getGuiHelper().createDrawable(Ref.UiTextures.SLOT_PARTS, 26, 0, 24, 17);
         this.structureModel = parent;
@@ -49,6 +50,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         } else {
             recipeType = RECIPE_TYPE;
         }
+        this.height = height;
     }
 
     @Override
@@ -65,9 +67,10 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
     }
 
+    @SuppressWarnings("removal")
     @Override
     public IDrawable getBackground() {
-        return helpers.getGuiHelper().createBlankDrawable(162, 50);
+        return helpers.getGuiHelper().createBlankDrawable(162, height);
     }
 
     @Override
@@ -77,8 +80,10 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel recipe, IFocusGroup focuses) {
-        var inGrid = new SlotGrid(20, 20, 3, 5, 0, 0);
-        var outGrid = new SlotGrid(20, 20, 3, 5, 100, 0);
+        int inputRows = (int) Math.ceil(recipe.inputs().inputs().size() / 3.0);
+        int outputRows = (int) Math.ceil(recipe.outputs().outputs().size() / 3.0);
+        var inGrid = new SlotGrid(20, 20, 3, inputRows, 0, 0);
+        var outGrid = new SlotGrid(20, 20, 3, outputRows, 100, 0);
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
             input.setRecipe(builder, recipe, focuses, helpers, inGrid);
         }
