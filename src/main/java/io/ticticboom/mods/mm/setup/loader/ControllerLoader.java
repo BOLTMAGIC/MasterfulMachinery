@@ -6,9 +6,13 @@ import io.ticticboom.mods.mm.controller.ControllerType;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.model.ControllerModel;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ControllerLoader extends AbstractConfigLoader<ControllerModel> {
+    public static final Map<String, ControllerModel> CONTROLLER_MODELS = new HashMap<>();
+
     public static void loadAll() {
         new ControllerLoader().load();
     }
@@ -16,6 +20,7 @@ public class ControllerLoader extends AbstractConfigLoader<ControllerModel> {
     @Override
     protected void registerModels(List<ControllerModel> models) {
         for (ControllerModel model : models) {
+            CONTROLLER_MODELS.put(model.id(), model);
             ControllerType controllerType = MMControllerRegistry.get(model.type());
             controllerType.register(model);
         }
@@ -23,6 +28,7 @@ public class ControllerLoader extends AbstractConfigLoader<ControllerModel> {
         if (MMInteropManager.KUBEJS.isPresent()) {
             var controllers = MMInteropManager.KUBEJS.get().postRegisterControllers();
             for (ControllerModel model : controllers) {
+                CONTROLLER_MODELS.put(model.id(), model);
                 ControllerType controllerType = MMControllerRegistry.get(model.type());
                 controllerType.register(model);
             }
