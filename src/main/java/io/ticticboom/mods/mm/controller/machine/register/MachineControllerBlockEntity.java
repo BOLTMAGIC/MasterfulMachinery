@@ -73,6 +73,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private ControllerModel controllerModel = null;
     private CompletableFuture<Void> structureValidationFuture = null;
     private long lastTick = 0;
+    private long lastRecipeTick = 0;
+    private List<RecipeModel> availableRecipes = null;
 
     public void tick() {
         if (level.isClientSide() || isRemoved()) {
@@ -96,6 +98,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         lastTick = level.getGameTime();
         if (isFormed) {
             runRecipe();
+        }
+        if (isFormed && level.getGameTime() % COMMON.recipeTickRate.get() == 0 && lastRecipeTick != level.getGameTime()) {
+            performRecipeTick();
+            lastRecipeTick = level.getGameTime();
         }
     }
 
@@ -216,6 +222,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (portStorages == null) {
             portStorages = structure.getStorages(level, getBlockPos());
         }
+        if (availableRecipes == null) {
+            availableRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
+        }
 
         // First, try to output for stuck recipes
         List<ResourceLocation> toRemove = new ArrayList<>();
@@ -233,8 +242,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
 
         // Start new recipes if possible
-        for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(structure.id())) {
-            if (!activeRecipes.containsKey(recipe.id()) && recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+        for (RecipeModel recipe : availableRecipes) {
+            if (!activeRecipes.containsKey(recipe.id()) && recipe.inputs().canProcess(level, portStorages, new RecipeStateModel()) && recipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
                 boolean allowParallel = recipe.parallelProcessing();
                 if (recipe.parallelProcessing() == MMConfig.PARALLEL_PROCESSING_DEFAULT) {
                     allowParallel = controllerModel.parallelProcessingDefault();
@@ -250,8 +259,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 }
             }
         }
-
-        performRecipeTick();
     }
 
     private void performRecipeTick() {
@@ -300,6 +307,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         
         invalidateRecipe(false);
+        availableRecipes = null;
     }
 
     public void invalidateRecipe(boolean typical) {
