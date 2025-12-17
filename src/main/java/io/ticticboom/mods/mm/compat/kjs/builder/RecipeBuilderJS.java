@@ -14,10 +14,12 @@ public class RecipeBuilderJS {
     private final List<JsonObject> outputs = new ArrayList<>();
     private int ticks;
     private ResourceLocation structureId;
+    private boolean parallelProcessing = false;
     @Getter
     private final ResourceLocation id;
 
     public RecipeBuilderJS(String id) {
+        //noinspection removal
         this.id = new ResourceLocation(id);
     }
 
@@ -41,11 +43,17 @@ public class RecipeBuilderJS {
         return this;
     }
 
+    public RecipeBuilderJS parallelProcessing(boolean parallelProcessing) {
+        this.parallelProcessing = parallelProcessing;
+        return this;
+    }
+
     public RecipeModel build() {
         JsonObject json = new JsonObject();
         json.addProperty("id", id.toString());
         json.addProperty("ticks", ticks);
         json.addProperty("structureId", structureId.toString());
+        json.addProperty("parallelProcessing", parallelProcessing);
         var inputArr = new JsonArray();
         for (JsonObject input : inputs) {
             inputArr.add(input);

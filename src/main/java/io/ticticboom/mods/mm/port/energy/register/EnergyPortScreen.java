@@ -51,7 +51,7 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
         gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 8, this.topPos + start, 90, 0, 160, filledHeight);
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + 7, this.topPos + 50, 162, 80)) {
             var tooltip = new ArrayList<Component>();
-            tooltip.add(Component.literal(String.format("Stored Energy: %sFE", storage.getStoredEnergy())));
+            tooltip.add(Component.literal(String.format("Storage Energy: %sFE / %sFE", storage.getStoredEnergy(), storageModel.capacity())));
             gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
         }
     }
