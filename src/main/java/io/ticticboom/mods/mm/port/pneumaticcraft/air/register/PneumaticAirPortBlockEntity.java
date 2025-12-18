@@ -43,15 +43,12 @@ import org.jetbrains.annotations.Nullable;
 import javax.annotation.Nonnull;
 import java.util.*;
 
-import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
-
 public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity implements IPortBlockEntity{
     private final PortModel model;
     private final RegistryGroupHolder groupHolder;
     private final boolean isInput;
 
     private final PneumaticAirPortStorage storage;
-    private long lastPortTick = 0;
 
     private final ItemStackHandler itemHandler = new BaseItemStackHandler(this, 1) {
         public boolean isItemValid(int slot, ItemStack itemStack) {
@@ -165,12 +162,9 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
 
     public void tickCommonPre() {
         super.tickCommonPre();
-        if (level.getGameTime() % COMMON.portTickRate.get() == 0 && lastPortTick != level.getGameTime()) {
-            this.storage.airHandlerMap.keySet().forEach((handler) -> {
-                handler.tick(this);
-            });
-            lastPortTick = level.getGameTime();
-        }
+        this.storage.airHandlerMap.keySet().forEach((handler) -> {
+            handler.tick(this);
+        });
     }
 
 

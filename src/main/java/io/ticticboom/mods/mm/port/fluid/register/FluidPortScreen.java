@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.port.fluid.register;
 
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.port.common.SlottedContainerScreen;
-import io.ticticboom.mods.mm.port.fluid.FluidPortStorageModel;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.RenderType;
@@ -18,8 +17,6 @@ public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
     }
 
     public void renderFluids(GuiGraphics gfx, int mouseX, int mouseY) {
-        FluidPortBlockEntity be = menu.getBlockEntity();
-        FluidPortStorageModel storageModel = (FluidPortStorageModel) be.getStorage().getStorageModel();
         int i = 0;
         for (Vec2 slot : slots) {
             int slotX = (int) slot.x + 1;
@@ -31,7 +28,7 @@ public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
                 gfx.fillGradient(RenderType.guiOverlay(), slotX, slotY, slotX + 16, slotY + 16, color, color, 99);
                 if (!stack.isEmpty()) {
                     var tooltip = new ArrayList<Component>();
-                    tooltip.add(stack.getDisplayName().copy().append(": " + stack.getAmount() + "mB / " + storageModel.slotCapacity() + "mB"));
+                    tooltip.add(stack.getDisplayName().copy().append(": " + stack.getAmount() + "mB"));
                     gfx.renderComponentTooltip(this.font, tooltip, mouseX - this.leftPos, mouseY - this.topPos);
                 }
             }

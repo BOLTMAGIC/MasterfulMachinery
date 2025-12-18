@@ -1,9 +1,7 @@
 package io.ticticboom.mods.mm.recipe;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
-import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
@@ -20,7 +18,6 @@ public record RecipeModel(
         List<SlotGridEntry> inputSlots,
         List<SlotGridEntry> outputSlots,
         RecipeConditions conditions,
-        boolean parallelProcessing,
         JsonObject config
 ) {
     public static RecipeModel parse(JsonObject json, ResourceLocation id) {
@@ -32,8 +29,7 @@ public record RecipeModel(
         var conditions = ParserUtils.parseOrDefault(json, "conditions",
                 () -> new RecipeConditions(List.of()),
                 (j) -> RecipeConditions.parse(j.getAsJsonArray("conditions")));
-        var parallelProcessing = json.has("parallelProcessing") && json.get("parallelProcessing").isJsonPrimitive() ? json.get("parallelProcessing").getAsBoolean() : MMConfig.PARALLEL_PROCESSING_DEFAULT;
-        return new RecipeModel(id, structrueId, ticks, inputs, outputs, new ArrayList<>(), new ArrayList<>(), conditions, parallelProcessing, json);
+        return new RecipeModel(id, structrueId, ticks, inputs, outputs, new ArrayList<>(), new ArrayList<>(), conditions, json);
     }
 
     public String debugPath() {
