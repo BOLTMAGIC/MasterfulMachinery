@@ -13,6 +13,7 @@ import java.util.function.Supplier;
 public class ParserUtils {
 
     public static ResourceLocation parseId(JsonElement json) {
+        //noinspection removal
         return new ResourceLocation(json.getAsString());
     }
 

@@ -22,6 +22,9 @@ public class EnergyPortStorage implements IPortStorage {
     private final LazyOptional<IEnergyStorage> handlerLazyOptional;
     private final UUID uid = UUID.randomUUID();
 
+    // Priority for outputs. Default 0. Range 0..10.
+    private int priority = 0;
+
     public EnergyPortStorage(EnergyPortStorageModel model, INotifyChangeFunction changed) {
         this.model = model;
         handler = new EnergyPortHandler(model.capacity(), model.maxReceive(), model.maxExtract(), changed);
@@ -44,12 +47,18 @@ public class EnergyPortStorage implements IPortStorage {
     @Override
     public CompoundTag save(CompoundTag tag) {
         tag.put("handler", handler.serializeNBT());
+        tag.putInt("Priority", this.priority);
         return tag;
     }
 
     @Override
     public void load(CompoundTag tag) {
         handler.deserializeNBT(tag.get("handler"));
+        if (tag.contains("Priority")) {
+            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+        } else {
+            this.priority = 0;
+        }
     }
 
     @Override
@@ -70,6 +79,7 @@ public class EnergyPortStorage implements IPortStorage {
         dump.addProperty("maxReceive", model.maxReceive());
         dump.addProperty("maxExtract", model.maxExtract());
         dump.addProperty("capacity", model.capacity());
+        dump.addProperty("priority", this.priority);
         return dump;
     }
 
@@ -84,4 +94,8 @@ public class EnergyPortStorage implements IPortStorage {
     public int getStoredEnergy()  {
         return handler.getEnergyStored();
     }
+
+    // Priority accessors
+    public int getPriority() { return this.priority; }
+    public void setPriority(int priority) { this.priority = Math.max(0, Math.min(10, priority)); }
 }

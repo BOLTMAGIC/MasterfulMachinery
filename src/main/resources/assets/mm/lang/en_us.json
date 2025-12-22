@@ -3,5 +3,15 @@
   "item.mm.debug_tool": "Debug Tool",
   "tab.mm.main": "Masterful Machinery",
   "tab.mm.structures": "MM Structures",
-  "mm.structure.piece.states.display_key": "Upgradable"
+  "mm.structure.piece.states.display_key": "Upgradable",
+  "item.mm.priority_setter": "Priority Setter",
+  "item.mm.priority_setter.tooltip.line1": "Priority: %s / 10",
+  "item.mm.priority_setter.tooltip.line2": "Right click: +1",
+  "item.mm.priority_setter.tooltip.line3": "Shift+Right click (air): Reset to 0",
+  "item.mm.priority_setter.tooltip.line4": "Shift+Right click (port): Apply to port",
+  "item.mm.priority_setter.message.set": "Priority set to %s",
+  "item.mm.priority_setter.message.reset": "Priority reset to 0",
+  "item.mm.priority_setter.message.apply_success": "Port priority set to %s",
+  "message.mm.no_permission": "You do not have permission to modify this port",
+  "tooltip.mm.port_priority": "Port priority: %s"
 }

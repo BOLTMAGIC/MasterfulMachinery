@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.recipe;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import net.minecraft.world.level.Level;
@@ -23,8 +24,11 @@ public record RecipeOutputs(
     }
 
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel model) {
-        for (IRecipeOutputEntry output : outputs) {
-            if (!output.canOutput(level, storages, model)) {
+        for (int i = 0; i < outputs.size(); i++) {
+            IRecipeOutputEntry output = outputs.get(i);
+            boolean ok = output.canOutput(level, storages, model);
+            if (!ok) {
+                // debug suppressed
                 return false;
             }
         }

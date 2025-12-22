@@ -270,7 +270,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 if (state.getTickProgress() >= recipe.ticks()) {
                     state.setCanFinish(true);
                     // Try to output immediately
-                    if (recipe.outputs().canProcess(level, portStorages, state)) {
+                    boolean canOutputs = recipe.outputs().canProcess(level, portStorages, state);
+                    if (!canOutputs) {
+                        // detailed debug suppressed in normal operation
+                    }
+                    if (canOutputs) {
                         recipe.outputs().process(level, portStorages, state);
                         toRemove.add(recipeId);
                     }

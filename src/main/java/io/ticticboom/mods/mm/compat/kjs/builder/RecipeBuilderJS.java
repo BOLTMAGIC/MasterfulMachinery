@@ -18,6 +18,7 @@ public class RecipeBuilderJS {
     @Getter
     private final ResourceLocation id;
 
+    @SuppressWarnings("removal")
     public RecipeBuilderJS(String id) {
         //noinspection removal
         this.id = new ResourceLocation(id);

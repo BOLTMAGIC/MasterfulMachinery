@@ -31,11 +31,13 @@ public class PortBuilderJS {
     }
 
     public PortBuilderJS controllerId(String controllerId) {
+        //noinspection removal
         controllers.add(new ResourceLocation(controllerId));
         return this;
     }
 
     public PortBuilderJS config(String type, Consumer<PortConfigBuilderJS> builder) {
+        //noinspection removal
         this.type = new ResourceLocation(type);
         this.builder = builder;
         return this;

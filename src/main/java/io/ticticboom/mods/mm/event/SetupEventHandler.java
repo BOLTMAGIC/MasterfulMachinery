@@ -9,6 +9,8 @@ import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.setup.loader.ControllerLoader;
 import io.ticticboom.mods.mm.setup.loader.ExtraBlockLoader;
 import io.ticticboom.mods.mm.setup.loader.PortLoader;
+import io.ticticboom.mods.mm.compat.claim.ClaimPermissionManager;
+import io.ticticboom.mods.mm.compat.claim.FTBChunksClaimProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.event.AttachCapabilitiesEvent;
@@ -30,6 +32,15 @@ public class SetupEventHandler {
             ControllerLoader.loadAll();
             PortLoader.loadAll();
             ExtraBlockLoader.loadAll();
+
+            // Optional claim provider for FTBChunks
+            try {
+                if (FTBChunksClaimProvider.isAvailable()) {
+                    ClaimPermissionManager.registerProvider(new FTBChunksClaimProvider());
+                }
+            } catch (Throwable t) {
+                // best-effort: do not fail loading the mod if provider fails
+            }
         });
     }
 
