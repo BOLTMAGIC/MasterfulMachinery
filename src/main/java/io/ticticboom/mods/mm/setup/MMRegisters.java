@@ -22,6 +22,7 @@ public class MMRegisters {
 
     public static final RegistryObject<BlueprintItem> BLUEPRINT = ITEMS.register("blueprint", BlueprintItem::new);
     public static final RegistryObject<Item> DEBUG_TOOL = ITEMS.register("debug_tool", DebugToolItem::new);
+    public static final RegistryObject<Item> PRIORITY_SETTER = ITEMS.register("priority_setter", () -> new io.ticticboom.mods.mm.item.PrioritySetterItem());
 
     public static final RegistryObject<CreativeModeTab> MM_TAB = TABS.register("mm", () -> CreativeModeTab.builder().title(Component.translatable("tab.mm.main"))
             .icon(() -> BLUEPRINT.get().getDefaultInstance())
@@ -37,8 +38,9 @@ public class MMRegisters {
             .displayItems((p, o) -> o.acceptAll(StructureManager.STRUCTURE_BLUEPRINTS.values()))
             .build());
 
+    @SuppressWarnings("deprecation")
     public static void register() {
-        var bus = FMLJavaModLoadingContext.get().getModEventBus();
+        @SuppressWarnings("removal") var bus = FMLJavaModLoadingContext.get().getModEventBus();
         BLOCKS.register(bus);
         ITEMS.register(bus);
         BLOCK_ENTITIES.register(bus);

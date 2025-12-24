@@ -30,6 +30,9 @@ public class ItemPortStorage implements IPortStorage {
     private final ItemPortStorageModel model;
     private final UUID uid = UUID.randomUUID();
 
+    // Priority for outputs. Default 0. Range 0..10.
+    private int priority = 0;
+
     public ItemPortStorage(ItemPortStorageModel model, INotifyChangeFunction changed) {
         this.model = model;
         handler = new ItemPortHandler(model.rows() * model.columns(), changed);
@@ -53,13 +56,22 @@ public class ItemPortStorage implements IPortStorage {
     public CompoundTag save(CompoundTag tag) {
         Tag compoundTag = handler.serializeStacks();
         tag.put("handler", compoundTag);
+        // save priority
+        tag.putInt("Priority", this.priority);
         return tag;
     }
 
     @Override
     public void load(CompoundTag tag) {
         Tag compoundTag = tag.get("handler");
-        handler.deserializeStacks(compoundTag);
+        if (compoundTag != null) {
+            handler.deserializeStacks(compoundTag);
+        }
+        if (tag.contains("Priority")) {
+            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+        } else {
+            this.priority = 0;
+        }
     }
 
     @Override
@@ -78,6 +90,7 @@ public class ItemPortStorage implements IPortStorage {
         json.addProperty("uid", uid.toString());
         json.addProperty("rows", model.rows());
         json.addProperty("columns", model.columns());
+        json.addProperty("priority", this.priority);
         var stacksJson = new JsonArray();
         for (ItemStack stack : handler.getStacks()) {
             var res = JsonOps.INSTANCE.withEncoder(ItemStack.CODEC).apply(stack);
@@ -110,11 +123,11 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     public int canExtract(Predicate<ItemStack> item, int count) {
-        return handlerExtract(item, count, true);
+        return handlerExtract(item, count, true); // returns remaining (not extracted)
     }
 
     public int extract(Predicate<ItemStack> item, int count) {
-        return handlerExtract(item, count, false);
+        return handlerExtract(item, count, false); // returns remaining after extraction
     }
 
     private int handlerExtract(Predicate<ItemStack> item, int count, boolean simulate) {
@@ -126,11 +139,27 @@ public class ItemPortStorage implements IPortStorage {
             }
             var extracted = handler.extractItem(slot, remaining, simulate);
             remaining -= extracted.getCount();
+            if (remaining <= 0) break;
         }
-        return remaining;
+        return remaining; // amount not extracted
     }
 
     public int canInsert(Item item, int count) {
+        // If asking for a probe of available space, return total available space
+        if (count == Integer.MAX_VALUE) {
+            int available = 0;
+            for (int slot = 0; slot < handler.getSlots(); slot++) {
+                ItemStack stack = handler.getStackInSlot(slot);
+                int limit = handler.getSlotLimit(slot);
+                if (stack.isEmpty()) {
+                    available += limit;
+                } else if (stack.getItem() == item) {
+                    available += (limit - stack.getCount());
+                }
+            }
+            return available;
+        }
+        // Otherwise simulate insertion and return remaining amount that could not be inserted
         return handlerInsert(item, count, true);
     }
 
@@ -146,5 +175,14 @@ public class ItemPortStorage implements IPortStorage {
             remainingToInsert -= (toInsert - remains.getCount());
         }
         return remainingToInsert;
+    }
+
+    // Priority accessors
+    public int getPriority() {
+        return this.priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = Math.max(0, Math.min(10, priority));
     }
 }

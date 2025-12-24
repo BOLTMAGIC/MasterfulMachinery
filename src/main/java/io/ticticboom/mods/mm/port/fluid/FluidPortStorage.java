@@ -25,6 +25,9 @@ public class FluidPortStorage implements IPortStorage {
     private final LazyOptional<FluidPortHandler> handlerLazyOptional;
     private final UUID uid = UUID.randomUUID();
 
+    // Priority for outputs. Default 0. Range 0..10.
+    private int priority = 0;
+
 
     public FluidPortStorage(FluidPortStorageModel model, INotifyChangeFunction changed) {
         this.model = model;
@@ -53,6 +56,7 @@ public class FluidPortStorage implements IPortStorage {
     public CompoundTag save(CompoundTag tag) {
         var compoundTag = handler.serializeNBT();
         tag.put("handler", compoundTag);
+        tag.putInt("Priority", this.priority);
         return tag;
     }
 
@@ -60,6 +64,11 @@ public class FluidPortStorage implements IPortStorage {
     public void load(CompoundTag tag) {
         var compoundTag = tag.get("handler");
         handler.deserializeNBT(compoundTag);
+        if (tag.contains("Priority")) {
+            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+        } else {
+            this.priority = 0;
+        }
     }
 
     @Override
@@ -79,6 +88,7 @@ public class FluidPortStorage implements IPortStorage {
         json.addProperty("slotCapacity", model.slotCapacity());
         json.addProperty("rows", model.rows());
         json.addProperty("columns", model.columns());
+        json.addProperty("priority", this.priority);
         var tanks = new JsonArray();
         for (int i = 0; i < handler.getTanks(); i++) {
             var stack = handler.getFluidInTank(i);
@@ -94,5 +104,14 @@ public class FluidPortStorage implements IPortStorage {
 
     public FluidStack getStackInSlot(int slot) {
         return handler.getFluidInTank(slot);
+    }
+
+    // Priority accessors
+    public int getPriority() {
+        return this.priority;
+    }
+
+    public void setPriority(int priority) {
+        this.priority = Math.max(0, Math.min(10, priority));
     }
 }
