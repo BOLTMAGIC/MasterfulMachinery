@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.port.item;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -35,7 +36,8 @@ public class ItemPortStorage implements IPortStorage {
 
     public ItemPortStorage(ItemPortStorageModel model, INotifyChangeFunction changed) {
         this.model = model;
-        handler = new ItemPortHandler(model.rows() * model.columns(), changed);
+        int capacity = model.slotCapacity();
+        handler = new ItemPortHandler(model.rows() * model.columns(), capacity, changed);
         handlerLazyOptional = LazyOptional.of(() -> handler);
     }
 
@@ -91,6 +93,7 @@ public class ItemPortStorage implements IPortStorage {
         json.addProperty("rows", model.rows());
         json.addProperty("columns", model.columns());
         json.addProperty("priority", this.priority);
+        json.addProperty("slotCapacity", model.slotCapacity());
         var stacksJson = new JsonArray();
         for (ItemStack stack : handler.getStacks()) {
             var res = JsonOps.INSTANCE.withEncoder(ItemStack.CODEC).apply(stack);
@@ -156,11 +159,11 @@ public class ItemPortStorage implements IPortStorage {
                 } else if (stack.getItem() == item) {
                     available += (limit - stack.getCount());
                 }
-            }
+            Ref.LOG.info("ItemPortStorage.canInsert probe for item={} returns available={} (slotCapacity={})", item, available, ((ItemPortStorageModel)model).slotCapacity());
             return available;
         }
-        // Otherwise simulate insertion and return remaining amount that could not be inserted
         return handlerInsert(item, count, true);
+        return remaining;
     }
 
     public int insert(Item item, int count) {
@@ -169,10 +172,37 @@ public class ItemPortStorage implements IPortStorage {
 
     private int handlerInsert(Item item, int count, boolean simulate) {
         int remainingToInsert = count;
+        // First pass: try to fill existing stacks of the same item
         for (int slot = 0; slot < handler.getSlots(); slot++) {
-            var toInsert = Math.min(handler.getSlotLimit(slot), remainingToInsert);
-            var remains = handler.insertItem(slot, new ItemStack(item, toInsert), simulate);
-            remainingToInsert -= (toInsert - remains.getCount());
+            if (remainingToInsert <= 0) break;
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (stack.isEmpty()) continue;
+            if (stack.getItem() != item) continue;
+            int limit = handler.getSlotLimit(slot);
+            int space = limit - stack.getCount();
+            if (space <= 0) continue;
+            int toMove = Math.min(space, remainingToInsert);
+            if (!simulate) {
+                stack.grow(toMove);
+                handler.setStackInSlot(slot, stack);
+            }
+            remainingToInsert -= toMove;
+        }
+
+        // Second pass: try to put into empty slots
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (!stack.isEmpty()) continue;
+            int limit = handler.getSlotLimit(slot);
+            // non-stackable items only allow 1 per slot
+            int maxPerSlot = Math.max(1, limit);
+            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            if (!simulate) {
+                handler.setStackInSlot(slot, new ItemStack(item, toPlace));
+            }
+            remainingToInsert -= toPlace;
+        }
         }
         return remainingToInsert;
     }

@@ -55,8 +55,9 @@ public class ItemPortContainer implements Container {
     @Override
     public void setItem(int i, ItemStack itemStack) {
         handler.setStackInSlot(i, itemStack);
-        if (!itemStack.isEmpty() && itemStack.getCount() > this.getMaxStackSize()) {
-            itemStack.setCount(this.getMaxStackSize());
+        int limit = handler.getSlotLimit(i);
+        if (!itemStack.isEmpty() && itemStack.getCount() > limit) {
+            itemStack.setCount(limit);
         }
 
         this.setChanged();

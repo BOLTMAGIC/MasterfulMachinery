@@ -45,9 +45,24 @@ public class ItemHandlerCoupling implements IHandlerCoupling {
     }
 
     private ItemStack attemptInsert(IItemHandler from, IItemHandler to, ItemStack toInsert, int fromSlot) {
-        var remaining = toInsert;
+        // First: simulate through all target slots to see how much would remain
+        ItemStack simulated = toInsert.copy();
         for (int toSlot = 0; toSlot < to.getSlots(); toSlot++) {
-            remaining = to.insertItem(toSlot, toInsert, false);
+            simulated = to.insertItem(toSlot, simulated, true);
+            if (simulated.isEmpty()) {
+                break;
+            }
+        }
+
+        // If nothing would be accepted, return original
+        if (simulated.getCount() == toInsert.getCount()) {
+            return toInsert;
+        }
+
+        // Otherwise perform the real insertion pass
+        ItemStack remaining = toInsert.copy();
+        for (int toSlot = 0; toSlot < to.getSlots(); toSlot++) {
+            remaining = to.insertItem(toSlot, remaining, false);
             if (remaining.isEmpty()) {
                 return ItemStack.EMPTY;
             }

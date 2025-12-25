@@ -11,10 +11,11 @@ public class ItemPortConfigBuilderJS extends PortConfigBuilderJS {
     private int columns;
     private boolean isAutoPushSet = false;
     private boolean autoPush = false;
+    private int slotCapacity = 0; // 0 means use item default
 
     @Override
     public IPortStorageModel build() {
-        return new ItemPortStorageModel(rows, columns, isAutoPushSet ? () -> autoPush : () -> MMConfig.DEFAULT_PORT_AUTO_PUSH);
+        return new ItemPortStorageModel(rows, columns, isAutoPushSet ? () -> autoPush : () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, slotCapacity);
     }
 
     public ItemPortConfigBuilderJS rows(int rows) {
@@ -30,6 +31,11 @@ public class ItemPortConfigBuilderJS extends PortConfigBuilderJS {
     public ItemPortConfigBuilderJS autoPush(boolean autoPush) {
         this.autoPush = autoPush;
         this.isAutoPushSet = true;
+        return this;
+    }
+
+    public ItemPortConfigBuilderJS slotCapacity(int slotCapacity) {
+        this.slotCapacity = slotCapacity;
         return this;
     }
 }
