@@ -159,11 +159,10 @@ public class ItemPortStorage implements IPortStorage {
                 } else if (stack.getItem() == item) {
                     available += (limit - stack.getCount());
                 }
-            Ref.LOG.info("ItemPortStorage.canInsert probe for item={} returns available={} (slotCapacity={})", item, available, ((ItemPortStorageModel)model).slotCapacity());
+            }
             return available;
         }
         return handlerInsert(item, count, true);
-        return remaining;
     }
 
     public int insert(Item item, int count) {
@@ -202,7 +201,6 @@ public class ItemPortStorage implements IPortStorage {
                 handler.setStackInSlot(slot, new ItemStack(item, toPlace));
             }
             remainingToInsert -= toPlace;
-        }
         }
         return remainingToInsert;
     }
