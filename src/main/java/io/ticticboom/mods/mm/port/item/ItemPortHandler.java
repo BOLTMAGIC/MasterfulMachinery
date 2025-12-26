@@ -263,149 +263,93 @@ public class ItemPortHandler extends ItemStackHandler {
     }
 
     public int insert(Item item, int count) {
-        int remainingToInsert = count;
-        if (threadPreferEmpty()) {
-            // First pass: put into empty slots
-            for (int slot = 0; slot < getSlots(); slot++) {
-                if (remainingToInsert <= 0) break;
-                ItemStack stack = getStackInSlot(slot);
-                if (!stack.isEmpty()) continue;
-                int limit = getSlotLimit(slot);
-                int maxPerSlot = Math.max(1, limit);
-                int toPlace = Math.min(maxPerSlot, remainingToInsert);
-                actualCounts[slot] = toPlace;
-                super.setStackInSlot(slot, new ItemStack(item, Math.min(item.getMaxStackSize(), toPlace)));
-                remainingToInsert -= toPlace;
-            }
-            // Second pass: merge into existing
-            for (int slot = 0; slot < getSlots(); slot++) {
-                if (remainingToInsert <= 0) break;
-                ItemStack stack = getStackInSlot(slot);
-                if (stack.isEmpty()) continue;
-                if (stack.getItem() != item) continue;
-                int limit = getSlotLimit(slot);
-                int space = limit - stack.getCount();
-                if (space <= 0) continue;
-                int toMove = Math.min(space, remainingToInsert);
-                actualCounts[slot] = actualCounts[slot] + toMove;
-                int display = Math.min(stack.getMaxStackSize(), actualCounts[slot]);
-                ItemStack newDisplay = stack.copy();
-                newDisplay.setCount(display);
-                super.setStackInSlot(slot, newDisplay);
-                remainingToInsert -= toMove;
-            }
-            return remainingToInsert;
-        }
-        // default behavior: merge first then empty
-        // First pass: try to fill existing stacks of the same item
-        for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
-            ItemStack stack = getStackInSlot(slot);
-            if (stack.isEmpty()) continue;
-            if (stack.getItem() != item) continue;
-            int limit = getSlotLimit(slot);
-            int space = limit - stack.getCount();
-            if (space <= 0) continue;
-            int toMove = Math.min(space, remainingToInsert);
-            actualCounts[slot] = actualCounts[slot] + toMove;
-            int display = Math.min(stack.getMaxStackSize(), actualCounts[slot]);
-            ItemStack newDisplay = stack.copy();
-            newDisplay.setCount(display);
-            super.setStackInSlot(slot, newDisplay);
-            remainingToInsert -= toMove;
-        }
-
-        // Second pass: try to put into empty slots
-        for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
-            ItemStack stack = getStackInSlot(slot);
-            if (!stack.isEmpty()) continue;
-            int limit = getSlotLimit(slot);
-            // non-stackable items only allow 1 per slot
-            int maxPerSlot = Math.max(1, limit);
-            int toPlace = Math.min(maxPerSlot, remainingToInsert);
-            actualCounts[slot] = toPlace;
-            // place empty display stack with the item (no tag)
-            super.setStackInSlot(slot, new ItemStack(item, Math.min(item.getMaxStackSize(), toPlace)));
-            remainingToInsert -= toPlace;
-        }
-        return remainingToInsert;
+        return insertInternal(new ItemStack(item), count, false);
     }
 
     // new insertion method that accepts ItemStack (with tag) and tries to preserve tag on placed stacks
     public int insert(ItemStack stack, int count) {
         if (stack.isEmpty()) return count;
+        return insertInternal(stack, count, true);
+    }
+
+    /**
+     * Internal helper method that handles the two-pass insertion logic.
+     * @param template The item stack template to insert (contains item and optionally NBT)
+     * @param count The number of items to insert
+     * @param checkNbt Whether to check NBT compatibility when merging stacks
+     * @return The number of items that could not be inserted
+     */
+    private int insertInternal(ItemStack template, int count, boolean checkNbt) {
         int remainingToInsert = count;
         if (threadPreferEmpty()) {
-            // First pass: insert into empty slots preserving tag
-            for (int slot = 0; slot < getSlots(); slot++) {
-                if (remainingToInsert <= 0) break;
-                ItemStack existing = getStackInSlot(slot);
-                if (!existing.isEmpty()) continue;
-                int limit = getSlotLimit(slot);
-                int maxPerSlot = Math.max(1, limit);
-                int toPlace = Math.min(maxPerSlot, remainingToInsert);
-                actualCounts[slot] = toPlace;
-                ItemStack placed = stack.copy();
-                placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
-                super.setStackInSlot(slot, placed);
-                remainingToInsert -= toPlace;
-            }
-            // Second pass: try to fill existing stacks where tags are compatible
-            for (int slot = 0; slot < getSlots(); slot++) {
-                if (remainingToInsert <= 0) break;
-                ItemStack existing = getStackInSlot(slot);
-                if (existing.isEmpty()) continue;
-                if (existing.getItem() != stack.getItem()) continue;
-                if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) continue;
-                int limit = getSlotLimit(slot);
-                int space = limit - existing.getCount();
-                if (space <= 0) continue;
-                int toMove = Math.min(space, remainingToInsert);
-                actualCounts[slot] = actualCounts[slot] + toMove;
-                int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
-                ItemStack newDisplay = existing.copy();
-                newDisplay.setCount(display);
-                super.setStackInSlot(slot, newDisplay);
-                remainingToInsert -= toMove;
-            }
-            return remainingToInsert;
+            remainingToInsert = insertIntoEmptySlots(template, remainingToInsert, checkNbt);
+            remainingToInsert = mergeIntoExistingStacks(template, remainingToInsert, checkNbt);
+        } else {
+            remainingToInsert = mergeIntoExistingStacks(template, remainingToInsert, checkNbt);
+            remainingToInsert = insertIntoEmptySlots(template, remainingToInsert, checkNbt);
         }
-        // default behavior: merge first then empty
-        int remainingToInsertDefault = remainingToInsert;
-        // First pass: try to fill existing stacks where tags are compatible
+        return remainingToInsert;
+    }
+
+    /**
+     * Helper method to insert items into empty slots.
+     * @param template The item stack template to insert
+     * @param remainingToInsert The number of items remaining to insert
+     * @param checkNbt Whether to preserve NBT tags (true) or ignore them (false)
+     * @return The number of items that could not be inserted
+     */
+    private int insertIntoEmptySlots(ItemStack template, int remainingToInsert, boolean checkNbt) {
         for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsertDefault <= 0) break;
+            if (remainingToInsert <= 0) break;
+            ItemStack existing = getStackInSlot(slot);
+            if (!existing.isEmpty()) continue;
+            
+            int limit = getSlotLimit(slot);
+            int maxPerSlot = Math.max(1, limit);
+            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            actualCounts[slot] = toPlace;
+            
+            ItemStack placed;
+            if (checkNbt) {
+                placed = template.copy();
+                placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
+            } else {
+                placed = new ItemStack(template.getItem(), Math.min(template.getItem().getMaxStackSize(), toPlace));
+            }
+            super.setStackInSlot(slot, placed);
+            remainingToInsert -= toPlace;
+        }
+        return remainingToInsert;
+    }
+
+    /**
+     * Helper method to merge items into existing compatible stacks.
+     * @param template The item stack template to insert
+     * @param remainingToInsert The number of items remaining to insert
+     * @param checkNbt Whether to check NBT compatibility (true) or ignore NBT (false)
+     * @return The number of items that could not be inserted
+     */
+    private int mergeIntoExistingStacks(ItemStack template, int remainingToInsert, boolean checkNbt) {
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
             ItemStack existing = getStackInSlot(slot);
             if (existing.isEmpty()) continue;
-            if (existing.getItem() != stack.getItem()) continue;
-            if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) continue;
+            if (existing.getItem() != template.getItem()) continue;
+            if (checkNbt && !areTagsEqualOrNull(existing.getTag(), template.getTag())) continue;
+            
             int limit = getSlotLimit(slot);
             int space = limit - existing.getCount();
             if (space <= 0) continue;
-            int toMove = Math.min(space, remainingToInsertDefault);
+            
+            int toMove = Math.min(space, remainingToInsert);
             actualCounts[slot] = actualCounts[slot] + toMove;
             int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
             ItemStack newDisplay = existing.copy();
             newDisplay.setCount(display);
             super.setStackInSlot(slot, newDisplay);
-            remainingToInsertDefault -= toMove;
+            remainingToInsert -= toMove;
         }
-        // Second pass: insert into empty slots, preserving tag
-        for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsertDefault <= 0) break;
-            ItemStack existing = getStackInSlot(slot);
-            if (!existing.isEmpty()) continue;
-            int limit = getSlotLimit(slot);
-            int maxPerSlot = Math.max(1, limit);
-            int toPlace = Math.min(maxPerSlot, remainingToInsertDefault);
-            actualCounts[slot] = toPlace;
-            ItemStack placed = stack.copy();
-            placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
-            super.setStackInSlot(slot, placed);
-            remainingToInsertDefault -= toPlace;
-        }
-        return remainingToInsertDefault;
+        return remainingToInsert;
     }
 
     private boolean areTagsEqualOrNull(CompoundTag a, CompoundTag b) {
