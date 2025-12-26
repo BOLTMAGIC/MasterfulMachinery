@@ -145,6 +145,10 @@ public class ItemPortHandler extends ItemStackHandler {
             if (existing.getItem() != item) {
                 return stack; // different item
             }
+            // respect NBT: only merge when tags are equal or both null
+            if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) {
+                return stack; // different tag -> do not merge here
+            }
             int existingCount = actualCounts[slot];
             int space = limit - existingCount;
             if (space <= 0) {
@@ -244,9 +248,53 @@ public class ItemPortHandler extends ItemStackHandler {
         return remaining;
     }
 
+    // Thread-local toggle to prefer empty slots on insert (used by container quick-move)
+    private static final ThreadLocal<Boolean> THREAD_PREFER_EMPTY = ThreadLocal.withInitial(() -> false);
+
+    public static void setThreadPreferEmpty(boolean v) {
+        THREAD_PREFER_EMPTY.set(v);
+    }
+
+    private static boolean threadPreferEmpty() {
+        return THREAD_PREFER_EMPTY.get();
+    }
+
     public int insert(Item item, int count) {
         if (count == Integer.MAX_VALUE) return 0;
         int remainingToInsert = count;
+        if (threadPreferEmpty()) {
+            // First pass: put into empty slots
+            for (int slot = 0; slot < getSlots(); slot++) {
+                if (remainingToInsert <= 0) break;
+                ItemStack stack = getStackInSlot(slot);
+                if (!stack.isEmpty()) continue;
+                int limit = getSlotLimit(slot);
+                int maxPerSlot = Math.max(1, limit);
+                int toPlace = Math.min(maxPerSlot, remainingToInsert);
+                actualCounts[slot] = toPlace;
+                super.setStackInSlot(slot, new ItemStack(item, Math.min(item.getMaxStackSize(), toPlace)));
+                remainingToInsert -= toPlace;
+            }
+            // Second pass: merge into existing
+            for (int slot = 0; slot < getSlots(); slot++) {
+                if (remainingToInsert <= 0) break;
+                ItemStack stack = getStackInSlot(slot);
+                if (stack.isEmpty()) continue;
+                if (stack.getItem() != item) continue;
+                int limit = getSlotLimit(slot);
+                int space = limit - stack.getCount();
+                if (space <= 0) continue;
+                int toMove = Math.min(space, remainingToInsert);
+                actualCounts[slot] = actualCounts[slot] + toMove;
+                int display = Math.min(stack.getMaxStackSize(), actualCounts[slot]);
+                ItemStack newDisplay = stack.copy();
+                newDisplay.setCount(display);
+                super.setStackInSlot(slot, newDisplay);
+                remainingToInsert -= toMove;
+            }
+            return remainingToInsert;
+        }
+        // default behavior: merge first then empty
         // First pass: try to fill existing stacks of the same item
         for (int slot = 0; slot < getSlots(); slot++) {
             if (remainingToInsert <= 0) break;
@@ -286,9 +334,46 @@ public class ItemPortHandler extends ItemStackHandler {
     public int insert(ItemStack stack, int count) {
         if (stack == null) return count;
         int remainingToInsert = count;
+        if (threadPreferEmpty()) {
+            // First pass: insert into empty slots preserving tag
+            for (int slot = 0; slot < getSlots(); slot++) {
+                if (remainingToInsert <= 0) break;
+                ItemStack existing = getStackInSlot(slot);
+                if (!existing.isEmpty()) continue;
+                int limit = getSlotLimit(slot);
+                int maxPerSlot = Math.max(1, limit);
+                int toPlace = Math.min(maxPerSlot, remainingToInsert);
+                actualCounts[slot] = toPlace;
+                ItemStack placed = stack.copy();
+                placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
+                super.setStackInSlot(slot, placed);
+                remainingToInsert -= toPlace;
+            }
+            // Second pass: try to fill existing stacks where tags are compatible
+            for (int slot = 0; slot < getSlots(); slot++) {
+                if (remainingToInsert <= 0) break;
+                ItemStack existing = getStackInSlot(slot);
+                if (existing.isEmpty()) continue;
+                if (existing.getItem() != stack.getItem()) continue;
+                if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) continue;
+                int limit = getSlotLimit(slot);
+                int space = limit - existing.getCount();
+                if (space <= 0) continue;
+                int toMove = Math.min(space, remainingToInsert);
+                actualCounts[slot] = actualCounts[slot] + toMove;
+                int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
+                ItemStack newDisplay = existing.copy();
+                newDisplay.setCount(display);
+                super.setStackInSlot(slot, newDisplay);
+                remainingToInsert -= toMove;
+            }
+            return remainingToInsert;
+        }
+        // default behavior: merge first then empty
+        int remainingToInsertDefault = remainingToInsert;
         // First pass: try to fill existing stacks where tags are compatible
         for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
+            if (remainingToInsertDefault <= 0) break;
             ItemStack existing = getStackInSlot(slot);
             if (existing.isEmpty()) continue;
             if (existing.getItem() != stack.getItem()) continue;
@@ -296,29 +381,29 @@ public class ItemPortHandler extends ItemStackHandler {
             int limit = getSlotLimit(slot);
             int space = limit - existing.getCount();
             if (space <= 0) continue;
-            int toMove = Math.min(space, remainingToInsert);
+            int toMove = Math.min(space, remainingToInsertDefault);
             actualCounts[slot] = actualCounts[slot] + toMove;
             int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
             ItemStack newDisplay = existing.copy();
             newDisplay.setCount(display);
             super.setStackInSlot(slot, newDisplay);
-            remainingToInsert -= toMove;
+            remainingToInsertDefault -= toMove;
         }
         // Second pass: insert into empty slots, preserving tag
         for (int slot = 0; slot < getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
+            if (remainingToInsertDefault <= 0) break;
             ItemStack existing = getStackInSlot(slot);
             if (!existing.isEmpty()) continue;
             int limit = getSlotLimit(slot);
             int maxPerSlot = Math.max(1, limit);
-            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            int toPlace = Math.min(maxPerSlot, remainingToInsertDefault);
             actualCounts[slot] = toPlace;
             ItemStack placed = stack.copy();
             placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
             super.setStackInSlot(slot, placed);
-            remainingToInsert -= toPlace;
+            remainingToInsertDefault -= toPlace;
         }
-        return remainingToInsert;
+        return remainingToInsertDefault;
     }
 
     private boolean areTagsEqualOrNull(CompoundTag a, CompoundTag b) {
