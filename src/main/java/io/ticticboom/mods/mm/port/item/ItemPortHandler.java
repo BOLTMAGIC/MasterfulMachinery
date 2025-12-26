@@ -303,12 +303,10 @@ public class ItemPortHandler extends ItemStackHandler {
             if (remainingToInsert <= 0) break;
             ItemStack existing = getStackInSlot(slot);
             if (!existing.isEmpty()) continue;
-            
             int limit = getSlotLimit(slot);
             int maxPerSlot = Math.max(1, limit);
             int toPlace = Math.min(maxPerSlot, remainingToInsert);
             actualCounts[slot] = toPlace;
-            
             ItemStack placed;
             if (checkNbt) {
                 placed = template.copy();
@@ -336,11 +334,9 @@ public class ItemPortHandler extends ItemStackHandler {
             if (existing.isEmpty()) continue;
             if (existing.getItem() != template.getItem()) continue;
             if (checkNbt && !areTagsEqualOrNull(existing.getTag(), template.getTag())) continue;
-            
             int limit = getSlotLimit(slot);
             int space = limit - existing.getCount();
             if (space <= 0) continue;
-            
             int toMove = Math.min(space, remainingToInsert);
             actualCounts[slot] = actualCounts[slot] + toMove;
             int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
