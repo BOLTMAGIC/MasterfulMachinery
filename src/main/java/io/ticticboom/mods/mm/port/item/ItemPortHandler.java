@@ -266,7 +266,12 @@ public class ItemPortHandler extends ItemStackHandler {
         return insertInternal(new ItemStack(item), count, false);
     }
 
-    // new insertion method that accepts ItemStack (with tag) and tries to preserve tag on placed stacks
+    /**
+     * Insertion method that accepts ItemStack (with NBT tag) and preserves the tag on placed stacks.
+     * @param stack The item stack to insert (including NBT data)
+     * @param count The number of items to insert
+     * @return The number of items that could not be inserted
+     */
     public int insert(ItemStack stack, int count) {
         if (stack.isEmpty()) return count;
         return insertInternal(stack, count, true);
@@ -295,7 +300,7 @@ public class ItemPortHandler extends ItemStackHandler {
      * Helper method to insert items into empty slots.
      * @param template The item stack template to insert
      * @param remainingToInsert The number of items remaining to insert
-     * @param checkNbt Whether to preserve NBT tags from the template (true) or create a new stack without NBT (false)
+     * @param checkNbt When true, copies the template stack preserving NBT; when false, creates a new ItemStack with only the item type
      * @return The number of items that could not be inserted
      */
     private int insertIntoEmptySlots(ItemStack template, int remainingToInsert, boolean checkNbt) {
