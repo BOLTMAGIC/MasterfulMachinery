@@ -332,7 +332,7 @@ public class ItemPortHandler extends ItemStackHandler {
 
     // new insertion method that accepts ItemStack (with tag) and tries to preserve tag on placed stacks
     public int insert(ItemStack stack, int count) {
-        if (stack == null) return count;
+        if (stack.isEmpty()) return count;
         int remainingToInsert = count;
         if (threadPreferEmpty()) {
             // First pass: insert into empty slots preserving tag
