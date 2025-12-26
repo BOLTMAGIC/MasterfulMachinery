@@ -229,7 +229,7 @@ public class ItemPortHandler extends ItemStackHandler {
                 } else if (s.getItem() == stack.getItem()) {
                     // if tags equal or one has no tag, we can merge; otherwise we treat as different and only empty slots work
                     if (areTagsEqualOrNull(s.getTag(), stack.getTag())) {
-                        available += (limit - actualCounts[slot]);
+                        available += (limit - s.getCount());
                     }
                 }
             }
