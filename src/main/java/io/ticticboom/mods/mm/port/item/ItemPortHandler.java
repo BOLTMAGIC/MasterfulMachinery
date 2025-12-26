@@ -248,15 +248,18 @@ public class ItemPortHandler extends ItemStackHandler {
         return remaining;
     }
 
-    // Thread-local toggle to prefer empty slots on insert (used by container quick-move)
-    private static final ThreadLocal<Boolean> THREAD_PREFER_EMPTY = ThreadLocal.withInitial(() -> false);
+    // Global toggle to prefer empty slots on insert (used by container quick-move)
+    // Note: This was previously a ThreadLocal<Boolean>, but using ThreadLocal for this
+    // control flow can lead to subtle state leaks if not always reset. A simple static
+    // flag is sufficient in the typical single-threaded inventory context.
+    private static volatile boolean THREAD_PREFER_EMPTY = false;
 
     public static void setThreadPreferEmpty(boolean v) {
-        THREAD_PREFER_EMPTY.set(v);
+        THREAD_PREFER_EMPTY = v;
     }
 
     private static boolean threadPreferEmpty() {
-        return THREAD_PREFER_EMPTY.get();
+        return THREAD_PREFER_EMPTY;
     }
 
     public int insert(Item item, int count) {
