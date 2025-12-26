@@ -263,7 +263,6 @@ public class ItemPortHandler extends ItemStackHandler {
     }
 
     public int insert(Item item, int count) {
-        if (count == Integer.MAX_VALUE) return 0;
         int remainingToInsert = count;
         if (threadPreferEmpty()) {
             // First pass: put into empty slots
