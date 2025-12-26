@@ -171,9 +171,14 @@ public class NbtMatchUtils {
         return t instanceof NumericTag;
     }
 
+    private static final double FLOAT_EPSILON = 1e-9;
+
     private static boolean numberTagEquals(Tag a, Tag b) {
         double va = ((NumericTag) a).getAsNumber().doubleValue();
         double vb = ((NumericTag) b).getAsNumber().doubleValue();
-        return Double.compare(va, vb) == 0;
+        if (Double.compare(va, vb) == 0) {
+            return true;
+        }
+        return Math.abs(va - vb) <= FLOAT_EPSILON;
     }
 }
