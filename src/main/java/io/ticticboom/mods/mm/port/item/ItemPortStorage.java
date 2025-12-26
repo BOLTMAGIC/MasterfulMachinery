@@ -162,7 +162,7 @@ public class ItemPortStorage implements IPortStorage {
             }
             return available;
         }
-        // fallback: use handler's probe
+        // Delegate to the ItemStack-based canInsert (NBT-aware)
         return handler.canInsert(new ItemStack(item, count), count);
     }
 
