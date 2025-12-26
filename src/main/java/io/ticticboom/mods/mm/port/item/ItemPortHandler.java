@@ -218,7 +218,7 @@ public class ItemPortHandler extends ItemStackHandler {
 
     // New helper to probe canInsert for ItemStack (considers tag as separate identity when appropriate)
     public int canInsert(ItemStack stack, int count) {
-        if (stack == null) return count;
+        if (stack.isEmpty()) return count;
         if (count == Integer.MAX_VALUE) {
             int available = 0;
             for (int slot = 0; slot < getSlots(); slot++) {
