@@ -53,7 +53,10 @@ public class ItemPortParser implements IPortParser {
             try {
                 var v = json.get("nbt_match").getAsString();
                 nbtStrong = "strong".equalsIgnoreCase(v);
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                io.ticticboom.mods.mm.Ref.LOG.warn("Failed to parse nbt_match value, defaulting to weak match: " + e.getMessage());
+                nbtStrong = false;
+            }
         }
 
         if (json.has("item")) {
