@@ -26,6 +26,24 @@ public class NbtMatchUtils {
         throw new RuntimeException("Unsupported NBT json format");
     }
 
+    /**
+     * Determines if a JsonPrimitive number should be treated as a floating-point value.
+     * This checks if the value has a fractional part or if it's explicitly a float/double type.
+     */
+    private static boolean isFloatingPoint(JsonPrimitive prim) {
+        if (!prim.isNumber()) {
+            return false;
+        }
+        // Check if the value has a fractional part
+        double doubleValue = prim.getAsDouble();
+        // If the value is too large to fit in a long, treat it as double
+        if (Math.abs(doubleValue) > Long.MAX_VALUE) {
+            return true;
+        }
+        // Check if the double value has a fractional component
+        return doubleValue != Math.floor(doubleValue);
+    }
+
     private static CompoundTag parseCompound(JsonObject obj) {
         CompoundTag ct = new CompoundTag();
         for (var entry : obj.entrySet()) {
@@ -42,7 +60,7 @@ public class NbtMatchUtils {
                     } else if (e.isJsonPrimitive()) {
                         var prim = e.getAsJsonPrimitive();
                         if (prim.isNumber()) {
-                            if (prim.getAsString().contains(".")) {
+                            if (isFloatingPoint(prim)) {
                                 lt.add(DoubleTag.valueOf(prim.getAsDouble()));
                             } else {
                                 lt.add(LongTag.valueOf(prim.getAsLong()));
@@ -60,7 +78,7 @@ public class NbtMatchUtils {
             } else if (v.isJsonPrimitive()) {
                 var prim = v.getAsJsonPrimitive();
                 if (prim.isNumber()) {
-                    if (prim.getAsString().contains(".")) {
+                    if (isFloatingPoint(prim)) {
                         ct.putDouble(key, prim.getAsDouble());
                     } else {
                         try {
