@@ -11,7 +11,7 @@ public class ConsumeRecipeIngredientEntryParser implements IRecipeIngredientEntr
     public IRecipeIngredientEntry parse(JsonObject json) {
         JsonElement ingredientEl = json.get("ingredient");
         if (ingredientEl == null || ingredientEl.isJsonNull()) {
-            throw new RuntimeException("Missing or null 'ingredient' field in consume input entry: " + json.toString());
+            throw new RuntimeException("Missing or null 'ingredient' field in consume input entry: " + json);
         }
         var ingredient = MMPortRegistry.parseIngredient(ingredientEl);
         double chance = 1.f;
