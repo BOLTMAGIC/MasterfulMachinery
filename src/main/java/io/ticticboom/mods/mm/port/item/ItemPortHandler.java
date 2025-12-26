@@ -1,6 +1,5 @@
 package io.ticticboom.mods.mm.port.item;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.mojang.serialization.Codec;
@@ -9,8 +8,6 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
@@ -110,7 +107,7 @@ public class ItemPortHandler extends ItemStackHandler {
     public void setStackInSlot(int slot, ItemStack stack) {
         super.setStackInSlot(slot, stack);
         // set actual count to whatever the provided stack has (may be clamped)
-        actualCounts[slot] = stack == null ? 0 : stack.getCount();
+        actualCounts[slot] = stack.getCount();
     }
 
     @Override
@@ -137,7 +134,7 @@ public class ItemPortHandler extends ItemStackHandler {
                 return copy;
             } else {
                 // place one
-                super.setStackInSlot(slot, new ItemStack(item, 1));
+                super.setStackInSlot(slot, stack.copy().split(1));
                 actualCounts[slot] = 1;
                 return stack.copy().split(1);
             }
@@ -158,7 +155,10 @@ public class ItemPortHandler extends ItemStackHandler {
                 actualCounts[slot] = existingCount + toAdd;
                 // update display stack count to min(item max, actual)
                 int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
-                super.setStackInSlot(slot, new ItemStack(item, display));
+                // preserve existing tag when updating count
+                ItemStack newDisplay = existing.copy();
+                newDisplay.setCount(display);
+                super.setStackInSlot(slot, newDisplay);
             }
             ItemStack res = stack.copy();
             res.shrink(toAdd);
@@ -174,11 +174,157 @@ public class ItemPortHandler extends ItemStackHandler {
         } else {
             actualCounts[slot] = toPlace;
             int display = Math.min(stack.getMaxStackSize(), toPlace);
-            super.setStackInSlot(slot, new ItemStack(item, display));
+            // preserve tag when placing
+            ItemStack placed = stack.copy();
+            placed.setCount(display);
+            super.setStackInSlot(slot, placed);
             ItemStack res = stack.copy();
             res.shrink(toPlace);
             return res;
         }
+    }
+
+    public int canInsert(Item item, int count) {
+        // If asking for a probe of available space, return total available space
+        if (count == Integer.MAX_VALUE) {
+            int available = 0;
+            for (int slot = 0; slot < getSlots(); slot++) {
+                ItemStack stack = getStackInSlot(slot);
+                int limit = getSlotLimit(slot);
+                if (stack.isEmpty()) {
+                    available += limit;
+                } else if (stack.getItem() == item) {
+                    available += (limit - stack.getCount());
+                }
+            }
+            return available;
+        }
+        // fallback: simulate insertion using ItemStack-based probe
+        ItemStack probe = new ItemStack(item, count);
+        int remaining = count;
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remaining <= 0) break;
+            ItemStack res = insertItem(slot, probe.copy(), true);
+            int moved = probe.getCount() - res.getCount();
+            remaining -= moved;
+            probe.setCount(res.getCount());
+        }
+        return remaining;
+    }
+
+    // New helper to probe canInsert for ItemStack (considers tag as separate identity when appropriate)
+    public int canInsert(ItemStack stack, int count) {
+        if (stack == null) return count;
+        if (count == Integer.MAX_VALUE) {
+            int available = 0;
+            for (int slot = 0; slot < getSlots(); slot++) {
+                ItemStack s = getStackInSlot(slot);
+                int limit = getSlotLimit(slot);
+                if (s.isEmpty()) {
+                    available += limit;
+                } else if (s.getItem() == stack.getItem()) {
+                    // if tags equal or one has no tag, we can merge; otherwise we treat as different and only empty slots work
+                    if (areTagsEqualOrNull(s.getTag(), stack.getTag())) {
+                        available += (limit - s.getCount());
+                    }
+                }
+            }
+            return available;
+        }
+        // fallback: try simulated insert using insertItem
+        ItemStack probe = stack.copy();
+        int remaining = count;
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remaining <= 0) break;
+            ItemStack res = insertItem(slot, probe.copy(), true);
+            int moved = probe.getCount() - res.getCount();
+            remaining -= moved;
+            probe.setCount(res.getCount());
+        }
+        return remaining;
+    }
+
+    public int insert(Item item, int count) {
+        if (count == Integer.MAX_VALUE) return 0;
+        int remainingToInsert = count;
+        // First pass: try to fill existing stacks of the same item
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack stack = getStackInSlot(slot);
+            if (stack.isEmpty()) continue;
+            if (stack.getItem() != item) continue;
+            int limit = getSlotLimit(slot);
+            int space = limit - stack.getCount();
+            if (space <= 0) continue;
+            int toMove = Math.min(space, remainingToInsert);
+            actualCounts[slot] = actualCounts[slot] + toMove;
+            int display = Math.min(stack.getMaxStackSize(), actualCounts[slot]);
+            ItemStack newDisplay = stack.copy();
+            newDisplay.setCount(display);
+            super.setStackInSlot(slot, newDisplay);
+            remainingToInsert -= toMove;
+        }
+
+        // Second pass: try to put into empty slots
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack stack = getStackInSlot(slot);
+            if (!stack.isEmpty()) continue;
+            int limit = getSlotLimit(slot);
+            // non-stackable items only allow 1 per slot
+            int maxPerSlot = Math.max(1, limit);
+            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            actualCounts[slot] = toPlace;
+            // place empty display stack with the item (no tag)
+            super.setStackInSlot(slot, new ItemStack(item, Math.min(item.getMaxStackSize(), toPlace)));
+            remainingToInsert -= toPlace;
+        }
+        return remainingToInsert;
+    }
+
+    // new insertion method that accepts ItemStack (with tag) and tries to preserve tag on placed stacks
+    public int insert(ItemStack stack, int count) {
+        if (stack == null) return count;
+        int remainingToInsert = count;
+        // First pass: try to fill existing stacks where tags are compatible
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack existing = getStackInSlot(slot);
+            if (existing.isEmpty()) continue;
+            if (existing.getItem() != stack.getItem()) continue;
+            if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) continue;
+            int limit = getSlotLimit(slot);
+            int space = limit - existing.getCount();
+            if (space <= 0) continue;
+            int toMove = Math.min(space, remainingToInsert);
+            actualCounts[slot] = actualCounts[slot] + toMove;
+            int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
+            ItemStack newDisplay = existing.copy();
+            newDisplay.setCount(display);
+            super.setStackInSlot(slot, newDisplay);
+            remainingToInsert -= toMove;
+        }
+        // Second pass: insert into empty slots, preserving tag
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack existing = getStackInSlot(slot);
+            if (!existing.isEmpty()) continue;
+            int limit = getSlotLimit(slot);
+            int maxPerSlot = Math.max(1, limit);
+            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            actualCounts[slot] = toPlace;
+            ItemStack placed = stack.copy();
+            placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
+            super.setStackInSlot(slot, placed);
+            remainingToInsert -= toPlace;
+        }
+        return remainingToInsert;
+    }
+
+    private boolean areTagsEqualOrNull(CompoundTag a, CompoundTag b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 
     @Override
@@ -186,10 +332,11 @@ public class ItemPortHandler extends ItemStackHandler {
         if (slot < 0 || slot >= getSlots() || amount <= 0) return ItemStack.EMPTY;
         if (actualCounts[slot] <= 0) return ItemStack.EMPTY;
         ItemStack display = getStackInSlot(slot);
-        Item item = display.getItem();
         int toExtract = Math.min(amount, actualCounts[slot]);
         if (simulate) {
-            return new ItemStack(item, toExtract);
+            ItemStack s = display.copy();
+            s.setCount(toExtract);
+            return s;
         }
         // perform removal
         actualCounts[slot] -= toExtract;
@@ -197,9 +344,13 @@ public class ItemPortHandler extends ItemStackHandler {
             super.setStackInSlot(slot, ItemStack.EMPTY);
         } else {
             int displayCount = Math.min(display.getMaxStackSize(), actualCounts[slot]);
-            super.setStackInSlot(slot, new ItemStack(item, displayCount));
+            ItemStack newDisplay = display.copy();
+            newDisplay.setCount(displayCount);
+            super.setStackInSlot(slot, newDisplay);
         }
-        return new ItemStack(item, toExtract);
+        ItemStack res = display.copy();
+        res.setCount(toExtract);
+        return res;
     }
 }
 

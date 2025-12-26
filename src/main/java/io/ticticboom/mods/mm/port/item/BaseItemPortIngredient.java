@@ -6,20 +6,44 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.util.NbtMatchUtils;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 public abstract class BaseItemPortIngredient implements IPortIngredient {
 
     protected final int count;
     protected final Predicate<ItemStack> filter;
+    protected final CompoundTag requiredNbt;
+    protected final boolean nbtStrong;
 
     public BaseItemPortIngredient(int count, Predicate<ItemStack> filter) {
+        this(count, filter, null, false);
+    }
+
+    public BaseItemPortIngredient(int count, Predicate<ItemStack> filter, CompoundTag requiredNbt, boolean nbtStrong) {
         this.count = count;
-        this.filter = filter;
+        // wrap the provided filter to include NBT-check if requiredNbt present
+        if (requiredNbt != null) {
+            this.filter = filter.and(s -> {
+                var tag = s.getTag();
+                if (tag == null) return false;
+                if (nbtStrong) {
+                    return tag.equals(requiredNbt);
+                } else {
+                    return NbtMatchUtils.matchesWeak(requiredNbt, tag);
+                }
+            });
+        } else {
+            this.filter = filter;
+        }
+        this.requiredNbt = requiredNbt != null ? requiredNbt.copy() : null;
+        this.nbtStrong = nbtStrong;
     }
 
     @Override
@@ -49,6 +73,11 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ITEM.toString());
         json.addProperty("amountToExtract", count);
+
+        if (requiredNbt != null) {
+            json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
+            json.add("nbt", NbtMatchUtils.toJson(requiredNbt));
+        }
 
         int remaining = count;
         for (ItemPortStorage storage : itemStorages) {

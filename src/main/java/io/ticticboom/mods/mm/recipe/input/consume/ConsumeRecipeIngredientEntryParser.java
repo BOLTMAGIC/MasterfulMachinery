@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.recipe.input.consume;
 
 import com.google.gson.JsonObject;
+import com.google.gson.JsonElement;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntryParser;
@@ -8,7 +9,11 @@ import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntryParser;
 public class ConsumeRecipeIngredientEntryParser implements IRecipeIngredientEntryParser {
     @Override
     public IRecipeIngredientEntry parse(JsonObject json) {
-        var ingredient = MMPortRegistry.parseIngredient(json.getAsJsonObject("ingredient"));
+        JsonElement ingredientEl = json.get("ingredient");
+        if (ingredientEl == null || ingredientEl.isJsonNull()) {
+            throw new RuntimeException("Missing or null 'ingredient' field in consume input entry: " + json.toString());
+        }
+        var ingredient = MMPortRegistry.parseIngredient(ingredientEl);
         double chance = 1.f;
         if (json.has("chance")) {
             chance = json.get("chance").getAsDouble();

@@ -21,6 +21,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
 import java.util.function.Predicate;
+import net.minecraft.nbt.CompoundTag;
 
 public class TagItemPortIngredient extends BaseItemPortIngredient {
 
@@ -28,9 +29,17 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
     private final ConditionalLazy<List<ItemStack>> stacks;
 
     public TagItemPortIngredient(ResourceLocation tagId, int count) {
-        super(count, createPredicate(tagId));
+        this(tagId, count, null, false);
+    }
+
+    public TagItemPortIngredient(ResourceLocation tagId, int count, CompoundTag requiredNbt, boolean nbtStrong) {
+        super(count, createPredicate(tagId), requiredNbt, nbtStrong);
         this.tag = ItemTags.create(tagId);
-        stacks = ConditionalLazy.create(() -> ForgeRegistries.ITEMS.tags().getTag(tag).stream().map(x -> new ItemStack(x, count)).toList(),
+        stacks = ConditionalLazy.create(() -> ForgeRegistries.ITEMS.tags().getTag(tag).stream().map(x -> {
+            var s = new ItemStack(x, count);
+            if (requiredNbt != null) s.setTag(requiredNbt.copy());
+            return s;
+        }).toList(),
                 () -> !ForgeRegistries.ITEMS.tags().getTag(tag).isEmpty(), List.of());
     }
 
@@ -58,6 +67,10 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
         json.addProperty("isTag", true);
         json.addProperty("WILL_NEVER_WORK", true);
+        if (requiredNbt != null) {
+            json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
+            json.add("nbt", io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(requiredNbt));
+        }
         return json;
     }
 }
