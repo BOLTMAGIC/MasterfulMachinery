@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
@@ -60,9 +61,59 @@ public class MMPortRegistry {
         return PORT_TYPES.values();
     }
 
+    // New flexible parser: accepts a JsonElement which can be a JsonObject with 'type' (existing),
+    // or a KubeJS Item object (with 'id' or 'item' and possibly 'nbt'), or a primitive string like 'mod:item{...}'.
+    public static IPortIngredient parseIngredient(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            throw new RuntimeException("Ingredient element is null");
+        }
+        if (element.isJsonObject()) {
+            JsonObject obj = element.getAsJsonObject();
+            // If it already has a 'type' field, use normal dispatch
+            if (obj.has("type")) {
+                var type = ParserUtils.parseId(obj, "type");
+                return PORT_TYPES.get(type).getParser().parseRecipeIngredient(obj);
+            }
+            // If it's a KubeJS Item object or similar, try to normalize to item-ingredient form
+            JsonObject normalized = new JsonObject();
+            normalized.addProperty("type", Ref.Ports.ITEM.toString());
+            if (obj.has("item")) {
+                normalized.add("item", obj.get("item"));
+            } else if (obj.has("id")) {
+                normalized.add("item", obj.get("id"));
+            }
+            if (obj.has("count")) normalized.add("count", obj.get("count"));
+            if (obj.has("nbt")) normalized.add("nbt", obj.get("nbt"));
+            if (obj.has("nbt_snbt")) normalized.add("nbt_snbt", obj.get("nbt_snbt"));
+            if (obj.has("nbt_match")) normalized.add("nbt_match", obj.get("nbt_match"));
+            return PORT_TYPES.get(Ref.Ports.ITEM).getParser().parseRecipeIngredient(normalized);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            // support strings like "mod:item" or "mod:item{...snbt...}"
+            String s = element.getAsString();
+            String itemId = s;
+            String snbt = null;
+            int idx = s.indexOf('{');
+            if (idx >= 0) {
+                itemId = s.substring(0, idx);
+                snbt = s.substring(idx);
+            }
+            JsonObject normalized = new JsonObject();
+            normalized.addProperty("type", Ref.Ports.ITEM.toString());
+            var itemEl = new com.google.gson.JsonPrimitive(itemId);
+            normalized.add("item", itemEl);
+            normalized.addProperty("count", 1);
+            if (snbt != null) {
+                normalized.addProperty("nbt_snbt", snbt);
+            }
+            return PORT_TYPES.get(Ref.Ports.ITEM).getParser().parseRecipeIngredient(normalized);
+        }
+        throw new RuntimeException("Unsupported ingredient format: " + element.toString());
+    }
+
+    // Backwards-compatible method used elsewhere in code
     public static IPortIngredient parseIngredient(JsonObject json) {
-        var type = ParserUtils.parseId(json, "type");
-        return PORT_TYPES.get(type).getParser().parseRecipeIngredient(json);
+        return parseIngredient((JsonElement) json);
     }
 
     public static List<PortModel> getPortModelsForControllerId(ResourceLocation id) {

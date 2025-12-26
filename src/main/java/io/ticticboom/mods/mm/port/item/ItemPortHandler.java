@@ -1,6 +1,5 @@
 package io.ticticboom.mods.mm.port.item;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.mojang.serialization.Codec;
@@ -9,8 +8,6 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.IntArrayTag;
-import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
@@ -110,7 +107,7 @@ public class ItemPortHandler extends ItemStackHandler {
     public void setStackInSlot(int slot, ItemStack stack) {
         super.setStackInSlot(slot, stack);
         // set actual count to whatever the provided stack has (may be clamped)
-        actualCounts[slot] = stack == null ? 0 : stack.getCount();
+        actualCounts[slot] = stack.getCount();
     }
 
     @Override
@@ -137,7 +134,7 @@ public class ItemPortHandler extends ItemStackHandler {
                 return copy;
             } else {
                 // place one
-                super.setStackInSlot(slot, new ItemStack(item, 1));
+                super.setStackInSlot(slot, stack.copy().split(1));
                 actualCounts[slot] = 1;
                 return stack.copy().split(1);
             }
@@ -147,6 +144,10 @@ public class ItemPortHandler extends ItemStackHandler {
         if (actualCounts[slot] > 0) {
             if (existing.getItem() != item) {
                 return stack; // different item
+            }
+            // respect NBT: only merge when tags are equal or both null
+            if (!areTagsEqualOrNull(existing.getTag(), stack.getTag())) {
+                return stack; // different tag -> do not merge here
             }
             int existingCount = actualCounts[slot];
             int space = limit - existingCount;
@@ -158,7 +159,10 @@ public class ItemPortHandler extends ItemStackHandler {
                 actualCounts[slot] = existingCount + toAdd;
                 // update display stack count to min(item max, actual)
                 int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
-                super.setStackInSlot(slot, new ItemStack(item, display));
+                // preserve existing tag when updating count
+                ItemStack newDisplay = existing.copy();
+                newDisplay.setCount(display);
+                super.setStackInSlot(slot, newDisplay);
             }
             ItemStack res = stack.copy();
             res.shrink(toAdd);
@@ -174,11 +178,185 @@ public class ItemPortHandler extends ItemStackHandler {
         } else {
             actualCounts[slot] = toPlace;
             int display = Math.min(stack.getMaxStackSize(), toPlace);
-            super.setStackInSlot(slot, new ItemStack(item, display));
+            // preserve tag when placing
+            ItemStack placed = stack.copy();
+            placed.setCount(display);
+            super.setStackInSlot(slot, placed);
             ItemStack res = stack.copy();
             res.shrink(toPlace);
             return res;
         }
+    }
+
+    public int canInsert(Item item, int count) {
+        // If asking for a probe of available space, return total available space
+        if (count == Integer.MAX_VALUE) {
+            int available = 0;
+            for (int slot = 0; slot < getSlots(); slot++) {
+                ItemStack stack = getStackInSlot(slot);
+                int limit = getSlotLimit(slot);
+                if (stack.isEmpty()) {
+                    available += limit;
+                } else if (stack.getItem() == item) {
+                    available += (limit - stack.getCount());
+                }
+            }
+            return available;
+        }
+        // fallback: simulate insertion using ItemStack-based probe
+        ItemStack probe = new ItemStack(item, count);
+        int remaining = count;
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remaining <= 0) break;
+            ItemStack res = insertItem(slot, probe.copy(), true);
+            int moved = probe.getCount() - res.getCount();
+            remaining -= moved;
+            probe.setCount(res.getCount());
+        }
+        return remaining;
+    }
+
+    // New helper to probe canInsert for ItemStack (considers tag as separate identity when appropriate)
+    public int canInsert(ItemStack stack, int count) {
+        if (stack.isEmpty()) return count;
+        if (count == Integer.MAX_VALUE) {
+            int available = 0;
+            for (int slot = 0; slot < getSlots(); slot++) {
+                ItemStack s = getStackInSlot(slot);
+                int limit = getSlotLimit(slot);
+                if (s.isEmpty()) {
+                    available += limit;
+                } else if (s.getItem() == stack.getItem()) {
+                    // if tags equal or one has no tag, we can merge; otherwise we treat as different and only empty slots work
+                    if (areTagsEqualOrNull(s.getTag(), stack.getTag())) {
+                        available += (limit - actualCounts[slot]);
+                    }
+                }
+            }
+            return available;
+        }
+        // fallback: try simulated insert using insertItem
+        ItemStack probe = stack.copy();
+        int remaining = count;
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remaining <= 0) break;
+            ItemStack res = insertItem(slot, probe.copy(), true);
+            int moved = probe.getCount() - res.getCount();
+            remaining -= moved;
+            probe.setCount(res.getCount());
+        }
+        return remaining;
+    }
+
+    // Global toggle to prefer empty slots on insert (used by container quick-move)
+    // Note: This was previously a ThreadLocal<Boolean>, but using ThreadLocal for this
+    // control flow can lead to subtle state leaks if not always reset. A simple static
+    // flag is sufficient in the typical single-threaded inventory context.
+    private static volatile boolean THREAD_PREFER_EMPTY = false;
+
+    public static void setThreadPreferEmpty(boolean v) {
+        THREAD_PREFER_EMPTY = v;
+    }
+
+    private static boolean threadPreferEmpty() {
+        return THREAD_PREFER_EMPTY;
+    }
+
+    public int insert(Item item, int count) {
+        return insertInternal(new ItemStack(item), count, false);
+    }
+
+    /**
+     * Insertion method that accepts ItemStack (with NBT tag) and preserves the tag on placed stacks.
+     * @param stack The item stack to insert (including NBT data)
+     * @param count The number of items to insert
+     * @return The number of items that could not be inserted
+     */
+    public int insert(ItemStack stack, int count) {
+        if (stack.isEmpty()) return count;
+        return insertInternal(stack, count, true);
+    }
+
+    /**
+     * Internal helper method that handles the two-pass insertion logic.
+     * @param template The item stack template to insert (contains item and optionally NBT)
+     * @param count The number of items to insert
+     * @param checkNbt Whether to check NBT compatibility when merging stacks
+     * @return The number of items that could not be inserted
+     */
+    private int insertInternal(ItemStack template, int count, boolean checkNbt) {
+        int remainingToInsert = count;
+        if (threadPreferEmpty()) {
+            remainingToInsert = insertIntoEmptySlots(template, remainingToInsert, checkNbt);
+            remainingToInsert = mergeIntoExistingStacks(template, remainingToInsert, checkNbt);
+        } else {
+            remainingToInsert = mergeIntoExistingStacks(template, remainingToInsert, checkNbt);
+            remainingToInsert = insertIntoEmptySlots(template, remainingToInsert, checkNbt);
+        }
+        return remainingToInsert;
+    }
+
+    /**
+     * Helper method to insert items into empty slots.
+     * @param template The item stack template to insert
+     * @param remainingToInsert The number of items remaining to insert
+     * @param checkNbt When true, copies the template stack preserving NBT; when false, creates a new ItemStack with only the item type
+     * @return The number of items that could not be inserted
+     */
+    private int insertIntoEmptySlots(ItemStack template, int remainingToInsert, boolean checkNbt) {
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack existing = getStackInSlot(slot);
+            if (!existing.isEmpty()) continue;
+            int limit = getSlotLimit(slot);
+            int maxPerSlot = Math.max(1, limit);
+            int toPlace = Math.min(maxPerSlot, remainingToInsert);
+            actualCounts[slot] = toPlace;
+            ItemStack placed;
+            if (checkNbt) {
+                placed = template.copy();
+                placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
+            } else {
+                placed = new ItemStack(template.getItem(), Math.min(template.getItem().getMaxStackSize(), toPlace));
+            }
+            super.setStackInSlot(slot, placed);
+            remainingToInsert -= toPlace;
+        }
+        return remainingToInsert;
+    }
+
+    /**
+     * Helper method to merge items into existing compatible stacks.
+     * @param template The item stack template to insert
+     * @param remainingToInsert The number of items remaining to insert
+     * @param checkNbt Whether to check NBT compatibility when merging stacks (true) or only match by item type (false)
+     * @return The number of items that could not be inserted
+     */
+    private int mergeIntoExistingStacks(ItemStack template, int remainingToInsert, boolean checkNbt) {
+        for (int slot = 0; slot < getSlots(); slot++) {
+            if (remainingToInsert <= 0) break;
+            ItemStack existing = getStackInSlot(slot);
+            if (existing.isEmpty()) continue;
+            if (existing.getItem() != template.getItem()) continue;
+            if (checkNbt && !areTagsEqualOrNull(existing.getTag(), template.getTag())) continue;
+            int limit = getSlotLimit(slot);
+            int space = limit - existing.getCount();
+            if (space <= 0) continue;
+            int toMove = Math.min(space, remainingToInsert);
+            actualCounts[slot] = actualCounts[slot] + toMove;
+            int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
+            ItemStack newDisplay = existing.copy();
+            newDisplay.setCount(display);
+            super.setStackInSlot(slot, newDisplay);
+            remainingToInsert -= toMove;
+        }
+        return remainingToInsert;
+    }
+
+    private boolean areTagsEqualOrNull(CompoundTag a, CompoundTag b) {
+        if (a == null && b == null) return true;
+        if (a == null || b == null) return false;
+        return a.equals(b);
     }
 
     @Override
@@ -186,10 +364,11 @@ public class ItemPortHandler extends ItemStackHandler {
         if (slot < 0 || slot >= getSlots() || amount <= 0) return ItemStack.EMPTY;
         if (actualCounts[slot] <= 0) return ItemStack.EMPTY;
         ItemStack display = getStackInSlot(slot);
-        Item item = display.getItem();
         int toExtract = Math.min(amount, actualCounts[slot]);
         if (simulate) {
-            return new ItemStack(item, toExtract);
+            ItemStack s = display.copy();
+            s.setCount(toExtract);
+            return s;
         }
         // perform removal
         actualCounts[slot] -= toExtract;
@@ -197,9 +376,13 @@ public class ItemPortHandler extends ItemStackHandler {
             super.setStackInSlot(slot, ItemStack.EMPTY);
         } else {
             int displayCount = Math.min(display.getMaxStackSize(), actualCounts[slot]);
-            super.setStackInSlot(slot, new ItemStack(item, displayCount));
+            ItemStack newDisplay = display.copy();
+            newDisplay.setCount(displayCount);
+            super.setStackInSlot(slot, newDisplay);
         }
-        return new ItemStack(item, toExtract);
+        ItemStack res = display.copy();
+        res.setCount(toExtract);
+        return res;
     }
 }
 

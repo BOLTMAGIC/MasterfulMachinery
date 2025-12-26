@@ -62,6 +62,12 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         SlotGridEntry slot = grid.next();
         var rSlot = builder.addSlot(RecipeIngredientRole.INPUT, slot.getInnerX(), slot.getInnerY());
         slot.setUsed();
+        // If chance is zero (or negative), mark the slot so JEI can render a small 'x' badge
+        if (chance <= 0.0) {
+            slot.setBadgeNotUsed();
+            // Add a translated tooltip line to indicate the slot/item won't be used
+            rSlot.addTooltipCallback((v, list) -> list.add(Component.translatable("jei.mm.not_used").withStyle(ChatFormatting.DARK_AQUA)));
+        }
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
         var fmtChance = String.format("%.2f", chance * 100) + "% Chance of Consumption";
         rSlot.addTooltipCallback((v, list) -> {

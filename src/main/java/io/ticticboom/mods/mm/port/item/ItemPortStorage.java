@@ -162,47 +162,20 @@ public class ItemPortStorage implements IPortStorage {
             }
             return available;
         }
-        return handlerInsert(item, count, true);
+        // Delegate to the ItemStack-based canInsert (NBT-aware)
+        return handler.canInsert(new ItemStack(item, count), count);
+    }
+
+    public int canInsert(ItemStack stack, int count) {
+        return handler.canInsert(stack, count);
     }
 
     public int insert(Item item, int count) {
-        return handlerInsert(item, count, false);
+        return handler.insert(item, count);
     }
 
-    private int handlerInsert(Item item, int count, boolean simulate) {
-        int remainingToInsert = count;
-        // First pass: try to fill existing stacks of the same item
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (stack.isEmpty()) continue;
-            if (stack.getItem() != item) continue;
-            int limit = handler.getSlotLimit(slot);
-            int space = limit - stack.getCount();
-            if (space <= 0) continue;
-            int toMove = Math.min(space, remainingToInsert);
-            if (!simulate) {
-                stack.grow(toMove);
-                handler.setStackInSlot(slot, stack);
-            }
-            remainingToInsert -= toMove;
-        }
-
-        // Second pass: try to put into empty slots
-        for (int slot = 0; slot < handler.getSlots(); slot++) {
-            if (remainingToInsert <= 0) break;
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (!stack.isEmpty()) continue;
-            int limit = handler.getSlotLimit(slot);
-            // non-stackable items only allow 1 per slot
-            int maxPerSlot = Math.max(1, limit);
-            int toPlace = Math.min(maxPerSlot, remainingToInsert);
-            if (!simulate) {
-                handler.setStackInSlot(slot, new ItemStack(item, toPlace));
-            }
-            remainingToInsert -= toPlace;
-        }
-        return remainingToInsert;
+    public int insert(ItemStack stack, int count) {
+        return handler.insert(stack, count);
     }
 
     // Priority accessors

@@ -116,6 +116,14 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             if (inputSlot.used()) {
                 gfx.blit(Ref.UiTextures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18);
+                // draw small 'x' badge bottom-right if slot is marked not used
+                if (inputSlot.hasBadgeNotUsed()) {
+                    String badge = "x";
+                    int badgeX = inputSlot.x + 12;
+                    int badgeY = inputSlot.y + 12;
+                    // draw with shadow for visibility using GuiGraphics helper
+                    gfx.drawString(Minecraft.getInstance().font, badge, badgeX, badgeY, 0xFF5555, true);
+                }
             }
         }
     }

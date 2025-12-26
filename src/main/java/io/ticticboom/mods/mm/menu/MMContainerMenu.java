@@ -41,19 +41,30 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
             int hbStart = capSize + pinvSize;
             int totalSize = capSize + pinvSize + phbSize;
 
-            if (i >= capSize && i < totalSize) {
-                if (!this.moveItemStackTo(rawStack, 0, capSize, false)) {
-                    if (i < hbStart) {
-                        if (!this.moveItemStackTo(rawStack, hbStart, totalSize, false)) {
+            try {
+                // when quick-moving into storage, prefer empty slots to avoid stacking onto existing
+                io.ticticboom.mods.mm.port.item.ItemPortHandler.setThreadPreferEmpty(true);
+                if (i >= capSize && i < totalSize) {
+                    // moving from player inv to storage: prefer empty slots in storage range [0, capSize)
+                    if (!tryMoveToEmptySlots(rawStack, 0, capSize)) {
+                        if (i < hbStart) {
+                            if (!this.moveItemStackTo(rawStack, hbStart, totalSize, false)) {
+                                return ItemStack.EMPTY;
+                            }
+                        } else if (!this.moveItemStackTo(rawStack, capSize, hbStart, false)) {
                             return ItemStack.EMPTY;
                         }
-                    } else if (!this.moveItemStackTo(rawStack, capSize, hbStart, false)) {
+                    }
+                } else {
+                    // moving from storage to player/hotbar or other: use default
+                    if (!this.moveItemStackTo(rawStack, capSize, totalSize, false)) {
                         return ItemStack.EMPTY;
                     }
                 }
-            } else if (!this.moveItemStackTo(rawStack, capSize, totalSize, false)) {
-                return ItemStack.EMPTY;
+            } finally {
+                io.ticticboom.mods.mm.port.item.ItemPortHandler.setThreadPreferEmpty(false);
             }
+
             if (rawStack.isEmpty()) {
                 quickMovedSlot.set(ItemStack.EMPTY);
             } else {
@@ -71,5 +82,12 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) {
         return stillValid(this.access, player, block);
+    }
+
+    private boolean tryMoveToEmptySlots(ItemStack source, int start, int end) {
+        // Delegate to the standard container transfer logic to ensure proper notifications.
+        // The calling code sets ItemPortHandler.setThreadPreferEmpty(true) to influence
+        // how moveItemStackTo distributes items (e.g. preferring empty slots).
+        return this.moveItemStackTo(source, start, end, false);
     }
 }

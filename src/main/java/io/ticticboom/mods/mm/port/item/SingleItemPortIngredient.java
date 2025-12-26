@@ -21,6 +21,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.Comparator;
 import java.util.List;
 import java.util.function.Predicate;
+import net.minecraft.nbt.CompoundTag;
 
 public class SingleItemPortIngredient extends BaseItemPortIngredient {
 
@@ -28,12 +29,19 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     private final ItemStack stack;
 
     public SingleItemPortIngredient(ResourceLocation itemId, int count) {
-        super(count, createPredicate(itemId));
+        this(itemId, count, null, false);
+    }
+
+    public SingleItemPortIngredient(ResourceLocation itemId, int count, CompoundTag requiredNbt, boolean nbtStrong) {
+        super(count, createPredicate(itemId), requiredNbt, nbtStrong);
         item = ForgeRegistries.ITEMS.getValue(itemId);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", itemId));
         }
         stack = new ItemStack(item, count);
+        if (requiredNbt != null) {
+            stack.setTag(requiredNbt.copy());
+        }
     }
 
     private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
@@ -52,7 +60,13 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
                 .thenComparing(s -> s.getStorageUid().toString()));
         int remainingToInsert = count;
         for (ItemPortStorage itemStorage : itemStorages) {
-            remainingToInsert = itemStorage.canInsert(item, remainingToInsert);
+            if (this.requiredNbt != null) {
+                ItemStack probe = new ItemStack(item, 1);
+                probe.setTag(this.requiredNbt.copy());
+                remainingToInsert = itemStorage.canInsert(probe, remainingToInsert);
+            } else {
+                remainingToInsert = itemStorage.canInsert(item, remainingToInsert);
+            }
         }
         return remainingToInsert <= 0;
     }
@@ -68,12 +82,17 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
 
         int remainingToInsert = count;
         for (var entry : grouped.entrySet()) {
-            int prio = entry.getKey();
             var group = entry.getValue();
             // compute total available in this priority group
             int totalAvailable = 0;
             for (ItemPortStorage s : group) {
-                totalAvailable += s.canInsert(item, Integer.MAX_VALUE);
+                if (this.requiredNbt != null) {
+                    ItemStack probe = new ItemStack(item, 1);
+                    probe.setTag(this.requiredNbt.copy());
+                    totalAvailable += s.canInsert(probe, Integer.MAX_VALUE);
+                } else {
+                    totalAvailable += s.canInsert(item, Integer.MAX_VALUE);
+                }
             }
             if (totalAvailable <= 0) continue;
 
@@ -88,8 +107,13 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
             for (ItemPortStorage s : group) {
                 if (remainingToInsert <= 0) break;
                 int before = remainingToInsert;
-                int availableProbe = s.canInsert(item, Integer.MAX_VALUE);
-                remainingToInsert = s.insert(item, remainingToInsert);
+                if (this.requiredNbt != null) {
+                    ItemStack outStack = new ItemStack(item, remainingToInsert);
+                    outStack.setTag(this.requiredNbt.copy());
+                    remainingToInsert = s.insert(outStack, remainingToInsert);
+                } else {
+                    remainingToInsert = s.insert(item, remainingToInsert);
+                }
                 int moved = before - remainingToInsert;
             }
 
@@ -113,6 +137,11 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ITEM.toString());
         json.addProperty("amountToInsert", count);
+
+        if (requiredNbt != null) {
+            json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
+            json.add("nbt", io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(requiredNbt));
+        }
 
         int remainingToInsert = count;
         for (ItemPortStorage storage : itemStorages) {
