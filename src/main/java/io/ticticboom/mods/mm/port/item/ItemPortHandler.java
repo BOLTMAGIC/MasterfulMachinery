@@ -295,7 +295,7 @@ public class ItemPortHandler extends ItemStackHandler {
      * Helper method to insert items into empty slots.
      * @param template The item stack template to insert
      * @param remainingToInsert The number of items remaining to insert
-     * @param checkNbt Whether to preserve NBT tags (true) or ignore them (false)
+     * @param checkNbt Whether to preserve NBT tags from the template (true) or create a new stack without NBT (false)
      * @return The number of items that could not be inserted
      */
     private int insertIntoEmptySlots(ItemStack template, int remainingToInsert, boolean checkNbt) {
@@ -324,7 +324,7 @@ public class ItemPortHandler extends ItemStackHandler {
      * Helper method to merge items into existing compatible stacks.
      * @param template The item stack template to insert
      * @param remainingToInsert The number of items remaining to insert
-     * @param checkNbt Whether to check NBT compatibility (true) or ignore NBT (false)
+     * @param checkNbt Whether to check NBT compatibility when merging stacks (true) or only match by item type (false)
      * @return The number of items that could not be inserted
      */
     private int mergeIntoExistingStacks(ItemStack template, int remainingToInsert, boolean checkNbt) {
