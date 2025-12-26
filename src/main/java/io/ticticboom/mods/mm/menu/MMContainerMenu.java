@@ -85,9 +85,21 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
     }
 
     private boolean tryMoveToEmptySlots(ItemStack source, int start, int end) {
-        // Delegate to the standard container transfer logic to ensure proper notifications.
-        // The calling code sets ItemPortHandler.setThreadPreferEmpty(true) to influence
-        // how moveItemStackTo distributes items (e.g. preferring empty slots).
-        return this.moveItemStackTo(source, start, end, false);
+        boolean movedAny = false;
+        for (int idx = start; idx < end && !source.isEmpty(); idx++) {
+            Slot dest = this.slots.get(idx);
+            if (dest == null) continue;
+            ItemStack destStack = dest.getItem();
+            if (!destStack.isEmpty()) continue; // skip non-empty slots
+            // determine how many we can place
+            int limit = dest.getMaxStackSize();
+            int toMove = Math.min(source.getCount(), limit);
+            ItemStack moveStack = source.copy();
+            moveStack.setCount(toMove);
+            dest.set(moveStack);
+            source.shrink(toMove);
+            movedAny = true;
+        }
+        return movedAny;
     }
 }
