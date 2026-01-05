@@ -104,7 +104,6 @@ public class BlockstateStructurePieceModifier extends StructurePieceModifier {
         for (StructureBlockstateProperty property : properties) {
             jsonProps.add(property.key(), property.value());
         }
-        Ref.LOG.info(encoded.toString());
         var result = JsonOps.INSTANCE.withDecoder(BlockState.CODEC).apply(encoded).getOrThrow(false, RuntimeException::new).getFirst();
         return result;
     }
