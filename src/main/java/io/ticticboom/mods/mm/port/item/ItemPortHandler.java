@@ -134,9 +134,13 @@ public class ItemPortHandler extends ItemStackHandler {
                 return copy;
             } else {
                 // place one
-                super.setStackInSlot(slot, stack.copy().split(1));
+                // copy once, split off the single placed item and keep the remainder to return
+                ItemStack working = stack.copy();
+                ItemStack placed = working.split(1); // placed has count 1, working is remainder
+                super.setStackInSlot(slot, placed);
                 actualCounts[slot] = 1;
-                return stack.copy().split(1);
+                if (working.isEmpty()) return ItemStack.EMPTY;
+                return working;
             }
         }
 

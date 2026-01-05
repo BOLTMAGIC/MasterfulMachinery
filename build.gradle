@@ -276,13 +276,13 @@ dependencies {
 //    runtimeOnly(fg.deobf("curse.maven:emi-580555:6420945"))
 
     //JADE (WAILA)
-    runtimeOnly fg.deobf("curse.maven:jade-324717:${jade_id}")
+    runtimeOnly(fg.deobf("curse.maven:jade-324717:${jade_id}"))
 
     // MEKANISM
-    runtimeOnly fg.deobf("curse.maven:mekanism-268560:5125665")
+    runtimeOnly(fg.deobf("curse.maven:mekanism-268560:5125665"))
 
     //PNEUMATICCRAFT (PNCR)
-    runtimeOnly fg.deobf("curse.maven:pneumaticcraft-281849:5279325")
+    runtimeOnly(fg.deobf("curse.maven:pneumaticcraft-281849:5279325"))
 
     // KUBEJS
     runtimeOnly fg.deobf("dev.latvian.mods:kubejs-forge:${kubejs_version}")
