@@ -13,6 +13,10 @@ public class ItemPortContainer implements Container {
         this.handler = handler;
     }
 
+    public ItemPortHandler getHandler() {
+        return this.handler;
+    }
+
     @Override
     public int getContainerSize() {
         return handler.getSlots();
@@ -21,7 +25,7 @@ public class ItemPortContainer implements Container {
     @Override
     public boolean isEmpty() {
         for (int i = 0; i < handler.getSlots(); i++) {
-            if (!handler.getStackInSlot(i).isEmpty()) {
+            if (handler.getActualCount(i) > 0) {
                 return false;
             }
         }
@@ -30,12 +34,13 @@ public class ItemPortContainer implements Container {
 
     @Override
     public ItemStack getItem(int i) {
-       return handler.getStackInSlot(i);
+       return handler.getActualDisplayStack(i);
     }
 
     @Override
     public ItemStack removeItem(int i, int i1) {
-        var res = ContainerHelper.removeItem(handler.getStacks(), i, i1);
+        // Use handler.extractItem to remove from the logical storage (respects actualCounts)
+        ItemStack res = handler.extractItem(i, i1, false);
         if (!res.isEmpty()) {
             this.setChanged();
         }
@@ -44,22 +49,23 @@ public class ItemPortContainer implements Container {
 
     @Override
     public ItemStack removeItemNoUpdate(int i) {
-        ItemStack stack = handler.getStacks().get(i);
-        if (stack.isEmpty()) {
-            return ItemStack.EMPTY;
-        }
-        handler.getStacks().set(i, ItemStack.EMPTY);
-        return stack;
+        // Remove without notifying change: extract the full actual count and return the stack
+        int actual = handler.getActualCount(i);
+        if (actual <= 0) return ItemStack.EMPTY;
+        ItemStack display = handler.getStackInSlot(i);
+        ItemStack res = display.copy();
+        res.setCount(actual);
+        // clear internal storage without calling change notifier
+        handler.setActualCountAndDisplay(i, 0, ItemStack.EMPTY);
+        return res;
     }
 
     @Override
     public void setItem(int i, ItemStack itemStack) {
-        handler.setStackInSlot(i, itemStack);
+        // Use handler API to set logical count and display appropriately
         int limit = handler.getSlotLimit(i);
-        if (!itemStack.isEmpty() && itemStack.getCount() > limit) {
-            itemStack.setCount(limit);
-        }
-
+        int toSet = Math.min(limit, itemStack.isEmpty() ? 0 : itemStack.getCount());
+        handler.setActualCountAndDisplay(i, toSet, itemStack);
         this.setChanged();
     }
 

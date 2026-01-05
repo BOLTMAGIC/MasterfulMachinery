@@ -85,10 +85,11 @@ public class ItemPortAutoPushAddon extends AbstractPortAutoPushFeature<ItemHandl
 
         // For each slot in the source handler, attempt to push as much as possible
         for (int slot = 0; slot < source.getHandler().getSlots(); slot++) {
-            var stack = source.getHandler().getStackInSlot(slot);
-            if (stack.isEmpty()) continue;
-            int amountAvailable = stack.getCount();
-            ItemPortRouting.distributeFillThrough(stack.getItem(), amountAvailable, source, candidates);
+            var displayStack = source.getHandler().getStackInSlot(slot);
+            if (displayStack.isEmpty()) continue;
+            int amountAvailable = source.getHandler().getActualCount(slot);
+            if (amountAvailable <= 0) continue;
+            ItemPortRouting.distributeFillThrough(displayStack.getItem(), amountAvailable, source, candidates);
         }
     }
 }

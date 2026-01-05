@@ -11,6 +11,8 @@ import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -39,7 +41,7 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
         super(groupHolder.getBe().get(), pos, state);
         this.groupHolder = groupHolder;
         this.model = model;
-        storage = (ItemPortStorage) model.config().createPortStorage(this::setChanged);
+        storage = (ItemPortStorage) model.config().createPortStorage(this::notifyMenuChanged);
         this.input = input;
         var shouldAutoPush = !input && ((ItemPortStorageModel) storage.getStorageModel()).autoPush().get();
         if (shouldAutoPush) {
@@ -88,5 +90,31 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
 
     public void neighborsChanged() {
         autoPushAddon.ifPresent(ItemPortAutoPushAddon::tryAddNeighboringHandlers);
+    }
+
+    /**
+     * Called by child storages/handlers when their contents change.
+     * Notifies the chunk (setChanged) and also broadcasts container changes to any player
+     * that has this block entity's menu open so their GUI updates immediately.
+     */
+    public void notifyMenuChanged() {
+        // mark dirty and send block update
+        setChanged();
+        if (level == null || level.isClientSide) return;
+        if (level instanceof ServerLevel sl) {
+            for (ServerPlayer sp : sl.players()) {
+                try {
+                    AbstractContainerMenu menu = sp.containerMenu;
+                    if (menu instanceof io.ticticboom.mods.mm.port.item.register.ItemPortMenu ipm) {
+                        // compare block entity
+                        Object be = ipm.getBlockEntity();
+                        if (be == this) {
+                            ipm.broadcastChanges();
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 }

@@ -56,11 +56,56 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
                         }
                     }
                 } else {
-                    // moving from storage to player/hotbar or other: use default
-                    if (!this.moveItemStackTo(rawStack, capSize, totalSize, false)) {
-                        return ItemStack.EMPTY;
+                    // moving from storage to player/hotbar or other: use handler-first approach to avoid dupes
+                    try {
+                        // attempt to access underlying container for the source slot
+                        Object contObj = null;
+                        try {
+                            java.lang.reflect.Field contField = quickMovedSlot.getClass().getDeclaredField("container");
+                            contField.setAccessible(true);
+                            contObj = contField.get(quickMovedSlot);
+                        } catch (NoSuchFieldException nsf) {
+                            contObj = quickMovedSlot.container;
+                        }
+
+                        if (contObj instanceof io.ticticboom.mods.mm.port.item.ItemPortContainer ipc) {
+                            var handler = ipc.getHandler();
+                            int handlerIndex = i; // storage slots are added first in setup
+
+                            // Simulate extracting the full available amount
+                            int available = handler.getActualCount(handlerIndex);
+                            if (available <= 0) return ItemStack.EMPTY;
+                            ItemStack simulated = handler.extractItem(handlerIndex, available, true);
+                            if (simulated.isEmpty()) return ItemStack.EMPTY;
+
+                            // Try to move the simulated stack into player inventory
+                            ItemStack moving = simulated.copy();
+                            int before = moving.getCount();
+                            boolean movedAny = this.moveItemStackTo(moving, capSize, totalSize, false);
+                            int after = moving.getCount();
+                            int moved = before - after;
+                            if (moved <= 0) {
+                                return ItemStack.EMPTY;
+                            }
+
+                            // Now perform the actual extraction from the handler of the moved amount
+                            handler.extractItem(handlerIndex, moved, false);
+                            // Update source slot display
+                            ItemStack newDisp = handler.getActualDisplayStack(handlerIndex);
+                            quickMovedSlot.set(newDisp);
+                        } else {
+                            // fallback: use default behavior
+                            if (!this.moveItemStackTo(rawStack, capSize, totalSize, false)) {
+                                return ItemStack.EMPTY;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // fallback: default behavior
+                        if (!this.moveItemStackTo(rawStack, capSize, totalSize, false)) {
+                            return ItemStack.EMPTY;
+                        }
                     }
-                }
+                 }
             } finally {
                 io.ticticboom.mods.mm.port.item.ItemPortHandler.setThreadPreferEmpty(false);
             }
@@ -93,6 +138,22 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
             if (!destStack.isEmpty()) continue; // skip non-empty slots
             // determine how many we can place
             int limit = dest.getMaxStackSize();
+            // If the destination slot's container is our ItemPortContainer, use its handler's slot limit.
+            try {
+                java.lang.reflect.Field contField = dest.getClass().getDeclaredField("container");
+                contField.setAccessible(true);
+                Object contObj = contField.get(dest);
+                if (contObj instanceof io.ticticboom.mods.mm.port.item.ItemPortContainer ipc) {
+                    limit = ipc.getHandler().getSlotLimit(idx - start);
+                }
+            } catch (NoSuchFieldException ignored) {
+                // Some Slot implementations expose `container` as a public field; fallback to checking known container types
+                if (dest.container instanceof io.ticticboom.mods.mm.port.item.ItemPortContainer ipc) {
+                    limit = ipc.getHandler().getSlotLimit(idx - start);
+                }
+            } catch (Exception ignored) {
+                // general fallback -> keep default
+            }
             int toMove = Math.min(source.getCount(), limit);
             ItemStack moveStack = source.copy();
             moveStack.setCount(toMove);

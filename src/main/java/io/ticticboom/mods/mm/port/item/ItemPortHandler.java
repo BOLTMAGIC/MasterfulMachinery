@@ -105,9 +105,10 @@ public class ItemPortHandler extends ItemStackHandler {
 
     @Override
     public void setStackInSlot(int slot, ItemStack stack) {
-        super.setStackInSlot(slot, stack);
         // set actual count to whatever the provided stack has (may be clamped)
-        actualCounts[slot] = stack.getCount();
+        actualCounts[slot] = (stack == null) ? 0 : stack.getCount();
+        // call super after updating actualCounts so onContentsChanged() sees the new actual state
+        super.setStackInSlot(slot, stack);
     }
 
     @Override
@@ -162,7 +163,8 @@ public class ItemPortHandler extends ItemStackHandler {
             if (!simulate) {
                 actualCounts[slot] = existingCount + toAdd;
                 // update display stack count to min(item max, actual)
-                int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
+                // display should reflect actual stored amount (up to HARD_MAX) so clients see aggregated counts
+                int display = Math.min(HARD_MAX, actualCounts[slot]);
                 // preserve existing tag when updating count
                 ItemStack newDisplay = existing.copy();
                 newDisplay.setCount(display);
@@ -181,7 +183,7 @@ public class ItemPortHandler extends ItemStackHandler {
             return copy;
         } else {
             actualCounts[slot] = toPlace;
-            int display = Math.min(stack.getMaxStackSize(), toPlace);
+            int display = Math.min(HARD_MAX, toPlace);
             // preserve tag when placing
             ItemStack placed = stack.copy();
             placed.setCount(display);
@@ -316,9 +318,9 @@ public class ItemPortHandler extends ItemStackHandler {
             ItemStack placed;
             if (checkNbt) {
                 placed = template.copy();
-                placed.setCount(Math.min(placed.getMaxStackSize(), toPlace));
+                placed.setCount(Math.min(HARD_MAX, toPlace));
             } else {
-                placed = new ItemStack(template.getItem(), Math.min(template.getItem().getMaxStackSize(), toPlace));
+                placed = new ItemStack(template.getItem(), Math.min(HARD_MAX, toPlace));
             }
             super.setStackInSlot(slot, placed);
             remainingToInsert -= toPlace;
@@ -345,7 +347,7 @@ public class ItemPortHandler extends ItemStackHandler {
             if (space <= 0) continue;
             int toMove = Math.min(space, remainingToInsert);
             actualCounts[slot] = actualCounts[slot] + toMove;
-            int display = Math.min(existing.getMaxStackSize(), actualCounts[slot]);
+            int display = Math.min(HARD_MAX, actualCounts[slot]);
             ItemStack newDisplay = existing.copy();
             newDisplay.setCount(display);
             super.setStackInSlot(slot, newDisplay);
@@ -376,7 +378,7 @@ public class ItemPortHandler extends ItemStackHandler {
         if (actualCounts[slot] <= 0) {
             super.setStackInSlot(slot, ItemStack.EMPTY);
         } else {
-            int displayCount = Math.min(display.getMaxStackSize(), actualCounts[slot]);
+            int displayCount = Math.min(HARD_MAX, actualCounts[slot]);
             ItemStack newDisplay = display.copy();
             newDisplay.setCount(displayCount);
             super.setStackInSlot(slot, newDisplay);
@@ -385,5 +387,56 @@ public class ItemPortHandler extends ItemStackHandler {
         res.setCount(toExtract);
         return res;
     }
-}
 
+    /**
+     * Returns the actual number of items stored in the logical slot (may exceed the displayed stack size).
+     */
+    public int getActualCount(int slot) {
+        if (slot < 0 || slot >= actualCounts.length) return 0;
+        return actualCounts[slot];
+    }
+
+    /**
+     * Returns an ItemStack suitable for display/use in the GUI where the count reflects the actual stored amount.
+     * If the slot is empty, returns ItemStack.EMPTY.
+     */
+    public ItemStack getActualDisplayStack(int slot) {
+        ItemStack disp = getStackInSlot(slot);
+        if (disp == null || disp.isEmpty()) return ItemStack.EMPTY;
+        ItemStack copy = disp.copy();
+        copy.setCount(actualCounts[slot]);
+        return copy;
+    }
+
+    /**
+     * Clears all stacks and actual counts.
+     */
+    public void clearAll() {
+        for (int i = 0; i < stacks.size(); i++) {
+            stacks.set(i, ItemStack.EMPTY);
+            actualCounts[i] = 0;
+        }
+        changed.call();
+    }
+
+    /**
+     * Set the logical (actual) count for a slot and update the display stack accordingly.
+     * If template is non-null, its item/tag will be used for the display stack; otherwise the existing display stack is used.
+     */
+    public void setActualCountAndDisplay(int slot, int actual, ItemStack template) {
+        if (slot < 0 || slot >= getSlots()) return;
+        actualCounts[slot] = Math.max(0, Math.min(actual, HARD_MAX));
+        if (actualCounts[slot] <= 0) {
+            super.setStackInSlot(slot, ItemStack.EMPTY);
+            return;
+        }
+        ItemStack disp;
+        if (template != null && !template.isEmpty()) {
+            disp = template.copy();
+        } else {
+            disp = getStackInSlot(slot).copy();
+        }
+        disp.setCount(Math.min(HARD_MAX, actualCounts[slot]));
+        super.setStackInSlot(slot, disp);
+    }
+}
