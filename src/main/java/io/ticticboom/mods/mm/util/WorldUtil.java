@@ -63,4 +63,34 @@ public class WorldUtil {
     public static ChunkAccess getChunk(int chunkX, int chunkZ, ServerLevel level) {
         return level.getChunkSource().getChunk(chunkX, chunkZ, true);
     }
+
+    /**
+     * Finds MachineControllerBlockEntity block entities inside a cube with edge length 2*radius+1 around pos.
+     * Scans the corresponding chunks and returns the found block entities.
+     */
+    public static java.util.List<net.minecraft.world.level.block.entity.BlockEntity> findControllerBlockEntitiesInRadius(BlockPos pos, ServerLevel level, int radius) {
+        var result = new java.util.ArrayList<net.minecraft.world.level.block.entity.BlockEntity>();
+        if (level == null) return result;
+        int minX = (pos.getX() - radius) >> 4;
+        int maxX = (pos.getX() + radius) >> 4;
+        int minZ = (pos.getZ() - radius) >> 4;
+        int maxZ = (pos.getZ() + radius) >> 4;
+        for (int cx = minX; cx <= maxX; cx++) {
+            for (int cz = minZ; cz <= maxZ; cz++) {
+                ChunkAccess chunk = getChunk(cx, cz, level);
+                if (chunk instanceof net.minecraft.world.level.chunk.LevelChunk lc) {
+                    for (var be : lc.getBlockEntities().values()) {
+                        if (be instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity) {
+                            // simple distance check to limit false positives
+                            var cpos = be.getBlockPos();
+                            if (Math.abs(cpos.getX() - pos.getX()) <= radius && Math.abs(cpos.getY() - pos.getY()) <= radius && Math.abs(cpos.getZ() - pos.getZ()) <= radius) {
+                                result.add(be);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return result;
+    }
 }

@@ -1,10 +1,27 @@
-# Changelog 0.1.31
+# Changelog
 
 All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.32] - 2026-01-20
+### Added
+- New server command `/mm reform` (admin/OP only):
+  - Asynchronously scans loaded chunks in players' view distances and triggers revalidation of discovered controllers.
+  - Sends periodic progress updates to the command issuer and a final summary when finished.
+  - Port blocks (Item/Fluid/Energy) now notify nearby controllers on removal (`onRemove`) so controllers can react immediately.
+
+### Changed
+- Controller/block-entity implementation:
+  - Removed reflection-based manipulation of controller internals; replaced with explicit, public setter APIs.
+  - Structure validations are executed safely on the server thread; asynchronous/delayed execution reduces races.
+
+### Fixed
+- Bug: Multiblock remained in a "dead" (not formed) state after removal and re-placement of parts.
+  - Fixed race conditions by invoking immediate and delayed revalidation when parts are placed, and by notifying controllers when parts are removed.
+- Sync fix: Block entity changes are now followed by `sendBlockUpdated(...)` to ensure clients see updated formed/unformed state and GUIs stay consistent.
+
+## [0.1.31]
 ### Added
 - New Priority Setter item:
   - Right-click increments priority (0..10). When priority reaches 10, and you right-click it again it wraps to 0.
@@ -26,4 +43,3 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - Priority setting permissions:
   - Only players who have modify permissions on a port may change its priority. Integration respects claim managers (e.g., FTBChunks): only the claimer and their team can change priorities for ports in a claimed chunk.
   - Applying a priority requires the player to be able to modify the clicked block (server-side check).
-

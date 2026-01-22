@@ -69,6 +69,19 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
             Containers.dropContents(level, pos, handler.getStacks());
         }
 
+        // Notify nearby controllers that a part was removed so they can revalidate
+        if (!level.isClientSide() && level instanceof ServerLevel sl) {
+            var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);
+            for (var cbe : controllers) {
+                try {
+                    if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
+                        mc.invalidateProgress();
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
         super.onRemove(state, level, pos, newState, p_60519_);
     }
 

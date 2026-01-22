@@ -99,4 +99,21 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
             pbe.neighborsChanged();
         }
     }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
+        // Notify nearby controllers that a part was removed
+        if (!level.isClientSide() && level instanceof ServerLevel sl) {
+            var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);
+            for (var cbe : controllers) {
+                try {
+                    if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
+                        mc.invalidateProgress();
+                    }
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+        super.onRemove(state, level, pos, newState, p_60519_);
+    }
 }
