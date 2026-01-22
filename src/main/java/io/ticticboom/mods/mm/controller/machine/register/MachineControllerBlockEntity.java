@@ -20,6 +20,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -33,22 +34,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
 public class MachineControllerBlockEntity extends BlockEntity implements IControllerBlockEntity, IControllerPart {
-    private static final Executor STRUCTURE_VALIDATION_EXECUTOR = Executors.newFixedThreadPool(
-        Math.max(2, Runtime.getRuntime().availableProcessors() / 2), r -> {
-        Thread thread = new Thread(r, "MM-Structures");
-        thread.setDaemon(true);
-        thread.setPriority(Thread.MAX_PRIORITY - 1);
-        return thread;
-    });
-    
     private static final AtomicInteger ACTIVE_VALIDATIONS = new AtomicInteger(0);
     private static final int MAX_CONCURRENT_VALIDATIONS = Math.max(4, Runtime.getRuntime().availableProcessors());
 
@@ -66,16 +56,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     @Getter
     private StructureModel structure = null;
-    private Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
+    private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
     private RecipeStorages portStorages = null;
     private boolean isFormed = false;
-    private RecipeModel currentRecipe = null;
-    private ControllerModel controllerModel = null;
-    private CompletableFuture<Void> structureValidationFuture = null;
+    private RecipeModel currentRecipe;
+    private final ControllerModel controllerModel;
     private long lastTick = 0;
 
     public void tick() {
-        if (level.isClientSide() || isRemoved()) {
+        if (level == null || level.isClientSide() || isRemoved()) {
             return;
         }
         runMachineTick();
@@ -85,27 +74,28 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     private void runMachineTick() {
-        //lastTick != level.getGameTime() if controller boosted by torcherino, we're not making validation more than once per tick
-        if((!isFormed || level.getGameTime() % COMMON.structureValidationRate.get() == 0) && lastTick != level.getGameTime()) {
+        if (level == null) return;
+        long gameTime = level.getGameTime();
+        if ((!isFormed || gameTime % COMMON.structureValidationRate.get() == 0) && lastTick != gameTime) {
             if (COMMON.asyncStructureValidation.get()) {
-                validateStructureAsync(getLevel());
+                validateStructureAsync(level);
             } else {
-                validateStructure(getLevel());
+                validateStructure(level);
             }
         }
-        lastTick = level.getGameTime();
+        lastTick = gameTime;
         if (isFormed) {
             runRecipe();
         }
     }
 
     private void validateStructure(Level level) {
+        if (level == null) return;
         if (structure == null) {
             for (StructureModel structureModel : StructureManager.STRUCTURES.values()) {
                 if (!structureModel.controllerIds().contains(controllerId)) {
                     continue;
                 }
-
                 if (structureModel.formed(level, getBlockPos())) {
                     setChanged();
                     structure = structureModel;
@@ -113,7 +103,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     return;
                 }
             }
-
             invalidateProgress();
             isFormed = false;
         } else {
@@ -122,102 +111,27 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     private void validateStructureAsync(Level level) {
-        // If there's already a validation running, don't start another one
-        if (structureValidationFuture != null && !structureValidationFuture.isDone()) {
+        // Run validation on the server thread; no background future bookkeeping here.
+        if (level == null || level.getServer() == null) {
+            validateStructure(level);
             return;
         }
-
-        // Rate limiting: don't start if too many validations are already running
-        if (ACTIVE_VALIDATIONS.get() >= MAX_CONCURRENT_VALIDATIONS) {
-            return;
-        }
-
-        // Capture current state for the async operation
-        final Level capturedLevel = level;
-        final BlockPos capturedPos = getBlockPos().immutable();
-        final ResourceLocation capturedControllerId = controllerId;
-        final StructureModel capturedStructure = structure;
-
-        structureValidationFuture = CompletableFuture.runAsync(() -> {
-            ACTIVE_VALIDATIONS.incrementAndGet();
+        MinecraftServer server = level.getServer();
+        server.execute(() -> {
             try {
-                validateStructureInBackground(capturedLevel, capturedPos, capturedControllerId, capturedStructure);
-            } finally {
-                ACTIVE_VALIDATIONS.decrementAndGet();
+                validateStructure(level);
+            } catch (Throwable t) {
+                try {
+                    Ref.LOG.error("Error during structure validation on server thread at {}: {}", getBlockPos(), t.toString());
+                } catch (Throwable ignored) { }
             }
-        }, STRUCTURE_VALIDATION_EXECUTOR).exceptionally(throwable -> {
-            ACTIVE_VALIDATIONS.decrementAndGet();
-            // Log the exception but don't crash the game
-            System.err.println("Error during structure validation: " + throwable.getMessage());
-            return null;
         });
-    }
-
-    private void validateStructureInBackground(Level level, BlockPos pos, ResourceLocation controllerId, StructureModel currentStructure) {
-        boolean newIsFormed = false;
-        StructureModel newStructure = currentStructure;
-
-        if (currentStructure == null) {
-            // Search for a matching structure
-            for (StructureModel structureModel : StructureManager.STRUCTURES.values()) {
-                if (!structureModel.controllerIds().contains(controllerId)) {
-                    continue;
-                }
-
-                if (structureModel.formed(level, pos)) {
-                    newStructure = structureModel;
-                    newIsFormed = true;
-                    break;
-                }
-            }
-        } else {
-            // Check if current structure is still formed
-            newIsFormed = currentStructure.formed(level, pos);
-        }
-        if(!newIsFormed){
-            newStructure = null;
-        }
-        // Update the main thread with results
-        final boolean finalIsFormed = newIsFormed;
-        final StructureModel finalStructure = newStructure;
-        
-        // Schedule the update on the main thread
-        level.getServer().execute(() -> {
-            updateStructureValidationResults(finalIsFormed, finalStructure);
-        });
-    }
-
-    private void updateStructureValidationResults(boolean newIsFormed, StructureModel newStructure) {
-        boolean structureChanged = false;
-
-        if (structure != newStructure) {
-            structure = newStructure;
-            structureChanged = true;
-        }
-
-        if (isFormed != newIsFormed) {
-            isFormed = newIsFormed;
-            structureChanged = true;
-        }
-
-        if (structureChanged) {
-            setChanged();
-            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
-            if (structure == null) {
-                invalidateProgress();
-            } else if (newIsFormed && structureChanged) {
-                // Structure just formed, trigger recipe processing
-                runRecipe();
-            }
-        }
     }
 
     private void runRecipe() {
         if (portStorages == null) {
             portStorages = structure.getStorages(level, getBlockPos());
         }
-
-        // First, try to output for stuck recipes
         List<ResourceLocation> toRemove = new ArrayList<>();
         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
             ResourceLocation recipeId = entry.getKey();
@@ -228,11 +142,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 toRemove.add(recipeId);
             }
         }
-        for (ResourceLocation id : toRemove) {
-            activeRecipes.remove(id);
-        }
+        for (ResourceLocation id : toRemove) activeRecipes.remove(id);
 
-        // Start new recipes if possible
         for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(structure.id())) {
             if (!activeRecipes.containsKey(recipe.id()) && recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
                 boolean allowParallel = recipe.parallelProcessing();
@@ -250,12 +161,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 }
             }
         }
-
         performRecipeTick();
     }
 
     private void performRecipeTick() {
-        // Tick all active recipes
         List<ResourceLocation> toRemove = new ArrayList<>();
         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
             ResourceLocation recipeId = entry.getKey();
@@ -263,29 +172,20 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
             if (recipe != null) {
                 recipe.outputs().processTick(level, portStorages, state);
-                if (!state.isCanFinish()) {
-                    state.proceedTick();
-                }
+                if (!state.isCanFinish()) state.proceedTick();
                 state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
                 if (state.getTickProgress() >= recipe.ticks()) {
                     state.setCanFinish(true);
-                    // Try to output immediately
                     boolean canOutputs = recipe.outputs().canProcess(level, portStorages, state);
-                    if (!canOutputs) {
-                        // detailed debug suppressed in normal operation
-                    }
                     if (canOutputs) {
                         recipe.outputs().process(level, portStorages, state);
                         toRemove.add(recipeId);
                     }
-                    // Otherwise, it stays active and stuck
                 }
             }
         }
-        for (ResourceLocation id : toRemove) {
-            activeRecipes.remove(id);
-        }
-        // Update currentRecipe
+        for (ResourceLocation id : toRemove) activeRecipes.remove(id);
+
         if (!activeRecipes.isEmpty()) {
             currentRecipe = MachineRecipeManager.RECIPES.get(activeRecipes.keySet().iterator().next());
         } else {
@@ -297,12 +197,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         setChanged();
         structure = null;
         isFormed = false;
-        
-        // Cancel any ongoing structure validation
-        if (structureValidationFuture != null && !structureValidationFuture.isDone()) {
-            structureValidationFuture.cancel(true);
-        }
-        
         invalidateRecipe(false);
     }
 
@@ -321,14 +215,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Override
-    public ControllerModel getModel() {
-        return model;
-    }
+    public ControllerModel getModel() { return model; }
 
     @Override
-    public Component getDisplayName() {
-        return Component.literal(model.name());
-    }
+    public Component getDisplayName() { return Component.literal(model.name()); }
 
     @Nullable
     @Override
@@ -343,9 +233,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             recipesTag.put(entry.getKey().toString(), entry.getValue().save(new CompoundTag()));
         }
         tag.put("activeRecipes", recipesTag);
-        if (structure != null) {
-            tag.putString("structureId", structure.id().toString());
-        }
+        if (structure != null) tag.putString("structureId", structure.id().toString());
+        tag.putBoolean("isFormed", isFormed);
         tag.putBoolean("filler", true);
         super.saveAdditional(tag);
     }
@@ -365,12 +254,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
         }
         if (tag.contains("structureId")) {
-            ResourceLocation structureId = ResourceLocation.tryParse(tag.get("structureId").getAsString());
+            String s = tag.getString("structureId");
+            ResourceLocation structureId = ResourceLocation.tryParse(s);
             structure = StructureManager.STRUCTURES.get(structureId);
         } else {
             structure = null;
         }
-        // Update currentRecipe
+        if (tag.contains("isFormed")) {
+            isFormed = tag.getBoolean("isFormed");
+        } else {
+            isFormed = (structure != null);
+        }
         if (!activeRecipes.isEmpty()) {
             currentRecipe = MachineRecipeManager.RECIPES.get(activeRecipes.keySet().iterator().next());
         } else {
@@ -386,9 +280,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        load(tag);
-    }
+    public void handleUpdateTag(CompoundTag tag) { load(tag); }
 
     @Nullable
     @Override
@@ -399,16 +291,83 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Override
     public void setRemoved() {
         super.setRemoved();
-        // Cancel any ongoing structure validation when the block entity is removed
-        if (structureValidationFuture != null && !structureValidationFuture.isDone()) {
-            structureValidationFuture.cancel(true);
-        }
+        // No background validation futures to cancel (validations run on server thread)
     }
 
     public RecipeStateModel getRecipeState() {
-        if (activeRecipes.isEmpty()) {
-            return null;
-        }
+        if (activeRecipes.isEmpty()) return null;
         return activeRecipes.values().iterator().next();
+    }
+
+    @Override
+    public void onLoad() {
+        if (level != null && !level.isClientSide() && level.getServer() != null) {
+            MinecraftServer server = level.getServer();
+            server.execute(() -> {
+                try {
+                    validateStructure(level);
+                    setChanged();
+                    level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+                } catch (Throwable t) {
+                    try { Ref.LOG.error("Exception during onLoad structure validation at {}: {}", getBlockPos(), t.toString()); }
+                    catch (Throwable ignored) { }
+                }
+            });
+        }
+    }
+
+    public void reformTo(StructureModel newStructure) { setStructure(newStructure, true); }
+
+    public void setStructure(StructureModel newStructure, boolean triggerRecipe) {
+        boolean structureChanged = false;
+        if (this.structure != newStructure) { this.structure = newStructure; structureChanged = true; }
+        boolean newIsFormed = newStructure != null;
+        if (this.isFormed != newIsFormed) { this.isFormed = newIsFormed; structureChanged = true; }
+        if (structureChanged) {
+            setChanged();
+            if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+            if (this.structure == null) invalidateProgress();
+            else if (this.isFormed && triggerRecipe) runRecipe();
+        }
+    }
+
+    public void setFormed(boolean formed, boolean triggerRecipe) {
+        if (this.isFormed == formed) return;
+        this.isFormed = formed;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        if (formed) { if (triggerRecipe && this.structure != null) runRecipe(); } else { invalidateProgress(); }
+    }
+
+    public void requestValidation() {
+        if (level == null || level.isClientSide() || level.getServer() == null) return;
+        MinecraftServer server = level.getServer();
+        server.execute(() -> {
+            try {
+                validateStructure(level);
+                setChanged();
+                if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+            } catch (Throwable t) {
+                try { Ref.LOG.error("Error while requesting validation for controller at {}: {}", getBlockPos(), t.toString()); }
+                catch (Throwable ignored) { }
+            }
+        });
+
+        Thread t = new Thread(() -> {
+            try { Thread.sleep(100); } catch (InterruptedException ignored) { return; }
+            if (level == null || level.isClientSide() || level.getServer() == null) return;
+            level.getServer().execute(() -> {
+                try {
+                    validateStructure(level);
+                    setChanged();
+                    if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+                } catch (Throwable t2) {
+                    try { Ref.LOG.error("Error during delayed validation for controller at {}: {}", getBlockPos(), t2.toString()); }
+                    catch (Throwable ignored) { }
+                }
+            });
+        }, "mm-controller-validate-delayed");
+        t.setDaemon(true);
+        t.start();
     }
 }
