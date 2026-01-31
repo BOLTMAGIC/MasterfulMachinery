@@ -4,7 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.32] - 2026-01-20
+## [0.1.32.3] - 2026-01-31
+### Fixed
+- Output: Items with NBT data were not correctly recognized for insertion into empty output ports and therefore could not be inserted.
+
+## [0.1.32.2] - 2026-01-20
 ### Added
 - New server command `/mm reform` (admin/OP only):
   - Asynchronously scans loaded chunks in players' view distances and triggers revalidation of discovered controllers.

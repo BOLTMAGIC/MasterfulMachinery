@@ -31,7 +31,9 @@ public class ItemPortStorage implements IPortStorage {
     private final ItemPortStorageModel model;
     private final UUID uid = UUID.randomUUID();
 
+    // Priority accessors
     // Priority for outputs. Default 0. Range 0..10.
+    @Getter
     private int priority = 0;
 
     public ItemPortStorage(ItemPortStorageModel model, INotifyChangeFunction changed) {
@@ -148,21 +150,7 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     public int canInsert(Item item, int count) {
-        // If asking for a probe of available space, return total available space
-        if (count == Integer.MAX_VALUE) {
-            int available = 0;
-            for (int slot = 0; slot < handler.getSlots(); slot++) {
-                ItemStack stack = handler.getStackInSlot(slot);
-                int limit = handler.getSlotLimit(slot);
-                if (stack.isEmpty()) {
-                    available += limit;
-                } else if (stack.getItem() == item) {
-                    available += (limit - stack.getCount());
-                }
-            }
-            return available;
-        }
-        // Delegate to the ItemStack-based canInsert (NBT-aware)
+        // Delegate to the ItemStack-based canInsert (NBT-aware) implemented on the handler.
         return handler.canInsert(new ItemStack(item, count), count);
     }
 
@@ -176,11 +164,6 @@ public class ItemPortStorage implements IPortStorage {
 
     public int insert(ItemStack stack, int count) {
         return handler.insert(stack, count);
-    }
-
-    // Priority accessors
-    public int getPriority() {
-        return this.priority;
     }
 
     public void setPriority(int priority) {
