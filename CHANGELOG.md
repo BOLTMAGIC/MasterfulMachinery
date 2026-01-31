@@ -7,6 +7,7 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ## [0.1.32.3] - 2026-01-31
 ### Fixed
 - Output: Items with NBT data were not correctly recognized for insertion into empty output ports and therefore could not be inserted.
+- JEI is now sorted by recipe ID.
 
 ## [0.1.32.2] - 2026-01-20
 ### Added

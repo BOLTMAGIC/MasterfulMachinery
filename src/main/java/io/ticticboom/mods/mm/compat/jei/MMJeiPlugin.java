@@ -25,9 +25,11 @@ import mezz.jei.api.registration.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @JeiPlugin
@@ -69,18 +71,30 @@ public class MMJeiPlugin implements IModPlugin {
         recipeCategories.add(category);
     }
 
+    // Java
     @Override
-    public void registerRecipes(IRecipeRegistration registration) {
+    public void registerRecipes(@NotNull IRecipeRegistration registration) {
         if (MMConfig.JEI_RECIPE_SPLIT) {
             for (var entry : recipeCategories) {
-                var recipes = MachineRecipeManager.RECIPES.values().stream().filter(x -> x.structureId().equals(entry.getStructureModel().id())).toList();
+                var recipes = MachineRecipeManager.RECIPES.values().stream()
+                        .filter(x -> x.structureId().equals(entry.getStructureModel().id()))
+                        .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                        .toList();
                 registration.addRecipes(entry.getRecipeType(), recipes);
             }
         } else {
-            registration.addRecipes(MMRecipeCategory.RECIPE_TYPE, new ArrayList<>(MachineRecipeManager.RECIPES.values()));
+            var sorted = MachineRecipeManager.RECIPES.values().stream()
+                    .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                    .collect(Collectors.toList());
+            registration.addRecipes(MMRecipeCategory.RECIPE_TYPE, sorted);
         }
-        registration.addRecipes(MMStructureCategory.RECIPE_TYPE, new ArrayList<>(StructureManager.STRUCTURES.values()));
+
+        var sortedStructures = StructureManager.STRUCTURES.values().stream()
+                .sorted(java.util.Comparator.comparing(s -> s.id().toString()))
+                .collect(Collectors.toList());
+        registration.addRecipes(MMStructureCategory.RECIPE_TYPE, sortedStructures);
     }
+
 
     @Override
     public void registerIngredients(IModIngredientRegistration registration) {
@@ -91,10 +105,10 @@ public class MMJeiPlugin implements IModPlugin {
     }
 
     @Override
-    public void registerRecipeCatalysts(IRecipeCatalystRegistration registration) {
+    public void registerRecipeCatalysts(@NotNull IRecipeCatalystRegistration registration) {
         for (var entry : recipeCategories) {
             ResourceLocation location = entry.getStructureModel().controllerIds().getIds().get(0);
-            ItemStack stack = ForgeRegistries.ITEMS.getValue(location).getDefaultInstance();
+            ItemStack stack = Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(location)).getDefaultInstance();
             registration.addRecipeCatalyst(stack,entry.getRecipeType());
         }
     }
