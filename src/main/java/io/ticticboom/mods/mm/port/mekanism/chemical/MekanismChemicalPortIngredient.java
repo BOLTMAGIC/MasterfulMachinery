@@ -40,12 +40,18 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if(storages == null) return false;
+        if (storages == null) return false;
         var inputStorages = storages.getInputStorages(getStorageClass());
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
-            var extracted = storage.extract(remaining, Action.SIMULATE);
-            remaining -= extracted.getAmount();
+            var stored = storage.chemicalTank.getStack();
+            // Wenn der Tank leer ist oder eine andere Chemikalie enthält, überspringen
+            if (stored.isEmpty()) continue;
+            if (!stored.getType().equals(this.chemical)) continue;
+            long available = stored.getAmount();
+            long toTake = Math.min(available, remaining);
+            remaining -= toTake;
+            if (remaining <= 0) break;
         }
         return remaining <= 0;
     }
@@ -55,8 +61,13 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         var inputStorages = storages.getInputStorages(getStorageClass());
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
-            var extracted = storage.extract(remaining, Action.EXECUTE);
+            var stored = storage.chemicalTank.getStack();
+            if (stored.isEmpty()) continue;
+            if (!stored.getType().equals(this.chemical)) continue;
+            long toExtract = Math.min(remaining, stored.getAmount());
+            var extracted = storage.extract(toExtract, Action.EXECUTE);
             remaining -= extracted.getAmount();
+            if (remaining <= 0) break;
         }
     }
 
@@ -91,8 +102,12 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
-            var extracted = storage.extract(remaining, Action.SIMULATE);
-            remaining -= extracted.getAmount();
+            var stored = storage.chemicalTank.getStack();
+            if (!stored.isEmpty() && stored.getType().equals(this.chemical)) {
+                long avail = stored.getAmount();
+                long toTake = Math.min(avail, remaining);
+                remaining -= toTake;
+            }
             searchedStoragesJson.add(storage.getStorageUid().toString());
         }
         json.addProperty("canRun", remaining <= 0);
@@ -110,8 +125,12 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
-            var inserted = storage.insert(createStack(this.chemical, remaining), Action.SIMULATE);
-            remaining -= inserted.getAmount();
+            var stored = storage.chemicalTank.getStack();
+            if (!stored.isEmpty() && stored.getType().equals(this.chemical)) {
+                long avail = stored.getAmount();
+                long toTake = Math.min(avail, remaining);
+                remaining -= toTake;
+            }
             searchedStoragesJson.add(storage.getStorageUid().toString());
         }
         json.addProperty("canRun", remaining <= 0);
@@ -121,6 +140,7 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
+        //noinspection removal
         recipeSlot.addTooltipCallback((a, c) -> {
             c.add(1, Component.literal(amount + " mB"));
         });

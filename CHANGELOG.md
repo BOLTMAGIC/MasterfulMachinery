@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.32.4] - 2026-02-06
+### Fixed
+- Improved input validation and recipe selection to ensure only intended gases/fluids trigger the correct recipe and to prevent unintended recipe overrides when multiple inputs are present.
+
+
 ## [0.1.32.3] - 2026-01-31
 ### Fixed
 - Output: Items with NBT data were not correctly recognized for insertion into empty output ports and therefore could not be inserted.
