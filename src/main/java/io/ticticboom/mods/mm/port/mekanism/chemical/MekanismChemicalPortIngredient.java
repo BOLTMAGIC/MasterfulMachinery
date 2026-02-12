@@ -45,7 +45,6 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
             var stored = storage.chemicalTank.getStack();
-            // Wenn der Tank leer ist oder eine andere Chemikalie enthält, überspringen
             if (stored.isEmpty()) continue;
             if (!stored.getType().equals(this.chemical)) continue;
             long available = stored.getAmount();
