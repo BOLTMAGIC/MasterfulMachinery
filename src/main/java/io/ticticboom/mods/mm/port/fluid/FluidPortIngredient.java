@@ -24,12 +24,10 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 public class FluidPortIngredient implements IPortIngredient {
 
-    private final ResourceLocation fluidId;
     private final int amount;
     private final Fluid fluid;
 
     public FluidPortIngredient(ResourceLocation fluidId, int amount) {
-        this.fluidId = fluidId;
         this.amount = amount;
         fluid = ForgeRegistries.FLUIDS.getValue(fluidId);
         if (fluid == null) {
@@ -39,32 +37,49 @@ public class FluidPortIngredient implements IPortIngredient {
 
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if(storages == null) return false;
+        if (amount <= 0) return true; // nothing to drain
+        if (storages == null) return false;
         var fluidStorages = storages.getInputStorages(FluidPortStorage.class);
+        if (fluidStorages.isEmpty()) return false;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
-             var drained = storage.getHandler().drain(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.SIMULATE);
-             remaining -= drained.getAmount();
+            if (remaining <= 0) break; // early exit when we've satisfied the amount
+            var handler = storage.getHandler();
+            if (handler == null) continue;
+            var drained = handler.drain(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.SIMULATE);
+            remaining -= drained.getAmount();
         }
         return remaining <= 0;
     }
 
     @Override
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
+        if (amount <= 0) return;
+        if (storages == null) return;
         var fluidStorages = storages.getInputStorages(FluidPortStorage.class);
+        if (fluidStorages.isEmpty()) return;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
-            var drained = storage.getHandler().drain(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.EXECUTE);
+            if (remaining <= 0) break;
+            var handler = storage.getHandler();
+            if (handler == null) continue;
+            var drained = handler.drain(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.EXECUTE);
             remaining -= drained.getAmount();
         }
     }
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
+        if (amount <= 0) return true; // nothing to output
+        if (storages == null) return false;
         var fluidStorages = storages.getOutputStorages(FluidPortStorage.class);
+        if (fluidStorages.isEmpty()) return false;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
-            var filled = storage.getHandler().fill(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.SIMULATE);
+            if (remaining <= 0) break;
+            var handler = storage.getHandler();
+            if (handler == null) continue;
+            var filled = handler.fill(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.SIMULATE);
             remaining -= filled;
         }
         return remaining <= 0;
@@ -72,10 +87,16 @@ public class FluidPortIngredient implements IPortIngredient {
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
+        if (amount <= 0) return;
+        if (storages == null) return;
         var fluidStorages = storages.getOutputStorages(FluidPortStorage.class);
+        if (fluidStorages.isEmpty()) return;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
-            var filled = storage.getHandler().fill(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.EXECUTE);
+            if (remaining <= 0) break;
+            var handler = storage.getHandler();
+            if (handler == null) continue;
+            var filled = handler.fill(new FluidStack(fluid, remaining), IFluidHandler.FluidAction.EXECUTE);
             remaining -= filled;
         }
     }
@@ -83,9 +104,7 @@ public class FluidPortIngredient implements IPortIngredient {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
         recipeSlot.addIngredient(MMJeiIngredients.FLUID, new FluidStack(fluid, amount));
-        recipeSlot.addTooltipCallback((a, b) -> {
-            b.add(1, Component.literal(amount + " mB"));
-        });
+        recipeSlot.addRichTooltipCallback((a, b) -> b.add(Component.literal(amount + " mB")));
     }
 
     @Override
