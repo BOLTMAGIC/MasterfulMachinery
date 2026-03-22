@@ -19,7 +19,7 @@ public class MMCommonConfig {
                 .defineInRange("structureValidationRate", 10, 1, 100);
         debugTool = builder.comment("Enables the Debug Tool Item's functionality (Disable when on server). Default: true")
                 .define("debugTool", true);
-        splitRecipesJei = builder.comment("Splits JEI recipe viewer categroies by the structure they belong to. Default: true")
+        splitRecipesJei = builder.comment("Splits JEI recipe viewer categories by the structure they belong to. Default: true")
                 .define("splitRecipesJei", true);
         portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages. Default: false")
                 .define("portsAutoExtractByDefault", false);

@@ -4,10 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.32.5] - 2026-03-22
+### Changed
+- Performance: Optimized fluid port handling to reduce server-tick overhead (TPS).
+- Added early-exit checks and loop short-circuits in fluid port ingredient processing (canProcess, process, canOutput, output) 
+  to avoid unnecessary handler calls and limit FluidStack allocations when nothing needs to be transferred.
+
 ## [0.1.32.4] - 2026-02-06
 ### Fixed
 - Improved input validation and recipe selection to ensure only intended gases/fluids trigger the correct recipe and to prevent unintended recipe overrides when multiple inputs are present.
-
 
 ## [0.1.32.3] - 2026-01-31
 ### Fixed
@@ -51,5 +56,5 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 
 ### Security / Permissions
 - Priority setting permissions:
-  - Only players who have modify permissions on a port may change its priority. Integration respects claim managers (e.g., FTBChunks): only the claimer and their team can change priorities for ports in a claimed chunk.
+  - Only players who have permissions on a port may change its priority. Integration respects claim managers (e.g., FTBChunks): only the claimer and their team can change priorities for ports in a claimed chunk.
   - Applying a priority requires the player to be able to modify the clicked block (server-side check).

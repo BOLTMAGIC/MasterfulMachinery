@@ -44,6 +44,7 @@ public class RecipeBuilderJS {
         return this;
     }
 
+    @SuppressWarnings("unused")
     public RecipeBuilderJS parallelProcessing(boolean parallelProcessing) {
         this.parallelProcessing = parallelProcessing;
         return this;
