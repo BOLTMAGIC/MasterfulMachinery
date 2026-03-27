@@ -84,10 +84,17 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     }
 
     @Override
-    public void onRemove(BlockState p_60515_, Level level, BlockPos pos, BlockState p_60518_, boolean p_60519_) {
-        var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
-        if (be instanceof MachineControllerBlockEntity mbe) {
-            mbe.invalidateProgress();
+    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (oldState.getBlock() != newState.getBlock()) {
+            if (!level.isClientSide() && level instanceof ServerLevel serverLevel) {
+                var be = WorldUtil.getBlockEntity(pos, serverLevel);
+                if (be instanceof MachineControllerBlockEntity mbe) {
+                    mbe.invalidateProgress();
+                }
+            }
+
+            super.onRemove(oldState, level, pos, newState, isMoving);
         }
     }
 }
+

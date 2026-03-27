@@ -33,7 +33,7 @@ public class BlockUtils {
         }
         if (!level.isClientSide() && hand == InteractionHand.MAIN_HAND) {
             var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
-            if (clz.isAssignableFrom(be.getClass())) {
+            if (be != null && clz.isAssignableFrom(be.getClass())) {
                 if (preScreenCheck.get()) {
                     NetworkHooks.openScreen((ServerPlayer) player, (T) be, pos);
                 }
