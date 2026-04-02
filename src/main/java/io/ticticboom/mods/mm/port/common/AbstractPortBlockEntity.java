@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public abstract class AbstractPortBlockEntity extends BlockEntity implements IPortBlockEntity, IPortPart {
@@ -34,7 +35,7 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag() {
         var tag = new CompoundTag();
         saveAdditional(tag);
         return tag;

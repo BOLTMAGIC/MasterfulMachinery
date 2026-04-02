@@ -2,18 +2,12 @@ package io.ticticboom.mods.mm.port.energy.register;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
-import io.ticticboom.mods.mm.port.IPortBlockEntity;
-import io.ticticboom.mods.mm.port.IPortPart;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
-import io.ticticboom.mods.mm.port.common.ISlottedPortStorageModel;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorage;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorageModel;
 import io.ticticboom.mods.mm.port.energy.feature.EnergyPortAutoPushFeature;
-import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
-import io.ticticboom.mods.mm.port.item.feature.ItemPortAutoPushAddon;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
-import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -25,7 +19,6 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
@@ -104,7 +97,7 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag() {
         var tag = new CompoundTag();
         saveAdditional(tag);
         return tag;

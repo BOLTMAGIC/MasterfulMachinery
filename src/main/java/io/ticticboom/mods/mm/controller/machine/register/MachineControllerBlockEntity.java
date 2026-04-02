@@ -270,6 +270,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (doRebuild) {
                 cachedAvailableItemIds.clear();
                 cachedAvailableFluidIds.clear();
+                cachedAvailableMekanismIds.clear();
                 cachedHasEnergyAvailable = false;
                 cachedHasManaAvailable = false;
                 cachedHasPneumaticAir = false;
@@ -556,7 +557,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         setChanged();
         structure = null;
         isFormed = false;
+        // clear caches and active recipes when structure is lost
         invalidateRecipe(false);
+        cachedStructureRecipes = null;
     }
 
     public void invalidateRecipe(boolean typical) {
@@ -571,7 +574,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         activeRecipes.clear();
         currentRecipe = null;
         portStorages = null;
+        // clear cached views and backoff timers as recipe state is reset
         storageContentCacheValid = false;
+        cachedAvailableItemIds.clear();
+        cachedAvailableFluidIds.clear();
+        cachedAvailableMekanismIds.clear();
+        cachedHasEnergyAvailable = false;
+        cachedHasManaAvailable = false;
+        cachedHasPneumaticAir = false;
+        cachedHasKinetic = false;
+        cachedHasMekanismChemical = false;
+        recipeNextCheckTime.clear();
+        cachedStructureRecipes = null;
     }
 
     @Override
