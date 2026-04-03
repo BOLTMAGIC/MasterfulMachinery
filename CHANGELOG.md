@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.33.0] - 2026-04-03 — Performance & Stability
+
+### Added
+- Per-controller cache for available capability amounts (ITEM, FLUID, ENERGY, MANA, STEAM, CREATE, MEKANISM_CHEMICAL) to reduce repeated handler queries per tick.
+- Recipe requirement HashMap: recipes are preprocessed into a Map of required capability types and amounts for fast eligibility checks.
+- Mekanism type-id cache for chemical normalization to avoid expensive string/object comparisons during recipe matching.
+
+### Changed
+- Early-exit paths during recipe search: controller aborts search as soon as a required capability is proven insufficient across relevant ports.
+- Recipe checks now only validate capability types actually required by the recipe (no more blanket checks of all types).
+- Reduced handler calls and temporary allocations (e.g., FluidStack creation) to lower MSPT under load.
+- Excessive warnings/log spam reduced or moved to DEBUG level.
+
+### Fixed
+- Improved handling for multiblocks with permanent infinite inputs/outputs to avoid TPS degradation.
+
+### Tech notes / suggested data structures
+- CapabilityType (enum): ITEM, FLUID, ENERGY, MANA, STEAM, CREATE, MEKANISM_CHEMICAL
+- RecipeRequirements: Map<CapabilityType, List<IngredientSpec>> (IngredientSpec: id, amount, matcher)
+- ControllerCache (per-controller): stores availableAmounts per CapabilityType, lastValidatedTick, candidateRecipes; supports invalidateForPortChange()
+- MekanismTypeIdCache: Map<String, MekTypeKey> with weak/TTL references to avoid long-lived heap retention
+
+
 ## [0.1.32.5] - 2026-03-22
 ### Changed
 - Performance: Optimized fluid port handling to reduce server-tick overhead (TPS).
