@@ -19,6 +19,7 @@ public class StructureBuilderJS {
     private final ResourceLocation id;
     private String name;
     private Consumer<StructureLayoutBuilderJS> layoutConsumer;
+    private int maxParallelRecipes = -1;
 
     public StructureBuilderJS(String id) {
         this.id = ResourceLocation.tryParse(id);
@@ -39,6 +40,12 @@ public class StructureBuilderJS {
         return this;
     }
 
+    public StructureBuilderJS maxParallelRecipes(int maxParallelRecipes) {
+        if (maxParallelRecipes < 0) this.maxParallelRecipes = -1;
+        else this.maxParallelRecipes = Math.min(maxParallelRecipes, 100);
+        return this;
+    }
+
     @HideFromJS
     public StructureModel build() {
         var event = new StructureLayoutBuilderJS(this);
@@ -46,6 +53,6 @@ public class StructureBuilderJS {
         IdList controllerIds = new IdList(controllers);
         StructureLayout layout = event.build();
         // TODO: create real structure attachment js builders
-        return new StructureModel(id, name, controllerIds, layout, new StructureAttachments(List.of()), StructureModel.paramsToJson(id, name, controllerIds, layout));
+        return new StructureModel(id, name, controllerIds, layout, new StructureAttachments(List.of()), StructureModel.paramsToJson(id, name, controllerIds, layout, maxParallelRecipes));
     }
 }

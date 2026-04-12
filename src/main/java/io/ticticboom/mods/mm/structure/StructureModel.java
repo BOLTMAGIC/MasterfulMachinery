@@ -97,11 +97,21 @@ public class StructureModel {
     }
 
     public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout) {
+        return paramsToJson(id, name, controllerIds, layout, -1);
+    }
+
+    public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout, int maxParallelRecipes) {
         var json = new JsonObject();
         json.addProperty("id", id.toString());
         json.addProperty("name", name);
         json.add("controllerIds", controllerIds.serialize());
         layout.serialize(json);
+        // only include maxParallelRecipes if explicitly specified (>=0)
+        if (maxParallelRecipes >= 0) {
+            int v = maxParallelRecipes;
+            if (v > 100) v = 100;
+            json.addProperty("maxParallelRecipes", v);
+        }
         return json;
     }
 
@@ -136,6 +146,23 @@ public class StructureModel {
         json.add("controllerIds", controllerIds.serialize());
 
         return json;
+    }
+
+    /**
+     * Optional per-structure override for max parallel recipes.
+     * Returns -1 when not specified (use controller/global defaults), or 0..100 when set.
+     */
+    public int maxParallelRecipes() {
+        if (config == null) return -1;
+        try {
+            if (config.has("maxParallelRecipes")) {
+                int v = config.get("maxParallelRecipes").getAsInt();
+                if (v == -1) return -1;
+                if (v < 0) return -1;
+                return Math.min(v, 100);
+            }
+        } catch (Throwable ignored) { }
+        return -1;
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -183,6 +210,7 @@ public class StructureModel {
         var controllerList = new ArrayList<ItemStack>();
         for (ResourceLocation controller : controllerIds.getIds()) {
             Block controllerBlock = MMControllerRegistry.getControllerBlock(controller);
+            assert controllerBlock != null;
             controllerList.add(controllerBlock.asItem().getDefaultInstance());
         }
         countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.literal("Controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));

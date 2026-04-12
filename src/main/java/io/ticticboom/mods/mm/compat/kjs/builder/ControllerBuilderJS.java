@@ -11,6 +11,7 @@ public class ControllerBuilderJS {
     private String name;
     private ResourceLocation type;
     private boolean parallelProcessingDefault = false;
+    private int maxParallelRecipes = -1;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -33,8 +34,15 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    public ControllerBuilderJS maxParallelRecipes(int maxParallelRecipes) {
+        // allow negative to mean unspecified (-1); clamp to [0,100] otherwise
+        if (maxParallelRecipes < 0) this.maxParallelRecipes = -1;
+        else this.maxParallelRecipes = Math.min(maxParallelRecipes, 100);
+        return this;
+    }
+
     @HideFromJS
     public ControllerModel build() {
-        return ControllerModel.create(id, type, name, parallelProcessingDefault);
+        return ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes);
     }
 }
