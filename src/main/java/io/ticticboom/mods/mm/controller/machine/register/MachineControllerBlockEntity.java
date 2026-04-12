@@ -512,19 +512,32 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     if (recipe.parallelProcessing() == MMConfig.PARALLEL_PROCESSING_DEFAULT) {
                         allowParallel = controllerModel.parallelProcessingDefault();
                     }
-                    if (allowParallel || activeRecipes.isEmpty()) {
-                        if (activeRecipes.size() < MMConfig.MAX_PARALLEL_RECIPES) {
-                            RecipeStateModel newState = new RecipeStateModel();
-                            recipe.inputs().process(level, portStorages, newState);
-                            // inputs consumed/changed storages; invalidate cached view
-                            storageContentCacheValid = false;
-                            newState.setCanProcess(true);
-                            activeRecipes.put(recipe.id(), newState);
-                            // record last-activity time for stall detection
-                            activeRecipeLastUpdate.put(recipe.id(), gameTime);
-                            Ref.LOG.debug("Controller {} started recipe {}", controllerId, recipe.id());
-                            setChanged();
-                        }
+                    int controllerLimit = controllerModel.maxParallelRecipes();
+                    // allow per-structure override when formed
+                    if (structure != null) {
+                        int structLimit = structure.maxParallelRecipes();
+                        if (structLimit >= 0) controllerLimit = structLimit;
+                    }
+                    if (controllerLimit < 0) controllerLimit = MMConfig.MAX_PARALLEL_RECIPES; // -1 => use global default
+                    boolean canStartBasedOnParallelFlag = allowParallel || activeRecipes.isEmpty();
+                    boolean canStartBasedOnLimit;
+                    if (controllerLimit == 0) {
+                        // explicit 0 means disable parallel processing entirely (only allow a single active recipe)
+                        canStartBasedOnLimit = activeRecipes.isEmpty();
+                    } else {
+                        canStartBasedOnLimit = activeRecipes.size() < controllerLimit;
+                    }
+                    if (canStartBasedOnParallelFlag && canStartBasedOnLimit) {
+                        RecipeStateModel newState = new RecipeStateModel();
+                        recipe.inputs().process(level, portStorages, newState);
+                        // inputs consumed/changed storages; invalidate cached view
+                        storageContentCacheValid = false;
+                        newState.setCanProcess(true);
+                        activeRecipes.put(recipe.id(), newState);
+                        // record last-activity time for stall detection
+                        activeRecipeLastUpdate.put(recipe.id(), gameTime);
+                        Ref.LOG.debug("Controller {} started recipe {}", controllerId, recipe.id());
+                        setChanged();
                     }
 
                 }

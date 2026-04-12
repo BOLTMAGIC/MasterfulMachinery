@@ -11,6 +11,7 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue previewBlueprintScreen;
     public final ForgeConfigSpec.BooleanValue parallelProcessingDefault;
     public final ForgeConfigSpec.IntValue maxParallelRecipes;
+    public final ForgeConfigSpec.BooleanValue showJeiMaxParallel;
 
     public MMCommonConfig(ForgeConfigSpec.Builder builder) {
         asyncStructureValidation = builder.comment("Enables async structure validation to improve TPS. Disable in case of issues. Default: true")
@@ -27,6 +28,8 @@ public class MMCommonConfig {
                 .define("parallelProcessingDefault", false);
         maxParallelRecipes = builder.comment("The max Parallel Recipes per controller. Default: 5")
                 .defineInRange("maxParallelRecipes", 5, 1, 100);
+        showJeiMaxParallel = builder.comment("Show 'Max Parallel Processing' line in JEI structure view. Default: true")
+                .define("showJeiMaxParallel", true);
 
         builder.comment("Preview features that are not yet stable or ready for use.")
                 .push("preview_features");

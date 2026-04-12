@@ -1,11 +1,13 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
+import org.jetbrains.annotations.NotNull;
 
 public class MachineControllerScreen extends AbstractContainerScreen<MachineControllerMenu> {
 
@@ -41,6 +43,32 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             gfx.drawWordWrap(this.font, FormattedText.of(be.getStructure().name()), 10, 53, 150, 0xacacac);
         }
 
+        // show max parallel recipes under the multiblock name when formed
+        if (isFormed) {
+            int structVal = be.getStructure().maxParallelRecipes();
+            int displayInt = 1;
+            if (structVal > 0) {
+                displayInt = structVal;
+            } else {
+                var controllerModel = io.ticticboom.mods.mm.setup.loader.ControllerLoader.CONTROLLER_MODELS.get(menu.getModel().id());
+                if (controllerModel != null && controllerModel.maxParallelRecipes() > 0) {
+                    displayInt = controllerModel.maxParallelRecipes();
+                }
+            }
+            String line = "Max Parallel Processing: " + displayInt;
+            int nameY = 53;
+            int lineHeight = this.font.lineHeight;
+            int subY = nameY + lineHeight + 10;
+            // smaller text by scaling
+            gfx.pose().pushPose();
+            gfx.pose().translate(10f, (float) subY, 0f);
+            float scale = 0.65f;
+            gfx.pose().scale(scale, scale, 1f);
+            int wrapWidth = (int) (150 / scale);
+            TextRenderUtil.renderWordWrapLimit(gfx, line, 0, 0, wrapWidth, 1, 0xacacac);
+            gfx.pose().popPose();
+        }
+
         // recipe processing details
         var isProcessing = be.getRecipeState() != null;
         if (isProcessing) {
@@ -52,7 +80,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partial);
         renderTooltip(gfx, mouseX, mouseY);

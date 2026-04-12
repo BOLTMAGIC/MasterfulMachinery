@@ -11,7 +11,8 @@ import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import io.ticticboom.mods.mm.util.GLScissor;
+import io.ticticboom.mods.mm.setup.loader.ControllerLoader;
+import net.minecraft.client.Minecraft;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableStatic;
@@ -21,10 +22,8 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
@@ -79,7 +78,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, StructureModel recipe, IFocusGroup focuses) {
+    public void setRecipe(IRecipeLayoutBuilder builder, StructureModel recipe, @NotNull IFocusGroup focuses) {
         var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST);
         for (ResourceLocation id : recipe.controllerIds().getIds()) {
             Item controller = MMControllerRegistry.getControllerItem(id);
@@ -103,9 +102,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 return copy;
             }).toList();
             slot.addItemStacks(stacks);
-            slot.addRichTooltipCallback((a, b) -> {
-                b.add(countedItemStack.getDetail());
-            });
+            slot.addRichTooltipCallback((a, b) -> b.add(countedItemStack.getDetail()));
         }
 
         builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)
@@ -115,7 +112,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public void draw(StructureModel recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+    public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics guiGraphics, double mouseX, double mouseY) {
         background.draw(guiGraphics, 0, 0);
 
         renderStructure(recipe, guiGraphics, mouseX, mouseY);
@@ -125,7 +122,38 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             slotDrawable.draw(guiGraphics, slot.x - 1, slot.y - 1);
         }
 
-        TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+        // Render Max Parallel Processing as first entry in JEI (configurable)
+        if (io.ticticboom.mods.mm.config.MMConfigSetup.COMMON.showJeiMaxParallel.get()) {
+        int structVal = recipe.maxParallelRecipes();
+        int displayInt = 1; // default when unspecified or zero/negative
+        if (structVal > 0) {
+            displayInt = structVal;
+        } else {
+            var ids = recipe.controllerIds().getIds();
+            if (!ids.isEmpty()) {
+                var controllerModel = ControllerLoader.CONTROLLER_MODELS.get(ids.get(0).getPath());
+                if (controllerModel != null && controllerModel.maxParallelRecipes() > 0) {
+                    displayInt = controllerModel.maxParallelRecipes();
+                }
+            }
+        }
+        String line = "Max Parallel Processing: " + displayInt;
+            // draw structure name first, then the Max Parallel line smaller beneath it
+            int nameY = 5;
+            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, nameY, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+            int lineHeight = Minecraft.getInstance().font.lineHeight;
+            int subY = nameY + lineHeight;
+            float scale = 0.65f; // smaller text for the max-parallel line
+            guiGraphics.pose().pushPose();
+            // translate to desired position then scale down
+            guiGraphics.pose().translate(5f, (float) subY, 0f);
+            guiGraphics.pose().scale(scale, scale, 1f);
+            int wrapWidth = (int) ((RENDER_SIZE.x - 5) / scale);
+            TextRenderUtil.renderWordWrapLimit(guiGraphics, line, 0, 0, wrapWidth, 1, 0xFFFFFFFF);
+            guiGraphics.pose().popPose();
+        } else {
+            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+        }
     }
 
     private void renderStructure(StructureModel recipe, GuiGraphics guiGraphics, double mouseX, double mouseY) {
