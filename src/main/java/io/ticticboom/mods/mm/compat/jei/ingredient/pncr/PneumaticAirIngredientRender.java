@@ -5,6 +5,7 @@ import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,12 +13,13 @@ import java.util.List;
 public class PneumaticAirIngredientRender  implements IIngredientRenderer<PneumaticAirStack> {
 
     @Override
-    public void render(GuiGraphics guiGraphics, PneumaticAirStack pneumaticAirStack) {
+    public void render(GuiGraphics guiGraphics, @NotNull PneumaticAirStack pneumaticAirStack) {
         guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 1, 62, 16, 16);
     }
 
+    @SuppressWarnings("removal")
     @Override
-    public List<Component> getTooltip(PneumaticAirStack pneumaticAirStack, TooltipFlag tooltipFlag) {
+    public @NotNull List<Component> getTooltip(PneumaticAirStack pneumaticAirStack, @NotNull TooltipFlag tooltipFlag) {
         var result = new ArrayList<Component>();
         result.add(Component.literal("PneumaticCraft Air:"));
         result.add(Component.literal(pneumaticAirStack.air() + " mB"));

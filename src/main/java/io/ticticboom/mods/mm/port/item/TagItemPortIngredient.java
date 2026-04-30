@@ -1,7 +1,6 @@
 package io.ticticboom.mods.mm.port.item;
 
 import com.google.gson.JsonObject;
-import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
@@ -47,7 +46,6 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        Ref.LOG.debug("Item Tags Ingredients will NEVER produce output, REMOVE any recipe outputs using item tags.");
         return false;
     }
 

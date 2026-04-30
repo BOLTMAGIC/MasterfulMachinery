@@ -5,6 +5,7 @@ import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
@@ -12,12 +13,13 @@ public class BotaniaManaIngredientRenderer implements IIngredientRenderer<Botani
 
 
     @Override
-    public void render(GuiGraphics guiGraphics, BotaniaManaStack stack) {
+    public void render(GuiGraphics guiGraphics, @NotNull BotaniaManaStack stack) {
         guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 18, 79, 16, 16);
     }
 
+    @SuppressWarnings("removal")
     @Override
-    public List<Component> getTooltip(BotaniaManaStack stack, TooltipFlag tooltipFlag) {
+    public @NotNull List<Component> getTooltip(BotaniaManaStack stack, @NotNull TooltipFlag tooltipFlag) {
         return List.of(
                 Component.literal("Botania Mana:"),
                 Component.literal(stack.mana() + " Mana")

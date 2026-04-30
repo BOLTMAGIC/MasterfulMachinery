@@ -19,7 +19,7 @@ import net.minecraft.world.level.block.Rotation;
 import java.util.List;
 
 public class StructureLayoutPiece {
-    private StructurePiece piece;
+    private final StructurePiece piece;
     @Getter
     private final List<StructurePieceModifier> modifiers;
     @Getter
@@ -62,9 +62,11 @@ public class StructureLayoutPiece {
         return true;
     }
 
+    @SuppressWarnings("unused")
     public static StructureLayoutPiece parse(JsonObject json, ResourceLocation structureId, String keyChar) {
         var piece = MMStructurePieceRegistry.findPieceType(json);
         var modifiers = MMStructurePieceRegistry.findModifierTypes(json);
+        assert piece != null;
         var guiPiece = new GuiStructureLayoutPiece(piece.createBlocksSupplier(), piece.createDisplayComponent(), modifiers);
         return new StructureLayoutPiece(piece, modifiers, guiPiece, keyChar, json);
     }

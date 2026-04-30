@@ -1,8 +1,6 @@
 package io.ticticboom.mods.mm.item;
 
-import io.ticticboom.mods.mm.compat.claim.ClaimPermissionManager;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
-import io.ticticboom.mods.mm.Ref;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -77,12 +75,6 @@ public class PrioritySetterItem extends Item {
 
         // must be an output (not input)
         if (portBe.isInput()) return InteractionResult.FAIL;
-
-        // permission check
-        if (!ClaimPermissionManager.canPlayerModify(serverPlayer, pos)) {
-            serverPlayer.displayClientMessage(Component.translatable("message.mm.no_permission"), true);
-            return InteractionResult.FAIL;
-        }
 
         int prio = getPriorityFromItem(context.getItemInHand());
         // set in storage

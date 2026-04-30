@@ -455,7 +455,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     if (!requiredTypes.isEmpty()) {
                         var available = MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId);
                         if (available != null && !available.containsAll(requiredTypes)) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: required types {} but available {}", recipe.id(), controllerId, requiredTypes, available);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
@@ -463,42 +462,34 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
                     if (portStorages != null && storageContentCacheValid) {
                         if (!requiredItemIds.isEmpty() && !cachedAvailableItemIds.containsAll(requiredItemIds)) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: missing required items {} (available {})", recipe.id(), controllerId, requiredItemIds, cachedAvailableItemIds);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (!requiredFluidIds.isEmpty() && !cachedAvailableFluidIds.containsAll(requiredFluidIds)) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: missing required fluids {} (available {})", recipe.id(), controllerId, requiredFluidIds, cachedAvailableFluidIds);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (needsEnergy && !cachedHasEnergyAvailable) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: needs energy but none available", recipe.id(), controllerId);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (needsMana && !cachedHasManaAvailable) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: needs botania mana but none available", recipe.id(), controllerId);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (needsPneumatic && !cachedHasPneumaticAir) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: needs pneumatic air but none available", recipe.id(), controllerId);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (needsKinetic && !cachedHasKinetic) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: needs kinetic rotation but none available", recipe.id(), controllerId);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (needsMekanismChemical && !cachedHasMekanismChemical) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: needs mekanism chemical but none available", recipe.id(), controllerId);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
                         if (!requiredMekanismIds.isEmpty() && !cachedAvailableMekanismIds.containsAll(requiredMekanismIds)) {
-                            Ref.LOG.debug("Skipping recipe {} on controller {}: missing required mekanism chemicals {} (available {})", recipe.id(), controllerId, requiredMekanismIds, cachedAvailableMekanismIds);
                             recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
                             continue;
                         }
@@ -536,7 +527,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                         activeRecipes.put(recipe.id(), newState);
                         // record last-activity time for stall detection
                         activeRecipeLastUpdate.put(recipe.id(), gameTime);
-                        Ref.LOG.debug("Controller {} started recipe {}", controllerId, recipe.id());
                         setChanged();
                     }
 
@@ -565,7 +555,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                         recipe.ditchRecipe(level, state, portStorages);
                     }
                 } catch (Throwable ignored) { }
-                Ref.LOG.debug("Controller {} ditching stalled recipe {} after {} ticks", controllerId, recipeId, gameTime - last);
                 toRemove.add(recipeId);
                 continue;
             }

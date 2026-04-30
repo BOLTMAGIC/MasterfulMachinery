@@ -30,6 +30,7 @@ public class PortBuilderJS {
         return this;
     }
 
+    @SuppressWarnings("unused")
     public PortBuilderJS controllerId(String controllerId) {
         //noinspection removal
         controllers.add(new ResourceLocation(controllerId));
