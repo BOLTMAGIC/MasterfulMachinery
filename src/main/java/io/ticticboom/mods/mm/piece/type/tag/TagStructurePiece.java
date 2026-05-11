@@ -6,12 +6,12 @@ import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.piece.type.StructurePiece;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WorldUtil;
+import io.ticticboom.mods.mm.Ref;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Supplier;
 
 public class TagStructurePiece extends StructurePiece {
@@ -35,9 +36,13 @@ public class TagStructurePiece extends StructurePiece {
 
     @Override
     public void validateSetup(StructurePieceSetupMetadata meta) {
-        tagBlocks = ForgeRegistries.BLOCKS.tags().getTag(tagKey).stream().toList();
+        var tag = Objects.requireNonNull(ForgeRegistries.BLOCKS.tags()).getTag(tagKey);
+        tagBlocks = tag.stream().toList();
         if (tagBlocks.isEmpty()) {
-            throw new RuntimeException(String.format("Tag: %s does not contain any blocks or doesnt exist!", tagKey));
+            // Don't crash on empty tags; KubeJS may add entries at a different time than
+            // when this validation runs. Log a warning and continue — runtime checks
+            // (e.g. state.is(tagKey)) will still work once tags/blocks are present.
+            Ref.LOG.warn("Tag: {} does not contain any blocks or doesn't exist! This may be due to data packs (e.g. KubeJS) loading before block registration.", tagKey);
         }
     }
 
@@ -62,7 +67,7 @@ public class TagStructurePiece extends StructurePiece {
         json.addProperty("tag", tagId.toString());
         var blocksJson = new JsonArray();
         for (Block tagBlock : tagBlocks) {
-            blocksJson.add(ForgeRegistries.BLOCKS.getKey(tagBlock).toString());
+            blocksJson.add(Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(tagBlock)).toString());
         }
         json.add("possibleBlocks", blocksJson);
         return json;
@@ -73,6 +78,7 @@ public class TagStructurePiece extends StructurePiece {
         BlockState foundState = level.getBlockState(pos);
         var found = foundState.getBlock();
         var foundId = ForgeRegistries.BLOCKS.getKey(found);
+        assert foundId != null;
         json.addProperty("block", foundId.toString());
         var tagsJson = new JsonArray();
         foundState.getTags().map(x -> x.location().toString()).forEach(tagsJson::add);
