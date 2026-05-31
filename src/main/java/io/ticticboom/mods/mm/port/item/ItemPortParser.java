@@ -27,7 +27,14 @@ public class ItemPortParser implements IPortParser {
             } catch (Exception ignored) {
             }
         }
-        return new ItemPortStorageFactory(new ItemPortStorageModel(rows, columns, autoPushSupplier, slotCapacity));
+        int tierRank = 0;
+        if (json.has("tierRank")) {
+            try {
+                tierRank = json.get("tierRank").getAsInt();
+            } catch (Exception ignored) {
+            }
+        }
+        return new ItemPortStorageFactory(new ItemPortStorageModel(rows, columns, autoPushSupplier, slotCapacity, tierRank));
     }
 
     @Override

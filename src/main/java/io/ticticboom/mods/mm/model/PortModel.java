@@ -39,7 +39,11 @@ public record PortModel(
         json.addProperty("name", name);
         json.add("controllerIds", controllerIds.serialize());
         json.addProperty("type", type.toString());
-        json.addProperty("config", config.toString());
+        try {
+            json.add("config", config.serialize());
+        } catch (Exception e) {
+            json.addProperty("config", config.toString());
+        }
         return json;
     }
 
