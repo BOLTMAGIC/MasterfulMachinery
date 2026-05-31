@@ -21,6 +21,16 @@ public class PortTypeStructurePieceType extends MMStructurePieceType {
         if (json.has("input")) {
             input = Optional.of(json.get("input").getAsBoolean());
         }
-        return new PortTypeStructurePiece(portType, input);
+        int minTier = 1;
+        if (json.has("minTier")) {
+            minTier = json.get("minTier").getAsInt();
+        }
+        int maxTier = Integer.MAX_VALUE;
+        if (json.has("maxTier")) {
+            try {
+                maxTier = json.get("maxTier").getAsInt();
+            } catch (Exception ignored) {}
+        }
+        return PortTypeStructurePiece.create(portType, input, minTier, maxTier);
     }
 }

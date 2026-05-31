@@ -25,6 +25,7 @@ public class ItemPortStorageFactory implements IPortStorageFactory {
         json.addProperty("rows", model.rows());
         json.addProperty("columns", model.columns());
         json.addProperty("slotCapacity", model.slotCapacity());
+        json.addProperty("tierRank", model.tierRank());
         return json;
     }
 

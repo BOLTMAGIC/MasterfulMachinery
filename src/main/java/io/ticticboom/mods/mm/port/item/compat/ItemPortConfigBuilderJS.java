@@ -15,7 +15,7 @@ public class ItemPortConfigBuilderJS extends PortConfigBuilderJS {
 
     @Override
     public IPortStorageModel build() {
-        return new ItemPortStorageModel(rows, columns, isAutoPushSet ? () -> autoPush : () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, slotCapacity);
+        return new ItemPortStorageModel(rows, columns, isAutoPushSet ? () -> autoPush : () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, slotCapacity, getTierRank());
     }
 
     public ItemPortConfigBuilderJS rows(int rows) {
