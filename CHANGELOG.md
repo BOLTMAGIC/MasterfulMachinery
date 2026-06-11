@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.33.7] - 2026-06-11
+
+### Added
+- New item multiblock saver:
+  - In-game item that captures an axis-aligned multiblock selection by marking two corner blocks (right-click) and saving it.
+  - Produces two artifacts in `config/mm/structures`: a Masterful Machinery-compatible JSON layout and a KubeJS registration script.
+  - Auto-names captures using the pattern `mm_capture_<player>_multiblock_<n>` where `n` increments for each new capture.
+  - Captures full block states and tile-entity NBT; enforces a default safety limit of 50,000 blocks to avoid server stalls.
+  - Automatically detects a controller block inside the selection and records `controllerId` and `controllerOffset`; the layout uses the character `C` to mark the controller position (`C` is not emitted as a key entry).
+  - Sneak+right-click in air clears the stored corner markers on the item; sneak+right-click on a block still marks corners (same as normal right-click).
+  - 'minecraft:podzol' will be ignored so you can use it as a corner block without it appearing in the layout.
+
 ## [0.1.33.6] - 2026-06-01
 
 ### Added

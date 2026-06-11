@@ -4,6 +4,7 @@
   "tab.mm.main": "Masterful Machinery",
   "tab.mm.structures": "MM Structures",
   "mm.structure.piece.states.display_key": "Upgradable",
+  "item.mm.multiblock_saver": "Multiblock Saver",
   "item.mm.priority_setter": "Priority Setter",
   "item.mm.priority_setter.tooltip.line1": "Priority: %s / 10",
   "item.mm.priority_setter.tooltip.line2": "Right click: +1",
