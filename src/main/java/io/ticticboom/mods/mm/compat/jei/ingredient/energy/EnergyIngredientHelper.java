@@ -6,36 +6,37 @@ import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class EnergyIngredientHelper implements IIngredientHelper<EnergyStack> {
     @Override
-    public IIngredientType<EnergyStack> getIngredientType() {
+    public @NotNull IIngredientType<EnergyStack> getIngredientType() {
         return MMJeiIngredients.ENERGY;
     }
 
     @Override
-    public String getDisplayName(EnergyStack ingredient) {
+    public @NotNull String getDisplayName(@NotNull EnergyStack ingredient) {
         return "Forge Energy";
     }
 
     @Override
-    public String getUniqueId(EnergyStack ingredient, UidContext context) {
+    public @NotNull String getUniqueId(@NotNull EnergyStack ingredient, @NotNull UidContext context) {
         return "energy";
     }
 
     @Override
-    public ResourceLocation getResourceLocation(EnergyStack ingredient) {
+    public @NotNull ResourceLocation getResourceLocation(@NotNull EnergyStack ingredient) {
         return Ref.id("energy");
     }
 
     @Override
-    public EnergyStack copyIngredient(EnergyStack ingredient) {
+    public @NotNull EnergyStack copyIngredient(EnergyStack ingredient) {
         return new EnergyStack(ingredient.amount());
     }
 
     @Override
-    public String getErrorInfo(@Nullable EnergyStack ingredient) {
+    public @NotNull String getErrorInfo(@Nullable EnergyStack ingredient) {
         return "Error";
     }
 }

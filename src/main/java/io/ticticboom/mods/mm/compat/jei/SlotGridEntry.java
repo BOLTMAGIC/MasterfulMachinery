@@ -45,8 +45,4 @@ public class SlotGridEntry {
         return this.badgeNotUsed;
     }
 
-    public boolean hasBadgeCount() {
-        return this.badgeCount >= 0;
-    }
-
 }

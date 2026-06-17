@@ -32,19 +32,20 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+@SuppressWarnings("unused")
 @JeiPlugin
 public class MMJeiPlugin implements IModPlugin {
     public static final ResourceLocation UID = Ref.id("jei_plugin");
 
     @Override
-    public ResourceLocation getPluginUid() {
+    public @NotNull ResourceLocation getPluginUid() {
         return UID;
     }
 
     public static final List<MMRecipeCategory> recipeCategories = new ArrayList<>();
 
     @Override
-    public void registerCategories(IRecipeCategoryRegistration registration) {
+    public void registerCategories(@NotNull IRecipeCategoryRegistration registration) {
         if (MMConfig.JEI_RECIPE_SPLIT) {
             for (StructureModel parentStructure : StructureManager.STRUCTURES.values()) {
                 registerProcessRecipe(registration, parentStructure);

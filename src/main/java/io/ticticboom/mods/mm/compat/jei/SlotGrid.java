@@ -5,21 +5,9 @@ import java.util.List;
 
 public class SlotGrid {
 
-    private final int xs;
-    private final int ys;
-    private final int width;
-    private final int height;
-    private final int offsetX;
-    private final int offsetY;
-    private List<SlotGridEntry> slots;
+    private final List<SlotGridEntry> slots;
 
     public SlotGrid(int xs, int ys, int width, int height, int offsetX, int offsetY) {
-        this.xs = xs;
-        this.ys = ys;
-        this.width = width;
-        this.height = height;
-        this.offsetX = offsetX;
-        this.offsetY = offsetY;
         slots = new ArrayList<>();
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {

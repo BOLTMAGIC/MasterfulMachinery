@@ -6,38 +6,39 @@ import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class CreateRotationIngredientHelper implements IIngredientHelper<CreateRotationStack> {
     private static final ResourceLocation ingredientId = Ref.id("create-rotation");
 
     @Override
-    public IIngredientType<CreateRotationStack> getIngredientType() {
+    public @NotNull IIngredientType<CreateRotationStack> getIngredientType() {
         return MMJeiIngredients.CREATE_ROTATION;
     }
 
     @Override
-    public String getDisplayName(CreateRotationStack createRotationStack) {
+    public @NotNull String getDisplayName(@NotNull CreateRotationStack createRotationStack) {
         return "Rotation (Create Mod)";
     }
 
     @Override
-    public String getUniqueId(CreateRotationStack createRotationStack, UidContext uidContext) {
+    public @NotNull String getUniqueId(CreateRotationStack createRotationStack, @NotNull UidContext uidContext) {
         return "create-rotation-" + createRotationStack.speed();
     }
 
     @Override
-    public ResourceLocation getResourceLocation(CreateRotationStack createRotationStack) {
+    public @NotNull ResourceLocation getResourceLocation(@NotNull CreateRotationStack createRotationStack) {
         return ingredientId;
     }
 
     @Override
-    public CreateRotationStack copyIngredient(CreateRotationStack createRotationStack) {
+    public @NotNull CreateRotationStack copyIngredient(CreateRotationStack createRotationStack) {
         return new CreateRotationStack(createRotationStack.speed());
     }
 
     @Override
-    public String getErrorInfo(@Nullable CreateRotationStack createRotationStack) {
+    public @NotNull String getErrorInfo(@Nullable CreateRotationStack createRotationStack) {
         return "Error";
     }
 }

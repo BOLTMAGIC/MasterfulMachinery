@@ -10,7 +10,6 @@ import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import lombok.Getter;
-import net.minecraft.client.gui.screens.Screen;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableAnimated;
@@ -124,75 +123,8 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
                     int badgeX = inputSlot.x + 12;
                     int badgeY = inputSlot.y + 12;
                     gfx.drawString(Minecraft.getInstance().font, badge, badgeX, badgeY, 0xFF5555, true);
-                } else if (inputSlot.hasBadgeCount()) {
-                    int count = inputSlot.getBadgeCount();
-                    var font = Minecraft.getInstance().font;
-                    boolean hover = WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, inputSlot.x, inputSlot.y, 18, 18);
-                    // show exact for hovered slot, or for all slots if Shift is held
-                    String display;
-                    if (Screen.hasShiftDown() || hover) {
-                        display = Integer.toString(count);
-                    } else {
-                        display = abbreviateNumber(count);
-                    }
-
-                    int textWidth = Math.max(1, font.width(display));
-                    // draw numbers centered at the bottom-middle of the item
-                    float baseScale = 0.8f; // small text
-                    int maxWidth = 20; // max pixel width before scaling down
-                    float scale = baseScale;
-                    if (textWidth * scale > maxWidth) {
-                        scale = Math.max(0.4f, (float) maxWidth / (float) textWidth);
-                    }
-
-                    int centerX = inputSlot.x + 9; // slot center (slot width ~18)
-                    int drawY = inputSlot.y + 15; // near bottom of slot
-
-                    // draw a semi-transparent dark background behind the text for readability
-                    int scaledW = (int) Math.ceil(textWidth * scale);
-                    int scaledH = (int) Math.ceil((float) Minecraft.getInstance().font.lineHeight * scale);
-                    int padX = Math.max(1, (int) Math.ceil(2f * scale));
-                    int padY = Math.max(1, (int) Math.ceil(scale));
-                    int left = (int) Math.floor(centerX - (scaledW / 2.0f)) - padX;
-                    int top = drawY - padY;
-                    int right = (int) Math.ceil(centerX + (scaledW / 2.0f)) + padX;
-                    int bottom = drawY + scaledH + padY;
-                    // draw background slightly behind the text but above items
-                    gfx.pose().pushPose();
-                    gfx.pose().translate(0f, 0f, 99f);
-                    gfx.fill(left, top, right, bottom, 0x55000000);
-                    gfx.pose().popPose();
-
-                    // draw text above the background
-                    gfx.pose().pushPose();
-                    gfx.pose().translate((float) centerX, (float) drawY, 100f);
-                    gfx.pose().scale(scale, scale, 1f);
-                    // drawString draws from top-left, so draw at -textWidth/2 to center-align
-                    gfx.drawString(font, display, -textWidth / 2, 0, 0xFFFFFFFF, true);
-                    gfx.pose().popPose();
                 }
             }
         }
-
-    }
-
-    private static String abbreviateNumber(int n) {
-        // only abbreviate numbers greater than 9999 (i.e. 10000+)
-        if (Math.abs(n) <= 9999) return Integer.toString(n);
-        final long abs = Math.abs((long) n);
-        final String[] suffix = new String[] {"", "K", "M", "G", "T"};
-        int idx = 0;
-        double value = abs;
-        while (value >= 1000 && idx < suffix.length - 1) {
-            value /= 1000.0;
-            idx++;
-        }
-        String fmt;
-        if (value < 10 && Math.floor(value) != value) {
-            fmt = String.format("%.1f%s", value, suffix[idx]);
-        } else {
-            fmt = String.format("%.0f%s", Math.floor(value), suffix[idx]);
-        }
-        return fmt;
     }
 }

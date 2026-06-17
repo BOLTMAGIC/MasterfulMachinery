@@ -12,13 +12,13 @@ import java.util.List;
 public class CreateRotationIngredientRenderer implements IIngredientRenderer<CreateRotationStack> {
 
     @Override
-    public void render(GuiGraphics guiGraphics, CreateRotationStack createRotationStack) {
+    public void render(@NotNull GuiGraphics guiGraphics, @NotNull CreateRotationStack createRotationStack) {
         GuiTextures.CREATE_PORT_SLOT.blit(guiGraphics, 0, 0);
     }
 
     @SuppressWarnings("removal")
     @Override
-    public @NotNull List<Component> getTooltip(CreateRotationStack ingredient, TooltipFlag tooltipFlag) {
+    public @NotNull List<Component> getTooltip(CreateRotationStack ingredient, @NotNull TooltipFlag tooltipFlag) {
         return List.of(Component.literal("Create Rotation: " + ingredient.speed()));
     }
 }
