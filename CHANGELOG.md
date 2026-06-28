@@ -7,7 +7,7 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ## [0.1.33.11] - 2026-06-28
 
 ### Added
-- add creative mode pasting of blueprinted structures
+- add creative mode pasting of blueprinted structures (thx to FrozenGalaxy)
 
 ## [0.1.33.10] - 2026-06-17
 
