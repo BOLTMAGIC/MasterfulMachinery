@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.33.11] - 2026-06-28
+
+### Added
+- add creative mode pasting of blueprinted structures
+
 ## [0.1.33.10] - 2026-06-17
 
 ### Added
