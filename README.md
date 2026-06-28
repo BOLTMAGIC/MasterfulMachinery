@@ -1,17 +1,15 @@
-<p align="center"><img src="./.idea/panel.png" alt="Masterful Machinery Logo"/></p>
+<p align="center">
+  <img src="./.idea/panel.png" alt="Masterful Machinery Logo"/>
+</p>
 
+# Masterful Machinery
 
-### What is Masterful Machinery?
+Masterful Machinery is a utility-tech mod for modern Minecraft.
 
-Masterful Machinery is a utility-tech mod for Modern Minecraft version.
+It allows modpack developers to create custom multiblock machines through data/config files and integrations with other popular tech and magic mods. The goal is to let packs define their own machines, recipes, ports, structures, and progression without needing a custom machine mod for every use case.
 
-The mod allows mod-pack developers to create custom multi-block machines.
+## Links
 
-Masterful Machinery is built around integrations with popular mods to allow modpack developers top unify the players experience.
-
-
-### Documentation
-
-The Latest Docs can be found [newdocs.masterfulmc.com](https://newdocs.masterfulmc.com/)
-
-1.16,1.18 docs can be found [docs.masterfulmc.com](https://docs.masterfulmc.com/masterfulmachinery)
+- CurseForge: https://www.curseforge.com/minecraft/mc-mods/masterful-machinery-fork
+- Documentation: https://frozengalaxy.github.io/masterful-machinery-wiki/
+- Source: https://github.com/BOLTMAGIC/MasterfulMachinery
