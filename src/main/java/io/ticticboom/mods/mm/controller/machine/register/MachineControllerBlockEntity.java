@@ -107,6 +107,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private int nextRecipeCheckIndex = 0;
     private ResourceLocation lastStartedRecipeId = null;
     private ResourceLocation lastStartedInputItemId = null;
+    private long recipeSelectionSequence = 0L;
+    private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
 
     public StructureModel getStructure() {
         return structure;
@@ -414,6 +416,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 int performed = 0;
                 RecipeModel deferredRecipe = null;
                 ResourceLocation deferredPrimaryInputItemId = null;
+                RecipeModel selectedRoundRobinRecipe = null;
+                ResourceLocation selectedRoundRobinInputItemId = null;
+                long selectedRoundRobinLastUse = Long.MAX_VALUE;
                 boolean startedRecipeThisPass = false;
                 while (performed < checks) {
                     RecipeModel recipe = cachedStructureRecipes.get(idx);
@@ -526,6 +531,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
                     if (canStartRecipeGivenParallelRules(recipe)) {
                         ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
+                        RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
+                        if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
+                            long lastUse = inputItemLastStartedSequence.getOrDefault(primaryInputItemId, Long.MIN_VALUE);
+                            if (selectedRoundRobinRecipe == null || lastUse < selectedRoundRobinLastUse) {
+                                selectedRoundRobinRecipe = recipe;
+                                selectedRoundRobinInputItemId = primaryInputItemId;
+                                selectedRoundRobinLastUse = lastUse;
+                            }
+                            continue;
+                        }
                         if (shouldDeferRecipeBySelectionMode(recipe, primaryInputItemId)) {
                             if (deferredRecipe == null) {
                                 deferredRecipe = recipe;
@@ -537,6 +552,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                         startedRecipeThisPass = true;
                     }
 
+                }
+                if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
+                        && !activeRecipes.containsKey(selectedRoundRobinRecipe.id())
+                        && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
+                        && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                    startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
+                    startedRecipeThisPass = true;
                 }
                 if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                         && canStartRecipeGivenParallelRules(deferredRecipe)
@@ -575,8 +597,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         activeRecipes.put(recipe.id(), newState);
         activeRecipeLastUpdate.put(recipe.id(), gameTime);
         lastStartedRecipeId = recipe.id();
+        recipeSelectionSequence++;
         if (primaryInputItemId != null) {
             lastStartedInputItemId = primaryInputItemId;
+            inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
         }
         setChanged();
     }
@@ -586,9 +610,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (mode == RecipeSelectionMode.AVOID_SAME_RECIPE) {
             return lastStartedRecipeId != null && lastStartedRecipeId.equals(recipe.id());
         }
-        if (mode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM) {
-            return primaryInputItemId != null && lastStartedInputItemId != null && lastStartedInputItemId.equals(primaryInputItemId);
-        }
+        // ROUND_ROBIN_INPUT_ITEM is handled in the recipe scan by choosing the
+        // least-recently-used consumed item input among all currently runnable recipes.
         return false;
     }
 
@@ -723,6 +746,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         tag.putBoolean("isFormed", isFormed);
         if (lastStartedRecipeId != null) tag.putString("lastStartedRecipeId", lastStartedRecipeId.toString());
         if (lastStartedInputItemId != null) tag.putString("lastStartedInputItemId", lastStartedInputItemId.toString());
+        tag.putLong("recipeSelectionSequence", recipeSelectionSequence);
+        if (!inputItemLastStartedSequence.isEmpty()) {
+            CompoundTag inputHistoryTag = new CompoundTag();
+            for (Map.Entry<ResourceLocation, Long> entry : inputItemLastStartedSequence.entrySet()) {
+                inputHistoryTag.putLong(entry.getKey().toString(), entry.getValue());
+            }
+            tag.put("inputItemLastStartedSequence", inputHistoryTag);
+        }
         tag.putBoolean("filler", true);
         super.saveAdditional(tag);
     }
@@ -755,6 +786,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? ResourceLocation.tryParse(tag.getString("lastStartedRecipeId")) : null;
         lastStartedInputItemId = tag.contains("lastStartedInputItemId") ? ResourceLocation.tryParse(tag.getString("lastStartedInputItemId")) : null;
+        recipeSelectionSequence = tag.contains("recipeSelectionSequence") ? tag.getLong("recipeSelectionSequence") : 0L;
+        inputItemLastStartedSequence.clear();
+        if (tag.contains("inputItemLastStartedSequence")) {
+            CompoundTag inputHistoryTag = tag.getCompound("inputItemLastStartedSequence");
+            for (String key : inputHistoryTag.getAllKeys()) {
+                ResourceLocation itemId = ResourceLocation.tryParse(key);
+                if (itemId != null) {
+                    inputItemLastStartedSequence.put(itemId, inputHistoryTag.getLong(key));
+                }
+            }
+        }
         if (!activeRecipes.isEmpty()) {
             currentRecipe = MachineRecipeManager.RECIPES.get(activeRecipes.keySet().iterator().next());
         } else {
