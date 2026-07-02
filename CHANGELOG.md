@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.0] - 2026-07-02
+
+### Added
+- Add recipe selection mode system for controllers (thx to FrozenGalaxy)
+- Add custom display names for blueprint items (thx to FrozenGalaxy)
+- Implement round-robin recipe selection by input item (thx to FrozenGalaxy)
+
 ## [0.1.33.11] - 2026-06-28
 
 ### Added
