@@ -21,9 +21,20 @@ import java.util.List;
 
 public class BlueprintItem extends Item {
     public static final String TAG_STRUCTURE = "MMStructure";
+    public static final String TAG_STRUCTURE_NAME = "MMStructureName";
 
     public BlueprintItem() {
         super(new Properties());
+    }
+
+    @Override
+    public @NotNull Component getName(@NotNull ItemStack stack) {
+        String structureName = getStructureDisplayName(stack);
+        if (structureName == null || structureName.isBlank()) {
+            return super.getName(stack);
+        }
+
+        return Component.literal(structureName).append(" - ").append(super.getName(stack));
     }
 
     @Override
@@ -80,20 +91,50 @@ public class BlueprintItem extends Item {
     public ItemStack getStructureInstance(ResourceLocation structureId) {
         ItemStack defaultInstance = getDefaultInstance();
         defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE, structureId.toString());
+
+        StructureModel structure = StructureManager.STRUCTURES.get(structureId);
+        if (structure != null && structure.name() != null && !structure.name().isBlank()) {
+            defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE_NAME, structure.name());
+        }
+
         return defaultInstance;
     }
 
-    public static StructureModel getStructure(ItemStack stack) {
+    @Nullable
+    public static ResourceLocation getStructureId(ItemStack stack) {
         if (!stack.hasTag()) {
             return null;
         }
 
         assert stack.getTag() != null;
-        var id = ResourceLocation.tryParse(stack.getTag().getString(TAG_STRUCTURE));
+        return ResourceLocation.tryParse(stack.getTag().getString(TAG_STRUCTURE));
+    }
+
+    public static StructureModel getStructure(ItemStack stack) {
+        ResourceLocation id = getStructureId(stack);
         if (id == null) {
             return null;
         }
 
         return StructureManager.STRUCTURES.get(id);
+    }
+
+    @Nullable
+    private static String getStructureDisplayName(ItemStack stack) {
+        StructureModel structure = getStructure(stack);
+        if (structure != null && structure.name() != null && !structure.name().isBlank()) {
+            return structure.name();
+        }
+
+        if (stack.hasTag()) {
+            assert stack.getTag() != null;
+            String storedName = stack.getTag().getString(TAG_STRUCTURE_NAME);
+            if (!storedName.isBlank()) {
+                return storedName;
+            }
+        }
+
+        ResourceLocation id = getStructureId(stack);
+        return id == null ? null : id.toString();
     }
 }
