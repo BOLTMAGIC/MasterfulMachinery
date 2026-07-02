@@ -11,6 +11,7 @@ public record ControllerModel(
         String name,
         boolean parallelProcessingDefault,
         int maxParallelRecipes,
+        RecipeSelectionMode recipeSelectionMode,
         JsonObject config
 ) {
     public static ControllerModel parse(JsonObject json) {
@@ -20,23 +21,31 @@ public record ControllerModel(
         var parallelProcessingDefault = json.has("parallelProcessingDefault") && json.get("parallelProcessingDefault").getAsBoolean();
         var maxParallelRecipes = json.has("maxParallelRecipes") ? json.get("maxParallelRecipes").getAsInt() : -1; // -1 => use global default
         maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
-        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, json);
+        var recipeSelectionMode = json.has("recipeSelectionMode")
+                ? RecipeSelectionMode.parse(json.get("recipeSelectionMode").getAsString())
+                : RecipeSelectionMode.DEFAULT;
+        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
     }
 
     public static ControllerModel create(String id, ResourceLocation type, String name) {
         JsonObject json = paramsToJson(id, type, name);
-        return new ControllerModel(id, type, name, false, -1, json);
+        return new ControllerModel(id, type, name, false, -1, RecipeSelectionMode.DEFAULT, json);
     }
 
     public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault) {
         JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, -1);
-        return new ControllerModel(id, type, name, parallelProcessingDefault, -1, json);
+        return new ControllerModel(id, type, name, parallelProcessingDefault, -1, RecipeSelectionMode.DEFAULT, json);
     }
 
     public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
+        return create(id, type, name, parallelProcessingDefault, maxParallelRecipes, RecipeSelectionMode.DEFAULT);
+    }
+
+    public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
         maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
-        JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes);
-        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, json);
+        if (recipeSelectionMode == null) recipeSelectionMode = RecipeSelectionMode.DEFAULT;
+        JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
     }
 
     public static JsonObject paramsToJson(String id, ResourceLocation type, String name) {
@@ -46,17 +55,24 @@ public record ControllerModel(
         json.addProperty("name", name);
         json.addProperty("parallelProcessingDefault", false);
         json.addProperty("maxParallelRecipes", -1);
+        json.addProperty("recipeSelectionMode", RecipeSelectionMode.DEFAULT.serializedName());
         return json;
     }
 
     public static JsonObject paramsToJson(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
+        return paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes, RecipeSelectionMode.DEFAULT);
+    }
+
+    public static JsonObject paramsToJson(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
         maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
+        if (recipeSelectionMode == null) recipeSelectionMode = RecipeSelectionMode.DEFAULT;
         var json = new JsonObject();
         json.addProperty("id", id);
         json.addProperty("type", type.toString());
         json.addProperty("name", name);
         json.addProperty("parallelProcessingDefault", parallelProcessingDefault);
         json.addProperty("maxParallelRecipes", maxParallelRecipes);
+        json.addProperty("recipeSelectionMode", recipeSelectionMode.serializedName());
         return json;
     }
 

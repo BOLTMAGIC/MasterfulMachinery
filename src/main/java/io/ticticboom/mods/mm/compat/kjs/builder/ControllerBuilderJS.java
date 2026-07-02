@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import dev.latvian.mods.rhino.util.HideFromJS;
 import io.ticticboom.mods.mm.model.ControllerModel;
+import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import lombok.Getter;
 import net.minecraft.resources.ResourceLocation;
 
@@ -12,6 +13,7 @@ public class ControllerBuilderJS {
     private ResourceLocation type;
     private boolean parallelProcessingDefault = false;
     private int maxParallelRecipes = -1;
+    private RecipeSelectionMode recipeSelectionMode = RecipeSelectionMode.DEFAULT;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -44,8 +46,14 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS recipeSelectionMode(String recipeSelectionMode) {
+        this.recipeSelectionMode = RecipeSelectionMode.parse(recipeSelectionMode);
+        return this;
+    }
+
     @HideFromJS
     public ControllerModel build() {
-        return ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes);
+        return ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
     }
 }
