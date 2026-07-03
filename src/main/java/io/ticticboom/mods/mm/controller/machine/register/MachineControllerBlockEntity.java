@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorage;
 import io.ticticboom.mods.mm.port.botania.mana.BotaniaManaPortStorage;
+import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.port.pneumaticcraft.air.PneumaticAirPortStorage;
 import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortStorage;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
@@ -84,6 +85,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private final java.util.Set<ResourceLocation> cachedAvailableItemIds = new java.util.HashSet<>();
     private final java.util.Set<ResourceLocation> cachedAvailableFluidIds = new java.util.HashSet<>();
     private final java.util.Set<ResourceLocation> cachedAvailableMekanismIds = new java.util.HashSet<>();
+    private final java.util.Map<ResourceLocation, java.util.List<ResourceLocation>> cachedAvailableItemStackKeys = new java.util.HashMap<>();
     private boolean cachedHasEnergyAvailable = false;
     private boolean cachedHasManaAvailable = false;
     private boolean cachedHasPneumaticAir = false;
@@ -109,22 +111,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private ResourceLocation lastStartedInputItemId = null;
     private long recipeSelectionSequence = 0L;
     private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
-
-    public StructureModel getStructure() {
-        return structure;
-    }
-
-    public RecipeModel getCurrentRecipe() {
-        return currentRecipe;
-    }
-
-    public long getLastValidationRequestMs() {
-        return lastValidationRequestMs;
-    }
-
-    public void setLastValidationRequestMs(long lastValidationRequestMs) {
-        this.lastValidationRequestMs = lastValidationRequestMs;
-    }
+    // track last-start sequence per recipe to break ties when multiple recipes
+    // compete for the same input item key during round-robin selection
+    private final Map<ResourceLocation, Long> recipeLastStartedSequence = new HashMap<>();
 
     public void tick() {
         if (level == null || level.isClientSide() || isRemoved()) {
@@ -190,9 +179,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private void runRecipe() {
         if (portStorages == null) {
-            portStorages = structure.getStorages(level, getBlockPos());
+            portStorages = (structure == null) ? null : structure.getStorages(level, getBlockPos());
         }
-        // detect external changes to storages (player inserted/removed items, fluid changes, etc.)
+        detectExternalStorageChanges();
+        long gameTime = (level == null) ? 0L : level.getGameTime();
+        if (!storageContentCacheValid) rebuildStorageCacheIfNeeded(gameTime);
+        processActiveRecipeOutputs();
+        if (structure != null) scanAndStartRecipes(gameTime);
+        performRecipeTick();
+    }
+
+    // Helper split to reduce runRecipe complexity
+    private void detectExternalStorageChanges() {
         try {
             if (portStorages != null) {
                 long sig = 1469598103934665603L; // FNV offset basis
@@ -279,36 +277,37 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 }
             }
         } catch (Throwable ignored) { }
-        long gameTime = (level == null) ? 0L : level.getGameTime();
+    }
 
-        if (!storageContentCacheValid) {
-            // throttle rebuilds when controller is only searching (no active recipes)
-            boolean doRebuild = false;
-            if (!activeRecipes.isEmpty()) {
-                doRebuild = true; // running recipes -> keep cache up-to-date
-            } else {
-                // throttling / cooldowns for expensive scans when controller is only searching
-                // when no active recipes, only scan storages every N ticks
-                int resourceScanIntervalTicks = 5;
-                if (lastResourceScanTime < 0 || gameTime - lastResourceScanTime >= resourceScanIntervalTicks) {
-                    doRebuild = true;
-                    lastResourceScanTime = gameTime;
-                }
+    private void rebuildStorageCacheIfNeeded(long gameTime) {
+        // throttle rebuilds when controller is only searching (no active recipes)
+        boolean doRebuild = false;
+        if (!activeRecipes.isEmpty()) {
+            doRebuild = true; // running recipes -> keep cache up-to-date
+        } else {
+            // throttling / cooldowns for expensive scans when controller is only searching
+            // when no active recipes, only scan storages every N ticks
+            int resourceScanIntervalTicks = 5;
+            if (lastResourceScanTime < 0 || gameTime - lastResourceScanTime >= resourceScanIntervalTicks) {
+                doRebuild = true;
+                lastResourceScanTime = gameTime;
             }
+        }
 
-            //noinspection StatementWithEmptyBody
-            if (doRebuild) {
-                cachedAvailableItemIds.clear();
-                cachedAvailableFluidIds.clear();
-                cachedAvailableMekanismIds.clear();
-                cachedHasEnergyAvailable = false;
-                cachedHasManaAvailable = false;
-                cachedHasPneumaticAir = false;
-                cachedHasKinetic = false;
-                cachedHasMekanismChemical = false;
+        //noinspection StatementWithEmptyBody
+        if (doRebuild) {
+            cachedAvailableItemIds.clear();
+            cachedAvailableFluidIds.clear();
+            cachedAvailableMekanismIds.clear();
+            cachedHasEnergyAvailable = false;
+            cachedHasManaAvailable = false;
+            cachedHasPneumaticAir = false;
+            cachedHasKinetic = false;
+            cachedHasMekanismChemical = false;
 
-                if (portStorages != null) {
+            if (portStorages != null) {
                 var itemStorages = portStorages.getInputStorages(ItemPortStorage.class);
+                cachedAvailableItemStackKeys.clear();
                 for (ItemPortStorage s : itemStorages) {
                     var handler = s.getHandler();
                     if (handler == null) continue;
@@ -317,7 +316,21 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                         int actual = handler.getActualCount(i);
                         if (!stack.isEmpty() && actual > 0) {
                             var key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-                            if (key != null) cachedAvailableItemIds.add(key);
+                            if (key != null) {
+                                cachedAvailableItemIds.add(key);
+                                // compute NBT fingerprint for this exact stack
+                                ResourceLocation composed = key;
+                                try {
+                                    if (stack.hasTag()) {
+                                        String json = io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(stack.getTag()).toString();
+                                        String hex = Integer.toHexString(json.hashCode());
+                                        String namespaced = key.getNamespace() + ":" + key.getPath() + "__W__" + hex;
+                                        var parsed = ResourceLocation.tryParse(namespaced);
+                                        if (parsed != null) composed = parsed;
+                                    }
+                                } catch (Throwable ignored) { }
+                                cachedAvailableItemStackKeys.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(composed);
+                            }
                         }
                     }
                 }
@@ -372,15 +385,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 }
             }
 
-                // reflect cached booleans into local variables
-                storageContentCacheValid = true;
-                // after a rebuild allow recipes to be rechecked immediately
-                recipeNextCheckTime.clear();
-            } else {
-                // Not rebuilding this tick; leave local variables as cached (may be stale/empty).
-                // To avoid false negatives, we'll skip content-based pre-checks when cache is not valid.
-            }
+            // reflect cached booleans into local variables
+            storageContentCacheValid = true;
+            // after a rebuild allow recipes to be rechecked immediately
+            recipeNextCheckTime.clear();
+        } else {
+            // Not rebuilding this tick; leave local variables as cached (may be stale/empty).
+            // To avoid false negatives, we'll skip content-based pre-checks when cache is not valid.
         }
+    }
+
+    private void processActiveRecipeOutputs() {
         List<ResourceLocation> toRemove = new ArrayList<>();
         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
             ResourceLocation recipeId = entry.getKey();
@@ -397,178 +412,294 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             activeRecipes.remove(id);
             activeRecipeLastUpdate.remove(id);
         }
+    }
 
+    private void scanAndStartRecipes(long gameTime) {
         // Spread recipe checks across multiple ticks to avoid scanning all recipes every tick.
-        //noinspection StatementWithEmptyBody
-        if (structure == null) {
-            // nothing to check
-        } else {
-            if (cachedStructureRecipes == null) cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
-            if (!cachedStructureRecipes.isEmpty()) {
-                int total = cachedStructureRecipes.size();
-                // tune this: how many recipes to probe per tick when searching.
-                // Fair modes intentionally scan the whole recipe list so they can find a
-                // different runnable recipe/input item instead of being trapped in adjacent
-                // same-input recipes, e.g. sieve/sand/* entries.
-                int maxRecipeChecksPerTick = controllerModel.recipeSelectionMode().fairScheduling() ? total : 5;
-                int checks = Math.min(maxRecipeChecksPerTick, total);
-                int idx = nextRecipeCheckIndex % total;
-                int performed = 0;
-                RecipeModel deferredRecipe = null;
-                ResourceLocation deferredPrimaryInputItemId = null;
-                RecipeModel selectedRoundRobinRecipe = null;
-                ResourceLocation selectedRoundRobinInputItemId = null;
-                long selectedRoundRobinLastUse = Long.MAX_VALUE;
-                boolean startedRecipeThisPass = false;
-                while (performed < checks) {
-                    RecipeModel recipe = cachedStructureRecipes.get(idx);
-                    idx = (idx + 1) % total;
-                    performed++;
+        if (cachedStructureRecipes == null) cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
+        if (cachedStructureRecipes.isEmpty()) return;
+        int total = cachedStructureRecipes.size();
+        int maxRecipeChecksPerTick = controllerModel.recipeSelectionMode().fairScheduling() ? total : 5;
+        int checks = Math.min(maxRecipeChecksPerTick, total);
+        int idx = nextRecipeCheckIndex % total;
+        int performed = 0;
+        RecipeModel deferredRecipe = null;
+        ResourceLocation deferredPrimaryInputItemId = null;
+        RecipeModel selectedRoundRobinRecipe = null;
+        ResourceLocation selectedRoundRobinInputItemId = null;
+        long selectedRoundRobinLastUse = Long.MAX_VALUE;
+        boolean startedRecipeThisPass = false;
+        while (performed < checks) {
+            RecipeModel recipe = cachedStructureRecipes.get(idx);
+            idx = (idx + 1) % total;
+            performed++;
 
-                    if (activeRecipes.containsKey(recipe.id())) continue;
-                    if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
+            if (activeRecipes.containsKey(recipe.id())) continue;
+            if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
-                    // lightweight capability pre-check: compute required port types from recipe inputs
-                    java.util.Set<ResourceLocation> requiredTypes = new java.util.HashSet<>();
-                    for (var input : recipe.inputs().inputs()) {
-                        if (input instanceof ConsumeRecipeIngredientEntry cre) {
-                            var ingr = cre.getIngredient();
-                            if (ingr instanceof BaseItemPortIngredient) requiredTypes.add(Ref.Ports.ITEM);
-                            else if (ingr instanceof FluidPortIngredient) requiredTypes.add(Ref.Ports.FLUID);
-                            else if (ingr instanceof EnergyPortIngredient) requiredTypes.add(Ref.Ports.ENERGY);
-                            else if (ingr instanceof BotaniaManaPortIngredient) requiredTypes.add(Ref.Ports.BOTANIA_MANA);
-                            else if (ingr instanceof PneumaticAirPortIngredient) requiredTypes.add(Ref.Ports.PNEUMATIC_AIR);
-                            else if (ingr instanceof CreateKineticPortIngredient) requiredTypes.add(Ref.Ports.CREATE_KINETIC);
-                            else //noinspection rawtypes
-                                if (ingr instanceof MekanismChemicalPortIngredient mech) {
-                                try { var typeId = mech.getTypeId(); if (typeId != null) requiredTypes.add(typeId); }
-                                catch (Throwable ignored) { }
+            // lightweight capability pre-check: compute required port types from recipe inputs
+            java.util.Set<ResourceLocation> requiredTypes = new java.util.HashSet<>();
+            for (var input : recipe.inputs().inputs()) {
+                if (input instanceof ConsumeRecipeIngredientEntry cre) {
+                    var ingr = cre.getIngredient();
+                    if (ingr instanceof BaseItemPortIngredient) requiredTypes.add(Ref.Ports.ITEM);
+                    else if (ingr instanceof FluidPortIngredient) requiredTypes.add(Ref.Ports.FLUID);
+                    else if (ingr instanceof EnergyPortIngredient) requiredTypes.add(Ref.Ports.ENERGY);
+                    else if (ingr instanceof BotaniaManaPortIngredient) requiredTypes.add(Ref.Ports.BOTANIA_MANA);
+                    else if (ingr instanceof PneumaticAirPortIngredient) requiredTypes.add(Ref.Ports.PNEUMATIC_AIR);
+                    else if (ingr instanceof CreateKineticPortIngredient) requiredTypes.add(Ref.Ports.CREATE_KINETIC);
+                    else //noinspection rawtypes
+                        if (ingr instanceof MekanismChemicalPortIngredient mech) {
+                        try { var typeId = mech.getTypeId(); if (typeId != null) requiredTypes.add(typeId); }
+                        catch (Throwable ignored) { }
+                    }
+                }
+            }
+
+            // Also gather any specific resource ids (items/fluids) that the recipe requires
+            java.util.Set<ResourceLocation> requiredItemIds = new java.util.HashSet<>();
+            java.util.Set<ResourceLocation> requiredFluidIds = new java.util.HashSet<>();
+            java.util.Set<ResourceLocation> requiredMekanismIds = new java.util.HashSet<>();
+            boolean needsEnergy = false;
+            boolean needsMana = false;
+            boolean needsPneumatic = false;
+            boolean needsKinetic = false;
+            boolean needsMekanismChemical = false;
+            for (var input : recipe.inputs().inputs()) {
+                if (input instanceof ConsumeRecipeIngredientEntry cre) {
+                    var ingr = cre.getIngredient();
+                    if (ingr instanceof BaseItemPortIngredient) {
+                        if (ingr instanceof io.ticticboom.mods.mm.port.item.SingleItemPortIngredient single) {
+                            try { var id = single.getItemId(); if (id != null) requiredItemIds.add(id); } catch (Throwable ignored) {}
+                        }
+                    } else if (ingr instanceof FluidPortIngredient fp) {
+                        try { var id = fp.getFluidId(); if (id != null) requiredFluidIds.add(id); } catch (Throwable ignored) {}
+                    } else if (ingr instanceof EnergyPortIngredient) needsEnergy = true;
+                    else if (ingr instanceof BotaniaManaPortIngredient) needsMana = true;
+                    else if (ingr instanceof PneumaticAirPortIngredient) needsPneumatic = true;
+                    else if (ingr instanceof CreateKineticPortIngredient) needsKinetic = true;
+                    else //noinspection rawtypes
+                        if (ingr instanceof MekanismChemicalPortIngredient mech) {
+                        try {
+                            var chemId = mech.getChemicalId();
+                            if (chemId != null) requiredMekanismIds.add(chemId);
+                            needsMekanismChemical = true; // also keep generic flag for quick checks
+                        } catch (Throwable ignored) { }
+                    }
+                }
+            }
+
+            // when a recipe is skipped due to missing resources, wait N ticks before rechecking
+            int recipeSkipCooldownTicks = 20;
+            if (!requiredTypes.isEmpty()) {
+                var available = MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId);
+                if (available != null && !available.containsAll(requiredTypes)) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+            }
+
+            if (portStorages != null && storageContentCacheValid) {
+                if (!requiredItemIds.isEmpty() && !cachedAvailableItemIds.containsAll(requiredItemIds)) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (!requiredFluidIds.isEmpty() && !cachedAvailableFluidIds.containsAll(requiredFluidIds)) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (needsEnergy && !cachedHasEnergyAvailable) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (needsMana && !cachedHasManaAvailable) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (needsPneumatic && !cachedHasPneumaticAir) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (needsKinetic && !cachedHasKinetic) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (needsMekanismChemical && !cachedHasMekanismChemical) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+                if (!requiredMekanismIds.isEmpty() && !cachedAvailableMekanismIds.containsAll(requiredMekanismIds)) {
+                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                    continue;
+                }
+            }
+
+            if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                continue;
+            }
+
+            if (canStartRecipeGivenParallelRules(recipe)) {
+                ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
+                RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
+                if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
+                    // primaryInputItemId may be a composed key (with __ suffix) or a base id.
+                    ResourceLocation baseId = getResourceLocation(primaryInputItemId);
+                    // choose least-recently-used available stack key for this recipe's primary base item id
+                    var available = cachedAvailableItemStackKeys.get(baseId);
+                    if (available != null && !available.isEmpty()) {
+                        ResourceLocation bestKey = null;
+                        long bestLastUse = Long.MAX_VALUE;
+                        for (ResourceLocation candidate : available) {
+                            long lastUse = inputItemLastStartedSequence.getOrDefault(candidate, Long.MIN_VALUE);
+                            if (bestKey == null || lastUse < bestLastUse) {
+                                bestKey = candidate;
+                                bestLastUse = lastUse;
                             }
                         }
-                    }
-
-                    // Also gather any specific resource ids (items/fluids) that the recipe requires
-                    java.util.Set<ResourceLocation> requiredItemIds = new java.util.HashSet<>();
-                    java.util.Set<ResourceLocation> requiredFluidIds = new java.util.HashSet<>();
-                    java.util.Set<ResourceLocation> requiredMekanismIds = new java.util.HashSet<>();
-                    boolean needsEnergy = false;
-                    boolean needsMana = false;
-                    boolean needsPneumatic = false;
-                    boolean needsKinetic = false;
-                    boolean needsMekanismChemical = false;
-                    for (var input : recipe.inputs().inputs()) {
-                        if (input instanceof ConsumeRecipeIngredientEntry cre) {
-                            var ingr = cre.getIngredient();
-                            if (ingr instanceof BaseItemPortIngredient) {
-                                if (ingr instanceof io.ticticboom.mods.mm.port.item.SingleItemPortIngredient single) {
-                                    try { var id = single.getItemId(); if (id != null) requiredItemIds.add(id); } catch (Throwable ignored) {}
-                                }
-                            } else if (ingr instanceof FluidPortIngredient fp) {
-                                try { var id = fp.getFluidId(); if (id != null) requiredFluidIds.add(id); } catch (Throwable ignored) {}
-                            } else if (ingr instanceof EnergyPortIngredient) needsEnergy = true;
-                            else if (ingr instanceof BotaniaManaPortIngredient) needsMana = true;
-                            else if (ingr instanceof PneumaticAirPortIngredient) needsPneumatic = true;
-                            else if (ingr instanceof CreateKineticPortIngredient) needsKinetic = true;
-                            else //noinspection rawtypes
-                                if (ingr instanceof MekanismChemicalPortIngredient mech) {
-                                try {
-                                    var chemId = mech.getChemicalId();
-                                    if (chemId != null) requiredMekanismIds.add(chemId);
-                                    needsMekanismChemical = true; // also keep generic flag for quick checks
-                                } catch (Throwable ignored) { }
+                        if (bestKey != null) {
+                            boolean take = false;
+                            if (selectedRoundRobinRecipe == null) take = true;
+                            else if (bestLastUse < selectedRoundRobinLastUse) take = true;
+                            else if (bestLastUse == selectedRoundRobinLastUse) {
+                                long a = recipeLastStartedSequence.getOrDefault(recipe.id(), Long.MIN_VALUE);
+                                long b = recipeLastStartedSequence.getOrDefault(selectedRoundRobinRecipe.id(), Long.MIN_VALUE);
+                                if (a < b) take = true; // prefer recipe which was started less recently
                             }
-                        }
-                    }
-
-                    // when a recipe is skipped due to missing resources, wait N ticks before rechecking
-                    int recipeSkipCooldownTicks = 20;
-                    if (!requiredTypes.isEmpty()) {
-                        var available = MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId);
-                        if (available != null && !available.containsAll(requiredTypes)) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                    }
-
-                    if (portStorages != null && storageContentCacheValid) {
-                        if (!requiredItemIds.isEmpty() && !cachedAvailableItemIds.containsAll(requiredItemIds)) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (!requiredFluidIds.isEmpty() && !cachedAvailableFluidIds.containsAll(requiredFluidIds)) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (needsEnergy && !cachedHasEnergyAvailable) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (needsMana && !cachedHasManaAvailable) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (needsPneumatic && !cachedHasPneumaticAir) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (needsKinetic && !cachedHasKinetic) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (needsMekanismChemical && !cachedHasMekanismChemical) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                        if (!requiredMekanismIds.isEmpty() && !cachedAvailableMekanismIds.containsAll(requiredMekanismIds)) {
-                            recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                            continue;
-                        }
-                    }
-
-                    if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
-                        continue;
-                    }
-
-                    if (canStartRecipeGivenParallelRules(recipe)) {
-                        ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
-                        RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
-                        if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
-                            long lastUse = inputItemLastStartedSequence.getOrDefault(primaryInputItemId, Long.MIN_VALUE);
-                            if (selectedRoundRobinRecipe == null || lastUse < selectedRoundRobinLastUse) {
+                            if (take) {
                                 selectedRoundRobinRecipe = recipe;
-                                selectedRoundRobinInputItemId = primaryInputItemId;
-                                selectedRoundRobinLastUse = lastUse;
+                                selectedRoundRobinInputItemId = bestKey;
+                                selectedRoundRobinLastUse = bestLastUse;
                             }
-                            continue;
                         }
-                        if (shouldDeferRecipeBySelectionMode(recipe, primaryInputItemId)) {
-                            if (deferredRecipe == null) {
-                                deferredRecipe = recipe;
-                                deferredPrimaryInputItemId = primaryInputItemId;
-                            }
-                            continue;
-                        }
-                        startRecipe(recipe, gameTime, primaryInputItemId);
-                        startedRecipeThisPass = true;
                     }
-
+                    else {
+                        // if available contains only base ids (no per-stack fingerprint), try to find
+                        // matching stacks in the storages for this recipe's primary ingredient and build
+                        // per-stack candidate keys (by NBT hash or slot id)
+                        if (available == null) continue;
+                        if (portStorages != null) {
+                            // find the single-item ingredient for this recipe
+                            io.ticticboom.mods.mm.port.item.SingleItemPortIngredient singleIng = null;
+                            for (var in : recipe.inputs().inputs()) {
+                                if (in instanceof ConsumeRecipeIngredientEntry cre) {
+                                    var ingr = cre.getIngredient();
+                                    if (ingr instanceof io.ticticboom.mods.mm.port.item.SingleItemPortIngredient s) { singleIng = s; break; }
+                                }
+                            }
+                            if (singleIng != null) {
+                                var detailed = new java.util.ArrayList<ResourceLocation>();
+                                var itemStorages2 = portStorages.getInputStorages(ItemPortStorage.class);
+                                for (ItemPortStorage s : itemStorages2) {
+                                    var handler = s.getHandler();
+                                    if (handler == null) continue;
+                                    for (int i = 0; i < handler.getSlots(); i++) {
+                                        var stack = handler.getStackInSlot(i);
+                                        int actual = handler.getActualCount(i);
+                                        if (stack.isEmpty() || actual <= 0) continue;
+                                        var key = ForgeRegistries.ITEMS.getKey(stack.getItem());
+                                        if (key == null) continue;
+                                        if (!key.equals(baseId)) continue;
+                                        // check NBT match according to ingredient
+                                        net.minecraft.nbt.CompoundTag req = singleIng.getRequiredNbt();
+                                        net.minecraft.nbt.CompoundTag stackTag = stack.getTag();
+                                        boolean matches;
+                                        if (req == null) {
+                                            matches = true;
+                                        } else {
+                                            if (singleIng.isNbtStrong()) {
+                                                matches = (stackTag != null && stackTag.equals(req));
+                                            } else {
+                                                matches = io.ticticboom.mods.mm.util.NbtMatchUtils.matchesWeak(req, stackTag);
+                                            }
+                                        }
+                                        if (!matches) continue;
+                                        // compose per-stack key
+                                        ResourceLocation composed = key;
+                                        try {
+                                            if (stackTag != null) {
+                                                String json = io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(stackTag).toString();
+                                                String hex = Integer.toHexString(json.hashCode());
+                                                String namespaced = key.getNamespace() + ":" + key.getPath() + "__W__" + hex;
+                                                var parsed = ResourceLocation.tryParse(namespaced);
+                                                if (parsed != null) composed = parsed;
+                                            } else {
+                                                // use storage uid and slot index to make a distinct key per slot
+                                                String sid = s.getStorageUid().toString().replace(':', '_').replace('/', '_');
+                                                String namespaced = key.getNamespace() + ":" + key.getPath() + "__slot_" + sid + "_" + i;
+                                                var parsed = ResourceLocation.tryParse(namespaced);
+                                                if (parsed != null) composed = parsed;
+                                            }
+                                        } catch (Throwable ignored) { }
+                                        detailed.add(composed);
+                                    }
+                                }
+                                if (!detailed.isEmpty()) {
+                                    ResourceLocation bestKey2 = null;
+                                    long bestLastUse2 = Long.MAX_VALUE;
+                                    for (ResourceLocation candidate : detailed) {
+                                        long lastUse = inputItemLastStartedSequence.getOrDefault(candidate, Long.MIN_VALUE);
+                                        if (bestKey2 == null || lastUse < bestLastUse2) {
+                                            bestKey2 = candidate;
+                                            bestLastUse2 = lastUse;
+                                        }
+                                    }
+                                    if (bestKey2 != null) {
+                                        boolean take2 = false;
+                                        if (selectedRoundRobinRecipe == null) take2 = true;
+                                        else if (bestLastUse2 < selectedRoundRobinLastUse) take2 = true;
+                                        else if (bestLastUse2 == selectedRoundRobinLastUse) {
+                                            long a2 = recipeLastStartedSequence.getOrDefault(recipe.id(), Long.MIN_VALUE);
+                                            long b2 = recipeLastStartedSequence.getOrDefault(selectedRoundRobinRecipe.id(), Long.MIN_VALUE);
+                                            if (a2 < b2) take2 = true;
+                                        }
+                                        if (take2) {
+                                            selectedRoundRobinRecipe = recipe;
+                                            selectedRoundRobinInputItemId = bestKey2;
+                                            selectedRoundRobinLastUse = bestLastUse2;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    continue;
                 }
-                if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
-                        && !activeRecipes.containsKey(selectedRoundRobinRecipe.id())
-                        && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
-                        && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
-                    startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
-                    startedRecipeThisPass = true;
+                if (shouldDeferRecipeBySelectionMode(recipe, primaryInputItemId)) {
+                    if (deferredRecipe == null) {
+                        deferredRecipe = recipe;
+                        deferredPrimaryInputItemId = primaryInputItemId;
+                    }
+                    continue;
                 }
-                if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
-                        && canStartRecipeGivenParallelRules(deferredRecipe)
-                        && deferredRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
-                    startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
-                }
-                nextRecipeCheckIndex = idx;
+                startRecipe(recipe, gameTime, primaryInputItemId);
+                startedRecipeThisPass = true;
             }
         }
-        performRecipeTick();
+        if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
+                && !activeRecipes.containsKey(selectedRoundRobinRecipe.id())
+                && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
+                && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+            startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
+            startedRecipeThisPass = true;
+        }
+        if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
+                && canStartRecipeGivenParallelRules(deferredRecipe)
+                && deferredRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+            startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
+        }
+        nextRecipeCheckIndex = idx;
+    }
+
+    private static @Nullable ResourceLocation getResourceLocation(ResourceLocation primaryInputItemId) {
+        ResourceLocation baseId = primaryInputItemId;
+        try {
+            String path = primaryInputItemId.getPath();
+            int idxSep = path.indexOf("__");
+            if (idxSep > 0) {
+                baseId = ResourceLocation.tryParse(primaryInputItemId.getNamespace() + ":" + path.substring(0, idxSep));
+            }
+        } catch (Throwable ignored) { }
+        return baseId;
     }
 
     private boolean canStartRecipeGivenParallelRules(RecipeModel recipe) {
@@ -598,6 +729,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         activeRecipeLastUpdate.put(recipe.id(), gameTime);
         lastStartedRecipeId = recipe.id();
         recipeSelectionSequence++;
+        // record recipe start sequence for tie-breaking among recipes sharing input keys
+        recipeLastStartedSequence.put(recipe.id(), recipeSelectionSequence);
         if (primaryInputItemId != null) {
             lastStartedInputItemId = primaryInputItemId;
             inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
@@ -605,7 +738,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         setChanged();
     }
 
-    private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @Nullable ResourceLocation primaryInputItemId) {
+    private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @SuppressWarnings("unused") @Nullable ResourceLocation primaryInputItemId) {
         RecipeSelectionMode mode = controllerModel.recipeSelectionMode();
         if (mode == RecipeSelectionMode.AVOID_SAME_RECIPE) {
             return lastStartedRecipeId != null && lastStartedRecipeId.equals(recipe.id());
@@ -623,12 +756,33 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 if (ingr instanceof io.ticticboom.mods.mm.port.item.SingleItemPortIngredient single) {
                     try {
                         ResourceLocation id = single.getItemId();
-                        if (id != null) return id;
+                        if (id == null) continue;
+                        // include required NBT fingerprint in the selection key so different NBT variants
+                        // of the same item id are considered distinct for round-robin scheduling
+                        try {
+                            net.minecraft.nbt.CompoundTag req = single.getRequiredNbt();
+                            if (req != null) {
+                                // include nbtStrong bit and compute a short hex hash of the NBT JSON to append
+                                String json = io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(req).toString();
+                                String namespaced = getString(single, json, id);
+                                ResourceLocation composed = ResourceLocation.tryParse(namespaced);
+                                if (composed != null) return composed;
+                            }
+                            return id;
+                        } catch (Throwable ignored) { return id; }
                     } catch (Throwable ignored) { }
                 }
             }
         }
         return null;
+    }
+
+    private static @NotNull String getString(SingleItemPortIngredient single, String json, ResourceLocation id) {
+        String hex = Integer.toHexString(json.hashCode());
+        boolean strong;
+        strong = single.isNbtStrong();
+        String suffix = (strong ? "S" : "W") + "__" + hex;
+        return id.getNamespace() + ":" + id.getPath() + suffix;
     }
 
     private void performRecipeTick() {
@@ -714,6 +868,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         cachedAvailableItemIds.clear();
         cachedAvailableFluidIds.clear();
         cachedAvailableMekanismIds.clear();
+        cachedAvailableItemStackKeys.clear();
         cachedHasEnergyAvailable = false;
         cachedHasManaAvailable = false;
         cachedHasPneumaticAir = false;

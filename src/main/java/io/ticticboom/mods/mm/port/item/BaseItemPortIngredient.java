@@ -21,6 +21,11 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
     protected final int count;
     protected final Predicate<ItemStack> filter;
     protected final CompoundTag requiredNbt;
+    /**
+     * -- GETTER --
+     *  Whether NBT matching is strong (exact equality) for this ingredient.
+     */
+    @Getter
     protected final boolean nbtStrong;
 
     @SuppressWarnings("unused")
@@ -97,4 +102,13 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         json.add("searchedStorages", searchedStorages);
         return json;
     }
+
+    /**
+     * Expose required NBT for callers that need to distinguish item ingredients by their NBT
+     * (e.g. scheduling/round-robin based on distinct NBT variants).
+     */
+    public CompoundTag getRequiredNbt() {
+        return requiredNbt != null ? requiredNbt.copy() : null;
+    }
+
 }

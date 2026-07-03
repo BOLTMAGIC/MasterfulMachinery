@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.1] - 2026-07-03
+
+### Fixed
+- NBT matching: Fixed a bug in weak NBT matching where duplicate entries in an expected ListTag could all match the same element in an item's ListTag. List matching now respects multiplicity — each expected element must match a distinct element in the item data.
+- Controller scheduling: Fixed round-robin input-item recipe selection so the controller treats items with the same item id but different NBT as distinct candidates. The controller now generates per-stack keys (NBT fingerprint when available, otherwise a slot-based key), caches available stack keys and selects the least-recently-used stack among eligible candidates.
+
 ## [0.1.34.0] - 2026-07-02
 
 ### Added

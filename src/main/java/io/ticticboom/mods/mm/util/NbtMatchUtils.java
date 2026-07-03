@@ -13,12 +13,8 @@ public class NbtMatchUtils {
         if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) {
             // try SNBT parsing
             try {
-                Tag parsed = TagParser.parseTag(el.getAsString());
-                if (parsed instanceof CompoundTag ct) return ct;
+                return TagParser.parseTag(el.getAsString());
                 // if parsed is not a compound, wrap it into one under key "value"
-                CompoundTag wrapper = new CompoundTag();
-                wrapper.put("value", parsed);
-                return wrapper;
             } catch (Exception e) {
                 throw new RuntimeException("Failed to parse SNBT: " + e.getMessage(), e);
             }
@@ -169,11 +165,45 @@ public class NbtMatchUtils {
             return matchesWeak(ac, bc);
         }
         if (a instanceof ListTag al && b instanceof ListTag bl) {
-            // subset: every element in al must match some element in bl
-            for (Tag elemA : al) {
+            // subset: every element in al must match a distinct element in bl
+            int sizeA = al.size();
+            int sizeB = bl.size();
+            if (sizeA > sizeB) return false; // quick-fail: not enough elements
+
+            // Optimization: if both lists only contain StringTag elements, use a frequency map
+            boolean allStrings = true;
+            for (Tag t : al) if (!(t instanceof StringTag)) { allStrings = false; break; }
+            if (allStrings) {
+                for (Tag t : bl) if (!(t instanceof StringTag)) { allStrings = false; break; }
+            }
+            if (allStrings) {
+                java.util.HashMap<String, Integer> counts = new java.util.HashMap<>();
+                for (Tag tb : bl) {
+                    String key = tb.getAsString();
+                    counts.put(key, counts.getOrDefault(key, 0) + 1);
+                }
+                for (Tag ta : al) {
+                    String k = ta.getAsString();
+                    Integer c = counts.get(k);
+                    if (c == null || c <= 0) return false;
+                    counts.put(k, c - 1);
+                }
+                return true;
+            }
+
+            // Fallback: generic matching with used flags to ensure distinct matches
+            boolean[] used = new boolean[sizeB];
+            for (int ia = 0; ia < sizeA; ia++) {
+                Tag elemA = al.get(ia);
                 boolean matched = false;
-                for (Tag elemB : bl) {
-                    if (tagMatchesWeak(elemA, elemB)) { matched = true; break; }
+                for (int ib = 0; ib < sizeB; ib++) {
+                    if (used[ib]) continue;
+                    Tag elemB = bl.get(ib);
+                    if (tagMatchesWeak(elemA, elemB)) {
+                        used[ib] = true;
+                        matched = true;
+                        break;
+                    }
                 }
                 if (!matched) return false;
             }
