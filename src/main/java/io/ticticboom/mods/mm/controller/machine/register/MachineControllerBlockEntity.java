@@ -437,6 +437,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (activeRecipes.containsKey(recipe.id())) continue;
             if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
+            // skip recipe if outputs can't process
+            if (!recipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                continue;
+            }
+
             // lightweight capability pre-check: compute required port types from recipe inputs
             java.util.Set<ResourceLocation> requiredTypes = new java.util.HashSet<>();
             for (var input : recipe.inputs().inputs()) {
@@ -678,13 +683,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
                 && !activeRecipes.containsKey(selectedRoundRobinRecipe.id())
                 && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
-                && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
+                && selectedRoundRobinRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
             startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
             startedRecipeThisPass = true;
         }
         if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                 && canStartRecipeGivenParallelRules(deferredRecipe)
-                && deferredRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                && deferredRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
+                && deferredRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
             startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
         }
         nextRecipeCheckIndex = idx;
