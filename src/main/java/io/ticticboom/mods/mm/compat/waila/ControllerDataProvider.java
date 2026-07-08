@@ -14,6 +14,7 @@ import snownee.jade.api.config.IPluginConfig;
 public class ControllerDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
     public static final ResourceLocation UID = Ref.id("controller_progress");
     public static final String TICK_KEY = "TickPercentage";
+    public static final String REDSTONE_KEY = "RedstoneMode";
 
     public static final ControllerDataProvider INSTANCE = new ControllerDataProvider();
 
@@ -27,6 +28,10 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
             } else {
                 data.putString(TICK_KEY, "Idle");
             }
+            try {
+                String mode = cbe.getRedstoneModeName();
+                if (mode != null && !mode.isEmpty()) data.putString(REDSTONE_KEY, mode);
+            } catch (Throwable ignored) { }
         }
     }
 
@@ -42,6 +47,17 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         if (data.contains(TICK_KEY)) {
             var progress = data.getString(TICK_KEY);
             tooltip.add(Component.literal("Progress: " + progress));
+        }
+        if (data.contains(REDSTONE_KEY)) {
+            String m = data.getString(REDSTONE_KEY);
+            if (!"IGNORED".equals(m)) {
+                String friendly = switch (m) {
+                    case "WITH_REDSTONE" -> "Redstone: Requires redstone";
+                    case "WITHOUT_REDSTONE" -> "Redstone: Remove redstone";
+                    default -> "Redstone: " + m;
+                };
+                tooltip.add(Component.literal(friendly));
+            }
         }
     }
 }

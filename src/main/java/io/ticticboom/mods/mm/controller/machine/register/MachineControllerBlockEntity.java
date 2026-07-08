@@ -80,6 +80,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Getter
     private RecipeModel currentRecipe;
     private final ControllerModel controllerModel;
+    // Redstone control for the controller: IGNORE, RUN_WHEN_POWERED, RUN_WHEN_UNPOWERED
+    private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
+    private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
     private long lastTick = 0;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final java.util.Set<ResourceLocation> cachedAvailableItemIds = new java.util.HashSet<>();
@@ -141,6 +144,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
+    private boolean isAllowedByRedstone() {
+        if (level == null) return true;
+        try {
+            if (redstoneMode == RedstoneMode.IGNORED) return true;
+            boolean powered = level.hasNeighborSignal(getBlockPos());
+            if (redstoneMode == RedstoneMode.WITH_REDSTONE) return powered;
+            if (redstoneMode == RedstoneMode.WITHOUT_REDSTONE) return !powered;
+        } catch (Throwable ignored) { }
+        return true;
+    }
+
     private void validateStructure(Level level) {
         if (level == null) return;
         if (structure == null) {
@@ -184,8 +198,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         detectExternalStorageChanges();
         long gameTime = (level == null) ? 0L : level.getGameTime();
         if (!storageContentCacheValid) rebuildStorageCacheIfNeeded(gameTime);
-        processActiveRecipeOutputs();
-        if (structure != null) scanAndStartRecipes(gameTime);
+        boolean allowed = isAllowedByRedstone();
+        if (allowed) processActiveRecipeOutputs();
+        if (structure != null && allowed) scanAndStartRecipes(gameTime);
         performRecipeTick();
     }
 
@@ -796,6 +811,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         long gameTime = (level == null) ? 0L : level.getGameTime();
         // stall timeout in ticks: if a recipe hasn't updated for this many ticks, ditch it
         int recipeStallTimeoutTicks = 200;
+        boolean allowed = isAllowedByRedstone();
+        if (!allowed) {
+            for (ResourceLocation rid : activeRecipes.keySet()) {
+                activeRecipeLastUpdate.put(rid, gameTime);
+            }
+            if (!activeRecipes.isEmpty()) {
+                currentRecipe = MachineRecipeManager.RECIPES.get(activeRecipes.keySet().iterator().next());
+            } else {
+                currentRecipe = null;
+            }
+            return;
+        }
         List<ResourceLocation> toRemove = new ArrayList<>();
         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
             ResourceLocation recipeId = entry.getKey();
@@ -917,6 +944,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             tag.put("inputItemLastStartedSequence", inputHistoryTag);
         }
         tag.putBoolean("filler", true);
+        // persist redstone mode
+        try {
+            tag.putInt("redstoneMode", redstoneMode.ordinal());
+        } catch (Throwable ignored) { }
         super.saveAdditional(tag);
     }
 
@@ -964,6 +995,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } else {
             currentRecipe = null;
         }
+        // load redstone mode
+        try {
+            if (tag.contains("redstoneMode")) {
+                int ord = tag.getInt("redstoneMode");
+                RedstoneMode[] vals = RedstoneMode.values();
+                if (ord >= 0 && ord < vals.length) redstoneMode = vals[ord];
+            } else {
+                redstoneMode = RedstoneMode.IGNORED;
+            }
+        } catch (Throwable ignored) { redstoneMode = RedstoneMode.IGNORED; }
     }
 
     @Override
@@ -991,6 +1032,26 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     public RecipeStateModel getRecipeState() {
         if (activeRecipes.isEmpty()) return null;
         return activeRecipes.values().iterator().next();
+    }
+
+    // Redstone mode accessors (ordinal used for network/GUI)
+    public int getRedstoneModeOrdinal() {
+        return redstoneMode.ordinal();
+    }
+
+    public void setRedstoneModeOrdinal(int ord) {
+        try {
+            RedstoneMode[] vals = RedstoneMode.values();
+            if (ord >= 0 && ord < vals.length) {
+                this.redstoneMode = vals[ord];
+                setChanged();
+                if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+            }
+        } catch (Throwable ignored) { }
+    }
+
+    public String getRedstoneModeName() {
+        try { return redstoneMode.name(); } catch (Throwable ignored) { return "IGNORED"; }
     }
 
     @Override

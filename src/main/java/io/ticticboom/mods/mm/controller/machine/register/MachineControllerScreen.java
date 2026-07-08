@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.NotNull;
 
 public class MachineControllerScreen extends AbstractContainerScreen<MachineControllerMenu> {
@@ -14,6 +15,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private final MachineControllerMenu menu;
     private final MachineControllerBlockEntity be;
     private final FormattedText header;
+    private final int redstoneBtnX = 10;
+    private final int redstoneBtnY = 80;
 
     public MachineControllerScreen(MachineControllerMenu menu, Inventory inv, Component p_96550_) {
         super(menu, inv, p_96550_);
@@ -77,6 +80,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                             .of("Progress: " + String.format("%.2f", be.getRecipeState().getTickPercentage()) + "%"),
                     10, 110, 150, 0xacacac);
         }
+
+        // redstone mode toggle label (clickable)
+        String rs = "Redstone: " + be.getRedstoneModeName();
+        gfx.drawString(this.font, rs, redstoneBtnX, redstoneBtnY, 0xacacac, false);
     }
 
     @Override
@@ -84,5 +91,23 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partial);
         renderTooltip(gfx, mouseX, mouseY);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        double mx = mouseX - this.leftPos;
+        double my = mouseY - this.topPos;
+        int redstoneBtnW = 150;
+        int redstoneBtnH = 12;
+        if (mx >= redstoneBtnX && mx <= redstoneBtnX + redstoneBtnW && my >= redstoneBtnY && my <= redstoneBtnY + redstoneBtnH) {
+            try {
+                BlockEntity beEntity = menu.getBe().getBlockEntity();
+                var pos = beEntity.getBlockPos();
+                int next = (be.getRedstoneModeOrdinal() + 1) % 3;
+                io.ticticboom.mods.mm.net.MMNetwork.INSTANCE.sendToServer(new io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt(pos, next));
+            } catch (Throwable ignored) { }
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 }

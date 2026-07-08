@@ -21,5 +21,9 @@ public class MMNetwork {
         int index = 0;
         INSTANCE.registerMessage(index++, StructureSyncPkt.class, StructureSyncPkt::encode, StructureSyncPkt::decode, StructureSyncPkt::handle);
         INSTANCE.registerMessage(index++, ProcessesSyncPkt.class, ProcessesSyncPkt::encode, ProcessesSyncPkt::decode, ProcessesSyncPkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt.class,
+                io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::handle);
     }
 }
