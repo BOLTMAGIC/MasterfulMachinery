@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.4] - 2026-07-29
+### Added
+- Fixed per_tick config
+
 ## [0.1.34.3] - 2026-07-08
 ### Added
 - Add redstone mode functionality to machine controller

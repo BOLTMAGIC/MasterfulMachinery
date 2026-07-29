@@ -25,6 +25,8 @@ public class EnergyPortIngredient implements IPortIngredient {
         this.amount = amount;
     }
 
+    public int getAmount() { return this.amount; }
+
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if(storages == null) return false;
@@ -44,6 +46,18 @@ public class EnergyPortIngredient implements IPortIngredient {
         for (EnergyPortStorage storage : inputStorages) {
             var extracted = storage.internalExtract(remaining, false);
             remaining -= extracted;
+        }
+    }
+
+    @Override
+    public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
+        // For per-tick energy consumption, extract the configured amount each tick.
+        var inputStorages = storages.getInputStorages(EnergyPortStorage.class);
+        int remaining = amount;
+        for (EnergyPortStorage storage : inputStorages) {
+            var extracted = storage.internalExtract(remaining, false);
+            remaining -= extracted;
+            if (remaining <= 0) break;
         }
     }
 

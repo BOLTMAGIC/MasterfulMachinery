@@ -24,6 +24,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Getter
     private final IPortIngredient ingredient;
     private final double chance;
+    @Getter
     private final boolean perTick;
 
     private boolean shouldRun = true;
@@ -49,10 +50,13 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if (perTick && shouldRun) {
-            ingredient.process(level, storages, state);
-        }
-        ingredient.processTick(level, storages, state);
+        // Call the ingredient's per-tick hook. Ingredients that are consumed per-tick
+        // should implement their own processTick() to perform the actual extraction.
+        // This prevents calling ingredient.process() repeatedly (which performs a
+        // full one-time consume) and avoids double-consumption.
+        try {
+            ingredient.processTick(level, storages, state);
+        } catch (Throwable ignored) { }
     }
 
     @Override

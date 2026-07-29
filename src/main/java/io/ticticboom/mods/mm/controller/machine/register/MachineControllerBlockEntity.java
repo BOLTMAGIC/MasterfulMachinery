@@ -842,6 +842,45 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
             if (recipe != null) {
                 int prevProgress = state.getTickProgress();
+                // First process per-tick inputs (e.g. energy consumed per tick)
+                try {
+                    // We need custom handling for per-tick energy ingredients so that
+                    // when the recipe's ingredient 'amount' represents total energy,
+                    // it is distributed across recipe.ticks(). For all other inputs
+                    // or non-energy per-tick inputs, delegate to the ingredient entry.
+                    for (var inputEntry : recipe.inputs().inputs()) {
+                        try {
+                            if (inputEntry instanceof ConsumeRecipeIngredientEntry cre) {
+                                var ingr = cre.getIngredient();
+                                if (cre.isPerTick() && ingr instanceof EnergyPortIngredient epi) {
+                                    int total = epi.getAmount();
+                                    int ticks = Math.max(1, recipe.ticks());
+                                    int base = total / ticks;
+                                    int rem = total % ticks;
+                                    int tickIndex = state.getTickProgress();
+                                    int toExtract = base + ((tickIndex == ticks - 1) ? rem : 0);
+                                    if (toExtract > 0 && portStorages != null) {
+                                        int remaining = toExtract;
+                                        var inputStorages = portStorages.getInputStorages(EnergyPortStorage.class);
+                                        for (EnergyPortStorage storage : inputStorages) {
+                                            var extracted = storage.internalExtract(remaining, false);
+                                            remaining -= extracted;
+                                            if (extracted > 0) storageContentCacheValid = false;
+                                            if (remaining <= 0) break;
+                                        }
+                                    }
+                                    continue;
+                                }
+                            }
+                            // default processing for other ingredient types
+                            inputEntry.processTick(level, portStorages, state);
+                        } catch (Throwable ignoredInner) { }
+                    }
+                    // input tick processing may have modified storages; invalidate cached view so next tick rebuilds
+                    storageContentCacheValid = false;
+                } catch (Throwable ignored) { }
+
+                // Then process per-tick outputs
                 recipe.outputs().processTick(level, portStorages, state);
                 // outputs tick may have modified storages; invalidate cached view so next tick rebuilds
                 storageContentCacheValid = false;
@@ -1062,6 +1101,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 try {
                     validateStructure(level);
                     setChanged();
+                    assert level != null;
                     level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
                 } catch (Throwable t) {
                     try { Ref.LOG.error("Exception during onLoad structure validation at {}: {}", getBlockPos(), t.toString()); }
