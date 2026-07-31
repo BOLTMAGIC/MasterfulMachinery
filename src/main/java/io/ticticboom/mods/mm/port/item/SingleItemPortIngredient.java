@@ -61,10 +61,16 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         itemStorages.sort(Comparator.comparingInt(ItemPortStorage::getPriority).reversed()
                 .thenComparing(s -> s.getStorageUid().toString()));
         int remainingToInsert = count;
+
+        // Optimization: cache the probe stack creation
+        ItemStack probe = null;
+        if (this.requiredNbt != null) {
+            probe = new ItemStack(item, 1);
+            probe.setTag(this.requiredNbt.copy());
+        }
+
         for (ItemPortStorage itemStorage : itemStorages) {
-            if (this.requiredNbt != null) {
-                ItemStack probe = new ItemStack(item, 1);
-                probe.setTag(this.requiredNbt.copy());
+            if (probe != null) {
                 remainingToInsert = itemStorage.canInsert(probe, remainingToInsert);
             } else {
                 remainingToInsert = itemStorage.canInsert(item, remainingToInsert);
@@ -83,15 +89,22 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         }
 
         int remainingToInsert = count;
+        
+        // Cache probe stacks if needed (optimization)
+        ItemStack probeForCapacity = null;
+        ItemStack probeForInsert = null;
+        if (this.requiredNbt != null) {
+            probeForCapacity = new ItemStack(item, 1);
+            probeForCapacity.setTag(this.requiredNbt.copy());
+        }
+        
         for (var entry : grouped.entrySet()) {
             var group = entry.getValue();
             // compute total available in this priority group
             int totalAvailable = 0;
             for (ItemPortStorage s : group) {
-                if (this.requiredNbt != null) {
-                    ItemStack probe = new ItemStack(item, 1);
-                    probe.setTag(this.requiredNbt.copy());
-                    totalAvailable += s.canInsert(probe, Integer.MAX_VALUE);
+                if (probeForCapacity != null) {
+                    totalAvailable += s.canInsert(probeForCapacity, Integer.MAX_VALUE);
                 } else {
                     totalAvailable += s.canInsert(item, Integer.MAX_VALUE);
                 }
@@ -106,12 +119,17 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
                 if (avA != avB) return Integer.compare(avB, avA);
                 return a.getStorageUid().toString().compareTo(b.getStorageUid().toString());
             });
+            
             for (ItemPortStorage s : group) {
                 if (remainingToInsert <= 0) break;
                 if (this.requiredNbt != null) {
-                    ItemStack outStack = new ItemStack(item, remainingToInsert);
-                    outStack.setTag(this.requiredNbt.copy());
-                    remainingToInsert = s.insert(outStack, remainingToInsert);
+                    if (probeForInsert == null) {
+                        probeForInsert = new ItemStack(item, remainingToInsert);
+                        probeForInsert.setTag(this.requiredNbt.copy());
+                    } else {
+                        probeForInsert.setCount(remainingToInsert);
+                    }
+                    remainingToInsert = s.insert(probeForInsert, remainingToInsert);
                 } else {
                     remainingToInsert = s.insert(item, remainingToInsert);
                 }
