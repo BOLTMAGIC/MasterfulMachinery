@@ -57,24 +57,16 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         List<ItemPortStorage> itemStorages = storages.getOutputStorages(ItemPortStorage.class);
-        // sort storages by priority desc so high prio filled first
-        itemStorages.sort(Comparator.comparingInt(ItemPortStorage::getPriority).reversed()
-                .thenComparing(s -> s.getStorageUid().toString()));
         int remainingToInsert = count;
 
-        // Optimization: cache the probe stack creation
-        ItemStack probe = null;
-        if (this.requiredNbt != null) {
-            probe = new ItemStack(item, 1);
-            probe.setTag(this.requiredNbt.copy());
-        }
-
         for (ItemPortStorage itemStorage : itemStorages) {
-            if (probe != null) {
-                remainingToInsert = itemStorage.canInsert(probe, remainingToInsert);
+            if (this.requiredNbt != null) {
+                // Quick check with NBT
+                remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
             } else {
-                remainingToInsert = itemStorage.canInsert(item, remainingToInsert);
+                remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
             }
+            if (remainingToInsert <= 0) return true;
         }
         return remainingToInsert <= 0;
     }
@@ -82,60 +74,17 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         List<ItemPortStorage> itemStorages = storages.getOutputStorages(ItemPortStorage.class);
-        // group storages by priority descending
-        var grouped = new java.util.TreeMap<Integer, List<ItemPortStorage>>(java.util.Collections.reverseOrder());
-        for (ItemPortStorage s : itemStorages) {
-            grouped.computeIfAbsent(s.getPriority(), k -> new java.util.ArrayList<>()).add(s);
-        }
-
         int remainingToInsert = count;
-        
-        // Cache probe stacks if needed (optimization)
-        ItemStack probeForCapacity = null;
-        ItemStack probeForInsert = null;
-        if (this.requiredNbt != null) {
-            probeForCapacity = new ItemStack(item, 1);
-            probeForCapacity.setTag(this.requiredNbt.copy());
-        }
-        
-        for (var entry : grouped.entrySet()) {
-            var group = entry.getValue();
-            // compute total available in this priority group
-            int totalAvailable = 0;
-            for (ItemPortStorage s : group) {
-                if (probeForCapacity != null) {
-                    totalAvailable += s.canInsert(probeForCapacity, Integer.MAX_VALUE);
-                } else {
-                    totalAvailable += s.canInsert(item, Integer.MAX_VALUE);
-                }
-            }
-            if (totalAvailable <= 0) continue;
 
-            // try to fill this priority group as much as possible
-            // sort group by available capacity desc, then uid to be deterministic
-            group.sort((a, b) -> {
-                int avA = a.canInsert(item, Integer.MAX_VALUE);
-                int avB = b.canInsert(item, Integer.MAX_VALUE);
-                if (avA != avB) return Integer.compare(avB, avA);
-                return a.getStorageUid().toString().compareTo(b.getStorageUid().toString());
-            });
-            
-            for (ItemPortStorage s : group) {
-                if (remainingToInsert <= 0) break;
-                if (this.requiredNbt != null) {
-                    if (probeForInsert == null) {
-                        probeForInsert = new ItemStack(item, remainingToInsert);
-                        probeForInsert.setTag(this.requiredNbt.copy());
-                    } else {
-                        probeForInsert.setCount(remainingToInsert);
-                    }
-                    remainingToInsert = s.insert(probeForInsert, remainingToInsert);
-                } else {
-                    remainingToInsert = s.insert(item, remainingToInsert);
-                }
-            }
-
+        for (ItemPortStorage s : itemStorages) {
             if (remainingToInsert <= 0) break;
+            if (this.requiredNbt != null) {
+                ItemStack probe = new ItemStack(item, remainingToInsert);
+                probe.setTag(this.requiredNbt.copy());
+                remainingToInsert = s.insert(probe, remainingToInsert);
+            } else {
+                remainingToInsert = s.insert(item, remainingToInsert);
+            }
         }
     }
 

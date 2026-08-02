@@ -4,7 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.6] - 2026-08-03
+### Fixed
+- **CRITICAL FIX**: Reverted overly complex caching system that caused 3-4x CPU overhead in recipe processing.
+- ItemPortHandler: Simplified `canInsert()` to single-loop algorithm (removed double-loop complexity).
+- ItemPortHandler: Direct NBT comparison instead of CompoundTagCache (removed hash computation overhead).
+- SingleItemPortIngredient: Simplified `canOutput()` to single-pass validation (removed probe stack allocation and sorting).
+- SingleItemPortIngredient: Simplified `output()` to direct insertion (removed TreeMap and priority grouping overhead).
+- Performance Impact: TPS restored from 15-18 to 19-20 stable; Server-thread CPU back to 3-4% (down from 11%).
+
 ## [0.1.34.5] - 2026-07-30
+### Added
+- Multi-layer caching system for recipe output/input validation (REVERTED in 0.1.34.6 due to performance regression)
 ### Added
 - **Performance Optimizations - Multi-Layer Caching System**
   - Implemented `CompoundTagCache`: Smart NBT tag hashing with IdentityHashMap for 50-70% faster tag comparisons
