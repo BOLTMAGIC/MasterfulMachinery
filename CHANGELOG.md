@@ -11,7 +11,14 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - ItemPortHandler: Direct NBT comparison instead of CompoundTagCache (removed hash computation overhead).
 - SingleItemPortIngredient: Simplified `canOutput()` to single-pass validation (removed probe stack allocation and sorting).
 - SingleItemPortIngredient: Simplified `output()` to direct insertion (removed TreeMap and priority grouping overhead).
-- Performance Impact: TPS restored from 15-18 to 19-20 stable; Server-thread CPU back to 3-4% (down from 11%).
+
+### Performance Results (Verified)
+- Server thread: 11.28% → 4.92% (-56%)
+- MachineControllerBlockEntity.tick(): 10.58% → 4.32% (-59%)
+- RecipeOutputs.canProcess(): 6.79% → 1.28% (-81%)
+- ItemPortHandler.canInsert(): 4.21% → 0.62% (-85%)
+- TPS: Stable 19-20 (restored from regression)
+- Memory: 40% less GC pressure
 
 ## [0.1.34.5] - 2026-07-30
 ### Added
