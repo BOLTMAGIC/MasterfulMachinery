@@ -334,7 +334,6 @@ public class ItemPortHandler extends ItemStackHandler {
     private boolean areTagsDifferentOrNull(CompoundTag a, CompoundTag b) {
         // Direct comparison - no cache overhead
         if (a == b) return false;
-        if (a == null && b == null) return false;
         if (a == null || b == null) return true;
         return !a.equals(b);
     }

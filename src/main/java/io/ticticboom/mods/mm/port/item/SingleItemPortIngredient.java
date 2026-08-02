@@ -60,12 +60,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         int remainingToInsert = count;
 
         for (ItemPortStorage itemStorage : itemStorages) {
-            if (this.requiredNbt != null) {
-                // Quick check with NBT
-                remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
-            } else {
-                remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
-            }
+            remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
             if (remainingToInsert <= 0) return true;
         }
         return remainingToInsert <= 0;
