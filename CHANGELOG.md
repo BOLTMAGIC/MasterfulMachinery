@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.34.7] - 2026-08-03
+## [0.1.34.5-fix2] - 2026-08-03
 ### Fixed
 - **CRITICAL FIX**: Fixed controller infinite loop when recipe outputs are full.
   - Changed behavior: When a completed recipe cannot output (storage full), the recipe now **waits** for space instead of returning inputs and restarting.
@@ -19,7 +19,7 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
   - This caused merge calculations to be inconsistent with canInsert() and led to insertion failures.
   - Result: All slot merging operations now correctly track actual stored quantities.
 
-## [0.1.34.6] - 2026-08-03
+## [0.1.34.5-fix1] - 2026-08-03
 ### Fixed
 - **CRITICAL FIX**: Reverted overly complex caching system that caused 3-4x CPU overhead in recipe processing.
 - ItemPortHandler: Simplified `canInsert()` to single-loop algorithm (removed double-loop complexity).
