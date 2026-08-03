@@ -452,11 +452,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (activeRecipes.containsKey(recipe.id())) continue;
             if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
-            // skip recipe if outputs can't process
-            if (!recipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
-                continue;
-            }
-
             // lightweight capability pre-check: compute required port types from recipe inputs
             java.util.Set<ResourceLocation> requiredTypes = new java.util.HashSet<>();
             for (var input : recipe.inputs().inputs()) {
@@ -838,6 +833,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     }
                 } catch (Throwable ignored) { }
                 toRemove.add(recipeId);
+                // Set a backoff timer so recipe doesn't immediately re-attempt if it's still blocked
+                int recipeSkipCooldownTicks = 20;
+                recipeNextCheckTime.put(recipeId, gameTime + recipeSkipCooldownTicks);
                 continue;
             }
             if (recipe != null) {
@@ -896,6 +894,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                         // outputs processed - storages changed
                         storageContentCacheValid = false;
                         progressed = true;
+                    } else {
+                        int recipeSkipCooldownTicks = 100;
+                        recipeNextCheckTime.put(recipeId, gameTime + recipeSkipCooldownTicks);
                     }
                 }
                 if (progressed) {

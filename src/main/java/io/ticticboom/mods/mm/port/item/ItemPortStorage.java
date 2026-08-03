@@ -3,7 +3,6 @@ package io.ticticboom.mods.mm.port.item;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
-import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -151,7 +150,8 @@ public class ItemPortStorage implements IPortStorage {
 
     public int canInsert(Item item, int count) {
         // Delegate to the ItemStack-based canInsert (NBT-aware) implemented on the handler.
-        return handler.canInsert(new ItemStack(item, count), count);
+        // Create ItemStack with count=1 to avoid constructor auto-limiting to maxStackSize
+        return handler.canInsert(new ItemStack(item, 1), count);
     }
 
     public int canInsert(ItemStack stack, int count) {

@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.7] - 2026-08-03
+### Fixed
+- **CRITICAL FIX**: Fixed controller infinite loop when recipe outputs are full.
+  - Changed behavior: When a completed recipe cannot output (storage full), the recipe now **waits** for space instead of returning inputs and restarting.
+  - Previously: Recipe was ditched, inputs returned, then immediately re-triggered → infinite loop.
+  - Now: Recipe remains in activeRecipes with 100-tick cooldown, checking periodically for available output space.
+  - Requires accompanying fixes in ItemPortHandler and ItemPortStorage (see below).
+- **BUG FIX**: ItemPortStorage.canInsert(Item, count) - Fixed stack size limiting.
+  - `new ItemStack(item, count)` was auto-limiting to maxStackSize. Now creates ItemStack with count=1 to prevent truncation.
+  - This caused canInsert() to return incorrect remaining counts for items with high counts.
+- **BUG FIX**: ItemPortHandler.mergeIntoExistingStacks() - Fixed inconsistent space calculation.
+  - Was using `existing.getCount()` (display stack) instead of `actualCounts[slot]` (real count).
+  - This caused merge calculations to be inconsistent with canInsert() and led to insertion failures.
+  - Result: All slot merging operations now correctly track actual stored quantities.
+
 ## [0.1.34.6] - 2026-08-03
 ### Fixed
 - **CRITICAL FIX**: Reverted overly complex caching system that caused 3-4x CPU overhead in recipe processing.

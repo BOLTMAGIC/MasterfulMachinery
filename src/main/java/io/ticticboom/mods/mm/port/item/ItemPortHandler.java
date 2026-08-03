@@ -218,7 +218,8 @@ public class ItemPortHandler extends ItemStackHandler {
             } else if (existing.getItem() == stackItem && !areTagsDifferentOrNull(existing.getTag(), stackTag)) {
                 // Compatible existing stack - can merge
                 int limit = getSlotLimit(slot);
-                int space = limit - actualCounts[slot];
+                int actualCount = actualCounts[slot];
+                int space = limit - actualCount;
                 if (space > 0) {
                     int toAdd = Math.min(space, remainingToInsert);
                     remainingToInsert -= toAdd;
@@ -318,7 +319,7 @@ public class ItemPortHandler extends ItemStackHandler {
             if (existing.getItem() != template.getItem()) continue;
             if (checkNbt && areTagsDifferentOrNull(existing.getTag(), template.getTag())) continue;
             int limit = getSlotLimit(slot);
-            int space = limit - existing.getCount();
+            int space = limit - actualCounts[slot];
             if (space <= 0) continue;
             int toMove = Math.min(space, remainingToInsert);
             actualCounts[slot] = actualCounts[slot] + toMove;

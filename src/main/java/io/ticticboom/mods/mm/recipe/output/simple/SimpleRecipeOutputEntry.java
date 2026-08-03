@@ -35,7 +35,10 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         shouldRun = ChanceUtils.shouldProceed(chance);
-        return !shouldRun || ingredient.canOutput(level, storages, state);
+        if (!shouldRun) {
+            return true;
+        }
+        return ingredient.canOutput(level, storages, state);
     }
 
     @Override

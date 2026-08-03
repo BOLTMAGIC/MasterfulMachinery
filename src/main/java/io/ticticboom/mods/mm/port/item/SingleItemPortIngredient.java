@@ -60,7 +60,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         int remainingToInsert = count;
 
         for (ItemPortStorage itemStorage : itemStorages) {
-            remainingToInsert -= itemStorage.canInsert(item, remainingToInsert);
+            remainingToInsert = itemStorage.canInsert(item, remainingToInsert);
             if (remainingToInsert <= 0) return true;
         }
         return remainingToInsert <= 0;
