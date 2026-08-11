@@ -73,7 +73,12 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         // if underlying ingredient is an item with a count, store that count on the slot for JEI rendering
         try {
             if (ingredient instanceof io.ticticboom.mods.mm.port.item.BaseItemPortIngredient bif) {
-                slot.setBadgeCount(bif.getCount());
+                int cnt = bif.getCount();
+                slot.setBadgeCount(cnt);
+                if (cnt > 1) {
+                    rSlot.addRichTooltipCallback((v, list) ->
+                        list.add(Component.literal("x " + cnt).withStyle(ChatFormatting.GRAY)));
+                }
             }
         } catch (Throwable ignored) {
         }

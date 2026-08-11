@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.6] - 2026-08-11
+### Changed
+- JEI recipe slots now render item counts in AE2 style (1K / 1.5M / 2B) instead of vanilla number. Exact count shown in tooltip on hover.
+
 ## [0.1.34.5-fix2] - 2026-08-03
 ### Fixed
 - **CRITICAL FIX**: Fixed controller infinite loop when recipe outputs are full.

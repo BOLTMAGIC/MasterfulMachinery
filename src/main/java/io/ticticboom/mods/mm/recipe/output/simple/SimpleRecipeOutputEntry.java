@@ -69,7 +69,12 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         // if underlying ingredient is an item, store its intended count on the slot for JEI rendering
         try {
             if (ingredient instanceof io.ticticboom.mods.mm.port.item.BaseItemPortIngredient bif) {
-                slot.setBadgeCount(bif.getCount());
+                int cnt = bif.getCount();
+                slot.setBadgeCount(cnt);
+                if (cnt > 1) {
+                    rSlot.addRichTooltipCallback((v, list) ->
+                        list.add(Component.literal("x " + cnt).withStyle(ChatFormatting.GRAY)));
+                }
             }
         } catch (Throwable ignored) {
         }
