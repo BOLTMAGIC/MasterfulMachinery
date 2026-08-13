@@ -31,9 +31,14 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-cleanup: always
+          gradle-home-cache-excludes: |
+            caches/forge_gradle/maven_downloader
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
+
+      - name: Clear cached ForgeGradle downloads
+        run: rm -rf "$GRADLE_USER_HOME/caches/forge_gradle/maven_downloader"
 
       - name: Clear Gradle cache for Forge
         run: |
