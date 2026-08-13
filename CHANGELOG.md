@@ -4,19 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.34.6-fix2] - 2026-08-13
-### Fixed
-- **CRITICAL FIX**: Energy consumption was doubled for multi-tick recipes.
-  - Non-per-tick energy ingredients were being consumed every tick instead of only at recipe completion.
-  - Example: 640,000 energy recipe with 2 ticks consumed 1,280,000 total.
-  - Root cause: `ConsumeRecipeIngredientEntry.processTick()` called ingredient tick method regardless of perTick flag.
-  - Solution: Added `if (perTick)` guard to only run per-tick logic for flagged ingredients.
-- Improved EnergyPortHandler extraction logic for direct capacity checks instead of relying on maxExtract limits.
-
 ## [0.1.34.6-fix1] - 2026-08-13
 ### Fixed
 - Item port priority setter now correctly applies priority to output ports.
-
+- Energy consumption was doubled for multi-tick recipes.
 
 ## [0.1.34.6] - 2026-08-11
 ### Changed

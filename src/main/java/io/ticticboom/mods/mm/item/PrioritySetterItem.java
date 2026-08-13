@@ -73,7 +73,7 @@ public class PrioritySetterItem extends Item {
             return InteractionResult.PASS;
         }
 
-        // must be an output (not input)
+        // must be an output (where multiblock outputs items)
         if (portBe.isInput()) return InteractionResult.FAIL;
 
         int prio = getPriorityFromItem(context.getItemInHand());

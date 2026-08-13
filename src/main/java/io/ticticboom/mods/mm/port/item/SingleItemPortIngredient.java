@@ -71,6 +71,10 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         List<ItemPortStorage> itemStorages = storages.getOutputStorages(ItemPortStorage.class);
+        // Sort by priority descending, then by UID for deterministic order
+        itemStorages.sort(Comparator.comparingInt(ItemPortStorage::getPriority).reversed()
+                .thenComparing(s -> s.getStorageUid().toString()));
+        
         int remainingToInsert = count;
 
         for (ItemPortStorage s : itemStorages) {
