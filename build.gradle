@@ -200,9 +200,32 @@ repositories {
             includeGroup 'dev.ftb.mods'
         }
     }
-    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
-    maven { url = "https://maven.ithundxr.dev/mirror" } // Registrate
-    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" } // ForgeConfigAPIPort
+    maven {
+        url = "https://maven.createmod.net"
+        content {
+            includeGroup 'com.simibubi.create'
+            includeGroup 'net.createmod.ponder'
+            includeGroup 'dev.engine-room.flywheel'
+        }
+    }
+    maven {
+        url = "https://maven.ithundxr.dev/mirror"
+        content {
+            includeGroup 'com.tterrag.registrate'
+        }
+    }
+    maven {
+        url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
+        content {
+            includeGroup 'net.fuzzy.forgeconfigapiport'
+        }
+    }
+    maven {
+        url = "https://maven.blamejared.com"
+        content {
+            includeGroup 'org.appliedenergistics'
+        }
+    }
 
 }
 
