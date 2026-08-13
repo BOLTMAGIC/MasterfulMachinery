@@ -33,18 +33,18 @@ jobs:
           cache-cleanup: always
           gradle-home-cache-excludes: |
             caches/forge_gradle/maven_downloader
+          cache-read-only: false
 
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
-      - name: Clear cached ForgeGradle downloads
-        run: rm -rf "$GRADLE_USER_HOME/caches/forge_gradle/maven_downloader"
-
-      - name: Clear Gradle cache for Forge
+      - name: Clear all problematic Gradle caches
         run: |
-          rm -rf ~/.gradle/caches/modules-2/files-*/net/minecraftforge/forge
-          rm -rf ~/.gradle/caches/modules-2/files-*/net/minecraftforge/gradle
-          rm -rf ~/.gradle/caches/modules-2/metadata-*/descriptors/net.minecraftforge
+          rm -rf "$GRADLE_USER_HOME/caches/forge_gradle/"
+          rm -rf "$GRADLE_USER_HOME/caches/modules-2/files-*/net/minecraftforge/"
+          rm -rf "$GRADLE_USER_HOME/caches/modules-2/files-*/net/minecraft/"
+          rm -rf "$GRADLE_USER_HOME/caches/download-artifacts/"
+          echo "Gradle caches cleaned"
 
       - name: Build with Gradle
         run: |
