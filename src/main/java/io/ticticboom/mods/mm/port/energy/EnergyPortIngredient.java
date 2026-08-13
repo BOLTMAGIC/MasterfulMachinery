@@ -46,6 +46,7 @@ public class EnergyPortIngredient implements IPortIngredient {
         for (EnergyPortStorage storage : inputStorages) {
             var extracted = storage.internalExtract(remaining, false);
             remaining -= extracted;
+            if (remaining <= 0) break;
         }
     }
 
