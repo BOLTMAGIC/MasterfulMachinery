@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.34.7] - 2026-09-03
+### Added
+- **Major Performance Optimization - Machine Controller Recipe Processing**
+  - Aggressive recipe scanning: Controllers now scan all recipes per tick when recipe count < 300 (DEFAULT mode), or 50% per tick in fair-scheduling mode. Previously only scanned 5 recipes/tick, causing massive idle latency.
+  - Recipe metadata caching: Port type requirements and resource IDs are now cached in `RecipeMetadata` record, eliminating expensive repeated extraction from recipe definitions.
+  - Storage cache throttling: Cache rebuilds reduced from every tick to every 2 ticks during active recipes (5 ticks when idle), preventing unnecessary full inventory scans.
+  - NBT hash caching: CompoundTag hashes are cached in IdentityHashMap to avoid expensive JSON conversions during stack fingerprinting.
+### Fixed
+- Machine controller recipe processing bottleneck that caused excessive idle time between recipe matches when recipe registry contained 150+ recipes.
+
 ## [0.1.34.6-fix1] - 2026-08-13
 ### Fixed
 - Item port priority setter now correctly applies priority to output ports.

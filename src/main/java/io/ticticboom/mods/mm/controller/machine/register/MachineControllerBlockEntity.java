@@ -429,14 +429,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
-    private void scanAndStartRecipes(long gameTime) {
-        // Spread recipe checks across multiple ticks to avoid scanning all recipes every tick.
-        if (cachedStructureRecipes == null) cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
-        if (cachedStructureRecipes.isEmpty()) return;
-        int total = cachedStructureRecipes.size();
-        int maxRecipeChecksPerTick = controllerModel.recipeSelectionMode().fairScheduling() ? total : 5;
-        int checks = Math.min(maxRecipeChecksPerTick, total);
-        int idx = nextRecipeCheckIndex % total;
+     private void scanAndStartRecipes(long gameTime) {
+         // Spread recipe checks across multiple ticks to avoid scanning all recipes every tick.
+         if (cachedStructureRecipes == null) cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
+         if (cachedStructureRecipes.isEmpty()) return;
+         int total = cachedStructureRecipes.size();
+         // AGGRESSIVE: For DEFAULT mode with <300 recipes, scan ALL per tick. For fair mode, scan 50%.
+         int checks = getChecks(total);
+         int idx = nextRecipeCheckIndex % total;
         int performed = 0;
         RecipeModel deferredRecipe = null;
         ResourceLocation deferredPrimaryInputItemId = null;
@@ -705,6 +705,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
         }
         nextRecipeCheckIndex = idx;
+    }
+
+    private int getChecks(int total) {
+        int maxRecipeChecksPerTick;
+        if (total < 300 && !controllerModel.recipeSelectionMode().fairScheduling()) {
+            maxRecipeChecksPerTick = total; // scan all recipes every tick for small recipe sets
+        } else if (controllerModel.recipeSelectionMode().fairScheduling()) {
+            maxRecipeChecksPerTick = Math.max(total / 2, 50); // 50% of recipes per tick in fair mode
+        } else {
+            maxRecipeChecksPerTick = Math.max(total / 2, 100); // 50% or 100 minimum for large recipe sets
+        }
+        return Math.min(maxRecipeChecksPerTick, total);
     }
 
     private static @Nullable ResourceLocation getResourceLocation(ResourceLocation primaryInputItemId) {
