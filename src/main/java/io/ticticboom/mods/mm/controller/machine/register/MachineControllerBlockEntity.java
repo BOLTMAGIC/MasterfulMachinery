@@ -85,16 +85,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
     private long lastTick = 0;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
-    private final java.util.Set<ResourceLocation> cachedAvailableItemIds = new java.util.HashSet<>();
-    private final java.util.Set<ResourceLocation> cachedAvailableFluidIds = new java.util.HashSet<>();
-    private final java.util.Set<ResourceLocation> cachedAvailableMekanismIds = new java.util.HashSet<>();
-    private final java.util.Map<ResourceLocation, java.util.List<ResourceLocation>> cachedAvailableItemStackKeys = new java.util.HashMap<>();
-    private boolean cachedHasEnergyAvailable = false;
-    private boolean cachedHasManaAvailable = false;
-    private boolean cachedHasPneumaticAir = false;
-    private boolean cachedHasKinetic = false;
-    private boolean cachedHasMekanismChemical = false;
-    private boolean storageContentCacheValid = false;
+    private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
     private long lastResourceScanTime = -1;
     private final Map<ResourceLocation, Long> recipeNextCheckTime = new HashMap<>();
     // signature of the last observed storage contents; used to detect external changes
@@ -191,14 +182,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         });
     }
 
-    private void runRecipe() {
-        if (portStorages == null) {
-            portStorages = (structure == null) ? null : structure.getStorages(level, getBlockPos());
-        }
-        detectExternalStorageChanges();
-        long gameTime = (level == null) ? 0L : level.getGameTime();
-        if (!storageContentCacheValid) rebuildStorageCacheIfNeeded(gameTime);
-        boolean allowed = isAllowedByRedstone();
+     private void runRecipe() {
+         if (portStorages == null) {
+             portStorages = (structure == null) ? null : structure.getStorages(level, getBlockPos());
+         }
+         detectExternalStorageChanges();
+         long gameTime = (level == null) ? 0L : level.getGameTime();
+         if (!storageCache.isValid) rebuildStorageCacheIfNeeded(gameTime);
+         boolean allowed = isAllowedByRedstone();
         if (allowed) processActiveRecipeOutputs();
         if (structure != null && allowed) scanAndStartRecipes(gameTime);
         performRecipeTick();
@@ -283,146 +274,53 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     } catch (Throwable ignored) { }
                 }
 
-                long currentSignature = sig;
-                if (currentSignature != lastStorageSignature) {
-                    // external change - force cache rebuild and allow recipes to be rechecked now
-                    lastStorageSignature = currentSignature;
-                    storageContentCacheValid = false;
-                    recipeNextCheckTime.clear();
+                 long currentSignature = sig;
+                 if (currentSignature != lastStorageSignature) {
+                     // external change - force cache rebuild and allow recipes to be rechecked now
+                     lastStorageSignature = currentSignature;
+                     storageCache.isValid = false;
+                     recipeNextCheckTime.clear();
                 }
             }
         } catch (Throwable ignored) { }
     }
 
-    private void rebuildStorageCacheIfNeeded(long gameTime) {
-        // throttle rebuilds when controller is only searching (no active recipes)
-        boolean doRebuild = false;
-        if (!activeRecipes.isEmpty()) {
-            doRebuild = true; // running recipes -> keep cache up-to-date
-        } else {
-            // throttling / cooldowns for expensive scans when controller is only searching
-            // when no active recipes, only scan storages every N ticks
-            int resourceScanIntervalTicks = 5;
-            if (lastResourceScanTime < 0 || gameTime - lastResourceScanTime >= resourceScanIntervalTicks) {
-                doRebuild = true;
-                lastResourceScanTime = gameTime;
-            }
-        }
+     private void rebuildStorageCacheIfNeeded(long gameTime) {
+         // throttle rebuilds when controller is only searching (no active recipes)
+         boolean doRebuild = false;
+         if (!activeRecipes.isEmpty()) {
+             doRebuild = true; // running recipes -> keep cache up-to-date
+         } else {
+             // throttling / cooldowns for expensive scans when controller is only searching
+             // when no active recipes, only scan storages every N ticks
+             int resourceScanIntervalTicks = 5;
+             if (lastResourceScanTime < 0 || gameTime - lastResourceScanTime >= resourceScanIntervalTicks) {
+                 doRebuild = true;
+                 lastResourceScanTime = gameTime;
+             }
+         }
 
-        //noinspection StatementWithEmptyBody
-        if (doRebuild) {
-            cachedAvailableItemIds.clear();
-            cachedAvailableFluidIds.clear();
-            cachedAvailableMekanismIds.clear();
-            cachedHasEnergyAvailable = false;
-            cachedHasManaAvailable = false;
-            cachedHasPneumaticAir = false;
-            cachedHasKinetic = false;
-            cachedHasMekanismChemical = false;
+         if (doRebuild) {
+             // Delegate to StorageCacheManager to rebuild all cache fields
+             StorageCacheManager.rebuildStorageCache(portStorages, storageCache);
+             // after a rebuild allow recipes to be rechecked immediately
+             recipeNextCheckTime.clear();
+         }
+     }
 
-            if (portStorages != null) {
-                var itemStorages = portStorages.getInputStorages(ItemPortStorage.class);
-                cachedAvailableItemStackKeys.clear();
-                for (ItemPortStorage s : itemStorages) {
-                    var handler = s.getHandler();
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        var stack = handler.getStackInSlot(i);
-                        int actual = handler.getActualCount(i);
-                        if (!stack.isEmpty() && actual > 0) {
-                            var key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-                            if (key != null) {
-                                cachedAvailableItemIds.add(key);
-                                // compute NBT fingerprint for this exact stack
-                                ResourceLocation composed = key;
-                                try {
-                                    if (stack.hasTag()) {
-                                        String json = io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(stack.getTag()).toString();
-                                        String hex = Integer.toHexString(json.hashCode());
-                                        String namespaced = key.getNamespace() + ":" + key.getPath() + "__W__" + hex;
-                                        var parsed = ResourceLocation.tryParse(namespaced);
-                                        if (parsed != null) composed = parsed;
-                                    }
-                                } catch (Throwable ignored) { }
-                                cachedAvailableItemStackKeys.computeIfAbsent(key, k -> new java.util.ArrayList<>()).add(composed);
-                            }
-                        }
-                    }
-                }
-
-                var fluidStorages = portStorages.getInputStorages(FluidPortStorage.class);
-                for (FluidPortStorage s : fluidStorages) {
-                    var handler = s.getHandler();
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getTanks(); i++) {
-                        var fs = handler.getFluidInTank(i);
-                        if (fs.getAmount() > 0) {
-                            var key = ForgeRegistries.FLUIDS.getKey(fs.getFluid());
-                            if (key != null) cachedAvailableFluidIds.add(key);
-                        }
-                    }
-                }
-
-                var energyStorages = portStorages.getInputStorages(EnergyPortStorage.class);
-                for (EnergyPortStorage s : energyStorages) {
-                    if (s.getStoredEnergy() > 0) { cachedHasEnergyAvailable = true; break; }
-                }
-
-                var manaStorages = portStorages.getInputStorages(BotaniaManaPortStorage.class);
-                for (BotaniaManaPortStorage s : manaStorages) {
-                    if (s.getStored() > 0) { cachedHasManaAvailable = true; break; }
-                }
-
-                var pneuStorages = portStorages.getInputStorages(PneumaticAirPortStorage.class);
-                for (PneumaticAirPortStorage s : pneuStorages) {
-                    if (s.getAir() > 0) { cachedHasPneumaticAir = true; break; }
-                }
-
-                var kineticStorages = portStorages.getInputStorages(CreateKineticPortStorage.class);
-                for (CreateKineticPortStorage s : kineticStorages) {
-                    if (s.getSpeed() > 0) { cachedHasKinetic = true; break; }
-                }
-
-                var mechStorages = portStorages.getInputStorages(MekanismChemicalPortStorage.class);
-                //noinspection rawtypes
-                for (MekanismChemicalPortStorage s : mechStorages) {
-                    try {
-                        var stack = s.chemicalTank.getStack();
-                        if (!stack.isEmpty() && stack.getAmount() > 0) {
-                            // chemical type -> registry name is a ResourceLocation string
-                            try {
-                                var rl = stack.getType().getRegistryName();
-                                cachedAvailableMekanismIds.add(rl);
-                            } catch (Throwable ignored) { }
-                            cachedHasMekanismChemical = true;
-                        }
-                    } catch (Throwable ignored) { }
-                }
-            }
-
-            // reflect cached booleans into local variables
-            storageContentCacheValid = true;
-            // after a rebuild allow recipes to be rechecked immediately
-            recipeNextCheckTime.clear();
-        } else {
-            // Not rebuilding this tick; leave local variables as cached (may be stale/empty).
-            // To avoid false negatives, we'll skip content-based pre-checks when cache is not valid.
-        }
-    }
-
-    private void processActiveRecipeOutputs() {
-        List<ResourceLocation> toRemove = new ArrayList<>();
-        for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
-            ResourceLocation recipeId = entry.getKey();
-            RecipeStateModel state = entry.getValue();
-            RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
-            if (recipe != null && state.isCanFinish() && recipe.outputs().canProcess(level, portStorages, state)) {
-                recipe.outputs().process(level, portStorages, state);
-                toRemove.add(recipeId);
-                // outputs changed storages; mark cache invalid so we rebuild before next decisions
-                storageContentCacheValid = false;
-            }
-        }
+     private void processActiveRecipeOutputs() {
+         List<ResourceLocation> toRemove = new ArrayList<>();
+         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
+             ResourceLocation recipeId = entry.getKey();
+             RecipeStateModel state = entry.getValue();
+             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
+             if (recipe != null && state.isCanFinish() && recipe.outputs().canProcess(level, portStorages, state)) {
+                 recipe.outputs().process(level, portStorages, state);
+                 toRemove.add(recipeId);
+                 // outputs changed storages; mark cache invalid so we rebuild before next decisions
+                 storageCache.isValid = false;
+             }
+         }
         for (ResourceLocation id : toRemove) {
             activeRecipes.remove(id);
             activeRecipeLastUpdate.remove(id);
@@ -514,54 +412,54 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 }
             }
 
-            if (portStorages != null && storageContentCacheValid) {
-                if (!requiredItemIds.isEmpty() && !cachedAvailableItemIds.containsAll(requiredItemIds)) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (!requiredFluidIds.isEmpty() && !cachedAvailableFluidIds.containsAll(requiredFluidIds)) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (needsEnergy && !cachedHasEnergyAvailable) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (needsMana && !cachedHasManaAvailable) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (needsPneumatic && !cachedHasPneumaticAir) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (needsKinetic && !cachedHasKinetic) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (needsMekanismChemical && !cachedHasMekanismChemical) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-                if (!requiredMekanismIds.isEmpty() && !cachedAvailableMekanismIds.containsAll(requiredMekanismIds)) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-            }
+             if (portStorages != null && storageCache.isValid) {
+                 if (!requiredItemIds.isEmpty() && !storageCache.availableItemIds.containsAll(requiredItemIds)) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (!requiredFluidIds.isEmpty() && !storageCache.availableFluidIds.containsAll(requiredFluidIds)) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (needsEnergy && !storageCache.hasEnergyAvailable) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (needsMana && !storageCache.hasManaAvailable) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (needsPneumatic && !storageCache.hasPneumaticAir) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (needsKinetic && !storageCache.hasKinetic) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (needsMekanismChemical && !storageCache.hasMekanismChemical) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+                 if (!requiredMekanismIds.isEmpty() && !storageCache.availableMekanismIds.containsAll(requiredMekanismIds)) {
+                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
+                     continue;
+                 }
+             }
 
             if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
                 continue;
             }
 
-            if (canStartRecipeGivenParallelRules(recipe)) {
-                ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
-                RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
-                if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
-                    // primaryInputItemId may be a composed key (with __ suffix) or a base id.
-                    ResourceLocation baseId = getResourceLocation(primaryInputItemId);
-                    // choose least-recently-used available stack key for this recipe's primary base item id
-                    var available = cachedAvailableItemStackKeys.get(baseId);
-                    if (available != null && !available.isEmpty()) {
+             if (canStartRecipeGivenParallelRules(recipe)) {
+                 ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
+                 RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
+                 if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
+                     // primaryInputItemId may be a composed key (with __ suffix) or a base id.
+                     ResourceLocation baseId = getResourceLocation(primaryInputItemId);
+                     // choose least-recently-used available stack key for this recipe's primary base item id
+                     var available = storageCache.availableItemStackKeys.get(baseId);
+                     if (available != null && !available.isEmpty()) {
                         ResourceLocation bestKey = null;
                         long bestLastUse = Long.MAX_VALUE;
                         for (ResourceLocation candidate : available) {
@@ -749,11 +647,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return canStartBasedOnParallelFlag && canStartBasedOnLimit;
     }
 
-    private void startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
-        RecipeStateModel newState = new RecipeStateModel();
-        recipe.inputs().process(level, portStorages, newState);
-        storageContentCacheValid = false;
-        newState.setCanProcess(true);
+     private void startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+         RecipeStateModel newState = new RecipeStateModel();
+         recipe.inputs().process(level, portStorages, newState);
+         storageCache.isValid = false;
+         newState.setCanProcess(true);
         activeRecipes.put(recipe.id(), newState);
         activeRecipeLastUpdate.put(recipe.id(), gameTime);
         lastStartedRecipeId = recipe.id();
@@ -869,43 +767,43 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                                     int rem = total % ticks;
                                     int tickIndex = state.getTickProgress();
                                     int toExtract = base + ((tickIndex == ticks - 1) ? rem : 0);
-                                    if (toExtract > 0 && portStorages != null) {
-                                        int remaining = toExtract;
-                                        var inputStorages = portStorages.getInputStorages(EnergyPortStorage.class);
-                                        for (EnergyPortStorage storage : inputStorages) {
-                                            var extracted = storage.internalExtract(remaining, false);
-                                            remaining -= extracted;
-                                            if (extracted > 0) storageContentCacheValid = false;
-                                            if (remaining <= 0) break;
-                                        }
-                                    }
-                                    continue;
-                                }
-                            }
-                            // default processing for other ingredient types
-                            inputEntry.processTick(level, portStorages, state);
-                        } catch (Throwable ignoredInner) { }
-                    }
-                    // input tick processing may have modified storages; invalidate cached view so next tick rebuilds
-                    storageContentCacheValid = false;
-                } catch (Throwable ignored) { }
+                                     if (toExtract > 0 && portStorages != null) {
+                                         int remaining = toExtract;
+                                         var inputStorages = portStorages.getInputStorages(EnergyPortStorage.class);
+                                         for (EnergyPortStorage storage : inputStorages) {
+                                             var extracted = storage.internalExtract(remaining, false);
+                                             remaining -= extracted;
+                                             if (extracted > 0) storageCache.isValid = false;
+                                             if (remaining <= 0) break;
+                                         }
+                                     }
+                                     continue;
+                                 }
+                             }
+                             // default processing for other ingredient types
+                             inputEntry.processTick(level, portStorages, state);
+                         } catch (Throwable ignoredInner) { }
+                     }
+                     // input tick processing may have modified storages; invalidate cached view so next tick rebuilds
+                     storageCache.isValid = false;
+                 } catch (Throwable ignored) { }
 
-                // Then process per-tick outputs
-                recipe.outputs().processTick(level, portStorages, state);
-                // outputs tick may have modified storages; invalidate cached view so next tick rebuilds
-                storageContentCacheValid = false;
+                 // Then process per-tick outputs
+                 recipe.outputs().processTick(level, portStorages, state);
+                 // outputs tick may have modified storages; invalidate cached view so next tick rebuilds
+                 storageCache.isValid = false;
                 if (!state.isCanFinish()) state.proceedTick();
                 state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
                 boolean progressed = state.getTickProgress() != prevProgress;
-                if (state.getTickProgress() >= recipe.ticks()) {
-                    state.setCanFinish(true);
-                    boolean canOutputs = recipe.outputs().canProcess(level, portStorages, state);
-                    if (canOutputs) {
-                        recipe.outputs().process(level, portStorages, state);
-                        toRemove.add(recipeId);
-                        // outputs processed - storages changed
-                        storageContentCacheValid = false;
-                        progressed = true;
+                 if (state.getTickProgress() >= recipe.ticks()) {
+                     state.setCanFinish(true);
+                     boolean canOutputs = recipe.outputs().canProcess(level, portStorages, state);
+                     if (canOutputs) {
+                         recipe.outputs().process(level, portStorages, state);
+                         toRemove.add(recipeId);
+                         // outputs processed - storages changed
+                         storageCache.isValid = false;
+                         progressed = true;
                     } else {
                         int recipeSkipCooldownTicks = 100;
                         recipeNextCheckTime.put(recipeId, gameTime + recipeSkipCooldownTicks);
@@ -937,32 +835,23 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         cachedStructureRecipes = null;
     }
 
-    public void invalidateRecipe(boolean typical) {
-        for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
-            ResourceLocation recipeId = entry.getKey();
-            RecipeStateModel state = entry.getValue();
-            RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
-            if (recipe != null && !typical && portStorages != null) {
-                recipe.ditchRecipe(this.level, state, portStorages);
-            }
-        }
-        activeRecipes.clear();
-        currentRecipe = null;
-        portStorages = null;
-        // clear cached views and backoff timers as recipe state is reset
-        storageContentCacheValid = false;
-        cachedAvailableItemIds.clear();
-        cachedAvailableFluidIds.clear();
-        cachedAvailableMekanismIds.clear();
-        cachedAvailableItemStackKeys.clear();
-        cachedHasEnergyAvailable = false;
-        cachedHasManaAvailable = false;
-        cachedHasPneumaticAir = false;
-        cachedHasKinetic = false;
-        cachedHasMekanismChemical = false;
-        recipeNextCheckTime.clear();
-        cachedStructureRecipes = null;
-    }
+     public void invalidateRecipe(boolean typical) {
+         for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
+             ResourceLocation recipeId = entry.getKey();
+             RecipeStateModel state = entry.getValue();
+             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
+             if (recipe != null && !typical && portStorages != null) {
+                 recipe.ditchRecipe(this.level, state, portStorages);
+             }
+         }
+         activeRecipes.clear();
+         currentRecipe = null;
+         portStorages = null;
+         // clear cached views and backoff timers as recipe state is reset
+         storageCache.clear();
+         recipeNextCheckTime.clear();
+         cachedStructureRecipes = null;
+     }
 
     @Override
     public ControllerModel getModel() { return model; }
