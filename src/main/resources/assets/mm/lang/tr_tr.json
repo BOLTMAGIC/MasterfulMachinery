@@ -87,5 +87,13 @@
   "gui.mm.controller.mode.avoid_same_recipe.hint": "Aynı tarifi art arda başlatmaz",
   "gui.mm.controller.mode.round_robin_input_item.hint": "Girdi item'ları arasında sırayla döner",
   "gui.mm.port.dump": "İçeriği boşalt",
-  "gui.mm.port.dump.hint": "Shift+Tık: tüm içeriği kalıcı olarak siler"
+  "gui.mm.port.dump.hint": "Shift+Tık: tüm içeriği kalıcı olarak siler",
+  "gui.mm.port.energy": "Enerji",
+  "gui.mm.controller.page.ports": "Port'ların içeriğini göster",
+  "gui.mm.controller.page.status": "Makine durumuna dön",
+  "gui.mm.controller.ports.inputs": "Girdiler (%s)",
+  "gui.mm.controller.ports.outputs": "Çıktılar (%s)",
+  "gui.mm.controller.ports.input": "Giriş port'u",
+  "gui.mm.controller.ports.output": "Çıkış port'u",
+  "gui.mm.controller.ports.none": "Gösterilecek port yok. Yapı kurulu mu?"
 }

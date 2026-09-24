@@ -18,6 +18,9 @@ import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.registries.IForgeRegistry;
 import org.jetbrains.annotations.Nullable;
 
+import io.ticticboom.mods.mm.port.PortContent;
+
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -62,6 +65,16 @@ public abstract class MekanismChemicalPortStorage<CHEMICAL extends Chemical<CHEM
 
     private boolean isChemicalAllowed(CHEMICAL chemical) {
         return lockedType == null || lockedType == chemical;
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        STACK stack = chemicalTank.getStack();
+        if (stack.isEmpty()) {
+            return List.of(PortContent.chemical(null, null, 0xFFFFFFFF, 0, chemicalTank.getCapacity()));
+        }
+        CHEMICAL type = stack.getType();
+        return List.of(PortContent.chemical(type.getTextComponent(), type.getIcon(), type.getTint(), stack.getAmount(), chemicalTank.getCapacity()));
     }
 
     @Override

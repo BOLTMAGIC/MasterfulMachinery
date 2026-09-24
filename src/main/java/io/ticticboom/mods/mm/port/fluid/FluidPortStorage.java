@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import io.ticticboom.mods.mm.port.PortContent;
+import java.util.List;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -136,6 +139,25 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
             }
         }
         return json;
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        FluidStack shown = FluidStack.EMPTY;
+        long amount = 0;
+        long capacity = 0;
+        for (int tank = 0; tank < handler.getTanks(); tank++) {
+            FluidStack stack = handler.getFluidInTank(tank);
+            capacity += handler.getTankCapacity(tank);
+            if (!stack.isEmpty()) {
+                if (shown.isEmpty()) {
+                    shown = stack;
+                }
+                amount += stack.getAmount();
+            }
+        }
+        FluidStack total = shown.isEmpty() ? FluidStack.EMPTY : new FluidStack(shown, (int) Math.min(Integer.MAX_VALUE, amount));
+        return List.of(PortContent.fluid(total, capacity));
     }
 
     public FluidStack getStackInSlot(int slot) {

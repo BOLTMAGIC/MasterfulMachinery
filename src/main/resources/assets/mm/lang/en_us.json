@@ -87,5 +87,13 @@
   "gui.mm.controller.mode.avoid_same_recipe.hint": "Avoids starting the same recipe twice in a row",
   "gui.mm.controller.mode.round_robin_input_item.hint": "Takes turns between the input items",
   "gui.mm.port.dump": "Dump contents",
-  "gui.mm.port.dump.hint": "Shift+Click: deletes all contents permanently"
+  "gui.mm.port.dump.hint": "Shift+Click: deletes all contents permanently",
+  "gui.mm.port.energy": "Energy",
+  "gui.mm.controller.page.ports": "Show what each port holds",
+  "gui.mm.controller.page.status": "Back to machine status",
+  "gui.mm.controller.ports.inputs": "Inputs (%s)",
+  "gui.mm.controller.ports.outputs": "Outputs (%s)",
+  "gui.mm.controller.ports.input": "Input port",
+  "gui.mm.controller.ports.output": "Output port",
+  "gui.mm.controller.ports.none": "No ports to show. Is the machine formed?"
 }

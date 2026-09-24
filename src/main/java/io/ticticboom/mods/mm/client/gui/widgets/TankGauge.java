@@ -50,6 +50,17 @@ public final class TankGauge {
     }
 
     /**
+     * Fills the tank from the bottom with MM's red energy bar texture.
+     */
+    public static void drawEnergyFill(GuiGraphics gfx, int x, int y, double fraction) {
+        int filled = (int) Math.round(INNER_H * Math.max(0, Math.min(1, fraction)));
+        if (filled <= 0) {
+            return;
+        }
+        gfx.blit(Ref.UiTextures.SLOT_PARTS, x + 1, y + 1 + INNER_H - filled, 90, INNER_H - filled, INNER_W, filled);
+    }
+
+    /**
      * Writes the contents on one line near the bottom of the tank, falling back to shorter forms
      * (no name, then compact numbers) when it doesn't fit.
      */

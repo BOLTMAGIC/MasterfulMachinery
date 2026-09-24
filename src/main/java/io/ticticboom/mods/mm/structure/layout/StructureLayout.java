@@ -294,6 +294,28 @@ public class StructureLayout {
         return null;
     }
 
+    /**
+     * @return positions of the ports of the formed structure, inputs first, or an empty list when not formed
+     */
+    public List<BlockPos> getPortPositions(Level level, BlockPos worldControllerPos, StructureModel model) {
+        for (var entry : rotatedPositionedPieces.entrySet()) {
+            if (!innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
+                continue;
+            }
+            var inputs = new ArrayList<BlockPos>();
+            var outputs = new ArrayList<BlockPos>();
+            for (PositionedLayoutPiece positionedPiece : entry.getValue()) {
+                BlockPos absolutePos = positionedPiece.findAbsolutePos(worldControllerPos);
+                if (level.getExistingBlockEntity(absolutePos) instanceof IPortBlockEntity pbe) {
+                    (pbe.isInput() ? inputs : outputs).add(absolutePos);
+                }
+            }
+            inputs.addAll(outputs);
+            return inputs;
+        }
+        return List.of();
+    }
+
     private RecipeStorages innerGetRecipeStorages(Level level, BlockPos worldControllerPos, List<PositionedLayoutPiece> positionedPieces) {
         var inputStorages = new ArrayList<IPortStorage>();
         var outputStorages = new ArrayList<IPortStorage>();

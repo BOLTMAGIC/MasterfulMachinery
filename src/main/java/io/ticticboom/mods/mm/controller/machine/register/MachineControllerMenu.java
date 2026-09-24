@@ -7,10 +7,13 @@ import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.MenuUtils;
 import lombok.Getter;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.DataSlot;
+
+import java.util.List;
 
 public class MachineControllerMenu extends MMContainerMenu {
 
@@ -19,6 +22,9 @@ public class MachineControllerMenu extends MMContainerMenu {
     private final Inventory inv;
     @Getter
     private final IControllerBlockEntity be;
+    /** Ports of the formed machine, inputs first; sent by the server when the screen opens (client only). */
+    @Getter
+    private List<BlockPos> portPositions = List.of();
 
     public MachineControllerMenu(ControllerModel model, RegistryGroupHolder groupHolder, int windowId, Inventory inv,
             IControllerBlockEntity be) {
@@ -34,5 +40,17 @@ public class MachineControllerMenu extends MMContainerMenu {
             FriendlyByteBuf buf) {
         this(model, groupHolder, windowId, inv,
                 (IControllerBlockEntity) inv.player.level().getBlockEntity(buf.readBlockPos()));
+        this.portPositions = buf.readList(FriendlyByteBuf::readBlockPos);
+    }
+
+    /**
+     * Written by the server when the screen opens: the controller position, then its formed machine's ports.
+     */
+    public static void writeOpenData(FriendlyByteBuf buf, MachineControllerBlockEntity controller) {
+        buf.writeBlockPos(controller.getBlockPos());
+        var structure = controller.getStructure();
+        List<BlockPos> ports = structure == null || controller.getLevel() == null
+                ? List.of() : structure.getPortPositions(controller.getLevel(), controller.getBlockPos());
+        buf.writeCollection(ports, FriendlyByteBuf::writeBlockPos);
     }
 }
