@@ -116,10 +116,11 @@ public class ItemPortStorage implements IPortStorage {
         int offsetY = ((108 - (rows * 18)) / 2) + 8;
 
         var portInv = new ItemPortContainer(this.handler);
+        boolean clientSide = inv.player.level().isClientSide();
 
         for (int y = 0; y < rows; y++) {
             for (int x = 0; x < columns; x++) {
-                container.addSlot(new Slot(portInv, (y * columns) + x, x * 18 + offsetX, y * 18 + offsetY));
+                container.addSlot(new ItemPortSlot(portInv, (y * columns) + x, x * 18 + offsetX, y * 18 + offsetY, clientSide));
             }
         }
 
