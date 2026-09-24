@@ -112,6 +112,9 @@ public abstract class MekanismChemicalPortStorage<CHEMICAL extends Chemical<CHEM
             // unknown ids resolve to the registry default (the empty chemical), which means "not locked"
             lockedType = chemical == null || chemical.isEmptyType() ? null : chemical;
         }
+        // Mekanism writes nothing for an empty tank and skips reading then, so clear first; otherwise
+        // the client keeps showing the old contents after the tank is emptied (e.g. dumped)
+        chemicalTank.setEmpty();
         chemicalTank.deserializeNBT(tag.getCompound("handler"));
     }
 
