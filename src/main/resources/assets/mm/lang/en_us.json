@@ -95,5 +95,7 @@
   "gui.mm.controller.ports.outputs": "Outputs (%s)",
   "gui.mm.controller.ports.input": "Input port",
   "gui.mm.controller.ports.output": "Output port",
-  "gui.mm.controller.ports.none": "No ports to show. Is the machine formed?"
+  "gui.mm.controller.ports.none": "No ports to show. Is the machine formed?",
+  "gui.mm.controller.row.tier": "Tier",
+  "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name"
 }

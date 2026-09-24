@@ -95,5 +95,7 @@
   "gui.mm.controller.ports.outputs": "Çıktılar (%s)",
   "gui.mm.controller.ports.input": "Giriş port'u",
   "gui.mm.controller.ports.output": "Çıkış port'u",
-  "gui.mm.controller.ports.none": "Gösterilecek port yok. Yapı kurulu mu?"
+  "gui.mm.controller.ports.none": "Gösterilecek port yok. Yapı kurulu mu?",
+  "gui.mm.controller.row.tier": "Seviye",
+  "gui.mm.controller.row.tier.hint": "Kurulu yapının seviyesi (yapının adından alınır)"
 }

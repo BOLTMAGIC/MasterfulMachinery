@@ -3,6 +3,8 @@ package io.ticticboom.mods.mm.controller.machine.register;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
+import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
+import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
@@ -29,6 +31,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Controller status, top to bottom inside MM's dark screen: machine name, a coloured status line
@@ -46,16 +50,19 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     private static final int NAME_Y = 10;
     private static final int STATUS_Y = 22;
-    private static final int RECIPE_LABEL_Y = 37;
-    private static final int RECIPE_Y = 48;
-    private static final int ROWS_Y = 75;
-    private static final int ROW_STEP = 13;
+    private static final int RECIPE_LABEL_Y = 36;
+    private static final int RECIPE_Y = 46;
+    private static final int ROWS_Y = 72;
+    private static final int ROW_STEP = 11;
 
     private static final int MAX_INPUTS = 3;
     private static final int MAX_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
 
-    private enum Row { STRUCTURE, PARALLEL, REDSTONE, MODE }
+    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE }
+
+    // packs name tiered structures like "Auto Crusher Tier 1.5"; the tier gets its own row
+    private static final Pattern TIER = Pattern.compile("(?i)\\s*\\b(?:tier|seviye|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
 
     private enum Status {
         NOT_FORMED(0xFF5555), PAUSED(0xFFAA00), RUNNING(0x55FF55), IDLE(0xE0C050);
@@ -122,7 +129,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         pose.popPose();
     }
 
-    private record Shown(int x, int y, IPortIngredient ingredient, boolean input) {
+    private record Shown(int x, int y, PortContent content, boolean input) {
     }
 
     private Status status() {
@@ -141,16 +148,18 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (recipe == null) {
             return shown;
         }
-        var inputs = new ArrayList<IPortIngredient>();
+        var inputs = new ArrayList<PortContent>();
         for (var entry : recipe.inputs().inputs()) {
-            if (entry instanceof ConsumeRecipeIngredientEntry consume && isDisplayable(consume.getIngredient()) && inputs.size() < MAX_INPUTS) {
-                inputs.add(consume.getIngredient());
+            if (entry instanceof ConsumeRecipeIngredientEntry consume && inputs.size() < MAX_INPUTS) {
+                PortContent content = consume.getIngredient().display();
+                if (content != null) inputs.add(content);
             }
         }
-        var outputs = new ArrayList<IPortIngredient>();
+        var outputs = new ArrayList<PortContent>();
         for (var entry : recipe.outputs().outputs()) {
-            if (entry instanceof SimpleRecipeOutputEntry simple && isDisplayable(simple.getIngredient()) && outputs.size() < MAX_OUTPUTS) {
-                outputs.add(simple.getIngredient());
+            if (entry instanceof SimpleRecipeOutputEntry simple && outputs.size() < MAX_OUTPUTS) {
+                PortContent content = simple.getIngredient().display();
+                if (content != null) outputs.add(content);
             }
         }
         for (int i = 0; i < inputs.size(); i++) {
@@ -161,10 +170,6 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             shown.add(new Shown(outputX + i * SLOT_STEP, RECIPE_Y, outputs.get(i), false));
         }
         return shown;
-    }
-
-    private static boolean isDisplayable(IPortIngredient ingredient) {
-        return !ingredient.displayItem().isEmpty() || !ingredient.displayFluid().isEmpty();
     }
 
     private static int arrowX(int inputCount) {
@@ -196,7 +201,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (!slots.isEmpty()) {
             int inputs = (int) slots.stream().filter(Shown::input).count();
             for (Shown s : slots) {
-                drawIngredient(gfx, x + s.x(), y + s.y(), s.ingredient());
+                gfx.blit(Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18);
+                PortContentIcon.draw(gfx, s.content(), x + s.x(), y + s.y());
             }
             // MM's own progress arrow, as in the JEI categories
             int ax = x + arrowX(inputs);
@@ -213,19 +219,6 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         var button = isOnRow(Row.REDSTONE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         gfx.blitNineSlicedSized(button, x + VALUE_X - 2, by, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         drawSmallItem(gfx, new ItemStack(Items.REDSTONE), x + VALUE_X, by + 1);
-    }
-
-    private void drawIngredient(GuiGraphics gfx, int x, int y, IPortIngredient ingredient) {
-        gfx.blit(Ref.UiTextures.SLOT_PARTS, x, y, 0, 26, 18, 18);
-        var item = ingredient.displayItem();
-        if (!item.isEmpty()) {
-            gfx.renderItem(item, x + 1, y + 1);
-            if (item.getCount() > 1) {
-                CountFormat.drawSlotCount(gfx, x, y, item.getCount());
-            }
-            return;
-        }
-        FluidRenderer.INSTANCE.render(gfx, x + 1, y + 1, ingredient.displayFluid(), 16);
     }
 
     @Override
@@ -255,11 +248,20 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         var structure = be.getStructure();
         if (structure != null) {
-            drawClipped(gfx, Component.literal(structure.name()), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, TEXT);
+            Matcher tier = TIER.matcher(structure.name());
+            boolean hasTier = tier.find();
+            String baseName = hasTier ? (structure.name().substring(0, tier.start()) + structure.name().substring(tier.end())).trim() : structure.name();
+            drawClipped(gfx, Component.literal(baseName), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, TEXT);
+            if (hasTier) {
+                gfx.drawString(this.font, tier.group(1), VALUE_X, rowY(Row.TIER), TEXT, false);
+            } else {
+                gfx.drawString(this.font, "-", VALUE_X, rowY(Row.TIER), LABEL, false);
+            }
             drawClipped(gfx, Component.translatable("gui.mm.controller.parallel.value", be.getActiveRecipeCount(), maxParallel()),
                     VALUE_X, rowY(Row.PARALLEL), RIGHT - VALUE_X, TEXT);
         } else {
             drawClipped(gfx, Component.translatable("gui.mm.controller.not_formed"), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, Status.NOT_FORMED.color);
+            gfx.drawString(this.font, "-", VALUE_X, rowY(Row.TIER), LABEL, false);
             gfx.drawString(this.font, "-", VALUE_X, rowY(Row.PARALLEL), LABEL, false);
         }
         drawClipped(gfx, Component.translatable("gui.mm.controller.redstone." + redstoneMode()),
@@ -303,13 +305,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             if (!WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + s.x(), this.topPos + s.y(), 18, 18)) {
                 continue;
             }
-            var item = s.ingredient().displayItem();
-            if (!item.isEmpty()) {
-                gfx.renderTooltip(this.font, item, mouseX, mouseY);
+            if (s.content().kind() == PortContent.Kind.ITEM) {
+                gfx.renderTooltip(this.font, s.content().item(), mouseX, mouseY);
             } else {
-                var fluid = s.ingredient().displayFluid();
-                gfx.renderComponentTooltip(this.font, List.of(fluid.getDisplayName(),
-                        Component.literal(CountFormat.grouped(fluid.getAmount()) + " mB").withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
+                gfx.renderComponentTooltip(this.font, PortContentIcon.tooltip(s.content()), mouseX, mouseY);
             }
             return;
         }
@@ -347,6 +346,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable(be.getStructure() != null
                         ? key + ".hint.formed" : key + ".hint.not_formed").withStyle(ChatFormatting.GRAY));
                 }
+                case TIER -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
                 case PARALLEL -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
                 case REDSTONE -> {
                     lines.add(Component.translatable("gui.mm.controller.redstone." + redstoneMode() + ".hint").withStyle(ChatFormatting.GRAY));
@@ -363,7 +363,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         double mx = mouseX - this.leftPos;
         double my = mouseY - this.topPos;
         int y = rowY(row) - 2;
-        return mx >= LEFT && mx < RIGHT && my >= y && my < y + 12;
+        return mx >= LEFT && mx < RIGHT && my >= y && my < y + ROW_STEP;
     }
 
     @Override

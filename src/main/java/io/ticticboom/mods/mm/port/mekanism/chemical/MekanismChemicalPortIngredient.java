@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical;
 
+import io.ticticboom.mods.mm.port.PortContent;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
@@ -42,6 +44,11 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
      * Returns the ResourceLocation id of the chemical this ingredient refers to.
      * Used by controllers to perform lightweight pre-checks by id.
      */
+    @Override
+    public PortContent display() {
+        return PortContent.chemical(chemical.getTextComponent(), chemical.getIcon(), chemical.getTint(), amount, 0);
+    }
+
     public ResourceLocation getChemicalId() {
         return this.id;
     }
