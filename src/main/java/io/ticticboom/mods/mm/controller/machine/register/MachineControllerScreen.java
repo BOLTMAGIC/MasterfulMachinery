@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.controller.machine.register;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
-import io.ticticboom.mods.mm.client.texture.GuiTextures;
 import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
@@ -15,30 +14,58 @@ import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Controller status: structure, the running recipe (inputs, MM's progress arrow, outputs, percentage),
- * parallel count, redstone mode (click to cycle) and recipe selection mode.
+ * Controller status, top to bottom inside MM's dark screen: machine name, a coloured status line
+ * (not formed / paused by redstone / running / idle), the running recipe (inputs, MM's progress arrow,
+ * outputs, percentage), then aligned label / value rows for structure, parallel count, redstone mode
+ * (click to cycle) and recipe order. Every row explains itself in a tooltip.
  */
 public class MachineControllerScreen extends AbstractContainerScreen<MachineControllerMenu> {
-    private static final int TEXT = 0xacacac;
+    private static final int TEXT = 0xDDDDDD;
+    private static final int LABEL = 0x8A8A8A;
+    private static final int DIVIDER = 0xFF3A3A3A;
+    private static final int LEFT = 10;
+    private static final int RIGHT = 163;
+    private static final int VALUE_X = 74;
+
+    private static final int NAME_Y = 10;
+    private static final int STATUS_Y = 22;
+    private static final int RECIPE_LABEL_Y = 37;
+    private static final int RECIPE_Y = 48;
+    private static final int ROWS_Y = 75;
+    private static final int ROW_STEP = 13;
+
     private static final int MAX_INPUTS = 3;
     private static final int MAX_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
-    private static final int RECIPE_X = 12;
-    private static final int RECIPE_Y = 40;
-    private static final int PARALLEL_Y = 66;
-    private static final int REDSTONE_Y = 82;
-    private static final int MODE_Y = 100;
-    private static final int ROW_X = 10;
+
+    private enum Row { STRUCTURE, PARALLEL, REDSTONE, MODE }
+
+    private enum Status {
+        NOT_FORMED(0xFF5555), PAUSED(0xFFAA00), RUNNING(0x55FF55), IDLE(0xE0C050);
+
+        final int color;
+
+        Status(int color) {
+            this.color = color;
+        }
+
+        String key() {
+            return "gui.mm.controller.status." + name().toLowerCase();
+        }
+    }
 
     private final MachineControllerMenu menu;
     private final MachineControllerBlockEntity be;
@@ -52,6 +79,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private record Shown(int x, int y, IPortIngredient ingredient, boolean input) {
+    }
+
+    private Status status() {
+        if (be.getStructure() == null) return Status.NOT_FORMED;
+        if (!be.isAllowedByRedstone()) return Status.PAUSED;
+        if (be.getCurrentRecipe() != null) return Status.RUNNING;
+        return Status.IDLE;
     }
 
     /**
@@ -76,7 +110,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             }
         }
         for (int i = 0; i < inputs.size(); i++) {
-            shown.add(new Shown(RECIPE_X + i * SLOT_STEP, RECIPE_Y, inputs.get(i), true));
+            shown.add(new Shown(LEFT + i * SLOT_STEP, RECIPE_Y, inputs.get(i), true));
         }
         int outputX = arrowX(inputs.size()) + 28;
         for (int i = 0; i < outputs.size(); i++) {
@@ -90,34 +124,47 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private static int arrowX(int inputCount) {
-        return RECIPE_X + inputCount * SLOT_STEP + 3;
+        return LEFT + inputCount * SLOT_STEP + 3;
+    }
+
+    private static int rowY(Row row) {
+        return ROWS_Y + row.ordinal() * ROW_STEP;
     }
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        int x = this.leftPos;
+        int y = this.topPos;
+
+        // status light
+        gfx.fill(x + LEFT, y + STATUS_Y + 1, x + LEFT + 5, y + STATUS_Y + 6, 0xFF000000 | status().color);
+
+        gfx.fill(x + LEFT, y + STATUS_Y + 11, x + RIGHT, y + STATUS_Y + 12, DIVIDER);
+        gfx.fill(x + LEFT, y + ROWS_Y - 5, x + RIGHT, y + ROWS_Y - 4, DIVIDER);
 
         var slots = recipeSlots();
         if (!slots.isEmpty()) {
             int inputs = (int) slots.stream().filter(Shown::input).count();
             for (Shown s : slots) {
-                drawIngredient(gfx, this.leftPos + s.x(), this.topPos + s.y(), s.ingredient());
+                drawIngredient(gfx, x + s.x(), y + s.y(), s.ingredient());
             }
             // MM's own progress arrow, as in the JEI categories
-            int ax = this.leftPos + arrowX(inputs);
-            int ay = this.topPos + RECIPE_Y;
+            int ax = x + arrowX(inputs);
+            int ay = y + RECIPE_Y;
             gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 0, 24, 17);
             var state = be.getRecipeState();
             int filled = state == null ? 0 : (int) Math.round(24 * Math.min(100, state.getTickPercentage()) / 100);
             gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 17, filled, 17);
         }
 
-        int bx = this.leftPos + ROW_X;
-        int by = this.topPos + REDSTONE_Y;
-        GuiTextures.BUTTON_ACTIVE.blit(gfx, bx, by, 12, 12);
+        // the redstone value is a button: MM's button texture, pressed look on hover
+        int by = y + rowY(Row.REDSTONE) - 2;
+        var button = isOnRow(Row.REDSTONE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
+        gfx.blitNineSlicedSized(button, x + VALUE_X - 2, by, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         var pose = gfx.pose();
         pose.pushPose();
-        pose.translate(bx + 1, by + 1, 0);
+        pose.translate(x + VALUE_X, by + 1, 0);
         pose.scale(10f / 16f, 10f / 16f, 1);
         gfx.renderItem(new ItemStack(Items.REDSTONE), 0, 0);
         pose.popPose();
@@ -138,17 +185,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawString(this.font, menu.getModel().name(), ROW_X, 10, TEXT, false);
+        drawClipped(gfx, Component.literal(menu.getModel().name()), LEFT, NAME_Y, RIGHT - LEFT, 0xFFFFFF);
 
-        var structure = be.getStructure();
-        Component formed = structure != null
-                ? Component.translatable("gui.mm.controller.formed_as", structure.name())
-                : Component.translatable("gui.mm.controller.not_formed");
-        gfx.drawString(this.font, formed, ROW_X, 24, TEXT, false);
+        Status status = status();
+        drawClipped(gfx, Component.translatable(status.key()), LEFT + 9, STATUS_Y, RIGHT - LEFT - 9, status.color);
 
+        gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe"), LEFT, RECIPE_LABEL_Y, LABEL, false);
         var slots = recipeSlots();
         if (slots.isEmpty()) {
-            gfx.drawString(this.font, Component.translatable("gui.mm.controller.idle"), ROW_X, RECIPE_Y + 5, TEXT, false);
+            gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
         } else {
             var state = be.getRecipeState();
             int percent = state == null ? 0 : (int) Math.floor(state.getTickPercentage());
@@ -156,18 +201,36 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             gfx.drawString(this.font, percent + "%", lastX + 21, RECIPE_Y + 5, TEXT, false);
         }
 
-        if (structure != null) {
-            gfx.drawString(this.font, Component.translatable("gui.mm.controller.parallel",
-                    be.getActiveRecipeCount(), maxParallel()), ROW_X, PARALLEL_Y, TEXT, false);
+        for (Row row : Row.values()) {
+            drawClipped(gfx, Component.translatable("gui.mm.controller.row." + row.name().toLowerCase()),
+                    LEFT, rowY(row), VALUE_X - LEFT - 4, LABEL);
         }
+        var structure = be.getStructure();
+        if (structure != null) {
+            drawClipped(gfx, Component.literal(structure.name()), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, TEXT);
+            drawClipped(gfx, Component.translatable("gui.mm.controller.parallel.value", be.getActiveRecipeCount(), maxParallel()),
+                    VALUE_X, rowY(Row.PARALLEL), RIGHT - VALUE_X, TEXT);
+        } else {
+            drawClipped(gfx, Component.translatable("gui.mm.controller.not_formed"), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, Status.NOT_FORMED.color);
+            gfx.drawString(this.font, "-", VALUE_X, rowY(Row.PARALLEL), LABEL, false);
+        }
+        drawClipped(gfx, Component.translatable("gui.mm.controller.redstone." + redstoneMode()),
+                VALUE_X + 12, rowY(Row.REDSTONE), RIGHT - VALUE_X - 14, TEXT);
+        drawClipped(gfx, Component.translatable("gui.mm.controller.mode." + recipeMode()),
+                VALUE_X, rowY(Row.MODE), RIGHT - VALUE_X, TEXT);
+    }
 
-        String redstone = be.getRedstoneModeName().toLowerCase();
-        gfx.drawString(this.font, Component.translatable("gui.mm.controller.redstone",
-                Component.translatable("gui.mm.controller.redstone." + redstone)), ROW_X + 16, REDSTONE_Y + 2, TEXT, false);
+    private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
+        FormattedText clipped = this.font.ellipsize(text, maxWidth);
+        gfx.drawString(this.font, Language.getInstance().getVisualOrder(clipped), x, y, color, false);
+    }
 
-        String mode = be.getRecipeSelectionMode().serializedName();
-        gfx.drawString(this.font, Component.translatable("gui.mm.controller.mode",
-                Component.translatable("gui.mm.controller.mode." + mode)), ROW_X, MODE_Y, TEXT, false);
+    private String redstoneMode() {
+        return be.getRedstoneModeName().toLowerCase();
+    }
+
+    private String recipeMode() {
+        return be.getRecipeSelectionMode().serializedName();
     }
 
     private int maxParallel() {
@@ -200,21 +263,49 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 gfx.renderComponentTooltip(this.font, List.of(fluid.getDisplayName(),
                         Component.literal(CountFormat.grouped(fluid.getAmount()) + " mB").withStyle(ChatFormatting.GRAY)), mouseX, mouseY);
             }
+            return;
         }
-        if (isOnRedstoneRow(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(this.font, List.of(Component.translatable("gui.mm.controller.redstone.hint")), mouseX, mouseY);
+        List<Component> tooltip = rowTooltip(mouseX, mouseY);
+        if (tooltip != null) {
+            gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
         }
     }
 
-    private boolean isOnRedstoneRow(double mouseX, double mouseY) {
+    @Nullable
+    private List<Component> rowTooltip(int mouseX, int mouseY) {
+        if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
+            return List.of(Component.translatable(status().key() + ".hint").withStyle(ChatFormatting.GRAY));
+        }
+        for (Row row : Row.values()) {
+            if (!isOnRow(row, mouseX, mouseY)) continue;
+            String key = "gui.mm.controller.row." + row.name().toLowerCase();
+            var lines = new ArrayList<Component>();
+            lines.add(Component.translatable(key));
+            switch (row) {
+                case STRUCTURE -> lines.add(Component.translatable(be.getStructure() != null
+                        ? key + ".hint.formed" : key + ".hint.not_formed").withStyle(ChatFormatting.GRAY));
+                case PARALLEL -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
+                case REDSTONE -> {
+                    lines.add(Component.translatable("gui.mm.controller.redstone." + redstoneMode() + ".hint").withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("gui.mm.controller.redstone.hint").withStyle(ChatFormatting.YELLOW));
+                }
+                case MODE -> lines.add(Component.translatable("gui.mm.controller.mode." + recipeMode() + ".hint").withStyle(ChatFormatting.GRAY));
+            }
+            return lines;
+        }
+        return null;
+    }
+
+    private boolean isOnRow(Row row, double mouseX, double mouseY) {
         double mx = mouseX - this.leftPos;
         double my = mouseY - this.topPos;
-        return mx >= ROW_X && mx <= ROW_X + 150 && my >= REDSTONE_Y && my <= REDSTONE_Y + 12;
+        int y = rowY(row) - 2;
+        return mx >= LEFT && mx < RIGHT && my >= y && my < y + 12;
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (isOnRedstoneRow(mouseX, mouseY)) {
+        if (isOnRow(Row.REDSTONE, mouseX, mouseY)) {
             int next = (be.getRedstoneModeOrdinal() + 1) % 3;
             MMNetwork.INSTANCE.sendToServer(new ToggleRedstoneModePkt(be.getBlockPos(), next));
             return true;

@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import io.ticticboom.mods.mm.port.common.PortGuiLayout;
+import io.ticticboom.mods.mm.util.BlockUtils;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -125,7 +126,7 @@ public class ItemPortStorage implements IPortStorage {
             }
         }
 
-        IPortStorage.super.setupContainer(container, inv, portModel);
+        BlockUtils.setupPlayerInventory(container, inv, PortGuiLayout.inventoryOffsetX(columns), PortGuiLayout.extraHeight(rows));
     }
 
     public int canExtract(Predicate<ItemStack> item, int count) {

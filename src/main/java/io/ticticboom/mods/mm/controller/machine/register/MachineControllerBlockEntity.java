@@ -135,7 +135,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
-    private boolean isAllowedByRedstone() {
+    public boolean isAllowedByRedstone() {
         if (level == null) return true;
         try {
             if (redstoneMode == RedstoneMode.IGNORED) return true;

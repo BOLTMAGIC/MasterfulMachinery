@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.common.ILockablePortStorage;
+import io.ticticboom.mods.mm.port.common.PortGuiLayout;
 import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
 import io.ticticboom.mods.mm.port.common.autoio.PortSides;
 import net.minecraft.ChatFormatting;
@@ -32,9 +33,10 @@ import java.util.List;
 public class PortConfigPanel {
     private static final int BTN = 12;
     private static final int STEP = BTN + 1;
-    private static final int TOGGLE_X = 155;
+    // offsets from the GUI's right edge
+    private static final int TOGGLE_RIGHT = 19;
     private static final int TOGGLE_Y = 5;
-    private static final int PANEL_X = 170;
+    private static final int PANEL_RIGHT = 4;
     private static final int PANEL_Y = 4;
     private static final int PANEL_W = 58;
     private static final int CUBE_X = 10;
@@ -60,6 +62,7 @@ public class PortConfigPanel {
     private final AbstractPortBlockEntity be;
     private int guiLeft;
     private int guiTop;
+    private int guiWidth = PortGuiLayout.WIDTH;
 
     public PortConfigPanel(AbstractPortBlockEntity be) {
         this.be = be;
@@ -70,7 +73,11 @@ public class PortConfigPanel {
      * Coordinates are relative to the GUI (for use in renderLabels).
      */
     public static void drawTitle(GuiGraphics gfx, Font font, String name) {
-        FormattedText title = font.ellipsize(FormattedText.of(name), TOGGLE_X - 11);
+        drawTitle(gfx, font, name, PortGuiLayout.WIDTH);
+    }
+
+    public static void drawTitle(GuiGraphics gfx, Font font, String name, int guiWidth) {
+        FormattedText title = font.ellipsize(FormattedText.of(name), guiWidth - TOGGLE_RIGHT - 11);
         gfx.drawString(font, Language.getInstance().getVisualOrder(title), 8, 8, TEXT, false);
     }
 
@@ -83,8 +90,16 @@ public class PortConfigPanel {
      * @param guiTop  top edge of the port GUI
      */
     public void setPosition(int guiLeft, int guiTop) {
+        setPosition(guiLeft, guiTop, PortGuiLayout.WIDTH);
+    }
+
+    /**
+     * @param guiWidth width of the port GUI, for ports whose window grows with their slot grid
+     */
+    public void setPosition(int guiLeft, int guiTop, int guiWidth) {
         this.guiLeft = guiLeft;
         this.guiTop = guiTop;
+        this.guiWidth = guiWidth;
     }
 
     public boolean isWithin(double mouseX, double mouseY) {
@@ -101,7 +116,7 @@ public class PortConfigPanel {
         int h = panelHeight();
         gfx.blitNineSlicedSized(Ref.UiTextures.TILING_GUI, panelX(), panelY(), PANEL_W, h, 4, 4, 4, 4, 12, 12, 0, 0, 12, 12);
         // hide the seam so the panel reads as part of the window
-        gfx.fill(guiLeft + PANEL_X - 2, panelY() + 4, guiLeft + PANEL_X + 4, panelY() + h - 4, WINDOW_BG);
+        gfx.fill(panelX() - 2, panelY() + 4, panelX() + 4, panelY() + h - 4, WINDOW_BG);
         gfx.drawString(font, Component.translatable("gui.mm.port.panel.title"), panelX() + 6, panelY() + 6, TEXT, false);
 
         PortAutoIO autoIO = be.getAutoIO();
@@ -249,7 +264,7 @@ public class PortConfigPanel {
     }
 
     private int toggleX() {
-        return guiLeft + TOGGLE_X;
+        return guiLeft + guiWidth - TOGGLE_RIGHT;
     }
 
     private int toggleY() {
@@ -257,7 +272,7 @@ public class PortConfigPanel {
     }
 
     private int panelX() {
-        return guiLeft + PANEL_X;
+        return guiLeft + guiWidth - PANEL_RIGHT;
     }
 
     private int panelY() {
