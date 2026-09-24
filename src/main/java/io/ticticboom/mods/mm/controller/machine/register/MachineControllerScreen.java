@@ -273,6 +273,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Nullable
     private List<Component> rowTooltip(int mouseX, int mouseY) {
+        // long machine names are cut short on screen; show them in full on hover
+        if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, RIGHT - LEFT, 10)
+                && this.font.width(menu.getModel().name()) > RIGHT - LEFT) {
+            return List.of(Component.literal(menu.getModel().name()));
+        }
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
             return List.of(Component.translatable(status().key() + ".hint").withStyle(ChatFormatting.GRAY));
         }
@@ -282,8 +287,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             var lines = new ArrayList<Component>();
             lines.add(Component.translatable(key));
             switch (row) {
-                case STRUCTURE -> lines.add(Component.translatable(be.getStructure() != null
+                case STRUCTURE -> {
+                    if (be.getStructure() != null) {
+                        lines.add(Component.literal(be.getStructure().name()).withStyle(ChatFormatting.WHITE));
+                    }
+                    lines.add(Component.translatable(be.getStructure() != null
                         ? key + ".hint.formed" : key + ".hint.not_formed").withStyle(ChatFormatting.GRAY));
+                }
                 case PARALLEL -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
                 case REDSTONE -> {
                     lines.add(Component.translatable("gui.mm.controller.redstone." + redstoneMode() + ".hint").withStyle(ChatFormatting.GRAY));
