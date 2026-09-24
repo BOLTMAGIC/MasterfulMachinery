@@ -9,6 +9,7 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +23,11 @@ public class FluidPortHandler implements IFluidHandler {
 
     private final ArrayList<FluidStack> stacks;
 
+    // per tank fluid remembered while the port is locked, null = tank not locked to a fluid yet
+    private final Fluid[] lockedFluids;
+    @Getter
+    private boolean locked = false;
+
     public static final Codec<List<FluidStack>> STACKS_CODEC = Codec.list(FluidStack.CODEC);
 
     public FluidPortHandler(int tanks, int capacity, INotifyChangeFunction changed) {
@@ -31,6 +37,44 @@ public class FluidPortHandler implements IFluidHandler {
         stacks = new ArrayList<>();
         for (int i = 0; i < tanks; i++) {
             stacks.add(FluidStack.EMPTY);
+        }
+        lockedFluids = new Fluid[tanks];
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+        for (int i = 0; i < tanks; i++) {
+            FluidStack stack = stacks.get(i);
+            lockedFluids[i] = locked && !stack.isEmpty() ? stack.getFluid() : null;
+        }
+        changed.call();
+    }
+
+    @Nullable
+    public Fluid getLockedFluid(int tank) {
+        return lockedFluids[tank];
+    }
+
+    /**
+     * Restores lock state from NBT without re-deriving it from the current contents.
+     */
+    public void loadLock(boolean locked, Fluid[] fluids) {
+        this.locked = locked;
+        for (int i = 0; i < tanks; i++) {
+            lockedFluids[i] = locked && i < fluids.length ? fluids[i] : null;
+        }
+    }
+
+    public void clearAll() {
+        for (int i = 0; i < tanks; i++) {
+            stacks.set(i, FluidStack.EMPTY);
+        }
+        changed.call();
+    }
+
+    private void rememberLockedFluid(int tank, Fluid fluid) {
+        if (locked && lockedFluids[tank] == null) {
+            lockedFluids[tank] = fluid;
         }
     }
 
@@ -46,6 +90,9 @@ public class FluidPortHandler implements IFluidHandler {
 
     public void setFluidInTank(int i, FluidStack fluidStack) {
         stacks.set(i, fluidStack);
+        if (!fluidStack.isEmpty()) {
+            rememberLockedFluid(i, fluidStack.getFluid());
+        }
         changed.call();
     }
 
@@ -56,6 +103,10 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public boolean isFluidValid(int i, @NotNull FluidStack fluidStack) {
+        Fluid lockedFluid = lockedFluids[i];
+        if (lockedFluid != null && lockedFluid != fluidStack.getFluid()) {
+            return false;
+        }
         FluidStack slotStack = stacks.get(i);
         return slotStack.isEmpty() || slotStack.isFluidEqual(fluidStack);
     }
@@ -83,13 +134,14 @@ public class FluidPortHandler implements IFluidHandler {
 
         var canBeFilled = Math.min(capacity - storedAmount, amount);
 
-        if (!simulate) {
+        if (!simulate && canBeFilled > 0) {
             FluidStack stack = stacks.get(slot);
             if (stack.isEmpty()) {
                 stacks.set(slot, new FluidStack(fluid, canBeFilled));
             } else {
                 stack.setAmount(storedAmount + canBeFilled);
             }
+            rememberLockedFluid(slot, fluid);
         }
         return canBeFilled;
     }

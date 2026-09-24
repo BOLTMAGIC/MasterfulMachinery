@@ -10,9 +10,8 @@ import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorageModel;
-import io.ticticboom.mods.mm.port.fluid.feature.FluidPortAutoPushFeature;
-import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
-import io.ticticboom.mods.mm.port.item.feature.ItemPortAutoPushAddon;
+import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
+import io.ticticboom.mods.mm.port.common.autoio.PortTransfers;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -48,7 +47,6 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     private final boolean isInput;
 
     private final FluidPortStorage storage;
-    private final Optional<FluidPortAutoPushFeature> autoPushAddon;
 
     public FluidPortBlockEntity(PortModel model, RegistryGroupHolder groupHolder, boolean isInput, BlockPos pos,
                                 BlockState state) {
@@ -57,12 +55,8 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
         this.groupHolder = groupHolder;
         this.isInput = isInput;
         storage = (FluidPortStorage) model.config().createPortStorage(this::setChanged);
-        var shouldAutoPush = !isInput && ((FluidPortStorageModel) storage.getStorageModel()).autoPush().get();
-        if (shouldAutoPush) {
-            autoPushAddon = Optional.of(new FluidPortAutoPushFeature(this, this.model));
-        } else {
-            autoPushAddon = Optional.empty();
-        }
+        var enabledByDefault = !isInput && ((FluidPortStorageModel) storage.getStorageModel()).autoPush().get();
+        autoIO = new PortAutoIO(this, isInput, enabledByDefault, PortTransfers.fluids(storage::getHandler));
     }
 
     @Override
@@ -95,20 +89,5 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
         return storage.getCapability(cap);
-    }
-
-    public void tick() {
-        if(lastTick == level.getGameTime()) return;
-        lastTick = level.getGameTime();
-        autoPushAddon.ifPresent(FluidPortAutoPushFeature::tick);
-    }
-
-    @Override
-    public void onLoad() {
-        autoPushAddon.ifPresent(FluidPortAutoPushFeature::onLoad);
-    }
-
-    public void neighborsChanged() {
-        autoPushAddon.ifPresent(FluidPortAutoPushFeature::tryAddNeighboringHandlers);
     }
 }

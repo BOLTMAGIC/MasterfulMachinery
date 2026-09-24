@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.port.energy.register;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.gui.widgets.PortConfigPanel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorage;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorageModel;
@@ -16,6 +17,7 @@ import java.util.ArrayList;
 public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
 
     private final FormattedText header;
+    private final PortConfigPanel configPanel;
 
     public EnergyPortScreen(EnergyPortMenu menu, Inventory inv, Component displayName) {
         super(menu, inv, displayName);
@@ -24,6 +26,26 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
         String name = menu.getModel().name();
         int subStrLength = Math.min(55, name.length());
         header = FormattedText.of(name.substring(0, subStrLength) + (subStrLength < 55 ? "" : "..."));
+        configPanel = new PortConfigPanel(menu.getBlockEntity());
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+        configPanel.setPosition(this.leftPos + this.imageWidth + 2, this.topPos + 4);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (configPanel.mouseClicked(mouseX, mouseY)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top, int button) {
+        return super.hasClickedOutside(mouseX, mouseY, left, top, button) && !configPanel.isWithin(mouseX, mouseY);
     }
 
     @Override
@@ -54,5 +76,7 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
             tooltip.add(Component.literal(String.format("Storage Energy: %sFE / %sFE", storage.getStoredEnergy(), storageModel.capacity())));
             gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
         }
+        configPanel.render(gfx, this.font, mouseX, mouseY);
+        configPanel.renderTooltip(gfx, this.font, mouseX, mouseY);
     }
 }

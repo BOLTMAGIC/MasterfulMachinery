@@ -6,6 +6,7 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue debugTool;
     public final ForgeConfigSpec.BooleanValue splitRecipesJei;
     public final ForgeConfigSpec.BooleanValue portsAutoExtractByDefault;
+    public final ForgeConfigSpec.IntValue portAutoIOInterval;
     public final ForgeConfigSpec.BooleanValue asyncStructureValidation;
     public final ForgeConfigSpec.IntValue structureValidationRate;
     public final ForgeConfigSpec.BooleanValue previewBlueprintScreen;
@@ -22,8 +23,11 @@ public class MMCommonConfig {
                 .define("debugTool", true);
         splitRecipesJei = builder.comment("Splits JEI recipe viewer categories by the structure they belong to. Default: true")
                 .define("splitRecipesJei", true);
-        portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages. Default: false")
+        portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages.",
+                        "When true, newly placed output ports start with all sides pushing. Sides can be changed per port in its GUI. Default: false")
                 .define("portsAutoExtractByDefault", false);
+        portAutoIOInterval = builder.comment("How often ports with enabled auto push/pull sides transfer, in ticks. Default: 10")
+                .defineInRange("portAutoIOInterval", 10, 1, 200);
         parallelProcessingDefault = builder.comment("The default value of 'parallelProcessing' (when not set) on structures that support parallel processing. Default: false")
                 .define("parallelProcessingDefault", false);
         maxParallelRecipes = builder.comment("The max Parallel Recipes per controller. Default: 5")

@@ -11,8 +11,12 @@ import mekanism.api.chemical.ChemicalTankBuilder;
 import mekanism.api.chemical.IChemicalTank;
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
+import mekanism.api.chemical.gas.IGasHandler;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.registries.IForgeRegistry;
+
+import java.util.function.Predicate;
 
 public class MekanismGasPortStorage extends MekanismChemicalPortStorage<Gas, GasStack> {
 
@@ -21,8 +25,18 @@ public class MekanismGasPortStorage extends MekanismChemicalPortStorage<Gas, Gas
     }
 
     @Override
-    protected IChemicalTank<Gas, GasStack> createTank(long capacity, INotifyChangeFunction changed) {
-        return ChemicalTankBuilder.GAS.createAllValid(capacity, new NotifyChangeContentsListener(changed));
+    protected IChemicalTank<Gas, GasStack> createTank(long capacity, Predicate<Gas> validator, INotifyChangeFunction changed) {
+        return ChemicalTankBuilder.GAS.create(capacity, validator, new NotifyChangeContentsListener(changed));
+    }
+
+    @Override
+    public Capability<IGasHandler> getChemicalCapability() {
+        return MekCapabilities.GAS;
+    }
+
+    @Override
+    protected IForgeRegistry<Gas> getChemicalRegistry() {
+        return MekanismAPI.gasRegistry();
     }
 
     @Override

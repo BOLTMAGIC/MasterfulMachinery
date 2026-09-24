@@ -1,0 +1,23 @@
+{
+  "gui.mm.port.side.up": "Üst",
+  "gui.mm.port.side.down": "Alt",
+  "gui.mm.port.side.north": "Kuzey",
+  "gui.mm.port.side.south": "Güney",
+  "gui.mm.port.side.east": "Doğu",
+  "gui.mm.port.side.west": "Batı",
+  "gui.mm.port.side.up.short": "Ü",
+  "gui.mm.port.side.down.short": "A",
+  "gui.mm.port.side.north.short": "K",
+  "gui.mm.port.side.south.short": "G",
+  "gui.mm.port.side.east.short": "D",
+  "gui.mm.port.side.west.short": "B",
+  "gui.mm.port.side.state.push": "Otomatik çıkış",
+  "gui.mm.port.side.state.pull": "Otomatik giriş",
+  "gui.mm.port.side.state.off": "Kapalı",
+  "gui.mm.port.side.hint": "Açıp kapatmak için tıkla",
+  "gui.mm.port.lock.on": "Kilitli: yalnızca mevcut içerik girebilir",
+  "gui.mm.port.lock.off": "Kilitsiz",
+  "gui.mm.port.lock.hint": "Açıp kapatmak için tıkla. Boş tanklar ilk giren türe kilitlenir.",
+  "gui.mm.port.dump": "İçeriği boşalt",
+  "gui.mm.port.dump.hint": "Shift+Tık: tüm içeriği kalıcı olarak siler"
+}

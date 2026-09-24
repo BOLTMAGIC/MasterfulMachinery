@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.net;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
 import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
 import net.minecraftforge.network.NetworkRegistry;
@@ -8,7 +9,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public class MMNetwork {
 
-    private static final String PROTOCOL_VERSION = "1";
+    private static final String PROTOCOL_VERSION = "2";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -25,5 +26,6 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::encode,
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::decode,
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::handle);
+        INSTANCE.registerMessage(index++, PortConfigPkt.class, PortConfigPkt::encode, PortConfigPkt::decode, PortConfigPkt::handle);
     }
 }

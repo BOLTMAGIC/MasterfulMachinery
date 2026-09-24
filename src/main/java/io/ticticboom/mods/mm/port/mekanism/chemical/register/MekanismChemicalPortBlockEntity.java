@@ -5,6 +5,8 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
+import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
+import io.ticticboom.mods.mm.port.mekanism.chemical.ChemicalPortTransfers;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
@@ -41,6 +43,8 @@ public abstract class MekanismChemicalPortBlockEntity<CHEMICAL extends Chemical<
         this.groupHolder = groupHolder;
         this.isInput = isInput;
         this.storage = (MekanismChemicalPortStorage<CHEMICAL, STACK>) model.config().createPortStorage(this::setChanged);
+        this.autoIO = new PortAutoIO(this, isInput, false,
+                ChemicalPortTransfers.chemicals(storage.getChemicalCapability(), storage.getChemicalHandler()));
     }
 
     @Override
