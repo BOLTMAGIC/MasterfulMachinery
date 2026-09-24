@@ -99,5 +99,7 @@
   "gui.mm.controller.row.tier": "Tier",
   "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name",
   "gui.mm.port.side.legend.pull": "Pulls",
-  "gui.mm.port.side.legend.push": "Pushes"
+  "gui.mm.port.side.legend.push": "Pushes",
+  "block.mm.input_gateway": "Input Gateway",
+  "block.mm.input_gateway.tooltip": "Place next to a machine's input port: items and fluids piped in go to that machine's input ports"
 }

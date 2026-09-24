@@ -60,13 +60,32 @@ public final class PortSides {
     }
 
     /**
-     * Finds the front face of the formed multiblock the port belongs to. Only loaded chunks are
-     * searched and ports are matched by storage identity.
+     * Finds the front face of the formed multiblock the port belongs to.
      *
      * @return the horizontal direction the controller's front faces, or null if the port isn't part of a formed multiblock
      */
     @Nullable
     public static Direction findControllerFront(ServerLevel level, BlockPos portPos, IPortStorage storage) {
+        MachineControllerBlockEntity controller = findController(level, portPos, storage);
+        if (controller == null) {
+            return null;
+        }
+        var state = controller.getBlockState();
+        if (!state.hasProperty(HorizontalDirectionalBlock.FACING)) {
+            return null;
+        }
+        // the controller model's front overlay faces opposite to FACING
+        return state.getValue(HorizontalDirectionalBlock.FACING).getOpposite();
+    }
+
+    /**
+     * Finds the controller of the formed multiblock the port belongs to. Only loaded chunks are
+     * searched and ports are matched by storage identity.
+     *
+     * @return the controller, or null if the port isn't part of a formed multiblock
+     */
+    @Nullable
+    public static MachineControllerBlockEntity findController(ServerLevel level, BlockPos portPos, IPortStorage storage) {
         int r = CONTROLLER_SEARCH_RADIUS;
         for (int cx = (portPos.getX() - r) >> 4; cx <= (portPos.getX() + r) >> 4; cx++) {
             for (int cz = (portPos.getZ() - r) >> 4; cz <= (portPos.getZ() + r) >> 4; cz++) {
@@ -78,12 +97,7 @@ public final class PortSides {
                     if (be instanceof MachineControllerBlockEntity controller
                             && be.getBlockPos().closerThan(portPos, r + 1)
                             && belongsTo(level, controller, storage)) {
-                        var state = controller.getBlockState();
-                        if (!state.hasProperty(HorizontalDirectionalBlock.FACING)) {
-                            return null;
-                        }
-                        // the controller model's front overlay faces opposite to FACING
-                        return state.getValue(HorizontalDirectionalBlock.FACING).getOpposite();
+                        return controller;
                     }
                 }
             }

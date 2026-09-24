@@ -1,0 +1,38 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "loader": "forge:composite",
+  "children": {
+    "base": {
+      "parent": "minecraft:block/cube_all",
+      "render_type": "minecraft:solid",
+      "textures": { "all": "mm:block/base_block" }
+    },
+    "overlay": {
+      "parent": "minecraft:block/block",
+      "render_type": "minecraft:translucent",
+      "textures": {
+        "item": "mm:block/base_ports/item_input_cutout",
+        "fluid": "mm:block/base_ports/fluid_input_cutout"
+      },
+      "elements": [
+        {
+          "from": [0, 0, 0],
+          "to": [16, 16, 16],
+          "faces": {
+            "north": { "texture": "#item" },
+            "south": { "texture": "#item" },
+            "up": { "texture": "#item" },
+            "east": { "texture": "#fluid" },
+            "west": { "texture": "#fluid" },
+            "down": { "texture": "#fluid" }
+          }
+        }
+      ]
+    }
+  },
+  "item_render_order": ["base", "overlay"],
+  "textures": {
+    "all": "mm:block/base_block",
+    "particle": "mm:block/base_block"
+  }
+}
