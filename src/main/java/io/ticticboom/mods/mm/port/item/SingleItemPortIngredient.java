@@ -48,6 +48,11 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         }
     }
 
+    @Override
+    public ItemStack displayItem() {
+        return stack.copy();
+    }
+
     private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
         var item = ForgeRegistries.ITEMS.getValue(id);
         if (item == null) {

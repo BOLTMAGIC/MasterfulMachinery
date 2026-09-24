@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
+import io.ticticboom.mods.mm.port.common.PortGuiLayout;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -112,8 +113,8 @@ public class ItemPortStorage implements IPortStorage {
         var columns = model.columns();
         var rows = model.rows();
 
-        int offsetX = ((162 - (columns * 18)) / 2) + 8;
-        int offsetY = ((108 - (rows * 18)) / 2) + 8;
+        int offsetX = PortGuiLayout.slotGridX(columns);
+        int offsetY = PortGuiLayout.slotGridY(rows);
 
         var portInv = new ItemPortContainer(this.handler);
         boolean clientSide = inv.player.level().isClientSide();

@@ -9,7 +9,9 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.fluids.FluidStack;
 
 public interface IPortIngredient {
     boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state);
@@ -25,4 +27,17 @@ public interface IPortIngredient {
     JsonObject debugInput(Level level, RecipeStorages storages, JsonObject json);
     JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json);
 
+    /**
+     * @return an item to show for this ingredient outside JEI (e.g. the controller screen), or empty
+     */
+    default ItemStack displayItem() {
+        return ItemStack.EMPTY;
+    }
+
+    /**
+     * @return a fluid to show for this ingredient outside JEI (e.g. the controller screen), or empty
+     */
+    default FluidStack displayFluid() {
+        return FluidStack.EMPTY;
+    }
 }

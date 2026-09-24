@@ -975,6 +975,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return activeRecipes.values().iterator().next();
     }
 
+    public int getActiveRecipeCount() {
+        return activeRecipes.size();
+    }
+
+    public RecipeSelectionMode getRecipeSelectionMode() {
+        return controllerModel.recipeSelectionMode();
+    }
+
     // Redstone mode accessors (ordinal used for network/GUI)
     public int getRedstoneModeOrdinal() {
         return redstoneMode.ordinal();

@@ -23,8 +23,9 @@ public class FluidPortHandler implements IFluidHandler {
 
     private final ArrayList<FluidStack> stacks;
 
-    // per tank fluid remembered while the port is locked, null = tank not locked to a fluid yet
-    private final Fluid[] lockedFluids;
+    // fluid remembered while the port is locked, null = not locked to a fluid yet
+    @Nullable
+    private Fluid lockedFluid;
     @Getter
     private boolean locked = false;
 
@@ -38,31 +39,50 @@ public class FluidPortHandler implements IFluidHandler {
         for (int i = 0; i < tanks; i++) {
             stacks.add(FluidStack.EMPTY);
         }
-        lockedFluids = new Fluid[tanks];
     }
 
     public void setLocked(boolean locked) {
         this.locked = locked;
-        for (int i = 0; i < tanks; i++) {
-            FluidStack stack = stacks.get(i);
-            lockedFluids[i] = locked && !stack.isEmpty() ? stack.getFluid() : null;
-        }
+        lockedFluid = locked ? storedFluid() : null;
         changed.call();
     }
 
     @Nullable
-    public Fluid getLockedFluid(int tank) {
-        return lockedFluids[tank];
+    public Fluid getLockedFluid() {
+        return lockedFluid;
     }
 
     /**
      * Restores lock state from NBT without re-deriving it from the current contents.
      */
-    public void loadLock(boolean locked, Fluid[] fluids) {
+    public void loadLock(boolean locked, @Nullable Fluid fluid) {
         this.locked = locked;
-        for (int i = 0; i < tanks; i++) {
-            lockedFluids[i] = locked && i < fluids.length ? fluids[i] : null;
+        lockedFluid = locked ? fluid : null;
+    }
+
+    /**
+     * @return the fluid this port currently holds; a port holds a single fluid type at a time
+     */
+    @Nullable
+    public Fluid storedFluid() {
+        for (FluidStack stack : stacks) {
+            if (!stack.isEmpty()) {
+                return stack.getFluid();
+            }
         }
+        return null;
+    }
+
+    public int getTotalAmount() {
+        int total = 0;
+        for (FluidStack stack : stacks) {
+            total += stack.getAmount();
+        }
+        return total;
+    }
+
+    public int getTotalCapacity() {
+        return tanks * capacity;
     }
 
     public void clearAll() {
@@ -72,9 +92,9 @@ public class FluidPortHandler implements IFluidHandler {
         changed.call();
     }
 
-    private void rememberLockedFluid(int tank, Fluid fluid) {
-        if (locked && lockedFluids[tank] == null) {
-            lockedFluids[tank] = fluid;
+    private void rememberLockedFluid(Fluid fluid) {
+        if (locked && lockedFluid == null) {
+            lockedFluid = fluid;
         }
     }
 
@@ -91,7 +111,7 @@ public class FluidPortHandler implements IFluidHandler {
     public void setFluidInTank(int i, FluidStack fluidStack) {
         stacks.set(i, fluidStack);
         if (!fluidStack.isEmpty()) {
-            rememberLockedFluid(i, fluidStack.getFluid());
+            rememberLockedFluid(fluidStack.getFluid());
         }
         changed.call();
     }
@@ -103,8 +123,13 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public boolean isFluidValid(int i, @NotNull FluidStack fluidStack) {
-        Fluid lockedFluid = lockedFluids[i];
-        if (lockedFluid != null && lockedFluid != fluidStack.getFluid()) {
+        Fluid fluid = fluidStack.getFluid();
+        if (lockedFluid != null && lockedFluid != fluid) {
+            return false;
+        }
+        // one fluid type per port: a different fluid goes to another port
+        Fluid stored = storedFluid();
+        if (stored != null && stored != fluid) {
             return false;
         }
         FluidStack slotStack = stacks.get(i);
@@ -144,7 +169,7 @@ public class FluidPortHandler implements IFluidHandler {
             } else {
                 stack.setAmount(storedAmount + canBeFilled);
             }
-            rememberLockedFluid(slot, fluid);
+            rememberLockedFluid(fluid);
         }
         return canBeFilled;
     }

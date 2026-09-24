@@ -7,8 +7,8 @@ public interface ILockablePortStorage {
     boolean isLocked();
 
     /**
-     * Locking remembers the type currently held by each tank; an empty tank remembers the first
-     * type that enters it while locked. Unlocking forgets all remembered types.
+     * Locking remembers the type currently held by the port; an empty port remembers the first
+     * type that enters it while locked. Unlocking forgets the remembered type.
      */
     void setLocked(boolean locked);
 

@@ -10,9 +10,6 @@ import io.ticticboom.mods.mm.port.common.ILockablePortStorage;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -67,13 +64,11 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         tag.putInt("Priority", this.priority);
         if (handler.isLocked()) {
             tag.putBoolean("Locked", true);
-            var lockedFluids = new ListTag();
-            for (int i = 0; i < handler.getTanks(); i++) {
-                Fluid fluid = handler.getLockedFluid(i);
-                ResourceLocation id = fluid == null ? null : ForgeRegistries.FLUIDS.getKey(fluid);
-                lockedFluids.add(StringTag.valueOf(id == null ? "" : id.toString()));
+            Fluid fluid = handler.getLockedFluid();
+            ResourceLocation id = fluid == null ? null : ForgeRegistries.FLUIDS.getKey(fluid);
+            if (id != null) {
+                tag.putString("LockedFluid", id.toString());
             }
-            tag.put("LockedFluids", lockedFluids);
         }
         return tag;
     }
@@ -87,15 +82,14 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         } else {
             this.priority = 0;
         }
-        var lockedList = tag.getList("LockedFluids", Tag.TAG_STRING);
-        var lockedFluids = new Fluid[lockedList.size()];
-        for (int i = 0; i < lockedList.size(); i++) {
-            var id = ResourceLocation.tryParse(lockedList.getString(i));
+        Fluid lockedFluid = null;
+        if (tag.contains("LockedFluid")) {
+            var id = ResourceLocation.tryParse(tag.getString("LockedFluid"));
             var fluid = id == null ? null : ForgeRegistries.FLUIDS.getValue(id);
             // unknown ids resolve to the registry default (empty), which means "not locked"
-            lockedFluids[i] = fluid == Fluids.EMPTY ? null : fluid;
+            lockedFluid = fluid == Fluids.EMPTY ? null : fluid;
         }
-        handler.loadLock(tag.getBoolean("Locked"), lockedFluids);
+        handler.loadLock(tag.getBoolean("Locked"), lockedFluid);
     }
 
     @Override

@@ -7,7 +7,6 @@ import io.ticticboom.mods.mm.port.IPortMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.phys.Vec2;
@@ -17,7 +16,6 @@ import java.util.ArrayList;
 public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu> extends AbstractContainerScreen<T> {
 
     protected final T menu;
-    protected final FormattedText header;
     protected ArrayList<Vec2> slots = new ArrayList<>();
     protected final PortConfigPanel configPanel;
 
@@ -25,10 +23,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
         super(menu, inv, displayName);
         this.menu = menu;
         this.imageHeight = 222;
-        this.imageWidth = 174;
-        String name = menu.getModel().name();
-        int subStrLength = Math.min(55, name.length());
-        header = FormattedText.of(name.substring(0, subStrLength) + (subStrLength < 55 ? "" : "..."));
+        this.imageWidth = PortGuiLayout.WIDTH;
         configPanel = new PortConfigPanel(menu.getBlockEntity());
         setupSlots();
     }
@@ -36,7 +31,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
     @Override
     protected void init() {
         super.init();
-        configPanel.setPosition(this.leftPos + this.imageWidth + 2, this.topPos + 4);
+        configPanel.setPosition(this.leftPos, this.topPos);
     }
 
     @Override
@@ -60,8 +55,9 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
         var columns = model.columns();
         var rows = model.rows();
 
-        int offsetX = ((162 - (columns * 18)) / 2) + 7;
-        int offsetY = ((108 - (rows * 18)) / 2) + 7;
+        // slot backgrounds are drawn one pixel up-left of the menu's slot positions
+        int offsetX = PortGuiLayout.slotGridX(columns) - 1;
+        int offsetY = PortGuiLayout.slotGridY(rows) - 1;
         slots.ensureCapacity(columns * rows);
 
         for (int y = 0; y < rows; y++) {
@@ -81,7 +77,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+        PortConfigPanel.drawTitle(gfx, this.font, menu.getModel().name());
     }
 
     @Override

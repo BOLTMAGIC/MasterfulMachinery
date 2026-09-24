@@ -9,30 +9,25 @@ import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
 
 import java.util.ArrayList;
 
 public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
 
-    private final FormattedText header;
     private final PortConfigPanel configPanel;
 
     public EnergyPortScreen(EnergyPortMenu menu, Inventory inv, Component displayName) {
         super(menu, inv, displayName);
         this.imageHeight = 222;
         this.imageWidth = 174;
-        String name = menu.getModel().name();
-        int subStrLength = Math.min(55, name.length());
-        header = FormattedText.of(name.substring(0, subStrLength) + (subStrLength < 55 ? "" : "..."));
         configPanel = new PortConfigPanel(menu.getBlockEntity());
     }
 
     @Override
     protected void init() {
         super.init();
-        configPanel.setPosition(this.leftPos + this.imageWidth + 2, this.topPos + 4);
+        configPanel.setPosition(this.leftPos, this.topPos);
     }
 
     @Override
@@ -55,7 +50,7 @@ public class EnergyPortScreen extends AbstractContainerScreen<EnergyPortMenu> {
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int p_282681_, int p_283686_) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+        PortConfigPanel.drawTitle(gfx, this.font, menu.getModel().name());
     }
 
     @Override
