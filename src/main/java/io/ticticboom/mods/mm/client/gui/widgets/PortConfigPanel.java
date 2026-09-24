@@ -20,6 +20,7 @@ import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -39,22 +40,31 @@ public class PortConfigPanel {
     private static final int PANEL_RIGHT = 4;
     private static final int PANEL_Y = 4;
     private static final int PANEL_W = 58;
-    private static final int CUBE_X = 10;
     private static final int CUBE_Y = 18;
+    /** Side buttons are a little bigger than the panel's other buttons. */
+    private static final int SIDE = 14;
+    /** The port's own block, in a slot at the centre of the side buttons. */
+    private static final int CENTER_X = 20;
+    private static final int CENTER_Y = CUBE_Y + 15;
+    /** Height of the side layout plus the colour legend below it. */
+    private static final int CUBE_H = 64 + 12;
+    private static final int PULL_COLOR = 0xFF2F6FD6;
+    private static final int PUSH_COLOR = 0xFFD9822B;
     private static final int TEXT = 0x404040;
     private static final int WINDOW_BG = 0xFFC6C6C6;
 
-    // Unfolded cube, relative to the multiblock's controller when the port is part of one:
+    // Side buttons around the port's block, Mekanism style, relative to the multiblock's controller
+    // when the port is part of one, otherwise by compass (Up / West North East / Down / South):
     //          [Top]
-    //   [Left][Front][Right]
+    //   [Left] [port] [Right]
     //         [Bottom]
-    //          [Back]
-    // otherwise by compass (Up / West North East / Down / South).
+    //   [Front]       [Back]
     private static final PortSides.Relative[] CUBE_RELATIVE = {
             PortSides.Relative.TOP, PortSides.Relative.LEFT, PortSides.Relative.FRONT,
             PortSides.Relative.RIGHT, PortSides.Relative.BOTTOM, PortSides.Relative.BACK};
     private static final Direction[] CUBE_COMPASS = {Direction.UP, Direction.WEST, Direction.NORTH, Direction.EAST, Direction.DOWN, Direction.SOUTH};
-    private static final int[][] CUBE_CELLS = {{1, 0}, {0, 1}, {1, 1}, {2, 1}, {1, 2}, {1, 3}};
+    // panel-relative positions, in CUBE_RELATIVE / CUBE_COMPASS order
+    private static final int[][] SIDE_POS = {{22, CUBE_Y}, {5, CUBE_Y + 17}, {5, CUBE_Y + 49}, {39, CUBE_Y + 17}, {22, CUBE_Y + 34}, {39, CUBE_Y + 49}};
 
     // remembered while the game runs, so the panel stays open across port GUIs
     private static boolean open = false;
@@ -121,11 +131,26 @@ public class PortConfigPanel {
 
         PortAutoIO autoIO = be.getAutoIO();
         if (autoIO != null) {
+            // the port itself in the middle
+            int cx = panelX() + CENTER_X;
+            int cy = panelY() + CENTER_Y;
+            gfx.blit(Ref.UiTextures.SLOT_PARTS, cx, cy, 0, 26, 18, 18);
+            gfx.renderItem(new ItemStack(be.getBlockState().getBlock()), cx + 1, cy + 1);
+
+            int color = autoIO.isPull() ? PULL_COLOR : PUSH_COLOR;
             Direction[] sides = cubeSides(autoIO);
             for (int i = 0; i < sides.length; i++) {
-                drawButton(gfx, font, sideX(i), sideY(i), autoIO.isSideEnabled(sides[i]),
+                boolean on = autoIO.isSideEnabled(sides[i]);
+                boolean hovered = hitSide(mouseX, mouseY, sideX(i), sideY(i));
+                drawSide(gfx, font, sideX(i), sideY(i), on, hovered, color,
                         Component.translatable(PortSides.shortKey(sides[i], autoIO.getFront())));
             }
+
+            // legend: what an open side does on this port
+            int ly = panelY() + CUBE_Y + 66;
+            gfx.fill(panelX() + 6, ly + 1, panelX() + 12, ly + 7, color);
+            gfx.drawString(font, Component.translatable(autoIO.isPull() ? "gui.mm.port.side.legend.pull" : "gui.mm.port.side.legend.push"),
+                    panelX() + 15, ly, TEXT, false);
         }
 
         ILockablePortStorage lockable = lockable();
@@ -135,6 +160,22 @@ public class PortConfigPanel {
             drawButton(gfx, font, actionX(), dumpY(), false, Component.literal("X"));
             gfx.drawString(font, Component.translatable("gui.mm.port.dump.short"), actionX() + BTN + 3, dumpY() + 2, TEXT, false);
         }
+    }
+
+    /**
+     * A side toggle: MM's button, filled with the direction colour when the side is on.
+     */
+    private static void drawSide(GuiGraphics gfx, Font font, int bx, int by, boolean on, boolean hovered, int color, Component label) {
+        (hovered ? GuiTextures.BUTTON_PRESSED : GuiTextures.BUTTON_ACTIVE).blit(gfx, bx, by, SIDE, SIDE);
+        if (on) {
+            gfx.fill(bx + 1, by + 1, bx + SIDE - 1, by + SIDE - 1, color);
+        }
+        int textX = bx + (SIDE - font.width(label)) / 2 + 1;
+        gfx.drawString(font, label, textX, by + 3, on ? 0xFFFFFF : TEXT, on);
+    }
+
+    private static boolean hitSide(double mouseX, double mouseY, int bx, int by) {
+        return mouseX >= bx && mouseX < bx + SIDE && mouseY >= by && mouseY < by + SIDE;
     }
 
     public void renderTooltip(GuiGraphics gfx, Font font, int mouseX, int mouseY) {
@@ -157,7 +198,7 @@ public class PortConfigPanel {
         if (autoIO != null) {
             Direction[] sides = cubeSides(autoIO);
             for (int i = 0; i < sides.length; i++) {
-                if (hit(mouseX, mouseY, sideX(i), sideY(i))) {
+                if (hitSide(mouseX, mouseY, sideX(i), sideY(i))) {
                     send(PortConfigPkt.Action.TOGGLE_SIDE, sides[i].get3DDataValue());
                     return true;
                 }
@@ -188,7 +229,7 @@ public class PortConfigPanel {
         if (autoIO != null) {
             Direction[] sides = cubeSides(autoIO);
             for (int i = 0; i < sides.length; i++) {
-                if (hit(mouseX, mouseY, sideX(i), sideY(i))) {
+                if (hitSide(mouseX, mouseY, sideX(i), sideY(i))) {
                     Direction side = sides[i];
                     String state = !autoIO.isSideEnabled(side) ? "off" : autoIO.isPull() ? "pull" : "push";
                     var lines = new ArrayList<Component>();
@@ -258,7 +299,7 @@ public class PortConfigPanel {
 
     private int panelHeight() {
         int h = CUBE_Y;
-        if (be.getAutoIO() != null) h += STEP * 4 + 3;
+        if (be.getAutoIO() != null) h += CUBE_H;
         if (lockable() != null) h += STEP * 2 + 1;
         return h + 3;
     }
@@ -280,11 +321,11 @@ public class PortConfigPanel {
     }
 
     private int sideX(int i) {
-        return panelX() + CUBE_X + CUBE_CELLS[i][0] * STEP;
+        return panelX() + SIDE_POS[i][0];
     }
 
     private int sideY(int i) {
-        return panelY() + CUBE_Y + CUBE_CELLS[i][1] * STEP;
+        return panelY() + SIDE_POS[i][1];
     }
 
     private int actionX() {
@@ -292,7 +333,7 @@ public class PortConfigPanel {
     }
 
     private int lockY() {
-        return panelY() + CUBE_Y + (be.getAutoIO() != null ? STEP * 4 + 3 : 0);
+        return panelY() + CUBE_Y + (be.getAutoIO() != null ? CUBE_H : 0);
     }
 
     private int dumpY() {

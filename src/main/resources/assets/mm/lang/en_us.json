@@ -97,5 +97,7 @@
   "gui.mm.controller.ports.output": "Output port",
   "gui.mm.controller.ports.none": "No ports to show. Is the machine formed?",
   "gui.mm.controller.row.tier": "Tier",
-  "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name"
+  "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name",
+  "gui.mm.port.side.legend.pull": "Pulls",
+  "gui.mm.port.side.legend.push": "Pushes"
 }
