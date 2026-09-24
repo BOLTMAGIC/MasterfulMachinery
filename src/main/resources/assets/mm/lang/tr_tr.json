@@ -88,6 +88,8 @@
   "gui.mm.controller.mode.round_robin_input_item.hint": "Girdi item'ları arasında sırayla döner",
   "gui.mm.port.dump": "İçeriği boşalt",
   "gui.mm.port.dump.hint": "Shift+Tık: tüm içeriği kalıcı olarak siler",
+  "block.mm.input_gateway": "Giriş Kapısı",
+  "block.mm.input_gateway.tooltip": "Makinede bir kasa ya da cam bloğunun yerine koy veya bir input port'unun yanına yerleştir: borudan gelen item ve sıvılar o makinenin input port'larına gider",
   "gui.mm.port.energy": "Enerji",
   "gui.mm.controller.page.ports": "Port'ların içeriğini göster",
   "gui.mm.controller.page.status": "Makine durumuna dön",
@@ -101,5 +103,5 @@
   "gui.mm.port.side.legend.pull": "Çeker",
   "gui.mm.port.side.legend.push": "İter",
   "block.mm.input_gateway": "Giriş Kapısı",
-  "block.mm.input_gateway.tooltip": "Bir makinenin input port'unun yanına koy: borudan gelen item ve sıvılar o makinenin input port'larına gider"
+  "block.mm.input_gateway.tooltip": "Makinede bir kasa ya da cam bloğunun yerine koy veya bir input port'unun yanına yerleştir: borudan gelen item ve sıvılar o makinenin input port'larına gider"
 }

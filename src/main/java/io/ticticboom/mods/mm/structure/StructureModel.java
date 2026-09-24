@@ -129,6 +129,10 @@ public class StructureModel {
         return layout.getRecipeStorages(level, controllerPos, this);
     }
 
+    public java.util.List<BlockPos> getPositions(Level level, BlockPos controllerPos) {
+        return layout.getPositions(level, controllerPos, this);
+    }
+
     public java.util.List<BlockPos> getPortPositions(Level level, BlockPos controllerPos) {
         return layout.getPortPositions(level, controllerPos, this);
     }

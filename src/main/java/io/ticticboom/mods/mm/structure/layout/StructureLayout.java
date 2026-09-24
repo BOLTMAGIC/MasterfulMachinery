@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.piece.type.porttype.PortTypeAnywhereStructurePiece;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WorldUtil;
 import lombok.Getter;
@@ -116,7 +117,7 @@ public class StructureLayout {
                 anywherePieces.add(piece);
                 continue; // skip per-position check for anywhere pieces
             }
-            if (!piece.formed(level, worldControllerPos, model, rot)) {
+            if (!piece.formed(level, worldControllerPos, model, rot) && !isGatewayInPlace(level, worldControllerPos, piece)) {
                 return false;
             }
         }
@@ -292,6 +293,37 @@ public class StructureLayout {
             }
         }
         return null;
+    }
+
+    /**
+     * An Input Gateway may stand in for any plain structure block (casing, glass...), so it can be built
+     * into the machine; never for a port.
+     */
+    private static boolean isGatewayInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece) {
+        var underlying = piece.piece().piece();
+        if (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
+                || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece
+                || underlying instanceof PortAnywhereStructurePiece
+                || underlying instanceof PortTypeAnywhereStructurePiece) {
+            return false;
+        }
+        return level.getBlockState(piece.findAbsolutePos(worldControllerPos)).is(MMRegisters.INPUT_GATEWAY.get());
+    }
+
+    /**
+     * @return every position of the formed structure, or an empty list when not formed
+     */
+    public List<BlockPos> getPositions(Level level, BlockPos worldControllerPos, StructureModel model) {
+        for (var entry : rotatedPositionedPieces.entrySet()) {
+            if (innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
+                var positions = new ArrayList<BlockPos>();
+                for (PositionedLayoutPiece piece : entry.getValue()) {
+                    positions.add(piece.findAbsolutePos(worldControllerPos));
+                }
+                return positions;
+            }
+        }
+        return List.of();
     }
 
     /**

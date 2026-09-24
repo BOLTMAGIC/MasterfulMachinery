@@ -9,6 +9,8 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.function.Predicate;
+
 /**
  * Port sides named relative to the multiblock's controller (front = the controller's front face,
  * left/right as seen by a player standing in front of it). Ports that aren't part of a formed
@@ -86,6 +88,14 @@ public final class PortSides {
      */
     @Nullable
     public static MachineControllerBlockEntity findController(ServerLevel level, BlockPos portPos, IPortStorage storage) {
+        return findController(level, portPos, controller -> belongsTo(level, controller, storage));
+    }
+
+    /**
+     * @return the first controller near the position (loaded chunks only) accepted by the filter, or null
+     */
+    @Nullable
+    public static MachineControllerBlockEntity findController(ServerLevel level, BlockPos portPos, Predicate<MachineControllerBlockEntity> filter) {
         int r = CONTROLLER_SEARCH_RADIUS;
         for (int cx = (portPos.getX() - r) >> 4; cx <= (portPos.getX() + r) >> 4; cx++) {
             for (int cz = (portPos.getZ() - r) >> 4; cz <= (portPos.getZ() + r) >> 4; cz++) {
@@ -96,7 +106,7 @@ public final class PortSides {
                 for (var be : chunk.getBlockEntities().values()) {
                     if (be instanceof MachineControllerBlockEntity controller
                             && be.getBlockPos().closerThan(portPos, r + 1)
-                            && belongsTo(level, controller, storage)) {
+                            && filter.test(controller)) {
                         return controller;
                     }
                 }

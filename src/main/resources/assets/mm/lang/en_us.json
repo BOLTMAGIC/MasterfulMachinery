@@ -88,6 +88,8 @@
   "gui.mm.controller.mode.round_robin_input_item.hint": "Takes turns between the input items",
   "gui.mm.port.dump": "Dump contents",
   "gui.mm.port.dump.hint": "Shift+Click: deletes all contents permanently",
+  "block.mm.input_gateway": "Input Gateway",
+  "block.mm.input_gateway.tooltip": "Build it into a machine in place of a casing or glass block, or place it next to an input port: items and fluids piped in go to that machine's input ports",
   "gui.mm.port.energy": "Energy",
   "gui.mm.controller.page.ports": "Show what each port holds",
   "gui.mm.controller.page.status": "Back to machine status",
@@ -101,5 +103,5 @@
   "gui.mm.port.side.legend.pull": "Pulls",
   "gui.mm.port.side.legend.push": "Pushes",
   "block.mm.input_gateway": "Input Gateway",
-  "block.mm.input_gateway.tooltip": "Place next to a machine's input port: items and fluids piped in go to that machine's input ports"
+  "block.mm.input_gateway.tooltip": "Build it into a machine in place of a casing or glass block, or place it next to an input port: items and fluids piped in go to that machine's input ports"
 }
