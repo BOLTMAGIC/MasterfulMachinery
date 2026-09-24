@@ -63,10 +63,8 @@ public class WrappedFluidPortHandler implements IFluidHandler {
                 filled = amountToFill;
                 break;
             }
-            handler.getChanged().call();
         }
-
-        handler.getChanged().call();
+        // setFluidInTank already reports real changes; simulations must not trigger updates
         return filled;
     }
 
@@ -85,7 +83,9 @@ public class WrappedFluidPortHandler implements IFluidHandler {
                 break;
             }
         }
-        handler.getChanged().call();
+        if (action.execute() && drained > 0) {
+            handler.getChanged().call();
+        }
         return new FluidStack(resource.getFluid(), drained);
     }
 
@@ -99,7 +99,9 @@ public class WrappedFluidPortHandler implements IFluidHandler {
                 break;
             }
         }
-        handler.getChanged().call();
+        if (action.execute() && res.getAmount() > 0) {
+            handler.getChanged().call();
+        }
         return res;
     }
 }

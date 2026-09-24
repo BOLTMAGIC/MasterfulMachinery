@@ -113,7 +113,6 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public int fill(FluidStack stack, FluidAction action) {
-        changed.call();
         if (stack.isEmpty()) {
             return 0;
         }
@@ -121,6 +120,10 @@ public class FluidPortHandler implements IFluidHandler {
         int filled = 0;
         for (int slot = 0; slot < stacks.size(); slot++) {
             filled += innerFill(slot, stack.getFluid(), stack.getAmount() - filled, action.simulate());
+        }
+        // only a real change needs saving and a client update; simulations are frequent (pipes)
+        if (action.execute() && filled > 0) {
+            changed.call();
         }
         return filled;
     }
@@ -148,18 +151,17 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public @NotNull FluidStack drain(FluidStack stack, FluidAction action) {
-        changed.call();
         if (stack.isEmpty()) {
             return FluidStack.EMPTY;
         }
 
         int drained = 0;
-        for (int slot = 0; slot < stacks.size(); slot++) {
-            var innerDrained = innerDrain(slot, stack.getFluid(), stack.getAmount(), action.simulate());
-            drained += innerDrained.getAmount();
-            if (drained >= stack.getAmount()) {
-                break;
-            }
+        for (int slot = 0; slot < stacks.size() && drained < stack.getAmount(); slot++) {
+            // ask each tank only for what is still missing, never more than requested in total
+            drained += innerDrain(slot, stack.getFluid(), stack.getAmount() - drained, action.simulate()).getAmount();
+        }
+        if (action.execute() && drained > 0) {
+            changed.call();
         }
         return new FluidStack(stack.getFluid(), drained);
     }
@@ -183,19 +185,17 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public @NotNull FluidStack drain(int i, FluidAction action) {
-        changed.call();
         Fluid fluid = findFirstFluid();
         if (fluid == null) {
             return FluidStack.EMPTY;
         }
 
         int drained = 0;
-        for (int slot = 0; slot < stacks.size(); slot++) {
-            var innerDrained = innerDrain(slot, fluid, i, action.simulate());
-            drained += innerDrained.getAmount();
-            if (drained >= i) {
-                break;
-            }
+        for (int slot = 0; slot < stacks.size() && drained < i; slot++) {
+            drained += innerDrain(slot, fluid, i - drained, action.simulate()).getAmount();
+        }
+        if (action.execute() && drained > 0) {
+            changed.call();
         }
         return new FluidStack(fluid, drained);
     }
