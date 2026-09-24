@@ -102,6 +102,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private List<RecipeModel> cachedStructureRecipes = null;
     private int nextRecipeCheckIndex = 0;
     private ResourceLocation lastStartedRecipeId = null;
+    // game time of the last recipe start, synced so the screen can show recipes that finish within a tick
+    private long lastRecipeStartTime = Long.MIN_VALUE;
+    /** How long after its start a recipe still counts as running on the screen, in ticks. */
+    private static final int RECENT_RECIPE_TICKS = 20;
     private ResourceLocation lastStartedInputItemId = null;
     private long recipeSelectionSequence = 0L;
     private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
@@ -655,6 +659,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         activeRecipes.put(recipe.id(), newState);
         activeRecipeLastUpdate.put(recipe.id(), gameTime);
         lastStartedRecipeId = recipe.id();
+        lastRecipeStartTime = gameTime;
         recipeSelectionSequence++;
         // record recipe start sequence for tie-breaking among recipes sharing input keys
         recipeLastStartedSequence.put(recipe.id(), recipeSelectionSequence);
@@ -875,6 +880,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (structure != null) tag.putString("structureId", structure.id().toString());
         tag.putBoolean("isFormed", isFormed);
         if (lastStartedRecipeId != null) tag.putString("lastStartedRecipeId", lastStartedRecipeId.toString());
+        tag.putLong("lastRecipeStartTime", lastRecipeStartTime);
         if (lastStartedInputItemId != null) tag.putString("lastStartedInputItemId", lastStartedInputItemId.toString());
         tag.putLong("recipeSelectionSequence", recipeSelectionSequence);
         if (!inputItemLastStartedSequence.isEmpty()) {
@@ -919,6 +925,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             isFormed = (structure != null);
         }
         lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? ResourceLocation.tryParse(tag.getString("lastStartedRecipeId")) : null;
+        lastRecipeStartTime = tag.contains("lastRecipeStartTime") ? tag.getLong("lastRecipeStartTime") : Long.MIN_VALUE;
         lastStartedInputItemId = tag.contains("lastStartedInputItemId") ? ResourceLocation.tryParse(tag.getString("lastStartedInputItemId")) : null;
         recipeSelectionSequence = tag.contains("recipeSelectionSequence") ? tag.getLong("recipeSelectionSequence") : 0L;
         inputItemLastStartedSequence.clear();
@@ -968,6 +975,22 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     public void setRemoved() {
         super.setRemoved();
         // No background validation futures to cancel (validations run on server thread)
+    }
+
+    /**
+     * The recipe to show on the controller screen: the running one, or else the last one started if that
+     * was within the last second. Recipes lasting a tick or so start and finish between two syncs, so
+     * the running recipe alone would make a busy machine look idle.
+     */
+    @Nullable
+    public RecipeModel getDisplayedRecipe() {
+        if (currentRecipe != null) {
+            return currentRecipe;
+        }
+        if (level == null || lastStartedRecipeId == null || level.getGameTime() - lastRecipeStartTime > RECENT_RECIPE_TICKS) {
+            return null;
+        }
+        return MachineRecipeManager.RECIPES.get(lastStartedRecipeId);
     }
 
     public RecipeStateModel getRecipeState() {

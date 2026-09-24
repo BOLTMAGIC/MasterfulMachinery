@@ -128,7 +128,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private Status status() {
         if (be.getStructure() == null) return Status.NOT_FORMED;
         if (!be.isAllowedByRedstone()) return Status.PAUSED;
-        if (be.getCurrentRecipe() != null) return Status.RUNNING;
+        if (be.getDisplayedRecipe() != null) return Status.RUNNING;
         return Status.IDLE;
     }
 
@@ -136,7 +136,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
      * @return the running recipe's inputs and outputs laid out on the recipe row, GUI-relative
      */
     private List<Shown> recipeSlots() {
-        RecipeModel recipe = be.getCurrentRecipe();
+        RecipeModel recipe = be.getDisplayedRecipe();
         var shown = new ArrayList<Shown>();
         if (recipe == null) {
             return shown;
@@ -203,7 +203,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             int ay = y + RECIPE_Y;
             gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 0, 24, 17);
             var state = be.getRecipeState();
-            int filled = state == null ? 0 : (int) Math.round(24 * Math.min(100, state.getTickPercentage()) / 100);
+            // no state: a recent recipe that already finished (it took a tick or so)
+            int filled = state == null ? 24 : (int) Math.round(24 * Math.min(100, state.getTickPercentage()) / 100);
             gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 17, filled, 17);
         }
 
@@ -243,7 +244,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
         } else {
             var state = be.getRecipeState();
-            int percent = state == null ? 0 : (int) Math.floor(state.getTickPercentage());
+            int percent = state == null ? 100 : (int) Math.floor(state.getTickPercentage());
             int lastX = slots.get(slots.size() - 1).x();
             gfx.drawString(this.font, percent + "%", lastX + 21, RECIPE_Y + 5, TEXT, false);
         }
