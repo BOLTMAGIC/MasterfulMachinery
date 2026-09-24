@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.util;
 
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -35,6 +36,11 @@ public class BlockUtils {
             var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
             if (be != null && clz.isAssignableFrom(be.getClass())) {
                 if (preScreenCheck.get()) {
+                    // let the auto I/O panel name sides relative to the multiblock's controller
+                    if (be instanceof AbstractPortBlockEntity port && port.getAutoIO() != null
+                            && port.getAutoIO().refreshFront((ServerLevel) level)) {
+                        port.setChanged();
+                    }
                     NetworkHooks.openScreen((ServerPlayer) player, (T) be, pos);
                 }
             }

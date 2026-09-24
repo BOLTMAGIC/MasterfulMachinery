@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.common.ILockablePortStorage;
 import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
+import io.ticticboom.mods.mm.port.common.autoio.PortSides;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -36,11 +37,16 @@ public class PortConfigPanel {
     private static final int COLOR_DUMP = 0xFFB33A3A;
     private static final int COLOR_HOVER = 0x40FFFFFF;
 
-    //        [U]
-    //     [W][N][E]
-    //        [D]
-    //        [S]
-    private static final Direction[] CUBE_SIDES = {Direction.UP, Direction.WEST, Direction.NORTH, Direction.EAST, Direction.DOWN, Direction.SOUTH};
+    // Unfolded cube, relative to the multiblock's controller when the port is part of one:
+    //          [Top]
+    //   [Left][Front][Right]
+    //         [Bottom]
+    //          [Back]
+    // otherwise by compass (Up / West North East / Down / South).
+    private static final PortSides.Relative[] CUBE_RELATIVE = {
+            PortSides.Relative.TOP, PortSides.Relative.LEFT, PortSides.Relative.FRONT,
+            PortSides.Relative.RIGHT, PortSides.Relative.BOTTOM, PortSides.Relative.BACK};
+    private static final Direction[] CUBE_COMPASS = {Direction.UP, Direction.WEST, Direction.NORTH, Direction.EAST, Direction.DOWN, Direction.SOUTH};
     private static final int[][] CUBE_CELLS = {{1, 0}, {0, 1}, {1, 1}, {2, 1}, {1, 2}, {1, 3}};
 
     private final AbstractPortBlockEntity be;
@@ -82,11 +88,12 @@ public class PortConfigPanel {
 
         PortAutoIO autoIO = be.getAutoIO();
         if (autoIO != null) {
-            for (int i = 0; i < CUBE_SIDES.length; i++) {
-                Direction side = CUBE_SIDES[i];
+            Direction[] sides = cubeSides(autoIO);
+            for (int i = 0; i < sides.length; i++) {
+                Direction side = sides[i];
                 int bx = sideX(i), by = sideY(i);
                 drawButton(gfx, font, bx, by, autoIO.isSideEnabled(side) ? COLOR_ON : COLOR_OFF,
-                        Component.translatable("gui.mm.port.side." + side.getName() + ".short"), mouseX, mouseY);
+                        Component.translatable(PortSides.shortKey(side, autoIO.getFront())), mouseX, mouseY);
             }
         }
 
@@ -110,9 +117,10 @@ public class PortConfigPanel {
 
         PortAutoIO autoIO = be.getAutoIO();
         if (autoIO != null) {
-            for (int i = 0; i < CUBE_SIDES.length; i++) {
+            Direction[] sides = cubeSides(autoIO);
+            for (int i = 0; i < sides.length; i++) {
                 if (hit(mouseX, mouseY, sideX(i), sideY(i))) {
-                    send(PortConfigPkt.Action.TOGGLE_SIDE, CUBE_SIDES[i].get3DDataValue());
+                    send(PortConfigPkt.Action.TOGGLE_SIDE, sides[i].get3DDataValue());
                     return true;
                 }
             }
@@ -136,12 +144,13 @@ public class PortConfigPanel {
 
         PortAutoIO autoIO = be.getAutoIO();
         if (autoIO != null) {
-            for (int i = 0; i < CUBE_SIDES.length; i++) {
+            Direction[] sides = cubeSides(autoIO);
+            for (int i = 0; i < sides.length; i++) {
                 if (hit(mouseX, mouseY, sideX(i), sideY(i))) {
-                    Direction side = CUBE_SIDES[i];
+                    Direction side = sides[i];
                     String state = !autoIO.isSideEnabled(side) ? "off" : autoIO.isPull() ? "pull" : "push";
                     var lines = new ArrayList<Component>();
-                    lines.add(Component.translatable("gui.mm.port.side." + side.getName())
+                    lines.add(Component.translatable(PortSides.nameKey(side, autoIO.getFront()))
                             .append(": ")
                             .append(Component.translatable("gui.mm.port.side.state." + state)));
                     lines.add(Component.translatable("gui.mm.port.side.hint").withStyle(ChatFormatting.GRAY));
@@ -183,6 +192,21 @@ public class PortConfigPanel {
     @Nullable
     private ILockablePortStorage lockable() {
         return be.getStorage() instanceof ILockablePortStorage lockable ? lockable : null;
+    }
+
+    /**
+     * @return the world direction of each cube cell, in {@link #CUBE_CELLS} order
+     */
+    private static Direction[] cubeSides(PortAutoIO autoIO) {
+        Direction front = autoIO.getFront();
+        if (front == null) {
+            return CUBE_COMPASS;
+        }
+        Direction[] sides = new Direction[CUBE_RELATIVE.length];
+        for (int i = 0; i < sides.length; i++) {
+            sides[i] = PortSides.toWorld(CUBE_RELATIVE[i], front);
+        }
+        return sides;
     }
 
     private static boolean hit(double mouseX, double mouseY, int bx, int by) {

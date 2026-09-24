@@ -5,7 +5,9 @@ import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -18,12 +20,16 @@ import java.util.List;
  */
 public class PortAutoIO {
     public static final String NBT_KEY = "MMAutoIOSides";
+    private static final String NBT_FRONT_KEY = "MMAutoIOFront";
     private static final byte ALL_SIDES = 0b111111;
 
     private final BlockEntity owner;
     private final boolean pull;
     private final IPortTransfer transfer;
     private byte sides;
+    // front face of the multiblock this port belongs to, used to name sides; null = not part of a formed multiblock
+    @Nullable
+    private Direction front;
 
     public PortAutoIO(BlockEntity owner, boolean pull, boolean enabledByDefault, IPortTransfer transfer) {
         this.owner = owner;
@@ -42,6 +48,29 @@ public class PortAutoIO {
 
     public void toggleSide(Direction side) {
         sides ^= (byte) (1 << side.get3DDataValue());
+    }
+
+    @Nullable
+    public Direction getFront() {
+        return front;
+    }
+
+    /**
+     * Looks up the controller of the multiblock this port belongs to and remembers its front,
+     * so the GUI can name sides relative to the machine. Server side only.
+     *
+     * @return true if the front changed
+     */
+    public boolean refreshFront(ServerLevel level) {
+        if (!(owner instanceof IPortBlockEntity port)) {
+            return false;
+        }
+        Direction found = PortSides.findControllerFront(level, owner.getBlockPos(), port.getStorage());
+        if (found == front) {
+            return false;
+        }
+        front = found;
+        return true;
     }
 
     public void tick() {
@@ -97,6 +126,7 @@ public class PortAutoIO {
 
     public void save(CompoundTag tag) {
         tag.putByte(NBT_KEY, sides);
+        tag.putByte(NBT_FRONT_KEY, (byte) (front == null ? -1 : front.get3DDataValue()));
     }
 
     public void load(CompoundTag tag) {
@@ -104,6 +134,9 @@ public class PortAutoIO {
         if (tag.contains(NBT_KEY)) {
             sides = (byte) (tag.getByte(NBT_KEY) & ALL_SIDES);
         }
+        int frontValue = tag.contains(NBT_FRONT_KEY) ? tag.getByte(NBT_FRONT_KEY) : -1;
+        Direction loaded = frontValue < 0 || frontValue >= 6 ? null : Direction.from3DDataValue(frontValue);
+        front = loaded != null && loaded.getAxis().isHorizontal() ? loaded : null;
     }
 
     private record Neighbor(BlockEntity be, Direction face, int priority) {
