@@ -226,6 +226,20 @@ repositories {
             includeGroup 'org.appliedenergistics'
         }
     }
+    maven {
+        // FTB Teams
+        url = "https://maven.ftb.dev/releases"
+        content {
+            includeGroup 'dev.ftb.mods'
+        }
+    }
+    maven {
+        // Applied Mekanistics
+        url = "https://api.modrinth.com/maven"
+        content {
+            includeGroup 'maven.modrinth'
+        }
+    }
 
 }
 
@@ -251,6 +265,11 @@ dependencies {
 
     // MEKANISM
     compileOnly fg.deobf("curse.maven:mekanism-268560:5125665")
+
+    // AE2 + FTB TEAMS + APPLIED MEKANISTICS (network linker, all optional)
+    compileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
+    compileOnly(fg.deobf("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}")) { transitive = false }
+    compileOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
 
     //PNEUMATICCRAFT (PNCR)
     compileOnly fg.deobf("curse.maven:pneumaticcraft-281849:5279325")

@@ -6,6 +6,8 @@ import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
 import io.ticticboom.mods.mm.controller.IControllerPart;
 import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
+import io.ticticboom.mods.mm.networklink.LinkData;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
@@ -83,6 +85,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // Redstone control for the controller: IGNORE, RUN_WHEN_POWERED, RUN_WHEN_UNPOWERED
     private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
+    // owner + AE2 network this machine is linked to (network linker), null when not linked
+    @Nullable
+    private LinkData networkLink = null;
     private long lastTick = 0;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
@@ -114,6 +119,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return;
         }
         runMachineTick();
+        NetworkLink.tickController(level, this);
 
         setChanged();
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
@@ -885,6 +891,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             tag.put("inputItemLastStartedSequence", inputHistoryTag);
         }
         tag.putBoolean("filler", true);
+        if (networkLink != null) {
+            tag.put("NetworkLink", networkLink.save());
+        }
         // persist redstone mode
         try {
             tag.putInt("redstoneMode", redstoneMode.ordinal());
@@ -921,6 +930,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? ResourceLocation.tryParse(tag.getString("lastStartedRecipeId")) : null;
         lastStartedInputItemId = tag.contains("lastStartedInputItemId") ? ResourceLocation.tryParse(tag.getString("lastStartedInputItemId")) : null;
         recipeSelectionSequence = tag.contains("recipeSelectionSequence") ? tag.getLong("recipeSelectionSequence") : 0L;
+        networkLink = tag.contains("NetworkLink") ? LinkData.load(tag.getCompound("NetworkLink")) : null;
         inputItemLastStartedSequence.clear();
         if (tag.contains("inputItemLastStartedSequence")) {
             CompoundTag inputHistoryTag = tag.getCompound("inputItemLastStartedSequence");
@@ -968,6 +978,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     public void setRemoved() {
         super.setRemoved();
         // No background validation futures to cancel (validations run on server thread)
+    }
+
+    @Nullable
+    public LinkData getNetworkLink() {
+        return networkLink;
+    }
+
+    public void setNetworkLink(@Nullable LinkData link) {
+        this.networkLink = link;
+        setChanged();
     }
 
     public RecipeStateModel getRecipeState() {
