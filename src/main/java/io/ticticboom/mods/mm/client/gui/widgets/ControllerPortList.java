@@ -11,7 +11,9 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
+import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -24,16 +26,21 @@ import java.util.List;
 
 /**
  * The controller's second page: every port of the formed machine with what it holds, inputs then
- * outputs. Item ports show their items with counts, tanks (fluid, chemical, energy) a fill bar with
- * the amount written on it. Reads the ports' client-side block entities, so it updates live.
- * All coordinates are absolute screen coordinates.
+ * outputs. Each port is a small block: its name on top, then its contents at full width, items in
+ * real slots (up to two rows, the rest summed up in a "+N" slot) or a fill bar for tanks (fluid,
+ * chemical, energy) with the amount written on it. Reads the ports' client-side block entities, so
+ * it updates live. All coordinates are absolute screen coordinates.
  */
 public class ControllerPortList {
     private static final int HEADER_H = 12;
-    private static final int ROW_H = 19;
-    private static final int ICON_STEP = 18;
+    private static final int NAME_H = 11;
+    private static final int SLOT = 18;
+    private static final int MAX_ITEM_LINES = 2;
+    private static final int BAR_H = 14;
+    private static final int EMPTY_H = 10;
+    private static final int GAP = 4;
     private static final int LABEL = 0x8A8A8A;
-    private static final int TEXT = 0xDDDDDD;
+    private static final int NAME = 0xBBBBBB;
 
     private final List<BlockPos> positions;
     private int x;
@@ -56,6 +63,28 @@ public class ControllerPortList {
         this.height = height;
     }
 
+    /** Width available to rows; the scrollbar sits to the right of it. */
+    private int listWidth() {
+        return width - 4;
+    }
+
+    private int slotsPerLine() {
+        return Math.max(1, listWidth() / SLOT);
+    }
+
+    /** Slots actually drawn for an item port, including a trailing "+N" slot when not everything fits. */
+    private int shownSlots(int items) {
+        int max = slotsPerLine() * MAX_ITEM_LINES;
+        return Math.min(items, max);
+    }
+
+    private int contentHeight(List<PortContent> contents) {
+        if (contents.isEmpty()) return EMPTY_H;
+        if (contents.get(0).isTank()) return BAR_H;
+        int lines = (shownSlots(contents.size()) + slotsPerLine() - 1) / slotsPerLine();
+        return lines * SLOT;
+    }
+
     private List<Row> rows(@Nullable Level level) {
         var rows = new ArrayList<Row>();
         if (level == null) {
@@ -68,21 +97,22 @@ public class ControllerPortList {
                 (port.isInput() ? inputs : outputs).add(port);
             }
         }
-        int top = 0;
-        top = addGroup(rows, top, "gui.mm.controller.ports.inputs", inputs);
+        int top = addGroup(rows, 0, "gui.mm.controller.ports.inputs", inputs);
         addGroup(rows, top, "gui.mm.controller.ports.outputs", outputs);
         return rows;
     }
 
-    private static int addGroup(List<Row> rows, int top, String key, List<IPortBlockEntity> ports) {
+    private int addGroup(List<Row> rows, int top, String key, List<IPortBlockEntity> ports) {
         if (ports.isEmpty()) {
             return top;
         }
         rows.add(new Row(Component.translatable(key, ports.size()), null, List.of(), top, HEADER_H));
         top += HEADER_H;
         for (IPortBlockEntity port : ports) {
-            rows.add(new Row(null, port, port.getStorage().contents(), top, ROW_H));
-            top += ROW_H;
+            var contents = port.getStorage().contents();
+            int h = NAME_H + contentHeight(contents) + GAP;
+            rows.add(new Row(null, port, contents, top, h));
+            top += h;
         }
         return top;
     }
@@ -97,7 +127,7 @@ public class ControllerPortList {
         if (!WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, x, y, width, height)) {
             return false;
         }
-        scroll = Math.max(0, Math.min(maxScroll(rows(level)), scroll - delta * ROW_H));
+        scroll = Math.max(0, Math.min(maxScroll(rows(level)), scroll - delta * SLOT));
         return true;
     }
 
@@ -108,7 +138,6 @@ public class ControllerPortList {
             gfx.drawWordWrap(font, Component.translatable("gui.mm.controller.ports.none"), x, y + 2, width, LABEL);
             return;
         }
-        int listW = width - 4;
         gfx.enableScissor(x, y, x + width, y + height);
         for (Row row : rows) {
             int top = y + row.top() - (int) scroll;
@@ -117,11 +146,10 @@ public class ControllerPortList {
                 gfx.drawString(font, row.header(), x, top + 2, LABEL, false);
                 continue;
             }
-            drawPort(gfx, font, row, x, top, listW);
+            drawPort(gfx, font, row, top);
         }
         gfx.disableScissor();
 
-        // scrollbar
         int max = maxScroll(rows);
         if (max > 0) {
             int trackX = x + width - 2;
@@ -137,30 +165,39 @@ public class ControllerPortList {
         return new ItemStack(be.getBlockState().getBlock());
     }
 
-    private void drawPort(GuiGraphics gfx, Font font, Row row, int left, int top, int listW) {
-        gfx.renderItem(portIcon(row.port()), left, top + 1);
-        int cx = left + 20;
-        int cw = listW - 20;
+    private void drawPort(GuiGraphics gfx, Font font, Row row, int top) {
+        // name line: small block icon + port name
+        var pose = gfx.pose();
+        pose.pushPose();
+        pose.translate(x, top, 0);
+        pose.scale(9f / 16f, 9f / 16f, 1);
+        gfx.renderItem(portIcon(row.port()), 0, 0);
+        pose.popPose();
+        FormattedText name = font.ellipsize(Component.literal(row.port().getModel().name()), listWidth() - 12);
+        gfx.drawString(font, Language.getInstance().getVisualOrder(name), x + 12, top + 1, NAME, false);
+
+        int cy = top + NAME_H;
         var contents = row.contents();
         if (contents.isEmpty()) {
-            gfx.drawString(font, Component.translatable("gui.mm.port.tank.empty"), cx, top + 5, LABEL, false);
+            gfx.drawString(font, Component.translatable("gui.mm.port.tank.empty"), x + 2, cy + 1, LABEL, false);
             return;
         }
         if (contents.get(0).isTank()) {
-            drawBar(gfx, font, contents.get(0), cx, top + 2, cw, 14);
+            drawBar(gfx, font, contents.get(0), x, cy, listWidth(), BAR_H);
             return;
         }
-        int fit = cw / ICON_STEP;
-        int shown = contents.size() > fit ? fit - 1 : contents.size();
+        int shown = shownSlots(contents.size());
+        boolean overflow = shown < contents.size();
         for (int i = 0; i < shown; i++) {
-            int ix = cx + i * ICON_STEP;
-            PortContent item = contents.get(i);
-            gfx.renderItem(item.item(), ix, top + 1);
-            CountFormat.drawSlotCount(gfx, ix - 1, top, item.amount());
-        }
-        if (shown < contents.size()) {
-            String more = "+" + (contents.size() - shown);
-            gfx.drawString(font, more, cx + shown * ICON_STEP + 2, top + 5, TEXT, false);
+            int sx = x + (i % slotsPerLine()) * SLOT;
+            int sy = cy + (i / slotsPerLine()) * SLOT;
+            gfx.blit(Ref.UiTextures.SLOT_PARTS, sx, sy, 0, 26, SLOT, SLOT);
+            if (overflow && i == shown - 1) {
+                String more = "+" + (contents.size() - shown + 1);
+                gfx.drawString(font, more, sx + (SLOT - font.width(more)) / 2 + 1, sy + 5, 0xFFFFFF, true);
+            } else {
+                PortContentIcon.draw(gfx, contents.get(i), sx, sy);
+            }
         }
     }
 
@@ -202,7 +239,7 @@ public class ControllerPortList {
         String amounts = CountFormat.compact(tank.amount()) + " / " + CountFormat.compact(tank.capacity()) + " " + tank.unit();
         Component label = Component.literal(amounts);
         if (tank.name() != null) {
-            Component named = tank.name().copy().append(" " + amounts);
+            Component named = tank.name().copy().append("  " + amounts);
             if (font.width(named) <= innerW - 4) {
                 label = named;
             }
@@ -229,7 +266,7 @@ public class ControllerPortList {
             int top = y + row.top() - (int) scroll;
             if (mouseY < top || mouseY >= top + row.h()) continue;
             IPortBlockEntity port = row.port();
-            if (mouseX < x + 18) {
+            if (mouseY < top + NAME_H) {
                 return List.of(Component.literal(port.getModel().name()),
                         Component.translatable(port.isInput() ? "gui.mm.controller.ports.input" : "gui.mm.controller.ports.output")
                                 .withStyle(ChatFormatting.GRAY));
@@ -238,28 +275,25 @@ public class ControllerPortList {
             if (contents.isEmpty()) return null;
             PortContent first = contents.get(0);
             if (first.isTank()) {
-                Component name = first.kind() == PortContent.Kind.ENERGY ? Component.translatable("gui.mm.port.energy")
-                        : first.name() != null ? first.name() : Component.translatable("gui.mm.port.tank.empty");
-                return List.of(name, Component.literal(CountFormat.grouped(first.amount()) + " / "
+                return List.of(PortContentIcon.tooltip(first).get(0), Component.literal(CountFormat.grouped(first.amount()) + " / "
                         + CountFormat.grouped(first.capacity()) + " " + first.unit()).withStyle(ChatFormatting.GRAY));
             }
-            int fit = (width - 24) / ICON_STEP;
-            int shown = contents.size() > fit ? fit - 1 : contents.size();
-            int index = (mouseX - (x + 20)) / ICON_STEP;
-            if (index < 0) return null;
-            if (index < shown) {
-                PortContent item = contents.get(index);
-                return List.of(item.name(), Component.literal(CountFormat.grouped(item.amount())).withStyle(ChatFormatting.GRAY));
-            }
-            if (index == shown && shown < contents.size()) {
+            int col = (mouseX - x) / SLOT;
+            int line = (mouseY - top - NAME_H) / SLOT;
+            if (col < 0 || col >= slotsPerLine() || line < 0) return null;
+            int index = line * slotsPerLine() + col;
+            int shown = shownSlots(contents.size());
+            if (index >= shown) return null;
+            if (shown < contents.size() && index == shown - 1) {
                 // "+N": list what didn't fit
                 var lines = new ArrayList<Component>();
-                for (PortContent item : contents.subList(shown, contents.size())) {
+                for (PortContent item : contents.subList(index, contents.size())) {
                     lines.add(item.name().copy().append(Component.literal("  " + CountFormat.grouped(item.amount())).withStyle(ChatFormatting.GRAY)));
                 }
                 return lines;
             }
-            return null;
+            PortContent item = contents.get(index);
+            return List.of(item.name(), Component.literal(CountFormat.grouped(item.amount())).withStyle(ChatFormatting.GRAY));
         }
         return null;
     }
