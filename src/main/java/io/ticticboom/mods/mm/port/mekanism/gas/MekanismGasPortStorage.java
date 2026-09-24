@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorageM
 import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.ChemicalTankBuilder;
 import mekanism.api.chemical.IChemicalTank;
+import mekanism.api.chemical.attribute.ChemicalAttributeValidator;
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
@@ -26,7 +27,10 @@ public class MekanismGasPortStorage extends MekanismChemicalPortStorage<Gas, Gas
 
     @Override
     protected IChemicalTank<Gas, GasStack> createTank(long capacity, Predicate<Gas> validator, INotifyChangeFunction changed) {
-        return ChemicalTankBuilder.GAS.create(capacity, validator, new NotifyChangeContentsListener(changed));
+        // Mekanism's default attribute validator rejects radioactive gases (polonium, plutonium, nuclear waste...);
+        // allow them like Mekanism's own chemical tanks do
+        return ChemicalTankBuilder.GAS.create(capacity, gas -> true, gas -> true, validator,
+                ChemicalAttributeValidator.ALWAYS_ALLOW, new NotifyChangeContentsListener(changed));
     }
 
     @Override
