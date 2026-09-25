@@ -121,6 +121,7 @@ public final class PortSides {
             return false;
         }
         var storages = structure.getStorages(level, controller.getBlockPos());
+        if (storages == null) return false;
         for (IPortStorage s : storages.inputStorages()) {
             if (s == storage) return true;
         }
