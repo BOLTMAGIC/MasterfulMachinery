@@ -1011,6 +1011,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         setChanged();
     }
 
+    /**
+     * @return the formed machine's ports as last looked up by the controller, or null if not formed / not looked up yet
+     */
+    @Nullable
+    public RecipeStorages getCachedPortStorages() {
+        return structure == null ? null : portStorages;
+    }
+
     public RecipeStateModel getRecipeState() {
         if (activeRecipes.isEmpty()) return null;
         return activeRecipes.values().iterator().next();
