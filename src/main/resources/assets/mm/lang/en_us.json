@@ -264,5 +264,10 @@
   "message.mm.assemble.stopped": "Assembly stopped: you went too far",
   "message.mm.assemble.no_structure": "This controller has no structure",
   "message.mm.assemble.already": "Already assembled",
-  "message.mm.assemble.busy": "You are already assembling something"
+  "message.mm.assemble.busy": "You are already assembling something",
+  "gui.mm.controller.assemble": "Assemble",
+  "gui.mm.assemble.title": "Assemble",
+  "gui.mm.assemble.start": "Assemble",
+  "gui.mm.assemble.lowest": "Lowest: %s",
+  "gui.mm.assemble.adjusted": "* this machine does not take your choice"
 }

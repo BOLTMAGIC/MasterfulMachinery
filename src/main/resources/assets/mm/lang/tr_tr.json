@@ -264,5 +264,10 @@
   "message.mm.assemble.stopped": "Kurulum durdu: çok uzaklaştın",
   "message.mm.assemble.no_structure": "Bu controller'ın yapısı yok",
   "message.mm.assemble.already": "Zaten kurulu",
-  "message.mm.assemble.busy": "Zaten bir kurulum sürüyor"
+  "message.mm.assemble.busy": "Zaten bir kurulum sürüyor",
+  "gui.mm.controller.assemble": "Kur",
+  "gui.mm.assemble.title": "Kur",
+  "gui.mm.assemble.start": "Kur",
+  "gui.mm.assemble.lowest": "En düşük: %s",
+  "gui.mm.assemble.adjusted": "* bu makine seçimini kabul etmiyor"
 }
