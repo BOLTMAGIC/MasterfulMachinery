@@ -39,7 +39,8 @@ public class ItemPortParser implements IPortParser {
 
     @Override
     public IPortIngredient parseRecipeIngredient(JsonObject json) {
-        var count = json.get("count").getAsInt();
+        // like vanilla recipes, a missing count means one item
+        var count = json.has("count") ? json.get("count").getAsInt() : 1;
         CompoundTag requiredNbt = null;
         boolean nbtStrong = false;
         if (json.has("nbt")) {
