@@ -15,6 +15,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityTicker;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
@@ -41,6 +43,19 @@ public abstract class MekanismChemicalPortBlock extends Block implements EntityB
     @Override
     public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
         return groupHolder.getBe().get().create(blockPos, blockState);
+    }
+
+    @Nullable
+    @Override
+    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
+        if (level.isClientSide()) {
+            return null;
+        }
+        return (l, pos, s, be) -> {
+            if (be instanceof MekanismChemicalPortBlockEntity<?, ?> pbe) {
+                pbe.tick();
+            }
+        };
     }
 
     @Override

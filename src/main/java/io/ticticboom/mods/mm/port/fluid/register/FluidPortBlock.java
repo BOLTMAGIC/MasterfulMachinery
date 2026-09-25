@@ -91,16 +91,6 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
-    public void onNeighborChange(BlockState state, LevelReader level, BlockPos pos, BlockPos neighbor) {
-        super.onNeighborChange(state, level, pos, neighbor);
-        if(level.isClientSide()) return;
-        var thisBe = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
-        if (thisBe instanceof FluidPortBlockEntity pbe) {
-            pbe.neighborsChanged();
-        }
-    }
-
-    @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
         // Notify nearby controllers that a part was removed
         if (!level.isClientSide() && level instanceof ServerLevel sl) {

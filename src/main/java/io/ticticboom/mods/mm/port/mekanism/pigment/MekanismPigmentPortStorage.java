@@ -6,11 +6,16 @@ import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import io.ticticboom.mods.mm.port.mekanism.NotifyChangeContentsListener;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorageModel;
+import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.ChemicalTankBuilder;
 import mekanism.api.chemical.IChemicalTank;
+import mekanism.api.chemical.pigment.IPigmentHandler;
 import mekanism.api.chemical.pigment.Pigment;
 import mekanism.api.chemical.pigment.PigmentStack;
 import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.registries.IForgeRegistry;
+
+import java.util.function.Predicate;
 
 public class MekanismPigmentPortStorage extends MekanismChemicalPortStorage<Pigment, PigmentStack> {
 
@@ -19,8 +24,18 @@ public class MekanismPigmentPortStorage extends MekanismChemicalPortStorage<Pigm
     }
 
     @Override
-    protected IChemicalTank<Pigment, PigmentStack> createTank(long capacity, INotifyChangeFunction changed) {
-        return ChemicalTankBuilder.PIGMENT.createAllValid(capacity, new NotifyChangeContentsListener(changed));
+    protected IChemicalTank<Pigment, PigmentStack> createTank(long capacity, Predicate<Pigment> validator, INotifyChangeFunction changed) {
+        return ChemicalTankBuilder.PIGMENT.create(capacity, validator, new NotifyChangeContentsListener(changed));
+    }
+
+    @Override
+    public Capability<IPigmentHandler> getChemicalCapability() {
+        return MekCapabilities.PIGMENT;
+    }
+
+    @Override
+    protected IForgeRegistry<Pigment> getChemicalRegistry() {
+        return MekanismAPI.pigmentRegistry();
     }
 
     @Override

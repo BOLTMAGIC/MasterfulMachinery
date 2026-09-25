@@ -6,9 +6,17 @@ import com.mojang.serialization.JsonOps;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
+import io.ticticboom.mods.mm.port.common.ILockablePortStorage;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
@@ -17,7 +25,7 @@ import net.minecraftforge.fluids.capability.IFluidHandler;
 
 import java.util.UUID;
 
-public class FluidPortStorage implements IPortStorage {
+public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
     private final FluidPortStorageModel model;
 
     @Getter
@@ -57,6 +65,16 @@ public class FluidPortStorage implements IPortStorage {
         var compoundTag = handler.serializeNBT();
         tag.put("handler", compoundTag);
         tag.putInt("Priority", this.priority);
+        if (handler.isLocked()) {
+            tag.putBoolean("Locked", true);
+            var lockedFluids = new ListTag();
+            for (int i = 0; i < handler.getTanks(); i++) {
+                Fluid fluid = handler.getLockedFluid(i);
+                ResourceLocation id = fluid == null ? null : ForgeRegistries.FLUIDS.getKey(fluid);
+                lockedFluids.add(StringTag.valueOf(id == null ? "" : id.toString()));
+            }
+            tag.put("LockedFluids", lockedFluids);
+        }
         return tag;
     }
 
@@ -69,6 +87,30 @@ public class FluidPortStorage implements IPortStorage {
         } else {
             this.priority = 0;
         }
+        var lockedList = tag.getList("LockedFluids", Tag.TAG_STRING);
+        var lockedFluids = new Fluid[lockedList.size()];
+        for (int i = 0; i < lockedList.size(); i++) {
+            var id = ResourceLocation.tryParse(lockedList.getString(i));
+            var fluid = id == null ? null : ForgeRegistries.FLUIDS.getValue(id);
+            // unknown ids resolve to the registry default (empty), which means "not locked"
+            lockedFluids[i] = fluid == Fluids.EMPTY ? null : fluid;
+        }
+        handler.loadLock(tag.getBoolean("Locked"), lockedFluids);
+    }
+
+    @Override
+    public boolean isLocked() {
+        return handler.isLocked();
+    }
+
+    @Override
+    public void setLocked(boolean locked) {
+        handler.setLocked(locked);
+    }
+
+    @Override
+    public void dump() {
+        handler.clearAll();
     }
 
     @Override

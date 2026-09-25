@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.port.mekanism.chemical.register;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.gui.widgets.PortConfigPanel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
 import io.ticticboom.mods.mm.util.WidgetUtils;
@@ -24,6 +25,7 @@ public class MekanismChemicalPortScreen<CHEMICAL extends Chemical<CHEMICAL>, STA
     private final FormattedText header;
     protected final MekanismChemicalPortBlockEntity<CHEMICAL, STACK> be;
     protected final MekanismChemicalPortStorage<CHEMICAL, STACK> storage;
+    private final PortConfigPanel configPanel;
 
 
     public MekanismChemicalPortScreen(T menu, Inventory inv, Component title) {
@@ -35,7 +37,26 @@ public class MekanismChemicalPortScreen<CHEMICAL extends Chemical<CHEMICAL>, STA
         header = FormattedText.of(name.substring(0, subStrLength) + (subStrLength < 55 ? "" : "..."));
         be = this.menu.getBlockEntity();
         storage = (MekanismChemicalPortStorage<CHEMICAL, STACK>) be.getStorage();
+        configPanel = new PortConfigPanel(be);
+    }
 
+    @Override
+    protected void init() {
+        super.init();
+        configPanel.setPosition(this.leftPos + this.imageWidth + 2, this.topPos + 4);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (configPanel.mouseClicked(mouseX, mouseY)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int left, int top, int button) {
+        return super.hasClickedOutside(mouseX, mouseY, left, top, button) && !configPanel.isWithin(mouseX, mouseY);
     }
 
     @Override
@@ -70,5 +91,7 @@ public class MekanismChemicalPortScreen<CHEMICAL extends Chemical<CHEMICAL>, STA
                 gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
             }
         }
+        configPanel.render(gfx, this.font, mouseX, mouseY);
+        configPanel.renderTooltip(gfx, this.font, mouseX, mouseY);
     }
 }

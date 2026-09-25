@@ -6,7 +6,8 @@ import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorage;
 import io.ticticboom.mods.mm.port.energy.EnergyPortStorageModel;
-import io.ticticboom.mods.mm.port.energy.feature.EnergyPortAutoPushFeature;
+import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
+import io.ticticboom.mods.mm.port.common.autoio.PortTransfers;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -22,16 +23,12 @@ import net.minecraftforge.common.util.LazyOptional;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Optional;
-
 public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
     private final PortModel model;
     private final RegistryGroupHolder groupHolder;
     private final boolean isInput;
 
     private final EnergyPortStorage storage;
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    private final Optional<EnergyPortAutoPushFeature> autoPushAddon;
 
     public EnergyPortBlockEntity(PortModel model, RegistryGroupHolder groupHolder, boolean isInput, BlockPos pos, BlockState state) {
         super(groupHolder.getBe().get(), pos, state);
@@ -39,12 +36,8 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
         this.groupHolder = groupHolder;
         this.isInput = isInput;
         storage = (EnergyPortStorage) model.config().createPortStorage(this::setChanged);
-        var shouldAutoPush = !isInput && ((EnergyPortStorageModel) storage.getStorageModel()).autoPush().get();
-        if (shouldAutoPush) {
-            autoPushAddon = Optional.of(new EnergyPortAutoPushFeature(this, this.model));
-        } else {
-            autoPushAddon = Optional.empty();
-        }
+        var enabledByDefault = !isInput && ((EnergyPortStorageModel) storage.getStorageModel()).autoPush().get();
+        autoIO = new PortAutoIO(this, isInput, enabledByDefault, PortTransfers.energy(storage::getHandler));
     }
 
     @Override
@@ -109,21 +102,5 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
         }
         super.setChanged();
         level.sendBlockUpdated(getBlockPos(), this.getBlockState(), this.getBlockState(), Block.UPDATE_CLIENTS);
-    }
-
-    public void tick() {
-        assert level != null;
-        if(lastTick == level.getGameTime()) return;
-        lastTick = level.getGameTime();
-        autoPushAddon.ifPresent(EnergyPortAutoPushFeature::tick);
-    }
-
-    @Override
-    public void onLoad() {
-        autoPushAddon.ifPresent(EnergyPortAutoPushFeature::onLoad);
-    }
-
-    public void neighborsChanged() {
-        autoPushAddon.ifPresent(EnergyPortAutoPushFeature::tryAddNeighboringHandlers);
     }
 }

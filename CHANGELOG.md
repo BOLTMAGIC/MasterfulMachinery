@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+### Added
+- **Per-side auto I/O for ports** (item, fluid, energy and Mekanism gas/infuse/pigment/slurry)
+  - Port GUIs have a side panel with an unfolded-cube toggle for each side (Up/Down/North/South/East/West).
+  - Output ports push into any neighbouring inventory, tank or energy storage on enabled sides, and into neighbouring MM input ports (machine chaining). Priority setter values are respected.
+  - Input ports pull from neighbouring non-MM blocks on enabled sides.
+  - Settings are saved per port. `autoPush` / `portsAutoExtractByDefault` now decide whether new output ports start with all sides enabled.
+  - New common config `portAutoIOInterval` (default 10 ticks).
+- **Lock and dump for fluid and Mekanism chemical ports**
+  - Lock: each tank is locked to its current contents; empty tanks lock to the first type that enters them.
+  - Dump: Shift+Click deletes the port's contents.
+- Turkish (`tr_tr`) translation for the new GUI texts.
+### Fixed
+- `autoPush` only pushed into neighbouring MM input ports, never into chests, tanks, pipes or cables.
+### Changed
+- Network protocol version bumped to 2 (new port config packet).
+
 ## [0.1.34.7] - 2026-09-03
 ### Added
 - **Major Performance Optimization - Machine Controller Recipe Processing**
