@@ -23,8 +23,9 @@ public class MMClientConfig {
         builder.pop();
 
         builder.push("ports");
-        portStatusLight = builder.comment("Show a status light on item, fluid, energy, chemical and mana ports in the machine's state color",
-                        "(the colors above). When false the light blends into the port.")
+        portStatusLight = builder.comment("Show a status light on item, fluid, energy, chemical and mana ports in the machine's state color:",
+                        "the controller's own unformedColor / idleColor / workingColor if it sets them, else the colors above.",
+                        "When false the light blends into the port.")
                 .define("statusLight", true);
         builder.pop();
     }

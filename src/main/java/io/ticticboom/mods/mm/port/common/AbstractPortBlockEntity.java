@@ -21,6 +21,11 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     protected long lastTick = 0;
     @Nullable
     protected PortAutoIO autoIO;
+    // status light colors of the machine this port belongs to (unformed, idle, working; -1 = client config),
+    // set by the controller; null when the machine doesn't set its own colors
+    @Nullable
+    private int[] machineColors;
+    private static final String MACHINE_COLORS_KEY = "MMMachineColors";
 
     public AbstractPortBlockEntity(BlockEntityType<?> p_155228_, BlockPos p_155229_, BlockState p_155230_) {
         super(p_155228_, p_155229_, p_155230_);
@@ -32,6 +37,26 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     @Nullable
     public PortAutoIO getAutoIO() {
         return autoIO;
+    }
+
+    /**
+     * @param state 0 unformed, 1 idle, 2 working
+     * @return the machine's own status light color for that state, or -1 to use the client config
+     */
+    public int getMachineColor(int state) {
+        return machineColors == null ? -1 : machineColors[state];
+    }
+
+    /** Set by the controller of the machine the port belongs to; null clears. Sent to clients when it changes. */
+    public void setMachineColors(@Nullable int[] colors) {
+        if (java.util.Arrays.equals(machineColors, colors)) {
+            return;
+        }
+        machineColors = colors == null ? null : colors.clone();
+        setChanged();
+        if (level != null && !level.isClientSide()) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
     }
 
     public void tick() {
@@ -48,6 +73,9 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (autoIO != null) {
             autoIO.save(tag);
         }
+        if (machineColors != null) {
+            tag.putIntArray(MACHINE_COLORS_KEY, machineColors);
+        }
         super.saveAdditional(tag);
     }
 
@@ -57,7 +85,15 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (autoIO != null) {
             autoIO.load(tag);
         }
+        int[] loaded = tag.getIntArray(MACHINE_COLORS_KEY);
+        int[] colors = loaded.length == 3 ? loaded : null;
+        boolean colorsChanged = !java.util.Arrays.equals(machineColors, colors);
+        machineColors = colors;
         super.load(tag);
+        if (colorsChanged && level != null && level.isClientSide()) {
+            // the block state didn't change, so ask for the status light to be drawn again
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_IMMEDIATE);
+        }
     }
 
     @Override

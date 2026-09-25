@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlock;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.api.distmarker.Dist;
@@ -56,6 +57,14 @@ public final class ControllerColorEvents {
             ControllerState machineState = level == null || pos == null
                     ? ControllerState.IDLE
                     : state.getValue(ControllerState.PROPERTY);
+            if (level != null && pos != null && MMConfigSetup.CLIENT.portStatusLight.get()
+                    && level.getBlockEntity(pos) instanceof AbstractPortBlockEntity port) {
+                // the machine's own colors, sent to the port by its controller
+                int own = port.getMachineColor(machineState.ordinal());
+                if (own >= 0) {
+                    return own;
+                }
+            }
             return portLightColor(machineState);
         }, ports);
     }
@@ -81,7 +90,6 @@ public final class ControllerColorEvents {
         if (!config.portStatusLight.get()) {
             return PORT_LIGHT_OFF;
         }
-        // ports don't know their controller on the client, so they use the configured colors
         Integer configured = MMClientConfig.parseColor(configValue(config, state).get());
         return configured != null ? configured : ORIGINAL_SCREEN_COLOR;
     }

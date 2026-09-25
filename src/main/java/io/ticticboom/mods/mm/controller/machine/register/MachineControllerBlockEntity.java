@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
+import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
@@ -191,15 +193,40 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             } catch (Throwable ignored) {
             }
         }
+        int[] colors = machineColors();
         for (BlockPos portPos : litPorts) {
             if (!current.contains(portPos)) {
                 setPortState(portPos, ControllerState.UNFORMED);
+                setPortColors(portPos, null);
             }
         }
         for (BlockPos portPos : current) {
             setPortState(portPos, state);
+            setPortColors(portPos, colors);
         }
         litPorts = current;
+    }
+
+    /**
+     * @return the controller's own screen colors (unformedColor / idleColor / workingColor from KubeJS or JSON)
+     * for its ports' status lights, -1 where it has none; null when it sets no color at all
+     */
+    @Nullable
+    private int[] machineColors() {
+        int[] colors = new int[ControllerState.values().length];
+        boolean any = false;
+        for (ControllerState s : ControllerState.values()) {
+            Integer color = MMClientConfig.parseColor(controllerModel.screenColor(s.getSerializedName()));
+            colors[s.ordinal()] = color == null ? -1 : color;
+            any |= color != null;
+        }
+        return any ? colors : null;
+    }
+
+    private void setPortColors(BlockPos portPos, @Nullable int[] colors) {
+        if (level != null && level.isLoaded(portPos) && level.getBlockEntity(portPos) instanceof AbstractPortBlockEntity port) {
+            port.setMachineColors(colors);
+        }
     }
 
     /** Turns the ports' status lights back to unformed, used when the controller is broken. */
