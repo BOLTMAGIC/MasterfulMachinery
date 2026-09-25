@@ -25,13 +25,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
-import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
-import io.ticticboom.mods.mm.port.fluid.FluidPortIngredient;
 import io.ticticboom.mods.mm.port.energy.EnergyPortIngredient;
-import io.ticticboom.mods.mm.port.botania.mana.BotaniaManaPortIngredient;
-import io.ticticboom.mods.mm.port.pneumaticcraft.air.PneumaticAirPortIngredient;
-import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortIngredient;
-import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -129,9 +123,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private volatile long lastValidationRequestMs = 0L;
     // track last activity time per active recipe to detect stalls
     private final Map<ResourceLocation, Long> activeRecipeLastUpdate = new HashMap<>();
-    // Spread-out recipe scanning to avoid checking all recipes every tick when controller is searching
-    private List<RecipeModel> cachedStructureRecipes = null;
+    // the structure's recipes indexed by input item; null until first needed
+    private RecipeCandidateIndex recipeIndex = null;
+    // positions in recipeIndex of the recipes the current port contents might run; null = rebuild
+    private int[] candidatePositions = null;
+    // position in recipeIndex where the next recipe scan starts
     private int nextRecipeCheckIndex = 0;
+    // when a recipe is skipped due to missing resources, wait N ticks before rechecking
+    private static final int RECIPE_SKIP_COOLDOWN_TICKS = 20;
     private ResourceLocation lastStartedRecipeId = null;
     // game time of the last recipe start, synced so the screen can show recipes that finish within a tick
     private long lastRecipeStartTime = Long.MIN_VALUE;
@@ -501,12 +500,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
              }
          }
 
-         if (doRebuild) {
-             // Delegate to StorageCacheManager to rebuild all cache fields
-             StorageCacheManager.rebuildStorageCache(portStorages, storageCache);
-             // after a rebuild allow recipes to be rechecked immediately
-             recipeNextCheckTime.clear();
-         }
+         if (doRebuild) rebuildStorageCache();
+     }
+
+     private void rebuildStorageCache() {
+         // Delegate to StorageCacheManager to rebuild all cache fields
+         StorageCacheManager.rebuildStorageCache(portStorages, storageCache);
+         // after a rebuild allow recipes to be rechecked immediately
+         recipeNextCheckTime.clear();
+         candidatePositions = null;
      }
 
      private void processActiveRecipeOutputs() {
@@ -530,13 +532,25 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
      private void scanAndStartRecipes(long gameTime) {
-         // Spread recipe checks across multiple ticks to avoid scanning all recipes every tick.
-         if (cachedStructureRecipes == null) cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
-         if (cachedStructureRecipes.isEmpty()) return;
-         int total = cachedStructureRecipes.size();
-         // AGGRESSIVE: For DEFAULT mode with <300 recipes, scan ALL per tick. For fair mode, scan 50%.
+         if (recipeIndex == null) {
+             recipeIndex = new RecipeCandidateIndex(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
+             candidatePositions = null;
+         }
+         if (recipeIndex.isEmpty()) return;
+         // only recipes whose inputs could be in the ports are checked; that list is rebuilt when the ports change
+         if (!storageCache.isValid) rebuildStorageCache();
+         if (candidatePositions == null) {
+             candidatePositions = recipeIndex.candidates(storageCache, MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId));
+         }
+         int[] candidates = candidatePositions;
+         if (candidates.length == 0) return;
+         int total = candidates.length;
+         // Spread recipe checks across multiple ticks. For DEFAULT mode with <300 candidates, check all per tick.
          int checks = getChecks(total);
-         int idx = nextRecipeCheckIndex % total;
+         // continue from where the last pass stopped, in the structure's recipe order
+         int found = java.util.Arrays.binarySearch(candidates, nextRecipeCheckIndex);
+         int idx = found >= 0 ? found : -found - 1;
+         int nextPosition = nextRecipeCheckIndex;
         int performed = 0;
         RecipeModel deferredRecipe = null;
         ResourceLocation deferredPrimaryInputItemId = null;
@@ -545,114 +559,21 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         long selectedRoundRobinLastUse = Long.MAX_VALUE;
         boolean startedRecipeThisPass = false;
         while (performed < checks) {
-            RecipeModel recipe = cachedStructureRecipes.get(idx);
+            int position = candidates[idx % total];
+            RecipeModel recipe = recipeIndex.get(position);
             idx = (idx + 1) % total;
+            nextPosition = position + 1;
             performed++;
 
             if (activeRecipes.containsKey(recipe.id())) continue;
             if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
-            // lightweight capability pre-check: compute required port types from recipe inputs
-            java.util.Set<ResourceLocation> requiredTypes = new java.util.HashSet<>();
-            for (var input : recipe.inputs().inputs()) {
-                if (input instanceof ConsumeRecipeIngredientEntry cre) {
-                    var ingr = cre.getIngredient();
-                    if (ingr instanceof BaseItemPortIngredient) requiredTypes.add(Ref.Ports.ITEM);
-                    else if (ingr instanceof FluidPortIngredient) requiredTypes.add(Ref.Ports.FLUID);
-                    else if (ingr instanceof EnergyPortIngredient) requiredTypes.add(Ref.Ports.ENERGY);
-                    else if (ingr instanceof BotaniaManaPortIngredient) requiredTypes.add(Ref.Ports.BOTANIA_MANA);
-                    else if (ingr instanceof PneumaticAirPortIngredient) requiredTypes.add(Ref.Ports.PNEUMATIC_AIR);
-                    else if (ingr instanceof CreateKineticPortIngredient) requiredTypes.add(Ref.Ports.CREATE_KINETIC);
-                    else //noinspection rawtypes
-                        if (ingr instanceof MekanismChemicalPortIngredient mech) {
-                        try { var typeId = mech.getTypeId(); if (typeId != null) requiredTypes.add(typeId); }
-                        catch (Throwable ignored) { }
-                    }
-                }
-            }
-
-            // Also gather any specific resource ids (items/fluids) that the recipe requires
-            java.util.Set<ResourceLocation> requiredItemIds = new java.util.HashSet<>();
-            java.util.Set<ResourceLocation> requiredFluidIds = new java.util.HashSet<>();
-            java.util.Set<ResourceLocation> requiredMekanismIds = new java.util.HashSet<>();
-            boolean needsEnergy = false;
-            boolean needsMana = false;
-            boolean needsPneumatic = false;
-            boolean needsKinetic = false;
-            boolean needsMekanismChemical = false;
-            for (var input : recipe.inputs().inputs()) {
-                if (input instanceof ConsumeRecipeIngredientEntry cre) {
-                    var ingr = cre.getIngredient();
-                    if (ingr instanceof BaseItemPortIngredient) {
-                        if (ingr instanceof io.ticticboom.mods.mm.port.item.SingleItemPortIngredient single) {
-                            try { var id = single.getItemId(); if (id != null) requiredItemIds.add(id); } catch (Throwable ignored) {}
-                        }
-                    } else if (ingr instanceof FluidPortIngredient fp) {
-                        try { var id = fp.getFluidId(); if (id != null) requiredFluidIds.add(id); } catch (Throwable ignored) {}
-                    } else if (ingr instanceof EnergyPortIngredient) needsEnergy = true;
-                    else if (ingr instanceof BotaniaManaPortIngredient) needsMana = true;
-                    else if (ingr instanceof PneumaticAirPortIngredient) needsPneumatic = true;
-                    else if (ingr instanceof CreateKineticPortIngredient) needsKinetic = true;
-                    else //noinspection rawtypes
-                        if (ingr instanceof MekanismChemicalPortIngredient mech) {
-                        try {
-                            var chemId = mech.getChemicalId();
-                            if (chemId != null) requiredMekanismIds.add(chemId);
-                            needsMekanismChemical = true; // also keep generic flag for quick checks
-                        } catch (Throwable ignored) { }
-                    }
-                }
-            }
-
-            // when a recipe is skipped due to missing resources, wait N ticks before rechecking
-            int recipeSkipCooldownTicks = 20;
-            if (!requiredTypes.isEmpty()) {
-                var available = MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId);
-                if (available != null && !available.containsAll(requiredTypes)) {
-                    recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                    continue;
-                }
-            }
-
-             if (portStorages != null && storageCache.isValid) {
-                 if (!requiredItemIds.isEmpty() && !storageCache.availableItemIds.containsAll(requiredItemIds)) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (!requiredFluidIds.isEmpty() && !storageCache.availableFluidIds.containsAll(requiredFluidIds)) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (needsEnergy && !storageCache.hasEnergyAvailable) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (needsMana && !storageCache.hasManaAvailable) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (needsPneumatic && !storageCache.hasPneumaticAir) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (needsKinetic && !storageCache.hasKinetic) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (needsMekanismChemical && !storageCache.hasMekanismChemical) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-                 if (!requiredMekanismIds.isEmpty() && !storageCache.availableMekanismIds.containsAll(requiredMekanismIds)) {
-                     recipeNextCheckTime.put(recipe.id(), gameTime + recipeSkipCooldownTicks);
-                     continue;
-                 }
-             }
-
             if (!recipe.conditions().canRun(conditionContext())) {
                 continue;
             }
             if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                // not enough of something; any change to the ports clears this wait
+                recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
                 continue;
             }
 
@@ -807,7 +728,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 && deferredRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
             startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
         }
-        nextRecipeCheckIndex = idx;
+        nextRecipeCheckIndex = nextPosition % recipeIndex.size();
     }
 
     private int getChecks(int total) {
@@ -1086,7 +1007,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         isFormed = false;
         // clear caches and active recipes when structure is lost
         invalidateRecipe(false);
-        cachedStructureRecipes = null;
+        recipeIndex = null;
+        candidatePositions = null;
     }
 
      public void invalidateRecipe(boolean typical) {
@@ -1104,7 +1026,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          // clear cached views and backoff timers as recipe state is reset
          storageCache.clear();
          recipeNextCheckTime.clear();
-         cachedStructureRecipes = null;
+         recipeIndex = null;
+         candidatePositions = null;
      }
 
     @Override
