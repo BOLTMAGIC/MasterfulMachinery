@@ -1,5 +1,10 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.port.common.autoio.PortSides;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
@@ -58,6 +63,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int MAX_INPUTS = 3;
     private static final int MAX_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
+    private static final int TOOLTIP_MISSING = 10;
 
     private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE }
 
@@ -197,6 +203,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(x + LEFT, y + STATUS_Y + 11, x + RIGHT, y + STATUS_Y + 12, DIVIDER);
         gfx.fill(x + LEFT, y + ROWS_Y - 5, x + RIGHT, y + ROWS_Y - 4, DIVIDER);
 
+        if (showsDiagnosis()) {
+            // first missing block: its item in a slot, name and place beside it (renderLabels)
+            var first = menu.getDiagnosis().missing().get(0);
+            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + LEFT, y + RECIPE_Y, 0, 26, 18, 18);
+            if (!first.icon().isEmpty()) {
+                gfx.renderItem(first.icon(), x + LEFT + 1, y + RECIPE_Y + 1);
+            }
+        }
+
         var slots = recipeSlots();
         if (!slots.isEmpty()) {
             int inputs = (int) slots.stream().filter(Shown::input).count();
@@ -231,9 +246,20 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         Status status = status();
         drawClipped(gfx, Component.translatable(status.key()), LEFT + 9, STATUS_Y, RIGHT - LEFT - 9, status.color);
 
-        gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe"), LEFT, RECIPE_LABEL_Y, LABEL, false);
+        if (showsDiagnosis()) {
+            var diagnosis = menu.getDiagnosis();
+            var first = diagnosis.missing().get(0);
+            drawClipped(gfx, Component.translatable("gui.mm.controller.missing", diagnosis.total()), LEFT, RECIPE_LABEL_Y,
+                    RIGHT - LEFT, Status.NOT_FORMED.color);
+            drawClipped(gfx, first.required(), LEFT + 21, RECIPE_Y, RIGHT - LEFT - 21, TEXT);
+            drawClipped(gfx, offsetText(first.pos()), LEFT + 21, RECIPE_Y + 10, RIGHT - LEFT - 21, LABEL);
+        } else {
+            gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe"), LEFT, RECIPE_LABEL_Y, LABEL, false);
+        }
         var slots = recipeSlots();
-        if (slots.isEmpty()) {
+        if (showsDiagnosis()) {
+            // the missing blocks take the recipe's place
+        } else if (slots.isEmpty()) {
             gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
         } else {
             var state = be.getRecipeState();
@@ -268,6 +294,66 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 VALUE_X + 12, rowY(Row.REDSTONE), RIGHT - VALUE_X - 14, TEXT);
         drawClipped(gfx, Component.translatable("gui.mm.controller.mode." + recipeMode()),
                 VALUE_X, rowY(Row.MODE), RIGHT - VALUE_X, TEXT);
+    }
+
+    /** While the multiblock isn't formed, the recipe section lists what is missing where. */
+    private boolean showsDiagnosis() {
+        return status() == Status.NOT_FORMED && !menu.getDiagnosis().missing().isEmpty();
+    }
+
+    /**
+     * Where a block goes, relative to the controller as seen by a player standing in front of it,
+     * e.g. "2 up, 1 left, 3 back", followed by the coordinates.
+     */
+    private Component offsetText(BlockPos pos) {
+        BlockPos delta = pos.subtract(be.getBlockPos());
+        var state = be.getBlockState();
+        var parts = new ArrayList<Component>();
+        addOffset(parts, delta.getY(), "up", "down");
+        if (state.hasProperty(HorizontalDirectionalBlock.FACING)) {
+            // the controller's screen faces opposite to FACING
+            Direction front = state.getValue(HorizontalDirectionalBlock.FACING).getOpposite();
+            Direction left = PortSides.toWorld(PortSides.Relative.LEFT, front);
+            addOffset(parts, dot(delta, front), "front", "back");
+            addOffset(parts, dot(delta, left), "left", "right");
+        }
+        MutableComponent text = Component.empty();
+        for (int i = 0; i < parts.size(); i++) {
+            if (i > 0) text.append(", ");
+            text.append(parts.get(i));
+        }
+        return text.append(" (" + pos.getX() + " " + pos.getY() + " " + pos.getZ() + ")");
+    }
+
+    private static void addOffset(List<Component> parts, int amount, String positive, String negative) {
+        if (amount != 0) {
+            parts.add(Component.translatable("gui.mm.controller.missing.offset." + (amount > 0 ? positive : negative), Math.abs(amount)));
+        }
+    }
+
+    private static int dot(BlockPos delta, Direction dir) {
+        return delta.getX() * dir.getStepX() + delta.getY() * dir.getStepY() + delta.getZ() * dir.getStepZ();
+    }
+
+    private List<Component> diagnosisTooltip() {
+        var diagnosis = menu.getDiagnosis();
+        var lines = new ArrayList<Component>();
+        lines.add(Component.translatable("gui.mm.controller.missing", diagnosis.total()));
+        int shown = Math.min(TOOLTIP_MISSING, diagnosis.missing().size());
+        for (int i = 0; i < shown; i++) {
+            var m = diagnosis.missing().get(i);
+            MutableComponent line = m.required().copy().withStyle(ChatFormatting.WHITE);
+            if (m.found() != null) {
+                line.append(Component.translatable("gui.mm.controller.missing.found", m.found()).withStyle(ChatFormatting.RED));
+            }
+            lines.add(line);
+            lines.add(Component.literal("  ").append(offsetText(m.pos())).withStyle(ChatFormatting.GRAY));
+        }
+        if (diagnosis.total() > shown) {
+            lines.add(Component.translatable("gui.mm.controller.missing.more", diagnosis.total() - shown).withStyle(ChatFormatting.DARK_GRAY));
+        }
+        lines.add(Component.translatable("gui.mm.controller.missing.hint").withStyle(ChatFormatting.DARK_GRAY));
+        return lines;
     }
 
     private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
@@ -329,6 +415,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, PAGE_BTN_X - LEFT - 4, 10)
                 && this.font.width(menu.getModel().name()) > PAGE_BTN_X - LEFT - 4) {
             return List.of(Component.literal(menu.getModel().name()));
+        }
+        if (showsDiagnosis() && WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + RECIPE_LABEL_Y - 1,
+                RIGHT - LEFT, RECIPE_Y + 18 - RECIPE_LABEL_Y + 1)) {
+            return diagnosisTooltip();
         }
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
             return List.of(Component.translatable(status().key() + ".hint").withStyle(ChatFormatting.GRAY));
