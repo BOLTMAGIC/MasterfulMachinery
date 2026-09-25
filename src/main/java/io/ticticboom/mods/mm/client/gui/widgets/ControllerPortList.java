@@ -41,6 +41,7 @@ public class ControllerPortList {
     private static final int GAP = 4;
     private static final int LABEL = 0x8A8A8A;
     private static final int NAME = 0xBBBBBB;
+    private static final int ENERGY_TEXTURE_W = 160;
 
     private final List<BlockPos> positions;
     private int x;
@@ -228,8 +229,10 @@ public class ControllerPortList {
             int fx = bx + 1;
             int fy = by + 1;
             if (tank.kind() == PortContent.Kind.ENERGY) {
-                // MM's own energy bar texture
-                gfx.blit(Ref.UiTextures.SLOT_PARTS, fx, fy, 90, 0, filled, innerH);
+                // MM's own energy bar texture, repeated: it is only ENERGY_TEXTURE_W wide
+                for (int tx = 0; tx < filled; tx += ENERGY_TEXTURE_W) {
+                    gfx.blit(Ref.UiTextures.SLOT_PARTS, fx + tx, fy, 90, 0, Math.min(ENERGY_TEXTURE_W, filled - tx), innerH);
+                }
             } else {
                 TextureAtlasSprite sprite = null;
                 int tint = tank.tint();

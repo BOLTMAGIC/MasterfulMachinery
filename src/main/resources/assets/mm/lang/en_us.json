@@ -169,6 +169,8 @@
   "gui.mm.controller.status.idle.hint": "No recipe can start: put the inputs into the input ports and make sure the output ports have room.",
   "gui.mm.controller.recipe.chance": "%s%% chance",
   "gui.mm.controller.recipe.jei": "Click: how it's made · Right-click: uses",
+  "gui.mm.controller.progress": "Progress",
+  "gui.mm.controller.progress.time": "%s / %s s",
   "gui.mm.controller.recipe.none": "No recipe running",
   "gui.mm.controller.missing": "Missing blocks: %s",
   "gui.mm.controller.missing.one_of": "%s (or %s other blocks)",

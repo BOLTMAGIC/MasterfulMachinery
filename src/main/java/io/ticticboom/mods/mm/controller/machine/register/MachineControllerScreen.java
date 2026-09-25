@@ -80,6 +80,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     // between the dark panel and the inventory, as in the texture
     private static final int PANEL_GAP = 12;
     private static final int GREY = 0xFFC6C6C6;
+    // from this width on everything is on one page: info and settings on the left, input and output ports beside
+    private static final int WIDE_WIDTH = 400;
+    private static final int INFO_WIDTH = 190;
+    private static final int COLUMN_GAP = 12;
     private static final int PANEL = 0xFF1C1C1C;
     private static final int NAME_Y = 10;
     private static final int STATUS_Y = 22;
@@ -131,6 +135,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private final MachineControllerMenu menu;
     private final MachineControllerBlockEntity be;
     private final ControllerPortList portList;
+    // the output ports column of the wide layout (portList shows the inputs there)
+    private final ControllerPortList outputList;
     // which few of a long input / output list are shown; advances every CYCLE_MS unless the mouse is on the recipe
     private int cycle = 0;
     private long nextCycleMs = 0;
@@ -142,6 +148,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private int panelBottom;
     private int inventoryX;
     private int inventoryY;
+    private boolean wide;
+    // right edge of the info rows: the whole panel, or the left column when wide
+    private int infoRight;
     private int maxInputs = MIN_INPUTS;
     private int maxOutputs = MIN_OUTPUTS;
 
@@ -152,6 +161,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         this.imageHeight = MIN_HEIGHT;
         this.imageWidth = MIN_WIDTH;
         this.portList = new ControllerPortList(menu.getPortPositions());
+        this.outputList = new ControllerPortList(menu.getPortPositions());
+        this.outputList.showInputs(false);
     }
 
     @Override
@@ -159,8 +170,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         this.imageWidth = Mth.clamp(this.width - 2 * WINDOW_MARGIN, MIN_WIDTH, MAX_WIDTH);
         this.imageHeight = Mth.clamp(this.height - 2 * WINDOW_MARGIN, MIN_HEIGHT, MAX_HEIGHT);
         right = imageWidth - 11;
-        valueRight = Math.min(right, VALUE_X + VALUE_WIDTH);
-        pageBtnX = right - 12;
+        wide = imageWidth >= WIDE_WIDTH;
+        infoRight = wide ? LEFT + INFO_WIDTH : right;
+        valueRight = Math.min(infoRight, VALUE_X + VALUE_WIDTH);
+        // no page toggle when wide; the name may then use the whole line
+        pageBtnX = wide ? right + 4 : right - 12;
         inventoryX = (imageWidth - INVENTORY_WIDTH) / 2;
         inventoryY = imageHeight - FRAME_BOTTOM - INVENTORY_HEIGHT;
         panelBottom = inventoryY - PANEL_GAP;
@@ -170,7 +184,16 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         maxInputs = Math.max(MIN_INPUTS, slots - maxOutputs);
         super.init();
         placeInventorySlots();
-        portList.setBounds(this.leftPos + LEFT, this.topPos + LIST_Y, right - LEFT + 2, panelBottom - 3 - LIST_Y);
+        if (wide) {
+            int listsX = infoRight + COLUMN_GAP;
+            int listTop = ROWS_Y - 2;
+            int listW = (right + 2 - listsX - COLUMN_GAP) / 2;
+            portList.showInputs(true);
+            portList.setBounds(this.leftPos + listsX, this.topPos + listTop, listW, panelBottom - 3 - listTop);
+            outputList.setBounds(this.leftPos + listsX + listW + COLUMN_GAP, this.topPos + listTop, listW, panelBottom - 3 - listTop);
+        } else {
+            portList.setBounds(this.leftPos + LEFT, this.topPos + LIST_Y, right - LEFT + 2, panelBottom - 3 - LIST_Y);
+        }
     }
 
     /**
@@ -205,10 +228,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private boolean isOnPageButton(double mouseX, double mouseY) {
-        return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + pageBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
+        return !wide && WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + pageBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
     }
 
     private void drawPageButton(GuiGraphics gfx, int mouseX, int mouseY) {
+        if (wide) return;
         int bx = this.leftPos + pageBtnX;
         int by = this.topPos + PAGE_BTN_Y;
         var texture = isOnPageButton(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
@@ -223,7 +247,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private boolean onPortsPage() {
-        return page != 0;
+        return !wide && page != 0;
     }
 
     private static void drawSmallItem(GuiGraphics gfx, ItemStack stack, int x, int y) {
@@ -404,6 +428,46 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             gfx.blitNineSlicedSized(soundButton, x + VALUE_X - 2, sy, valueRight - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
             drawSmallItem(gfx, new ItemStack(Items.NOTE_BLOCK), x + VALUE_X, sy + 1, 8);
         }
+
+        if (wide) {
+            drawProgressBar(gfx);
+            // the port columns, split off the info column by a line
+            int lineX = x + infoRight + COLUMN_GAP / 2;
+            gfx.fill(lineX, y + ROWS_Y - 3, lineX + 1, y + panelBottom - 3, DIVIDER);
+            portList.render(gfx, this.font, be.getLevel());
+            outputList.render(gfx, this.font, be.getLevel());
+        }
+    }
+
+    /** Wide layout: under the info rows, where the running recipe is and how long it takes. */
+    private int progressY() {
+        List<Row> shown = rows();
+        return rowY(shown.get(shown.size() - 1)) + ROW_STEP + 8;
+    }
+
+    private void drawProgressBar(GuiGraphics gfx) {
+        RecipeModel recipe = be.getDisplayedRecipe();
+        if (recipe == null) return;
+        var state = be.getRecipeState();
+        double fraction = state == null ? 1 : Math.min(100, state.getTickPercentage()) / 100;
+        int bx = this.leftPos + LEFT;
+        int by = this.topPos + progressY() + 11;
+        int bw = infoRight - LEFT;
+        gfx.fill(bx, by, bx + bw, by + 6, 0xFF555555);
+        gfx.fill(bx + 1, by + 1, bx + bw - 1, by + 5, 0xFF111111);
+        gfx.fill(bx + 1, by + 1, bx + 1 + (int) Math.round((bw - 2) * fraction), by + 5, 0xFF000000 | Status.RUNNING.color);
+    }
+
+    private void drawProgressText(GuiGraphics gfx) {
+        RecipeModel recipe = be.getDisplayedRecipe();
+        if (recipe == null) return;
+        var state = be.getRecipeState();
+        double fraction = state == null ? 1 : Math.min(100, state.getTickPercentage()) / 100;
+        int y = progressY();
+        drawClipped(gfx, Component.translatable("gui.mm.controller.progress"), LEFT, y, VALUE_X - LEFT - 4, LABEL);
+        String elapsed = String.format(java.util.Locale.ROOT, "%.1f", recipe.ticks() * fraction / 20);
+        String total = String.format(java.util.Locale.ROOT, "%.1f", recipe.ticks() / 20.0);
+        drawClipped(gfx, Component.translatable("gui.mm.controller.progress.time", elapsed, total), VALUE_X, y, infoRight - VALUE_X, TEXT);
     }
 
     @Override
@@ -480,6 +544,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             } else {
                 drawClipped(gfx, Component.translatable("gui.mm.controller.link.none"), VALUE_X, rowY(Row.LINK), valueRight - VALUE_X, LABEL);
             }
+        }
+        if (wide) {
+            drawProgressText(gfx);
         }
     }
 
@@ -602,6 +669,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             return;
         }
         List<Component> tooltip = onPortsPage() ? portList.tooltip(this.font, be.getLevel(), mouseX, mouseY) : rowTooltip(mouseX, mouseY);
+        if (tooltip == null && wide) {
+            tooltip = portList.tooltip(this.font, be.getLevel(), mouseX, mouseY);
+            if (tooltip == null) tooltip = outputList.tooltip(this.font, be.getLevel(), mouseX, mouseY);
+        }
         if (tooltip != null) {
             gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
         }
@@ -690,7 +761,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         double mx = mouseX - this.leftPos;
         double my = mouseY - this.topPos;
         int y = rowY(row) - 2;
-        return mx >= LEFT && mx < right && my >= y && my < y + ROW_STEP;
+        return mx >= LEFT && mx < infoRight && my >= y && my < y + ROW_STEP;
     }
 
     @Override
@@ -779,7 +850,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (onPortsPage() && portList.mouseScrolled(mouseX, mouseY, delta, be.getLevel())) {
+        if ((onPortsPage() || wide) && portList.mouseScrolled(mouseX, mouseY, delta, be.getLevel())) {
+            return true;
+        }
+        if (wide && outputList.mouseScrolled(mouseX, mouseY, delta, be.getLevel())) {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);
