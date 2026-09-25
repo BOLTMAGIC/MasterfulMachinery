@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -45,7 +46,14 @@ public final class AssemblyJob {
                 missing.merge(wanted, 1, Integer::sum);
                 continue;
             }
-            level.setBlock(next.pos(), next.state(), Block.UPDATE_ALL);
+            if (!level.setBlock(next.pos(), next.state(), Block.UPDATE_ALL)) {
+                if (!player.getAbilities().instabuild) {
+                    player.getInventory().placeItemBackInInventory(new ItemStack(wanted.asItem()));
+                }
+                blocked++;
+                budget--;
+                continue;
+            }
             var sound = next.state().getSoundType();
             level.playSound(null, next.pos(), sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1f) / 2f, sound.getPitch() * 0.8f);
             placed++;
