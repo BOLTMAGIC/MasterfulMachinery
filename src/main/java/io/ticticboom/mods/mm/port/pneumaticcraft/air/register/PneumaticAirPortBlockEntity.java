@@ -87,7 +87,7 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
 
     @Override
     public Component getDisplayName() {
-        return Component.literal("Pncr Air Port");
+        return Component.translatable("container.mm.port.pneumatic_air");
     }
 
     @Nullable
