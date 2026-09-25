@@ -34,6 +34,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
+import io.ticticboom.mods.mm.structure.StructureDiagnosis;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
@@ -1120,6 +1121,21 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return null;
         }
         return MachineRecipeManager.RECIPES.get(lastStartedRecipeId);
+    }
+
+    /**
+     * What keeps the multiblock from forming, for the controller screen; empty when it is formed.
+     */
+    public StructureDiagnosis diagnoseStructure() {
+        if (level == null || isFormed) {
+            return StructureDiagnosis.NONE;
+        }
+        try {
+            return StructureDiagnosis.diagnose(level, getBlockPos(), StructureManager.getStructuresForController(controllerId));
+        } catch (RuntimeException e) {
+            Ref.LOG.error("Failed to diagnose the structure of the controller at {}", getBlockPos(), e);
+            return StructureDiagnosis.NONE;
+        }
     }
 
     public void setNetworkLink(@Nullable LinkData link) {
