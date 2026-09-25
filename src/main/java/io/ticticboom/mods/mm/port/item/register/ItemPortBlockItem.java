@@ -27,6 +27,6 @@ public class ItemPortBlockItem extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Item").withStyle(ChatFormatting.BOLD, ChatFormatting.BLUE);
+        return Component.translatable("tooltip.mm.port_type.item").withStyle(ChatFormatting.BOLD, ChatFormatting.BLUE);
     }
 }

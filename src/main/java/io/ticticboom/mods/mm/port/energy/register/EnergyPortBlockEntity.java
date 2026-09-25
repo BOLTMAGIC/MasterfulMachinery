@@ -66,7 +66,7 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
 
     @Override
     public @NotNull Component getDisplayName() {
-        return Component.literal("Energy Port");
+        return Component.translatable("container.mm.port.energy");
     }
 
     @Nullable

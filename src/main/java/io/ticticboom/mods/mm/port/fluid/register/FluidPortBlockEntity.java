@@ -72,7 +72,7 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
 
     @Override
     public Component getDisplayName() {
-        return Component.literal("Fluid Port");
+        return Component.translatable("container.mm.port.fluid");
     }
 
     @Nullable

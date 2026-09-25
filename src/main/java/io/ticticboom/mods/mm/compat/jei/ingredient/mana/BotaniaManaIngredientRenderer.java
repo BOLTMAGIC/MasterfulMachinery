@@ -21,8 +21,8 @@ public class BotaniaManaIngredientRenderer implements IIngredientRenderer<Botani
     @Override
     public @NotNull List<Component> getTooltip(BotaniaManaStack stack, @NotNull TooltipFlag tooltipFlag) {
         return List.of(
-                Component.literal("Botania Mana:"),
-                Component.literal(stack.mana() + " Mana")
+                Component.translatable("jei.mm.ingredient.botania_mana"),
+                Component.translatable("jei.mm.ingredient.botania_mana.amount", stack.mana())
         );
     }
 }
