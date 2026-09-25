@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
+import io.ticticboom.mods.mm.compat.jei.StructureInfoWidget;
 import io.ticticboom.mods.mm.compat.jei.StructureLayerWidget;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
@@ -164,6 +165,8 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             builder.addWidget(widget);
             builder.addInputHandler(widget);
         }
+        // blue "i" in the bottom-right corner of the view explains the mouse controls
+        builder.addWidget(new StructureInfoWidget(RENDER_SIZE.x - StructureInfoWidget.SIZE - 1, LAYER_WIDGET_Y + 1));
         // mouse wheel over the view zooms
         builder.addInputHandler(new IJeiInputHandler() {
             private final ScreenRectangle area = new ScreenRectangle(1, 1, RENDER_SIZE.x, RENDER_SIZE.y);

@@ -69,7 +69,10 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
 
     @Override
     public void getTooltip(ITooltipBuilder tooltip, double mouseX, double mouseY) {
-        tooltip.add(Component.translatable("jei.mm.structure.layer.hint"));
+        // JEI asks every widget for a tooltip wherever the mouse is over the recipe, so check the bounds here
+        if (mouseX >= 0 && mouseX < area.width() && mouseY >= 0 && mouseY < HEIGHT) {
+            tooltip.add(Component.translatable("jei.mm.structure.layer.hint"));
+        }
     }
 
     // JEI passes mouse coordinates relative to getArea()'s top-left corner
