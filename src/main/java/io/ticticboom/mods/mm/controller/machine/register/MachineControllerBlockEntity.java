@@ -987,7 +987,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (currentRecipe != null) {
             return currentRecipe;
         }
-        if (level == null || lastStartedRecipeId == null || level.getGameTime() - lastRecipeStartTime > RECENT_RECIPE_TICKS) {
+        if (level == null || lastStartedRecipeId == null || lastRecipeStartTime == Long.MIN_VALUE || level.getGameTime() - lastRecipeStartTime > RECENT_RECIPE_TICKS) {
             return null;
         }
         return MachineRecipeManager.RECIPES.get(lastStartedRecipeId);
