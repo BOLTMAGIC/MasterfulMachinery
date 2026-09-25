@@ -29,6 +29,10 @@ public class TickCycling<T> {
         index = (int) ((elapsedTicks / Math.max(1, interval)) % part.size());
     }
 
+    public int getIndex() {
+        return index;
+    }
+
     public T next() {
         return part.get(index);
     }

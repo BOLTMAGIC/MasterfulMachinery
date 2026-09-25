@@ -28,6 +28,9 @@ public class GuiStructureRenderer {
     private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
     private final StructureRenderYSliceProcessor ySliceProcessor = new StructureRenderYSliceProcessor();
+    // the preview's blocks as a small world for connected-texture models; rebuilt when a cycling piece changes
+    private final GuiStructureLevel previewWorld = new GuiStructureLevel();
+    private int worldGeneration = 0;
 
     // radius of the structure's bounding sphere, in blocks
     private float boundingRadius = 1;
@@ -132,20 +135,42 @@ public class GuiStructureRenderer {
         }
 
         viewTransform.run(mouseX, mouseY, hovered);
+        updatePreviewWorld();
         renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), boundingRadius, viewTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             if (!canRenderPart(part)) {
                 continue;
             }
-            part.part.tick();
             GuiBlockRenderer next = part.part.next();
-            next.render(gfx, mouseX, mouseY, viewTransform);
+            next.render(gfx, mouseX, mouseY, viewTransform, previewWorld, worldGeneration);
         }
         // one flush for the whole structure instead of one draw call per block
         gfx.bufferSource().endBatch();
         renderSetup.postRender();
         RenderUtil.resetViewport();
     }
+    /**
+     * Advances the cycling pieces and, when any of them changed, rebuilds the preview world the block models look at.
+     * Every piece is ticked, shown or not, so a layer view sees the same neighbours as the full view.
+     */
+    private void updatePreviewWorld() {
+        boolean changed = worldGeneration == 0;
+        for (PositionedCyclingBlockRenderer part : parts) {
+            int before = part.part.getIndex();
+            part.part.tick();
+            changed |= part.part.getIndex() != before;
+        }
+        if (!changed) {
+            return;
+        }
+        previewWorld.clear();
+        for (PositionedCyclingBlockRenderer part : parts) {
+            GuiBlockRenderer block = part.part.next();
+            previewWorld.put(part.pos, block.getState(), block.getBlockEntity());
+        }
+        worldGeneration++;
+    }
+
     public void setupViewState(BlueprintStructureViewState state) {
         setYSlice(state.isShouldSlice(), state.getYSlice());
     }
