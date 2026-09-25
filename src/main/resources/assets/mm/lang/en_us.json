@@ -242,6 +242,8 @@
   "gui.mm.controller.sound.off": "Muted",
   "gui.mm.controller.sound.on.hint": "The machine plays its working sound",
   "gui.mm.controller.sound.off.hint": "The machine works silently, its particles still show",
+  "gui.mm.controller.sound.none": "No sound",
+  "gui.mm.controller.sound.none.hint": "This machine has no working sound, so there is nothing to mute",
   "gui.mm.controller.sound.hint": "Click to mute or unmute this machine",
   "gui.mm.controller.ports.inputs": "Inputs (%s)",
   "gui.mm.controller.ports.outputs": "Outputs (%s)",

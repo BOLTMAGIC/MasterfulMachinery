@@ -406,6 +406,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (hasWorkingSound()) {
             drawClipped(gfx, Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off" : "gui.mm.controller.sound.on"),
                     VALUE_X + 12, rowY(Row.SOUND), RIGHT - VALUE_X - 14, be.isSoundMuted() ? LABEL : TEXT);
+        } else {
+            // not a button: there is nothing to mute
+            drawClipped(gfx, Component.translatable("gui.mm.controller.sound.none"), VALUE_X, rowY(Row.SOUND), RIGHT - VALUE_X, LABEL);
         }
         if (NetworkLink.AVAILABLE) {
             LinkData link = be.getNetworkLink();
@@ -417,12 +420,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
     }
 
-    /** The rows shown; the sound row only for machines with a working sound, the network link row only with AE2. */
-    private List<Row> rows() {
-        var rows = new ArrayList<>(List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE));
-        if (hasWorkingSound()) rows.add(Row.SOUND);
-        if (NetworkLink.AVAILABLE) rows.add(Row.LINK);
-        return rows;
+    /** The rows shown; the network link row only exists with AE2. */
+    private static List<Row> rows() {
+        return NetworkLink.AVAILABLE ? List.of(Row.values()) : List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE, Row.SOUND);
     }
 
     private boolean hasWorkingSound() {
@@ -587,8 +587,12 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable("gui.mm.controller.mode.hint").withStyle(ChatFormatting.YELLOW));
                 }
                 case SOUND -> {
-                    lines.add(Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off.hint" : "gui.mm.controller.sound.on.hint").withStyle(ChatFormatting.GRAY));
-                    lines.add(Component.translatable("gui.mm.controller.sound.hint").withStyle(ChatFormatting.YELLOW));
+                    if (hasWorkingSound()) {
+                        lines.add(Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off.hint" : "gui.mm.controller.sound.on.hint").withStyle(ChatFormatting.GRAY));
+                        lines.add(Component.translatable("gui.mm.controller.sound.hint").withStyle(ChatFormatting.YELLOW));
+                    } else {
+                        lines.add(Component.translatable("gui.mm.controller.sound.none.hint").withStyle(ChatFormatting.GRAY));
+                    }
                 }
                 case LINK -> {
                     LinkData link = be.getNetworkLink();

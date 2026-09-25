@@ -242,6 +242,8 @@
   "gui.mm.controller.sound.off": "Kapalı",
   "gui.mm.controller.sound.on.hint": "Makine çalışırken sesini çalar",
   "gui.mm.controller.sound.off.hint": "Makine sessiz çalışır, dumanı görünmeye devam eder",
+  "gui.mm.controller.sound.none": "Ses yok",
+  "gui.mm.controller.sound.none.hint": "Bu makinenin çalışma sesi yok, kapatılacak bir şey yok",
   "gui.mm.controller.sound.hint": "Bu makinenin sesini açmak/kapatmak için tıkla",
   "gui.mm.controller.ports.inputs": "Girdiler (%s)",
   "gui.mm.controller.ports.outputs": "Çıktılar (%s)",
