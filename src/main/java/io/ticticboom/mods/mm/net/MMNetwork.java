@@ -29,5 +29,9 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::handle);
         INSTANCE.registerMessage(index++, PortConfigPkt.class, PortConfigPkt::encode, PortConfigPkt::decode, PortConfigPkt::handle);
         INSTANCE.registerMessage(index++, CycleLinkerModePkt.class, CycleLinkerModePkt::encode, CycleLinkerModePkt::decode, CycleLinkerModePkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt.class,
+                io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::encode,
+                io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::handle);
     }
 }

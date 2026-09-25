@@ -86,8 +86,12 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int LIST_Y = 24;
     private static final int LIST_BOTTOM = 123;
 
-    // remembered while the game runs, like the port settings panel
-    private static boolean portsPage = false;
+    // 0 status, 1 input ports, 2 output ports; remembered while the game runs, like the port settings panel
+    private static int page = 0;
+    private static final int PAGE_COUNT = 3;
+    // shown while the player renames the controller
+    @Nullable
+    private EditBox nameBox;
 
     private final MachineControllerMenu menu;
     private final MachineControllerBlockEntity be;
@@ -117,8 +121,17 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         int by = this.topPos + PAGE_BTN_Y;
         var texture = isOnPageButton(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         gfx.blitNineSlicedSized(texture, bx, by, PAGE_BTN, PAGE_BTN, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-        // the button shows the page it leads to: a chest for the port list, a comparator for the status
-        drawSmallItem(gfx, new ItemStack(portsPage ? Items.COMPARATOR : Items.CHEST), bx + 1, by + 1);
+        // the button shows the page it leads to: hopper = inputs, dropper = outputs, comparator = status
+        var next = switch (page) {
+            case 0 -> Items.HOPPER;
+            case 1 -> Items.DROPPER;
+            default -> Items.COMPARATOR;
+        };
+        drawSmallItem(gfx, new ItemStack(next), bx + 1, by + 1);
+    }
+
+    private boolean onPortsPage() {
+        return page != 0;
     }
 
     private static void drawSmallItem(GuiGraphics gfx, ItemStack stack, int x, int y) {
@@ -185,7 +198,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
         drawPageButton(gfx, mouseX, mouseY);
-        if (portsPage) {
+        if (onPortsPage()) {
+            portList.showInputs(page == 1);
             portList.render(gfx, this.font, be.getLevel());
             return;
         }
@@ -220,12 +234,18 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         var button = isOnRow(Row.REDSTONE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         gfx.blitNineSlicedSized(button, x + VALUE_X - 2, by, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         drawSmallItem(gfx, new ItemStack(Items.REDSTONE), x + VALUE_X, by + 1);
+
+        int my = y + rowY(Row.MODE) - 2;
+        var modeButton = isOnRow(Row.MODE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
+        gfx.blitNineSlicedSized(modeButton, x + VALUE_X - 2, my, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
     }
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        drawClipped(gfx, Component.literal(menu.getModel().name()), LEFT, NAME_Y, PAGE_BTN_X - LEFT - 4, 0xFFFFFF);
-        if (portsPage) {
+        if (nameBox == null) {
+            drawClipped(gfx, be.getName(), LEFT, NAME_Y, PAGE_BTN_X - LEFT - 4, 0xFFFFFF);
+        }
+        if (onPortsPage()) {
             return;
         }
 
@@ -303,7 +323,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         super.render(gfx, mouseX, mouseY, partial);
         renderTooltip(gfx, mouseX, mouseY);
 
-        for (Shown s : portsPage ? List.<Shown>of() : recipeSlots()) {
+        for (Shown s : onPortsPage() ? List.<Shown>of() : recipeSlots()) {
             if (!WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + s.x(), this.topPos + s.y(), 18, 18)) {
                 continue;
             }
@@ -315,11 +335,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             return;
         }
         if (isOnPageButton(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(portsPage
-                    ? "gui.mm.controller.page.status" : "gui.mm.controller.page.ports")), mouseX, mouseY);
+            String next = switch (page) {
+                case 0 -> "gui.mm.controller.page.inputs";
+                case 1 -> "gui.mm.controller.page.outputs";
+                default -> "gui.mm.controller.page.status";
+            };
+            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(next)), mouseX, mouseY);
             return;
         }
-        List<Component> tooltip = portsPage ? portList.tooltip(this.font, be.getLevel(), mouseX, mouseY) : rowTooltip(mouseX, mouseY);
+        List<Component> tooltip = onPortsPage() ? portList.tooltip(this.font, be.getLevel(), mouseX, mouseY) : rowTooltip(mouseX, mouseY);
         if (tooltip != null) {
             gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
         }
@@ -328,9 +352,14 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     @Nullable
     private List<Component> rowTooltip(int mouseX, int mouseY) {
         // long machine names are cut short on screen; show them in full on hover
-        if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, PAGE_BTN_X - LEFT - 4, 10)
-                && this.font.width(menu.getModel().name()) > PAGE_BTN_X - LEFT - 4) {
-            return List.of(Component.literal(menu.getModel().name()));
+        if (nameBox == null && isOnName(mouseX, mouseY)) {
+            var lines = new ArrayList<Component>();
+            lines.add(be.getName());
+            if (be.getCustomName() != null) {
+                lines.add(Component.literal(menu.getModel().name()).withStyle(ChatFormatting.GRAY));
+            }
+            lines.add(Component.translatable("gui.mm.controller.rename.hint").withStyle(ChatFormatting.YELLOW));
+            return lines;
         }
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
             return List.of(Component.translatable(status().key() + ".hint").withStyle(ChatFormatting.GRAY));
@@ -381,12 +410,30 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (nameBox != null) {
+            if (nameBox.isMouseOver(mouseX, mouseY)) {
+                return nameBox.mouseClicked(mouseX, mouseY, button);
+            }
+            // clicking elsewhere keeps the typed name
+            finishRename(true);
+        }
+        if (!onPortsPage() && isOnName(mouseX, mouseY)) {
+            startRename();
+            return true;
+        }
         if (isOnPageButton(mouseX, mouseY)) {
-            portsPage = !portsPage;
+            page = (page + 1) % PAGE_COUNT;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
             return true;
         }
-        if (!portsPage && isOnRow(Row.REDSTONE, mouseX, mouseY)) {
+        if (!onPortsPage() && isOnRow(Row.MODE, mouseX, mouseY)) {
+            var modes = RecipeSelectionMode.values();
+            var next = modes[(be.getRecipeSelectionMode().ordinal() + 1) % modes.length];
+            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.RECIPE_ORDER, next.serializedName()));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+            return true;
+        }
+        if (!onPortsPage() && isOnRow(Row.REDSTONE, mouseX, mouseY)) {
             int next = (be.getRedstoneModeOrdinal() + 1) % 3;
             MMNetwork.INSTANCE.sendToServer(new ToggleRedstoneModePkt(be.getBlockPos(), next));
             return true;
@@ -394,9 +441,50 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return super.mouseClicked(mouseX, mouseY, button);
     }
 
+    private boolean isOnName(double mouseX, double mouseY) {
+        return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, PAGE_BTN_X - LEFT - 4, 10);
+    }
+
+    private void startRename() {
+        nameBox = new EditBox(this.font, this.leftPos + LEFT - 1, this.topPos + NAME_Y - 2, PAGE_BTN_X - LEFT - 2, 12, Component.empty());
+        nameBox.setMaxLength(MachineControllerBlockEntity.MAX_NAME_LENGTH);
+        nameBox.setValue(be.getName().getString());
+        addRenderableWidget(nameBox);
+        setFocused(nameBox);
+        nameBox.setFocused(true);
+    }
+
+    /** @param keep send the typed name (an empty or unchanged name goes back to the machine's own name) */
+    private void finishRename(boolean keep) {
+        if (nameBox == null) return;
+        if (keep) {
+            String typed = nameBox.getValue().strip();
+            String name = typed.equals(menu.getModel().name()) ? "" : typed;
+            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.NAME, name));
+        }
+        removeWidget(nameBox);
+        nameBox = null;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // while renaming, keys go to the name box (so E or Esc don't close the screen)
+        if (nameBox != null) {
+            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+                finishRename(true);
+            } else if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                finishRename(false);
+            } else {
+                nameBox.keyPressed(keyCode, scanCode, modifiers);
+            }
+            return true;
+        }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (portsPage && portList.mouseScrolled(mouseX, mouseY, delta, be.getLevel())) {
+        if (onPortsPage() && portList.mouseScrolled(mouseX, mouseY, delta, be.getLevel())) {
             return true;
         }
         return super.mouseScrolled(mouseX, mouseY, delta);
