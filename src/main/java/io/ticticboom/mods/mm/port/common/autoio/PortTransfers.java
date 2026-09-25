@@ -95,7 +95,8 @@ public final class PortTransfers {
         for (int tank = 0; tank < from.getTanks(); tank++) {
             FluidStack fluid = from.getFluidInTank(tank);
             if (!fluid.isEmpty()) {
-                FluidUtil.tryFluidTransfer(from, to, fluid.copy(), false);
+                // tryFluidTransfer(destination, source, resource, doTransfer): "to" comes first, and true actually moves it
+                FluidUtil.tryFluidTransfer(to, from, fluid.copy(), true);
             }
         }
     }
