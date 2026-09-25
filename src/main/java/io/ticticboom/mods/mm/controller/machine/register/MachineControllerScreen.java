@@ -14,7 +14,6 @@ import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
-import io.ticticboom.mods.mm.setup.loader.ControllerLoader;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -259,7 +258,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             } else {
                 gfx.drawString(this.font, "-", VALUE_X, rowY(Row.TIER), LABEL, false);
             }
-            drawClipped(gfx, Component.translatable("gui.mm.controller.parallel.value", be.getActiveRecipeCount(), maxParallel()),
+            drawClipped(gfx, Component.translatable("gui.mm.controller.parallel.value", be.getActiveRecipeCount(), be.getDisplayedParallelLimit()),
                     VALUE_X, rowY(Row.PARALLEL), RIGHT - VALUE_X, TEXT);
         } else {
             drawClipped(gfx, Component.translatable("gui.mm.controller.not_formed"), VALUE_X, rowY(Row.STRUCTURE), RIGHT - VALUE_X, Status.NOT_FORMED.color);
@@ -296,18 +295,6 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     private String recipeMode() {
         return be.getRecipeSelectionMode().serializedName();
-    }
-
-    private int maxParallel() {
-        var structure = be.getStructure();
-        if (structure != null && structure.maxParallelRecipes() > 0) {
-            return structure.maxParallelRecipes();
-        }
-        var controllerModel = ControllerLoader.CONTROLLER_MODELS.get(menu.getModel().id());
-        if (controllerModel != null && controllerModel.maxParallelRecipes() > 0) {
-            return controllerModel.maxParallelRecipes();
-        }
-        return 1;
     }
 
     @Override
