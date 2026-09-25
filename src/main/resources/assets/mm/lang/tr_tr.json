@@ -169,6 +169,8 @@
   "gui.mm.controller.status.idle.hint": "Hiçbir tarif başlayamıyor: girdileri input port'lara koy, output port'larında yer olduğundan emin ol.",
   "gui.mm.controller.recipe.chance": "%%%s şans",
   "gui.mm.controller.recipe.jei": "Tıkla: nasıl yapılır · Sağ tık: kullanımları",
+  "gui.mm.controller.size.big": "Büyük ekrana geç",
+  "gui.mm.controller.size.small": "Küçük ekrana geç",
   "gui.mm.controller.progress": "İlerleme",
   "gui.mm.controller.progress.time": "%s / %s sn",
   "gui.mm.controller.recipe.none": "Çalışan tarif yok",

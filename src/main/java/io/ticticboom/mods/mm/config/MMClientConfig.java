@@ -8,6 +8,7 @@ public class MMClientConfig {
     public final ForgeConfigSpec.ConfigValue<String> controllerIdleColor;
     public final ForgeConfigSpec.ConfigValue<String> controllerWorkingColor;
     public final ForgeConfigSpec.BooleanValue workingEffects;
+    public final ForgeConfigSpec.BooleanValue bigControllerScreen;
     public final ForgeConfigSpec.BooleanValue portStatusLight;
 
     public MMClientConfig(ForgeConfigSpec.Builder builder) {
@@ -24,6 +25,9 @@ public class MMClientConfig {
         workingEffects = builder.comment("Play the sound and show the particles a controller sets with workingSound / workingParticle (KubeJS or JSON)",
                         "while its machine is working. Controllers that set neither stay silent either way.")
                 .define("workingEffects", true);
+        bigControllerScreen = builder.comment("Open the controller screen large (sized to the window, everything on one page) instead of small.",
+                        "The button in the screen's top-right corner switches it too.")
+                .define("bigScreen", true);
         builder.pop();
 
         builder.push("ports");

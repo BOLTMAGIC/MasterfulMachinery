@@ -12,6 +12,7 @@ import org.lwjgl.glfw.GLFW;
 import io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
@@ -145,6 +146,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private int right;
     private int valueRight;
     private int pageBtnX;
+    // big / small screen toggle, left of the page toggle (alone when big)
+    private int sizeBtnX;
     private int panelBottom;
     private int inventoryX;
     private int inventoryY;
@@ -167,14 +170,20 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Override
     protected void init() {
-        this.imageWidth = Mth.clamp(this.width - 2 * WINDOW_MARGIN, MIN_WIDTH, MAX_WIDTH);
-        this.imageHeight = Mth.clamp(this.height - 2 * WINDOW_MARGIN, MIN_HEIGHT, MAX_HEIGHT);
+        if (bigScreen()) {
+            this.imageWidth = Mth.clamp(this.width - 2 * WINDOW_MARGIN, MIN_WIDTH, MAX_WIDTH);
+            this.imageHeight = Mth.clamp(this.height - 2 * WINDOW_MARGIN, MIN_HEIGHT, MAX_HEIGHT);
+        } else {
+            this.imageWidth = MIN_WIDTH;
+            this.imageHeight = MIN_HEIGHT;
+        }
         right = imageWidth - 11;
         wide = imageWidth >= WIDE_WIDTH;
         infoRight = wide ? LEFT + INFO_WIDTH : right;
         valueRight = Math.min(infoRight, VALUE_X + VALUE_WIDTH);
         // no page toggle when wide; the name may then use the whole line
-        pageBtnX = wide ? right + 4 : right - 12;
+        pageBtnX = right - 12;
+        sizeBtnX = wide ? pageBtnX : pageBtnX - PAGE_BTN - 2;
         inventoryX = (imageWidth - INVENTORY_WIDTH) / 2;
         inventoryY = imageHeight - FRAME_BOTTOM - INVENTORY_HEIGHT;
         panelBottom = inventoryY - PANEL_GAP;
@@ -225,6 +234,39 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(x + FRAME + 2, y + FRAME + 2, x + imageWidth - FRAME - 2, y + panelBottom - 1, PANEL);
         // the player inventory, as drawn in the texture
         gfx.blit(texture, x + inventoryX, y + inventoryY, 6, 139, INVENTORY_WIDTH, INVENTORY_HEIGHT);
+    }
+
+    private static boolean bigScreen() {
+        return MMConfigSetup.CLIENT.bigControllerScreen.get();
+    }
+
+    private boolean isOnSizeButton(double mouseX, double mouseY) {
+        return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + sizeBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
+    }
+
+    /** Big screen: a small filled square (shrink); small screen: a large hollow one (grow), like AE2's terminal size button. */
+    private void drawSizeButton(GuiGraphics gfx, int mouseX, int mouseY) {
+        int bx = this.leftPos + sizeBtnX;
+        int by = this.topPos + PAGE_BTN_Y;
+        var texture = isOnSizeButton(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
+        gfx.blitNineSlicedSized(texture, bx, by, PAGE_BTN, PAGE_BTN, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        int ink = 0xFF3A3A3A;
+        if (bigScreen()) {
+            gfx.fill(bx + 4, by + 4, bx + 8, by + 8, ink);
+        } else {
+            gfx.fill(bx + 2, by + 2, bx + 10, by + 3, ink);
+            gfx.fill(bx + 2, by + 9, bx + 10, by + 10, ink);
+            gfx.fill(bx + 2, by + 3, bx + 3, by + 9, ink);
+            gfx.fill(bx + 9, by + 3, bx + 10, by + 9, ink);
+        }
+    }
+
+    private void toggleSize() {
+        MMConfigSetup.CLIENT.bigControllerScreen.set(!bigScreen());
+        MMConfigSetup.CLIENT.bigControllerScreen.save();
+        if (nameBox != null) finishRename(true);
+        // lay the screen out again at its new size
+        init(this.minecraft, this.width, this.height);
     }
 
     private boolean isOnPageButton(double mouseX, double mouseY) {
@@ -371,6 +413,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         drawBackground(gfx);
         drawPageButton(gfx, mouseX, mouseY);
+        drawSizeButton(gfx, mouseX, mouseY);
         if (onPortsPage()) {
             portList.showInputs(page == 1);
             portList.render(gfx, this.font, be.getLevel());
@@ -473,7 +516,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
         if (nameBox == null) {
-            drawClipped(gfx, be.getName(), LEFT, NAME_Y, pageBtnX - LEFT - 4, 0xFFFFFF);
+            drawClipped(gfx, be.getName(), LEFT, NAME_Y, sizeBtnX - LEFT - 4, 0xFFFFFF);
         }
         if (onPortsPage()) {
             return;
@@ -659,6 +702,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             }
             return;
         }
+        if (isOnSizeButton(mouseX, mouseY)) {
+            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(bigScreen() ? "gui.mm.controller.size.small" : "gui.mm.controller.size.big")),
+                    mouseX, mouseY);
+            return;
+        }
         if (isOnPageButton(mouseX, mouseY)) {
             String next = switch (page) {
                 case 0 -> "gui.mm.controller.page.inputs";
@@ -782,6 +830,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             // left: how it's made, right: what uses it (JEI's R / U)
             return JeiRecipeLookup.show(clicked.content(), button == 1);
         }
+        if (isOnSizeButton(mouseX, mouseY)) {
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+            toggleSize();
+            return true;
+        }
         if (isOnPageButton(mouseX, mouseY)) {
             page = (page + 1) % PAGE_COUNT;
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
@@ -808,11 +861,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private boolean isOnName(double mouseX, double mouseY) {
-        return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, pageBtnX - LEFT - 4, 10);
+        return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + LEFT, this.topPos + NAME_Y - 1, sizeBtnX - LEFT - 4, 10);
     }
 
     private void startRename() {
-        nameBox = new EditBox(this.font, this.leftPos + LEFT - 1, this.topPos + NAME_Y - 2, pageBtnX - LEFT - 2, 12, Component.empty());
+        nameBox = new EditBox(this.font, this.leftPos + LEFT - 1, this.topPos + NAME_Y - 2, sizeBtnX - LEFT - 2, 12, Component.empty());
         nameBox.setMaxLength(MachineControllerBlockEntity.MAX_NAME_LENGTH);
         nameBox.setValue(be.getName().getString());
         addRenderableWidget(nameBox);
