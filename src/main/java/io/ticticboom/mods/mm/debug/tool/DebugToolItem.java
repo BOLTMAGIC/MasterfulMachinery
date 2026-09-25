@@ -34,11 +34,11 @@ public class DebugToolItem extends Item {
 
         CollectedDebugData collect = DebugOutputManager.collect(ctx.getLevel(), ctx.getClickedPos());
         var path = DebugOutputManager.output(collect);
-        var msg = Component.literal("Saved To: ")
+        var msg = Component.translatable("message.mm.debug_tool.saved_to")
                 .withStyle(Style.EMPTY.withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, path)))
-                .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal("(Click to copy path)"))))
+                .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("message.mm.debug_tool.copy_path"))))
                 .append(Component.literal(path).withStyle(ChatFormatting.DARK_AQUA));
-        ctx.getPlayer().sendSystemMessage(Component.literal("Debug Dump Saved Successfully").withStyle(ChatFormatting.GREEN));
+        ctx.getPlayer().sendSystemMessage(Component.translatable("message.mm.debug_tool.saved").withStyle(ChatFormatting.GREEN));
         ctx.getPlayer().sendSystemMessage(msg);
 
         return InteractionResult.SUCCESS;

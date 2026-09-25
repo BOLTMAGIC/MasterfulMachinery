@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.gui.widgets.ArrowOptionSelectWidget;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import net.minecraft.network.chat.Component;
 import org.joml.Vector3i;
 
 import java.util.ArrayList;
@@ -15,7 +16,6 @@ import java.util.stream.IntStream;
 
 public class BlueprintViewYSliceWidget extends ArrowOptionSelectWidget {
 
-    public static final String offStateOption = "Y Slice: All";
     private static final int offStateIndex = 0;
     public final GuiEventHandler<YSliceChangeEvent> changeEmitter = new GuiEventHandler<>();
     private final StructureModel model;
@@ -44,10 +44,10 @@ public class BlueprintViewYSliceWidget extends ArrowOptionSelectWidget {
         int sliceCountMax = structureSize.y;
         var result = new ArrayList<String>();
         if (sliceCountMax > 0) {
-            var layers = IntStream.rangeClosed(0, sliceCountMax).boxed().map(x -> "Y Slice: " + x).toList();
+            var layers = IntStream.rangeClosed(0, sliceCountMax).boxed().map(x -> Component.translatable("gui.mm.blueprint.y_slice", x).getString()).toList();
             result.addAll(layers);
         }
-        result.add(offStateIndex, offStateOption);
+        result.add(offStateIndex, Component.translatable("gui.mm.blueprint.y_slice.all").getString());
         return result;
     }
 }

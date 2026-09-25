@@ -13,6 +13,6 @@ public class MekanismSlurryPortBlockItem extends MekanismChemicalPortBlockItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Mekanism Slurry").withStyle(ChatFormatting.BOLD, ChatFormatting.GREEN);
+        return Component.translatable("tooltip.mm.port_type.mekanism_slurry").withStyle(ChatFormatting.BOLD, ChatFormatting.GREEN);
     }
 }

@@ -221,7 +221,7 @@ public class StructureModel {
             assert controllerBlock != null;
             controllerList.add(controllerBlock.asItem().getDefaultInstance());
         }
-        countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.literal("Controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
+        countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.translatable("mm.structure.piece.controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
         return countedPartItems;
     }
 

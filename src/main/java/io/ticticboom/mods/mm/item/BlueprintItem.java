@@ -45,8 +45,8 @@ public class BlueprintItem extends Item {
             return;
         }
 
-        texts.add(Component.literal("Structure: " + structure.name()));
-        texts.add(Component.literal("Creative: Sneak to preview, Sneak-Right-Click to paste"));
+        texts.add(Component.translatable("tooltip.mm.blueprint.structure", structure.name()));
+        texts.add(Component.translatable("tooltip.mm.blueprint.creative"));
     }
 
     @Override
@@ -64,7 +64,7 @@ public class BlueprintItem extends Item {
         StructureModel structure = getStructure(context.getItemInHand());
         if (structure == null) {
             if (!level.isClientSide) {
-                player.displayClientMessage(Component.literal("Blueprint has no valid structure id."), true);
+                player.displayClientMessage(Component.translatable("message.mm.blueprint.no_structure"), true);
             }
             return InteractionResult.sidedSuccess(level.isClientSide);
         }

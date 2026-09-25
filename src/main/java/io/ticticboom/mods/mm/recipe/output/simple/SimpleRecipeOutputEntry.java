@@ -89,7 +89,7 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
                 list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
             }
             if (perTick) {
-                list.add(Component.literal("Output Per Tick").withStyle(ChatFormatting.DARK_AQUA));
+                list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
             }
         });
     }

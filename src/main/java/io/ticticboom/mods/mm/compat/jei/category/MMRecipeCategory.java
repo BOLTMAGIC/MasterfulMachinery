@@ -63,9 +63,9 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     @Override
     public @NotNull Component getTitle() {
         if (structureModel != null) {
-            return Component.literal(this.structureModel.name()).append(Component.literal(" (Recipes)"));
+            return Component.translatable("jei.mm.recipes.title_for", this.structureModel.name());
         } else {
-            return Component.literal("MM Recipes");
+            return Component.translatable("jei.mm.recipes.title");
         }
     }
 
@@ -111,7 +111,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         if (structureModel == null) {
             gfx.blit(Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9);
             if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 75, 28, 7, 9)) {
-                gfx.renderTooltip(Minecraft.getInstance().font, Component.literal("Structure: " + recipe.structureId().toString()), (int) mouseX, (int) mouseY);
+                gfx.renderTooltip(Minecraft.getInstance().font, Component.translatable("jei.mm.recipes.structure", recipe.structureId().toString()), (int) mouseX, (int) mouseY);
             }
         }
 
