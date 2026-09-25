@@ -27,7 +27,11 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraftforge.client.model.generators.ConfiguredModel;
+import net.minecraftforge.client.model.generators.ModelFile;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.EnumMap;
 
 public class MachineControllerBlock extends HorizontalDirectionalBlock implements IControllerPart, IControllerBlock {
     private final ControllerModel model;
@@ -38,7 +42,8 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
         this.model = model;
         this.groupHolder = groupHolder;
         registerDefaultState(this.getStateDefinition().any()
-                .setValue(FACING, Direction.NORTH));
+                .setValue(FACING, Direction.NORTH)
+                .setValue(ControllerState.PROPERTY, ControllerState.UNFORMED));
     }
 
     @Override
@@ -48,13 +53,24 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
 
     @Override
     public void generateModel(MMBlockstateProvider provider) {
-        var mdl = provider.dynamicBlockNorthOverlay(groupHolder.getBlock().getId(), Ref.Textures.BASE_BLOCK, Ref.Textures.CONTROLLER_OVERLAY);
-        provider.directionalState(groupHolder.getBlock().get(), mdl);
+        // one model per state (<id>, <id>_idle, <id>_working) so resource packs can give each state its own look
+        var id = groupHolder.getBlock().getId();
+        var models = new EnumMap<ControllerState, ModelFile>(ControllerState.class);
+        for (ControllerState state : ControllerState.values()) {
+            var loc = state == ControllerState.UNFORMED ? id : id.withSuffix("_" + state.getSerializedName());
+            models.put(state, provider.controllerModel(loc, Ref.Textures.BASE_BLOCK, Ref.Textures.CONTROLLER_FRAME,
+                    Ref.Textures.controllerScreen(state.getSerializedName())));
+        }
+        provider.getVariantBuilder(groupHolder.getBlock().get())
+                .forAllStates(state -> ConfiguredModel.builder()
+                        .modelFile(models.get(state.getValue(ControllerState.PROPERTY)))
+                        .rotationY((int) state.getValue(FACING).toYRot())
+                        .build());
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING);
+        builder.add(FACING, ControllerState.PROPERTY);
     }
 
 

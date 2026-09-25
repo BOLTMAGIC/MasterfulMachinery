@@ -125,6 +125,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         runMachineTick();
         NetworkLink.tickController(level, this);
+        updateControllerState();
 
         setChanged();
         level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
@@ -143,6 +144,28 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         lastTick = gameTime;
         if (isFormed) {
             runRecipe();
+        }
+    }
+
+    /**
+     * Mirrors the machine's state into the block state, which picks the controller's model and screen color.
+     * Only clients are notified (no neighbour updates), and only when the state actually changes.
+     */
+    private void updateControllerState() {
+        if (level == null) return;
+        BlockState blockState = getBlockState();
+        if (!blockState.hasProperty(ControllerState.PROPERTY)) return;
+        ControllerState next;
+        if (!isFormed || structure == null) {
+            next = ControllerState.UNFORMED;
+        } else if (isAllowedByRedstone() && getDisplayedRecipe() != null) {
+            // getDisplayedRecipe() also covers recipes that finish within a tick, so a busy machine doesn't flicker
+            next = ControllerState.WORKING;
+        } else {
+            next = ControllerState.IDLE;
+        }
+        if (blockState.getValue(ControllerState.PROPERTY) != next) {
+            level.setBlock(getBlockPos(), blockState.setValue(ControllerState.PROPERTY, next), Block.UPDATE_CLIENTS);
         }
     }
 

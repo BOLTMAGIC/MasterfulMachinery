@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import dev.latvian.mods.rhino.util.HideFromJS;
+import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import lombok.Getter;
@@ -14,6 +15,9 @@ public class ControllerBuilderJS {
     private boolean parallelProcessingDefault = false;
     private int maxParallelRecipes = -1;
     private RecipeSelectionMode recipeSelectionMode = RecipeSelectionMode.DEFAULT;
+    private String unformedColor;
+    private String idleColor;
+    private String workingColor;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -52,8 +56,38 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    /** Screen color while the multiblock is not built, as "#RRGGBB"; overrides the client config. */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS unformedColor(String color) {
+        this.unformedColor = checkColor(color);
+        return this;
+    }
+
+    /** Screen color while the multiblock is built but idle, as "#RRGGBB"; overrides the client config. */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS idleColor(String color) {
+        this.idleColor = checkColor(color);
+        return this;
+    }
+
+    /** Screen color while a recipe is running, as "#RRGGBB"; overrides the client config. */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS workingColor(String color) {
+        this.workingColor = checkColor(color);
+        return this;
+    }
+
+    private static String checkColor(String color) {
+        if (MMClientConfig.parseColor(color) == null) throw new IllegalArgumentException("Invalid color, expected #RRGGBB: " + color);
+        return color;
+    }
+
     @HideFromJS
     public ControllerModel build() {
-        return ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        var model = ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        if (unformedColor != null) model.config().addProperty("unformedColor", unformedColor);
+        if (idleColor != null) model.config().addProperty("idleColor", idleColor);
+        if (workingColor != null) model.config().addProperty("workingColor", workingColor);
+        return model;
     }
 }

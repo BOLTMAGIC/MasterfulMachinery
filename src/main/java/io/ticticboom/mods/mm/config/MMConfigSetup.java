@@ -13,17 +13,23 @@ import org.apache.commons.lang3.tuple.Pair;
 public class MMConfigSetup {
     public static final MMCommonConfig COMMON;
     private static final ForgeConfigSpec commonSpec;
+    public static final MMClientConfig CLIENT;
+    private static final ForgeConfigSpec clientSpec;
 
     static {
         final Pair<MMCommonConfig, ForgeConfigSpec> specPair = new ForgeConfigSpec.Builder().configure(MMCommonConfig::new);
         COMMON = specPair.getKey();
         commonSpec = specPair.getRight();
+        final Pair<MMClientConfig, ForgeConfigSpec> clientPair = new ForgeConfigSpec.Builder().configure(MMClientConfig::new);
+        CLIENT = clientPair.getKey();
+        clientSpec = clientPair.getRight();
     }
 
     public static void setup() {
         @SuppressWarnings("removal")
         var ctx = ModLoadingContext.get();
         ctx.registerConfig(ModConfig.Type.COMMON, commonSpec);
+        ctx.registerConfig(ModConfig.Type.CLIENT, clientSpec);
     }
 
     @SubscribeEvent

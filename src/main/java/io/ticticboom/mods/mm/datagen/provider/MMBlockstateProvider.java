@@ -77,6 +77,58 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
+    /**
+     * Controller model: base block, the overlay frame on the north face, and the screen on top of it
+     * with tintindex 0 so its color can follow the controller's state.
+     */
+    public BlockModelBuilder controllerModel(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation frameTexture, ResourceLocation screenTexture) {
+        return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
+                .texture("particle", frameTexture)
+                .transforms()
+                .transform(ItemDisplayContext.THIRD_PERSON_LEFT_HAND)
+                .rotation(75F, 45F, 0F)
+                .translation(0F, 2.5F, 0)
+                .scale(0.375F, 0.375F, 0.375F)
+                .end()
+                .transform(ItemDisplayContext.THIRD_PERSON_RIGHT_HAND)
+                .rotation(75F, 45F, 0F)
+                .translation(0F, 2.5F, 0)
+                .scale(0.375F, 0.375F, 0.375F)
+                .end()
+                .end()
+                .customLoader(CompositeModelBuilder::begin)
+                .child("base", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/cube_all")))
+                        .texture("all", baseTexture)
+                        .renderType("solid")
+                )
+                .child("overlay", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
+                        .texture("overlay", frameTexture)
+                        .element()
+                        .from(0, 0, 0)
+                        .to(16, 16, 16)
+                        .face(Direction.NORTH)
+                        .uvs(0, 0, 16, 16)
+                        .texture("#overlay")
+                        .end()
+                        .end()
+                        .renderType("translucent")
+                )
+                .child("screen", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
+                        .texture("screen", screenTexture)
+                        .element()
+                        .from(0, 0, 0)
+                        .to(16, 16, 16)
+                        .face(Direction.NORTH)
+                        .uvs(0, 0, 16, 16)
+                        .texture("#screen")
+                        .tintindex(0)
+                        .end()
+                        .end()
+                        .renderType("translucent")
+                )
+                .end();
+    }
+
     public BlockModelBuilder dynamicBlock(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation overlayTexture) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                 .texture("particle", overlayTexture)

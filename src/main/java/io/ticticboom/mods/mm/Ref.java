@@ -67,6 +67,11 @@ public class Ref {
     public static class Textures {
         public static final ResourceLocation BASE_BLOCK = id("block/base_block");
         public static final ResourceLocation CONTROLLER_OVERLAY = id("block/controller_cutout");
+        // controller overlay split in two: the frame, and the screen that is tinted by machine state
+        public static final ResourceLocation CONTROLLER_FRAME = id("block/controller_frame");
+        public static ResourceLocation controllerScreen(String state) {
+            return id("block/controller_screen_" + state);
+        }
 
         public static final ResourceLocation INPUT_ITEM_PORT_OVERLAY = id("block/base_ports/item_input_cutout");
         public static final ResourceLocation OUTPUT_ITEM_PORT_OVERLAY = id("block/base_ports/item_output_cutout");
