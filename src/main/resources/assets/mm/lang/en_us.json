@@ -3,7 +3,7 @@
   "jei.mm.structure.max_parallel": "Max Parallel Processing: %s",
   "jei.mm.structure.layer.all": "All layers",
   "jei.mm.structure.layer": "Layer %s/%s",
-  "jei.mm.structure.layer.hint": "Click the arrows or scroll to view one layer at a time, from the bottom up.",
+  "jei.mm.structure.layer.hint": "Click the arrows or scroll here to view one layer at a time, from the bottom up. On the view: drag to rotate, scroll or right-drag to zoom, Shift + drag to move.",
   "config.jade.plugin_mm.controller_progress": "Progress",
   "item.mm.debug_tool": "Debug Tool",
   "tab.mm.main": "Masterful Machinery",

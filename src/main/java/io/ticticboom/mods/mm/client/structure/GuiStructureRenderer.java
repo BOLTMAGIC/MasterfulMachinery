@@ -121,12 +121,17 @@ public class GuiStructureRenderer {
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+        render(gfx, mouseX, mouseY, true);
+    }
+
+    /** @param hovered whether the pointer is over this view, where mouse drags may start */
+    public void render(GuiGraphics gfx, int mouseX, int mouseY, boolean hovered) {
         if (shouldEnsureValidated) {
             StructureManager.validateAllPieces();
             shouldEnsureValidated = false;
         }
 
-        viewTransform.run(mouseX, mouseY);
+        viewTransform.run(mouseX, mouseY, hovered);
         renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), boundingRadius, viewTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             if (!canRenderPart(part)) {
@@ -157,6 +162,10 @@ public class GuiStructureRenderer {
         return ySliceProcessor.canProcess(part);
     }
 
+
+    public void zoom(double scrollDelta) {
+        viewTransform.zoom(scrollDelta);
+    }
 
     public void resetTransforms() {
         viewTransform.reset();
