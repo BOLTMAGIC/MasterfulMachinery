@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.item.register;
 
+import net.minecraft.world.level.block.state.StateDefinition;
+import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
@@ -41,6 +43,12 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        // follows the state of the machine the port belongs to; shown as the port's status light
+        builder.add(ControllerState.PROPERTY);
+    }
+
+    @Override
     public @NotNull InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         return BlockUtils.commonUse(state, level, pos, player, hand, hitResult, ItemPortBlockEntity.class, null);
     }
@@ -63,10 +71,13 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
-        if (!state.is(newState.getBlock())) {
-            // a linked machine's port sends its contents to the network instead of dropping them
-            NetworkLink.beforePortRemoved(level, pos);
+        // also called when only the status light (block state) changes: the port is still here then
+        if (state.is(newState.getBlock())) {
+            super.onRemove(state, level, pos, newState, p_60519_);
+            return;
         }
+        // a linked machine's port sends its contents to the network instead of dropping them
+        NetworkLink.beforePortRemoved(level, pos);
         var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
         if (be instanceof ItemPortBlockEntity pbe) {
             var storage = (ItemPortStorage) pbe.getStorage();

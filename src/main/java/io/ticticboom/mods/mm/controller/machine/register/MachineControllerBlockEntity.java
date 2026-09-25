@@ -53,6 +53,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -112,6 +114,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private long lastRecipeStartTime = Long.MIN_VALUE;
     /** How long after its start a recipe still counts as running on the screen, in ticks. */
     private static final int RECENT_RECIPE_TICKS = 20;
+    private static final int PORT_STATE_REFRESH_TICKS = 20;
+    // ports whose status light this controller last set
+    private Set<BlockPos> litPorts = new HashSet<>();
     private ResourceLocation lastStartedInputItemId = null;
     private long recipeSelectionSequence = 0L;
     private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
@@ -149,7 +154,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     /**
      * Mirrors the machine's state into the block state, which picks the controller's model and screen color.
-     * Only clients are notified (no neighbour updates), and only when the state actually changes.
+     * Only clients are notified (no neighbour or shape updates), and only when the state actually changes.
      */
     private void updateControllerState() {
         if (level == null) return;
@@ -164,8 +169,49 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } else {
             next = ControllerState.IDLE;
         }
-        if (blockState.getValue(ControllerState.PROPERTY) != next) {
-            level.setBlock(getBlockPos(), blockState.setValue(ControllerState.PROPERTY, next), Block.UPDATE_CLIENTS);
+        boolean changed = blockState.getValue(ControllerState.PROPERTY) != next;
+        if (changed) {
+            level.setBlock(getBlockPos(), blockState.setValue(ControllerState.PROPERTY, next), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+        }
+        // re-check the ports now and then too, so a port swapped into a running machine picks up its state
+        if (changed || level.getGameTime() % PORT_STATE_REFRESH_TICKS == 0) {
+            updatePortStates(next);
+        }
+    }
+
+    /**
+     * Gives the machine's ports the controller's state (their status light). Ports that left the machine go back to unformed.
+     */
+    private void updatePortStates(ControllerState state) {
+        if (level == null) return;
+        Set<BlockPos> current = new HashSet<>();
+        if (state != ControllerState.UNFORMED && structure != null) {
+            try {
+                current.addAll(structure.getPortPositions(level, getBlockPos()));
+            } catch (Throwable ignored) {
+            }
+        }
+        for (BlockPos portPos : litPorts) {
+            if (!current.contains(portPos)) {
+                setPortState(portPos, ControllerState.UNFORMED);
+            }
+        }
+        for (BlockPos portPos : current) {
+            setPortState(portPos, state);
+        }
+        litPorts = current;
+    }
+
+    /** Turns the ports' status lights back to unformed, used when the controller is broken. */
+    public void resetPortStates() {
+        updatePortStates(ControllerState.UNFORMED);
+    }
+
+    private void setPortState(BlockPos portPos, ControllerState state) {
+        if (level == null || !level.isLoaded(portPos)) return;
+        BlockState portState = level.getBlockState(portPos);
+        if (portState.hasProperty(ControllerState.PROPERTY) && portState.getValue(ControllerState.PROPERTY) != state) {
+            level.setBlock(portPos, portState.setValue(ControllerState.PROPERTY, state), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         }
     }
 
@@ -909,6 +955,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         tag.put("activeRecipes", recipesTag);
         if (structure != null) tag.putString("structureId", structure.id().toString());
         tag.putBoolean("isFormed", isFormed);
+        tag.putLongArray("litPorts", litPorts.stream().mapToLong(BlockPos::asLong).toArray());
         if (lastStartedRecipeId != null) tag.putString("lastStartedRecipeId", lastStartedRecipeId.toString());
         tag.putLong("lastRecipeStartTime", lastRecipeStartTime);
         if (lastStartedInputItemId != null) tag.putString("lastStartedInputItemId", lastStartedInputItemId.toString());
@@ -951,6 +998,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             structure = StructureManager.STRUCTURES.get(structureId);
         } else {
             structure = null;
+        }
+        litPorts = new HashSet<>();
+        for (long packed : tag.getLongArray("litPorts")) {
+            litPorts.add(BlockPos.of(packed));
         }
         if (tag.contains("isFormed")) {
             isFormed = tag.getBoolean("isFormed");

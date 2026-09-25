@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
+import net.minecraft.world.level.block.state.StateDefinition;
+import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
@@ -43,6 +45,12 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        // follows the state of the machine the port belongs to; shown as the port's status light
+        builder.add(ControllerState.PROPERTY);
     }
 
     @Override
@@ -93,10 +101,13 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
-        if (!state.is(newState.getBlock())) {
-            // a linked machine's port sends its fluid to the network instead of losing it
-            NetworkLink.beforePortRemoved(level, pos);
+        // also called when only the status light (block state) changes: the port is still here then
+        if (state.is(newState.getBlock())) {
+            super.onRemove(state, level, pos, newState, p_60519_);
+            return;
         }
+        // a linked machine's port sends its fluid to the network instead of losing it
+        NetworkLink.beforePortRemoved(level, pos);
         // Notify nearby controllers that a part was removed
         if (!level.isClientSide() && level instanceof ServerLevel sl) {
             var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);

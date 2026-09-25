@@ -106,6 +106,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
                 var be = WorldUtil.getBlockEntity(pos, serverLevel);
                 if (be instanceof MachineControllerBlockEntity mbe) {
                     mbe.invalidateProgress();
+                    mbe.resetPortStates();
                 }
             }
 

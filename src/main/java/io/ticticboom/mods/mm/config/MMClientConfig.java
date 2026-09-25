@@ -7,6 +7,7 @@ public class MMClientConfig {
     public final ForgeConfigSpec.ConfigValue<String> controllerUnformedColor;
     public final ForgeConfigSpec.ConfigValue<String> controllerIdleColor;
     public final ForgeConfigSpec.ConfigValue<String> controllerWorkingColor;
+    public final ForgeConfigSpec.BooleanValue portStatusLight;
 
     public MMClientConfig(ForgeConfigSpec.Builder builder) {
         builder.push("controller");
@@ -19,6 +20,12 @@ public class MMClientConfig {
                 .define("idleColor", "#5CFF89", MMClientConfig::isColor);
         controllerWorkingColor = builder.comment("Screen color while a recipe is running, as #RRGGBB")
                 .define("workingColor", "#FFC94D", MMClientConfig::isColor);
+        builder.pop();
+
+        builder.push("ports");
+        portStatusLight = builder.comment("Show a status light on item, fluid, energy, chemical and mana ports in the machine's state color",
+                        "(the colors above). When false the light blends into the port.")
+                .define("statusLight", true);
         builder.pop();
     }
 

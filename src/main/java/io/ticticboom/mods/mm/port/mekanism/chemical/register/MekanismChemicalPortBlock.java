@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical.register;
 
+import net.minecraft.world.level.block.state.StateDefinition;
+import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
@@ -33,6 +35,12 @@ public abstract class MekanismChemicalPortBlock extends Block implements EntityB
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        // follows the state of the machine the port belongs to; shown as the port's status light
+        builder.add(ControllerState.PROPERTY);
     }
 
     @Override
