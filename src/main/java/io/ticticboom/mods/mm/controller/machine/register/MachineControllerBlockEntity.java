@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
@@ -328,6 +329,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
              if (recipe != null && state.isCanFinish() && recipe.outputs().canProcess(level, portStorages, state)) {
                  recipe.outputs().process(level, portStorages, state);
                  toRemove.add(recipeId);
+                 MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                  // outputs changed storages; mark cache invalid so we rebuild before next decisions
                  storageCache.isValid = false;
              }
@@ -595,8 +597,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     }
                     continue;
                 }
-                startRecipe(recipe, gameTime, primaryInputItemId);
-                startedRecipeThisPass = true;
+                if (startRecipe(recipe, gameTime, primaryInputItemId)) {
+                    startedRecipeThisPass = true;
+                }
             }
         }
         if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
@@ -604,8 +607,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
                 && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
                 && selectedRoundRobinRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
-            startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
-            startedRecipeThisPass = true;
+            startedRecipeThisPass = startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
         }
         if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                 && canStartRecipeGivenParallelRules(deferredRecipe)
@@ -658,7 +660,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return canStartBasedOnParallelFlag && canStartBasedOnLimit;
     }
 
-     private void startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+    /**
+     * @return false if a KubeJS script cancelled the start (MMEvents.recipeStarted)
+     */
+     private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+         if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
+             return false;
+         }
          RecipeStateModel newState = new RecipeStateModel();
          recipe.inputs().process(level, portStorages, newState);
          storageCache.isValid = false;
@@ -675,6 +683,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
         }
         setChanged();
+        return true;
     }
 
     private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @SuppressWarnings("unused") @Nullable ResourceLocation primaryInputItemId) {
