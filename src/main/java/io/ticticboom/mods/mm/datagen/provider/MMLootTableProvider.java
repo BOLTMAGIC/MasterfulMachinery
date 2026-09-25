@@ -15,6 +15,7 @@ import net.minecraft.data.loot.LootTableSubProvider;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.storage.loot.LootPool;
+import net.minecraft.world.level.storage.loot.functions.CopyNameFunction;
 import net.minecraft.world.level.storage.loot.LootTable;
 import net.minecraft.world.level.storage.loot.entries.LootItem;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
@@ -41,7 +42,11 @@ public class MMLootTableProvider extends LootTableProvider {
             for (var blockEntry : MMRegisters.BLOCKS.getEntries()) {
                 var block = blockEntry.get();
                 if (block instanceof IControllerPart controllerPart) {
-                    consumer.accept(Ref.id("blocks/" + controllerPart.getModel().id()), createBlockLootTable(block));
+                    // a named controller drops with its name
+                    LootPool.Builder pool = LootPool.lootPool()
+                            .setRolls(ConstantValue.exactly(1f))
+                            .add(LootItem.lootTableItem(block).apply(CopyNameFunction.copyName(CopyNameFunction.NameSource.BLOCK_ENTITY)));
+                    consumer.accept(Ref.id("blocks/" + controllerPart.getModel().id()), LootTable.lootTable().withPool(pool));
                 }
                 if (block instanceof IPortPart portPart) {
                     consumer.accept(Ref.id("blocks/" + portPart.getModel().id()), createBlockLootTable(block));

@@ -71,7 +71,7 @@ public class MMCommands {
         ConcurrentLinkedQueue<ChunkPos> queue = new ConcurrentLinkedQueue<>(chunksToProcess);
 
         // Send initial message
-        server.execute(() -> source.sendSuccess(() -> Component.literal("Started reform job for " + queue.size() + " chunks."), false));
+        server.execute(() -> source.sendSuccess(() -> Component.translatable("commands.mm.reform.started", queue.size()), false));
 
         bg.submit(() -> {
             AtomicInteger processedChunks = new AtomicInteger(0);
@@ -113,7 +113,7 @@ public class MMCommands {
                         // Periodically send progress update
                         if (processed % reportInterval == 0) {
                             int reformed = reformedCount.get();
-                            source.sendSuccess(() -> Component.literal("Reform progress: processed " + processed + " / " + total + " chunks, reformed " + reformed + " controllers."), false);
+                            source.sendSuccess(() -> Component.translatable("commands.mm.reform.progress", processed, total, reformed), false);
                         }
                         fut.complete(null);
                     }
@@ -129,7 +129,7 @@ public class MMCommands {
 
             // Final report
             server.execute(() -> {
-                source.sendSuccess(() -> Component.literal("Reform job finished. Reformed " + reformedCount.get() + " controllers."), true);
+                source.sendSuccess(() -> Component.translatable("commands.mm.reform.finished", reformedCount.get()), true);
             });
             bg.shutdown();
         });

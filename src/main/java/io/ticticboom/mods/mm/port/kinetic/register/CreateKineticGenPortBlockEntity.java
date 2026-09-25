@@ -58,7 +58,7 @@ public class CreateKineticGenPortBlockEntity extends GeneratingKineticBlockEntit
 
     @Override
     public Component getDisplayName() {
-        return Component.literal("Kinetic Port");
+        return Component.translatable("container.mm.port.create_rotation");
     }
 
     @Nullable

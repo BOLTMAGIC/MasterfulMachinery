@@ -14,6 +14,9 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.CommonColors;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.world.level.EmptyBlockGetter;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -57,7 +60,19 @@ public class GuiBlockRenderer {
 
     private static RandomSource randomSource = RandomSource.create();
 
+    // model data worked out against the preview's blocks, redone when they change (generation)
+    private ModelData cachedModelData = ModelData.EMPTY;
+    private int cachedGeneration = -1;
+
     public void render(GuiGraphics gfx, int mouseX, int mouseY, AutoTransform mouseTransform) {
+        render(gfx, mouseX, mouseY, mouseTransform, null, 0);
+    }
+
+    /**
+     * @param world      the preview's blocks, so connected-texture models can see their neighbours; null for none
+     * @param generation changes whenever the preview's blocks change
+     */
+    public void render(GuiGraphics gfx, int mouseX, int mouseY, AutoTransform mouseTransform, @Nullable BlockAndTintGetter world, int generation) {
         PoseStack pose = gfx.pose();
         pose.pushPose();
         pose.mulPoseMatrix(mouseTransform.getModelTransform());
@@ -66,6 +81,18 @@ public class GuiBlockRenderer {
         MultiBufferSource.BufferSource bufferSource = gfx.bufferSource();
         var model = brd.getBlockModel(state);
         var modeldata = be != null ? be.getModelData() : ModelData.EMPTY;
+        if (world != null) {
+            if (cachedGeneration != generation) {
+                try {
+                    cachedModelData = model.getModelData(world, pos, state, modeldata);
+                } catch (RuntimeException e) {
+                    // a model that can't handle the preview world keeps its plain look
+                    cachedModelData = modeldata;
+                }
+                cachedGeneration = generation;
+            }
+            modeldata = cachedModelData;
+        }
         var layers = model.getRenderTypes(state, randomSource, modeldata);
         for (RenderType layer : layers) {
             brd.renderSingleBlock(state, pose, bufferSource, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, modeldata, layer);
@@ -78,7 +105,24 @@ public class GuiBlockRenderer {
 
             }
         }
-        bufferSource.endBatch();
+        // no endBatch() here: the structure renderer flushes once per frame after all blocks
         pose.popPose();
+    }
+
+    /**
+     * True when this block is a full opaque cube with nothing drawn by a block entity renderer,
+     * so a neighbour fully surrounded by such blocks can never be seen.
+     */
+    public BlockState getState() {
+        return state;
+    }
+
+    @Nullable
+    public BlockEntity getBlockEntity() {
+        return be;
+    }
+
+    public boolean isOpaqueCube() {
+        return ber == null && state != null && state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 }

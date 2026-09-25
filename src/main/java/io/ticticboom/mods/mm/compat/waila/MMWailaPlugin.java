@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.port.energy.register.EnergyPortBlock;
 import io.ticticboom.mods.mm.port.kinetic.register.CreateKineticPortBlock;
 import io.ticticboom.mods.mm.port.pneumaticcraft.air.register.PneumaticAirPortBlock;
 import io.ticticboom.mods.mm.port.botania.mana.register.BotaniaManaPortBlock;
+import net.minecraft.world.level.block.Block;
 import snownee.jade.api.IWailaClientRegistration;
 import snownee.jade.api.IWailaCommonRegistration;
 import snownee.jade.api.IWailaPlugin;
@@ -22,6 +23,7 @@ public class MMWailaPlugin implements IWailaPlugin {
     public void register(IWailaCommonRegistration registration) {
         registration.registerBlockDataProvider(ControllerDataProvider.INSTANCE, MachineControllerBlockEntity.class);
         registration.registerBlockDataProvider(PortPriorityDataProvider.INSTANCE, AbstractPortBlockEntity.class);
+        registration.registerBlockDataProvider(PortMachineDataProvider.INSTANCE, AbstractPortBlockEntity.class);
     }
 
     @Override
@@ -35,5 +37,8 @@ public class MMWailaPlugin implements IWailaPlugin {
         registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, CreateKineticPortBlock.class);
         registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, PneumaticAirPortBlock.class);
         registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, BotaniaManaPortBlock.class);
+
+        // every block, so optional ports (Mekanism...) are covered without loading their classes; only MM ports get server data
+        registration.registerBlockComponent(PortMachineDataProvider.INSTANCE, Block.class);
     }
 }
