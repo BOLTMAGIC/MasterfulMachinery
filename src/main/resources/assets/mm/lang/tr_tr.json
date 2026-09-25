@@ -174,7 +174,5 @@
   "gui.mm.controller.row.tier": "Seviye",
   "gui.mm.controller.row.tier.hint": "Kurulu yapının seviyesi (yapının adından alınır)",
   "gui.mm.port.side.legend.pull": "Çeker",
-  "gui.mm.port.side.legend.push": "İter",
-  "block.mm.input_gateway": "Giriş Kapısı",
-  "block.mm.input_gateway.tooltip": "Makinede bir kasa ya da cam bloğunun yerine koy veya bir input port'unun yanına yerleştir: borudan gelen item ve sıvılar o makinenin input port'larına gider"
+  "gui.mm.port.side.legend.push": "İter"
 }

@@ -174,7 +174,5 @@
   "gui.mm.controller.row.tier": "Tier",
   "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name",
   "gui.mm.port.side.legend.pull": "Pulls",
-  "gui.mm.port.side.legend.push": "Pushes",
-  "block.mm.input_gateway": "Input Gateway",
-  "block.mm.input_gateway.tooltip": "Build it into a machine in place of a casing or glass block, or place it next to an input port: items and fluids piped in go to that machine's input ports"
+  "gui.mm.port.side.legend.push": "Pushes"
 }
