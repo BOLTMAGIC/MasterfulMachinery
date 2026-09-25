@@ -15,7 +15,7 @@ import java.util.function.Supplier;
 
 /**
  * Transfer strategies for {@link PortAutoIO}, all built on the standard Forge capabilities
- * so they work with any neighbour (chests, tanks, pipes, cables, other ports).
+ * so they work with any neighbor (chests, tanks, pipes, cables, other ports).
  */
 public final class PortTransfers {
 
@@ -95,7 +95,7 @@ public final class PortTransfers {
         for (int tank = 0; tank < from.getTanks(); tank++) {
             FluidStack fluid = from.getFluidInTank(tank);
             if (!fluid.isEmpty()) {
-                FluidUtil.tryFluidTransfer(to, from, fluid.copy(), true);
+                FluidUtil.tryFluidTransfer(from, to, fluid.copy(), false);
             }
         }
     }
@@ -120,6 +120,4 @@ public final class PortTransfers {
         from.extractEnergy(inserted, false);
         return true;
     }
-    from.extractEnergy(inserted, false);
-    return true;
 }

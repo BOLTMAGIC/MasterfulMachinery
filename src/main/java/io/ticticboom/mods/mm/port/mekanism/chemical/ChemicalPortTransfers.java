@@ -42,7 +42,15 @@ public final class ChemicalPortTransfers {
             if (amount <= 0) {
                 continue;
             }
-            to.insertChemical(from.extractChemical(tank, amount, Action.EXECUTE), Action.EXECUTE);
+            S extracted = from.extractChemical(tank, amount, Action.EXECUTE);
+            if (extracted.isEmpty()) {
+                continue;
+            }
+            S leftover = to.insertChemical(extracted, Action.EXECUTE);
+            if (!leftover.isEmpty()) {
+                // best-effort: avoid voiding if the target changed between simulate/execute
+                from.insertChemical(leftover, Action.EXECUTE);
+            }
         }
     }
 }

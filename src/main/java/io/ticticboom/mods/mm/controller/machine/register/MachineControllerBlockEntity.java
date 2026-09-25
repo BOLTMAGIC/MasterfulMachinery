@@ -86,6 +86,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
     // owner + AE2 network this machine is linked to (network linker), null when not linked
+    @Getter
     @Nullable
     private LinkData networkLink = null;
     private long lastTick = 0;
@@ -1001,9 +1002,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return null;
         }
         return MachineRecipeManager.RECIPES.get(lastStartedRecipeId);
-    @Nullable
-    public LinkData getNetworkLink() {
-        return networkLink;
     }
 
     public void setNetworkLink(@Nullable LinkData link) {

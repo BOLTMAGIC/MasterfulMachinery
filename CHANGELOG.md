@@ -4,20 +4,66 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.35.0] - 2026-09-25
+
+### INFO:
+**Version 0.1.35.0** represents a major update with substantial feature additions and improvements.
+
+**Special Thanks:**
+- **Knozyy** – Primary developer and architect of all new features and changes in this version (Per-side Auto I/O, Port & Controller GUI Redesign, Input Gateway, Machine Network Linker)
+
+Without his contribution, this update would not have been possible!
+
 ### Added
-- **Per-side auto I/O for ports** (item, fluid, energy and Mekanism gas/infuse/pigment/slurry)
-  - Port GUIs have a side panel with an unfolded-cube toggle for each side (Up/Down/North/South/East/West).
-  - Output ports push into any neighbouring inventory, tank or energy storage on enabled sides, and into neighbouring MM input ports (machine chaining). Priority setter values are respected.
-  - Input ports pull from neighbouring non-MM blocks on enabled sides.
+#### #42 – Per-side auto I/O for ports (updated)
+- **Per-side auto input/output for ports** (item, fluid, energy and Mekanism gas/infuse/pigment/slurry)
+  - Port GUIs have a side panel with toggles for each side (Top/Bottom/Front/Back/Left/Right), named relative to the machine's controller.
+  - Output ports push into any neighboring inventory, tank or energy storage on enabled sides, and into neighboring MM input ports (machine chaining). Priority setter values are respected.
+  - Input ports pull from neighboring non-MM blocks on enabled sides.
   - Settings are saved per port. `autoPush` / `portsAutoExtractByDefault` now decide whether new output ports start with all sides enabled.
   - New common config `portAutoIOInterval` (default 10 ticks).
 - **Lock and dump for fluid and Mekanism chemical ports**
   - Lock: each tank is locked to its current contents; empty tanks lock to the first type that enters them.
   - Dump: Shift+Click deletes the port's contents.
-- Turkish (`tr_tr`) translation for the new GUI texts.
+- Turkish (`tr_tr`) translation for the new GUI texts (full translation).
+
+#### #44 – Port & controller screen rework
+- **Port GUI redesign** with clearer layout (same MM textures and colors):
+  - Fluid, gas and energy ports: one big gauge with the amount written on it.
+  - Big item ports (larger than 9x6) get a bigger window, so slots no longer overlap the title or the inventory.
+  - Auto I/O panel redone Mekanism-style: the port block in the middle, color-coded side buttons around it.
+- **Controller GUI improvements**:
+  - Colored status line (not formed / paused by redstone / running / idle).
+  - Current recipe display with items, fluids, gases, energy and their amounts.
+  - Rows for tier, parallel, redstone and recipe order, each with a tooltip.
+  - Second page: lists every port of the machine and what's inside (live updates).
+
+#### #45 – Input Gateway block
+- **Input Gateway block**: One block to pipe items and fluids into a machine, instead of connecting a pipe to every input port.
+  - Can replace any casing/glass block in the structure (the structure still forms), or be placed next to an input port.
+  - Stores nothing and has no GUI; it hands everything to the machine's input ports.
+  - No crafting recipe included, same as ports (packs add one with KubeJS).
+
+#### #46 – Machine Network Linker
+- **Machine Network Linker**: Links a machine to its owner (shared with their FTB team) and to an AE2 network.
+  - Only the owner/team can open or break the machine's parts; OPs bypass this.
+  - When a port breaks, its contents go into the AE2 network instead of dropping on the ground (Mekanism gases go through Applied Mekanistics).
+  - Configure mode: right-click a port face to toggle that side's auto I/O.
+  - AE2, FTB Teams and Applied Mekanism are all optional dependencies.
+
 ### Fixed
-- `autoPush` only pushed into neighbouring MM input ports, never into chests, tanks, pipes or cables.
+
+#### #42 – Per-side auto I/O
+- `autoPush` only pushed into neighboring MM input ports, never into chests, tanks, pipes or cables.
+
+#### #43 – Bug fixes
+- Gas ports now accept radioactive gases (polonium, plutonium, nuclear waste, etc.). Mekanisms default validator was rejecting them.
+- An emptied (dumped) gas tank no longer keeps showing its old contents on the client.
+- Item ports now stack up to their slot capacity (512 / 16384) when you place items by hand or shift-click. Before, they stopped at 64 and shift-click only filled empty slots.
+- Item counts above 127 now show correctly in the port GUI (vanilla sends slot counts as a single byte).
+- Fluid ports never drain more than requested.
+- `mods.toml`: replaced the example-mod placeholder text.
+
 ### Changed
 - Network protocol version bumped to 2 (new port config packet).
 

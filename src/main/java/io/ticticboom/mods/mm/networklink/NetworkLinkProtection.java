@@ -24,9 +24,13 @@ public final class NetworkLinkProtection {
     public void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
         Player player = event.getEntity();
         if (NetworkLink.isLinker(player.getMainHandItem()) || NetworkLink.isLinker(player.getOffhandItem())) {
-            // controllers, ports and AE2 blocks open a GUI on use; let the linker's own useOn run
-            // instead. The linker checks ownership itself.
-            event.setUseBlock(Event.Result.DENY);
+            // Only deny block use for targets that would consume the click (open a GUI) before the item runs.
+            var clickedBe = event.getLevel().getBlockEntity(event.getPos());
+            if (clickedBe instanceof MachineControllerBlockEntity
+                    || clickedBe instanceof IPortBlockEntity
+                    || clickedBe instanceof appeng.api.networking.IInWorldGridNodeHost) {
+                event.setUseBlock(Event.Result.DENY);
+            }
             return;
         }
         if (!(event.getLevel() instanceof ServerLevel level)) {
