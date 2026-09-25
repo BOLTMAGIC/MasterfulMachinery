@@ -655,6 +655,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     /**
+     * @return how many different recipes can run at once, as shown to players: 1 when the controller doesn't
+     * run recipes in parallel (a recipe may still enable it for itself), else {@link #getParallelLimit()}.
+     * The same recipe never runs twice at once.
+     */
+    public int getDisplayedParallelLimit() {
+        if (!controllerModel.parallelProcessingDefault()) {
+            return 1;
+        }
+        return Math.max(1, getParallelLimit());
+    }
+
+    /**
      * @return what the machine is doing, as the suffix of the gui.mm.controller.status.* lang keys
      */
     public String statusKey() {

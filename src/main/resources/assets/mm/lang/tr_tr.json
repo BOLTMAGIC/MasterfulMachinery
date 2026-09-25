@@ -1,6 +1,6 @@
 {
   "jade.mm.controller.progress": "İlerleme: %s",
-  "jade.mm.controller.parallel": "Çalışan tarif: %s / %s",
+  "jade.mm.controller.parallel": "Çalışan farklı tarif: %s / %s",
   "jade.mm.controller.redstone": "Redstone: %s",
   "jade.mm.controller.owner": "%s oyuncusuna bağlı",
   "jade.mm.port.machine": "Makine: %s",
@@ -87,7 +87,7 @@
   "gui.mm.controller.row.structure.hint.formed": "Çok bloklu yapı tamam.",
   "gui.mm.controller.row.structure.hint.not_formed": "Bu controller'ın çevresine yapıyı kur. Yerleşimi JEI'de görebilirsin.",
   "gui.mm.controller.row.parallel": "Paralel",
-  "gui.mm.controller.row.parallel.hint": "Şu an çalışan tarif / aynı anda en fazla",
+  "gui.mm.controller.row.parallel.hint": "Şu an çalışan farklı tarif / aynı anda en fazla. Aynı tarif aynı anda yalnızca bir kez çalışır.",
   "gui.mm.controller.parallel.value": "%s / %s",
   "gui.mm.controller.row.redstone": "Redstone",
   "gui.mm.controller.redstone.ignored.hint": "Sinyal olsa da olmasa da çalışır",

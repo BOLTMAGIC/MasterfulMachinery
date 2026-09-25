@@ -1,6 +1,6 @@
 {
   "jade.mm.controller.progress": "Progress: %s",
-  "jade.mm.controller.parallel": "Recipes running: %s / %s",
+  "jade.mm.controller.parallel": "Different recipes running: %s / %s",
   "jade.mm.controller.redstone": "Redstone: %s",
   "jade.mm.controller.owner": "Linked to %s",
   "jade.mm.port.machine": "Machine: %s",
@@ -87,7 +87,7 @@
   "gui.mm.controller.row.structure.hint.formed": "The multiblock is complete.",
   "gui.mm.controller.row.structure.hint.not_formed": "Build the multiblock around this controller. JEI shows the layout.",
   "gui.mm.controller.row.parallel": "Parallel",
-  "gui.mm.controller.row.parallel.hint": "Recipes running now / most that can run at once",
+  "gui.mm.controller.row.parallel.hint": "Different recipes running now / most that can run at once. The same recipe runs only once at a time.",
   "gui.mm.controller.parallel.value": "%s / %s",
   "gui.mm.controller.row.redstone": "Redstone",
   "gui.mm.controller.redstone.ignored.hint": "Runs whether powered or not",

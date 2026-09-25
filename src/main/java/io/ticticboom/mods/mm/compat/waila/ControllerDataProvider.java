@@ -38,7 +38,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         }
         if (!"not_formed".equals(status)) {
             data.putInt(RUNNING_KEY, cbe.getActiveRecipeCount());
-            data.putInt(LIMIT_KEY, Math.max(1, cbe.getParallelLimit()));
+            data.putInt(LIMIT_KEY, cbe.getDisplayedParallelLimit());
         }
         data.putString(REDSTONE_KEY, cbe.getRedstoneModeName().toLowerCase());
         if (cbe.getNetworkLink() != null) {
