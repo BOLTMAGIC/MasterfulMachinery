@@ -120,4 +120,6 @@ public final class PortTransfers {
         from.extractEnergy(inserted, false);
         return true;
     }
+    from.extractEnergy(inserted, false);
+    return true;
 }

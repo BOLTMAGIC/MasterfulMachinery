@@ -72,3 +72,21 @@ Masterful Machinery lets modpack developers create custom multiblock machines th
     versionRange="[6.0.6,6.1.0)"
     ordering="NONE"
     side="BOTH"
+[[dependencies.mm]]
+    modId="ae2"
+    mandatory=false
+    versionRange="[15,16)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.mm]]
+    modId="ftbteams"
+    mandatory=false
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.mm]]
+    modId="appmek"
+    mandatory=false
+    versionRange="*"
+    ordering="NONE"
+    side="BOTH"
