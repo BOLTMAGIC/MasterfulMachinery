@@ -257,5 +257,9 @@
   "gui.mm.controller.row.tier": "Seviye",
   "gui.mm.controller.row.tier.hint": "Kurulu yapının seviyesi (yapının adından alınır)",
   "gui.mm.port.side.legend.pull": "Çeker",
-  "gui.mm.port.side.legend.push": "İter"
+  "gui.mm.port.side.legend.push": "İter",
+  "message.mm.assemble.done": "%s blok yerleştirildi",
+  "message.mm.assemble.missing": "Eksik: %s",
+  "message.mm.assemble.blocked": "%s konum engelli",
+  "message.mm.assemble.stopped": "Kurulum durdu: çok uzaklaştın"
 }

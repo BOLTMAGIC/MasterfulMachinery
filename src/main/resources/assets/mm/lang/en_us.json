@@ -257,5 +257,9 @@
   "gui.mm.controller.row.tier": "Tier",
   "gui.mm.controller.row.tier.hint": "Tier of the built structure, taken from its name",
   "gui.mm.port.side.legend.pull": "Pulls",
-  "gui.mm.port.side.legend.push": "Pushes"
+  "gui.mm.port.side.legend.push": "Pushes",
+  "message.mm.assemble.done": "Placed %s blocks",
+  "message.mm.assemble.missing": "Missing: %s",
+  "message.mm.assemble.blocked": "%s spots blocked",
+  "message.mm.assemble.stopped": "Assembly stopped: you went too far"
 }
