@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayDeque;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -29,8 +30,25 @@ public final class AssemblyJob {
         this.queue = new ArrayDeque<>(plan);
     }
 
+    /** For game tests; players start jobs through {@link AssemblyJobs#start}. */
+    public static AssemblyJob create(ServerLevel level, BlockPos controllerPos, List<AssemblyPlanner.Planned> plan) {
+        return new AssemblyJob(level, controllerPos, plan);
+    }
+
+    public int placed() {
+        return placed;
+    }
+
+    public int blocked() {
+        return blocked;
+    }
+
+    public Map<Block, Integer> missing() {
+        return Collections.unmodifiableMap(missing);
+    }
+
     /** @return true when every planned block has been handled */
-    boolean tick(Player player, int budget) {
+    public boolean tick(Player player, int budget) {
         while (budget > 0 && !queue.isEmpty()) {
             AssemblyPlanner.Planned next = queue.poll();
             BlockState existing = level.getBlockState(next.pos());
