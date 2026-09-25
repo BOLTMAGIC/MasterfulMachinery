@@ -4,6 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.config.MMConfig;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
@@ -36,12 +37,29 @@ public record RecipeModel(
         return new RecipeModel(id, structrueId, ticks, inputs, outputs, new ArrayList<>(), new ArrayList<>(), conditions, parallelProcessing, json);
     }
 
+    /**
+     * The structures this recipe runs in: "structureId", plus any listed in "structureIds".
+     */
+    public List<ResourceLocation> allStructureIds() {
+        var ids = new ArrayList<ResourceLocation>();
+        ids.add(structureId);
+        if (config != null && config.has("structureIds") && config.get("structureIds").isJsonArray()) {
+            for (JsonElement e : config.getAsJsonArray("structureIds")) {
+                var id = ResourceLocation.tryParse(e.getAsString());
+                if (id != null && !ids.contains(id)) {
+                    ids.add(id);
+                }
+            }
+        }
+        return ids;
+    }
+
     public String debugPath() {
         return id.getNamespace() + "/" + id.getPath() + ".json";
     }
 
     public boolean canProcess(Level level, RecipeStateModel model, RecipeStorages storages) {
-        var canRun = conditions.canRun(level, model);
+        var canRun = conditions.canRun(new RecipeConditionContext(level, null, null));
         if (!canRun) {
             model.setTickProgress(0);
             model.setCanProcess(false);

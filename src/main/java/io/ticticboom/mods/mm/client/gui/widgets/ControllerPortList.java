@@ -48,12 +48,21 @@ public class ControllerPortList {
     private int width;
     private int height;
     private double scroll;
+    // which ports the list shows: inputs, or outputs
+    private boolean inputs = true;
 
     private record Row(@Nullable Component header, @Nullable IPortBlockEntity port, List<PortContent> contents, int top, int h) {
     }
 
     public ControllerPortList(List<BlockPos> positions) {
         this.positions = positions;
+    }
+
+    public void showInputs(boolean inputs) {
+        if (this.inputs != inputs) {
+            this.inputs = inputs;
+            scroll = 0;
+        }
     }
 
     public void setBounds(int x, int y, int width, int height) {
@@ -97,8 +106,15 @@ public class ControllerPortList {
                 (port.isInput() ? inputs : outputs).add(port);
             }
         }
-        int top = addGroup(rows, 0, "gui.mm.controller.ports.inputs", inputs);
-        addGroup(rows, top, "gui.mm.controller.ports.outputs", outputs);
+        if (this.inputs) {
+            addGroup(rows, 0, "gui.mm.controller.ports.inputs", inputs);
+        } else {
+            addGroup(rows, 0, "gui.mm.controller.ports.outputs", outputs);
+        }
+        if (rows.isEmpty()) {
+            rows.add(new Row(Component.translatable(this.inputs ? "gui.mm.controller.ports.no_inputs" : "gui.mm.controller.ports.no_outputs"),
+                    null, List.of(), 0, HEADER_H));
+        }
         return rows;
     }
 

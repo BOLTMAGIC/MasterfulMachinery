@@ -4,7 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
-import net.minecraft.world.level.Level;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
+import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,12 +27,21 @@ public class RecipeConditions {
         return new RecipeConditions(result);
     }
 
-    public boolean canRun(Level level, RecipeStateModel state) {
+    public boolean canRun(RecipeConditionContext ctx) {
         for (IRecipeCondition condition : conditions) {
-            if (!condition.canRun(level, state)) {
+            if (!condition.canRun(ctx)) {
                 return false;
             }
         }
         return true;
+    }
+
+    public boolean isEmpty() {
+        return conditions.isEmpty();
+    }
+
+    /** One line per condition, for JEI. */
+    public List<Component> describe() {
+        return conditions.stream().map(IRecipeCondition::describe).toList();
     }
 }

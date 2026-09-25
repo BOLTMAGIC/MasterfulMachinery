@@ -78,6 +78,52 @@ public class StructureLayout {
         return false;
     }
 
+    /**
+     * The pieces that keep the structure from forming, for the rotation where that list is shortest.
+     * A port that may go anywhere counts as missing when no port position can hold it.
+     */
+    public List<PositionedLayoutPiece> closestMissing(Level level, BlockPos worldControllerPos, StructureModel model) {
+        List<PositionedLayoutPiece> best = null;
+        for (var entry : rotatedPositionedPieces.entrySet()) {
+            var missing = missingPieces(level, worldControllerPos, model, entry.getValue(), entry.getKey());
+            if (best == null || missing.size() < best.size()) {
+                best = missing;
+            }
+        }
+        return best == null ? List.of() : best;
+    }
+
+    private List<PositionedLayoutPiece> missingPieces(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
+        var missing = new ArrayList<PositionedLayoutPiece>();
+        var anywherePieces = new ArrayList<PositionedLayoutPiece>();
+        for (PositionedLayoutPiece piece : positionedPieces) {
+            if (isAnywhere(piece.piece().piece())) {
+                anywherePieces.add(piece);
+            } else if (!piece.formed(level, worldControllerPos, model, rot) && !isGatewayInPlace(level, worldControllerPos, piece)) {
+                missing.add(piece);
+            }
+        }
+        for (PositionedLayoutPiece req : anywherePieces) {
+            boolean placeable = false;
+            for (PositionedLayoutPiece candidate : anywherePieces) {
+                if (candidateMatches(req.piece(), req.piece().piece(), level, candidate.findAbsolutePos(worldControllerPos), rot, model)) {
+                    placeable = true;
+                    break;
+                }
+            }
+            if (!placeable) {
+                missing.add(req);
+            }
+        }
+        return missing;
+    }
+
+    private boolean isAnywhere(Object underlying) {
+        return underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece
+                || (portsAnywhereGlobal && (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
+                || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece));
+    }
+
     public JsonObject debugFormed(Level level, BlockPos worldControllerPos, StructureModel model) {
         var json = new JsonObject();
         for (var entry : rotatedPositionedPieces.entrySet()) {

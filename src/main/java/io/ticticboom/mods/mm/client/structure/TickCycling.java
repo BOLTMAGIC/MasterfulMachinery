@@ -2,32 +2,35 @@ package io.ticticboom.mods.mm.client.structure;
 
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.Util;
 
 import java.util.List;
 
 public class TickCycling<T> {
+    private static final long MILLIS_PER_TICK = 50;
+
     @Getter
     private final List<T> part;
+    // cycle interval in game ticks; driven by wall-clock time so the speed doesn't depend on FPS
     @Setter
-    private int interval = 0;
-    private int counter = 0;
+    private int interval = 1;
+    private long startMillis = Util.getMillis();
     private int index = 0;
-    private int maxIndex = 0;
 
     public TickCycling(List<T> part) {
         this.part = part;
-        index = 0;
-        maxIndex = part.size() - 1;
     }
 
     public void tick() {
-        counter++;
-        if (counter % interval == 0) {
-            index++;
+        if (part.size() <= 1) {
+            return;
         }
-        if (index > maxIndex) {
-            index = 0;
-        }
+        long elapsedTicks = (Util.getMillis() - startMillis) / MILLIS_PER_TICK;
+        index = (int) ((elapsedTicks / Math.max(1, interval)) % part.size());
+    }
+
+    public int getIndex() {
+        return index;
     }
 
     public T next() {
@@ -36,6 +39,6 @@ public class TickCycling<T> {
 
     public void reset() {
         index = 0;
-        counter = 0;
+        startMillis = Util.getMillis();
     }
 }

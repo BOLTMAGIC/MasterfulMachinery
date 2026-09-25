@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.controller.machine.register;
 
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.config.MMClientConfig;
+import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
@@ -21,6 +22,7 @@ import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortStorage;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
 import lombok.Setter;
 import net.minecraftforge.registries.ForgeRegistries;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
@@ -34,6 +36,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
+import io.ticticboom.mods.mm.structure.StructureDiagnosis;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
@@ -49,6 +52,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.Nameable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -65,7 +69,7 @@ import java.util.Objects;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
-public class MachineControllerBlockEntity extends BlockEntity implements IControllerBlockEntity, IControllerPart {
+public class MachineControllerBlockEntity extends BlockEntity implements IControllerBlockEntity, IControllerPart, Nameable {
 
     private final ControllerModel model;
     private final RegistryGroupHolder groupHolder;
@@ -90,6 +94,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // Redstone control for the controller: IGNORE, RUN_WHEN_POWERED, RUN_WHEN_UNPOWERED
     private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
+    // recipe order picked on the screen; null = the controller type's default
+    @Nullable
+    private RecipeSelectionMode recipeModeOverride = null;
+    // name given by a player (screen, or a named controller item); null = the machine's name
+    @Nullable
+    private String customName = null;
+    public static final int MAX_NAME_LENGTH = 50;
     // owner + AE2 network this machine is linked to (network linker), null when not linked
     @Getter
     @Nullable
@@ -472,6 +483,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
              if (recipe != null && state.isCanFinish() && recipe.outputs().canProcess(level, portStorages, state)) {
                  recipe.outputs().process(level, portStorages, state);
                  toRemove.add(recipeId);
+                 MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                  // outputs changed storages; mark cache invalid so we rebuild before next decisions
                  storageCache.isValid = false;
              }
@@ -602,13 +614,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                  }
              }
 
+            if (!recipe.conditions().canRun(conditionContext())) {
+                continue;
+            }
             if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
                 continue;
             }
 
              if (canStartRecipeGivenParallelRules(recipe)) {
                  ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
-                 RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
+                 RecipeSelectionMode selectionMode = getRecipeSelectionMode();
                  if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
                      // primaryInputItemId may be a composed key (with __ suffix) or a base id.
                      ResourceLocation baseId = getResourceLocation(primaryInputItemId);
@@ -739,8 +754,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     }
                     continue;
                 }
-                startRecipe(recipe, gameTime, primaryInputItemId);
-                startedRecipeThisPass = true;
+                if (startRecipe(recipe, gameTime, primaryInputItemId)) {
+                    startedRecipeThisPass = true;
+                }
             }
         }
         if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
@@ -748,8 +764,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
                 && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
                 && selectedRoundRobinRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
-            startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
-            startedRecipeThisPass = true;
+            startedRecipeThisPass = startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
         }
         if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                 && canStartRecipeGivenParallelRules(deferredRecipe)
@@ -762,9 +777,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private int getChecks(int total) {
         int maxRecipeChecksPerTick;
-        if (total < 300 && !controllerModel.recipeSelectionMode().fairScheduling()) {
+        if (total < 300 && !getRecipeSelectionMode().fairScheduling()) {
             maxRecipeChecksPerTick = total; // scan all recipes every tick for small recipe sets
-        } else if (controllerModel.recipeSelectionMode().fairScheduling()) {
+        } else if (getRecipeSelectionMode().fairScheduling()) {
             maxRecipeChecksPerTick = Math.max(total / 2, 50); // 50% of recipes per tick in fair mode
         } else {
             maxRecipeChecksPerTick = Math.max(total / 2, 100); // 50% or 100 minimum for large recipe sets
@@ -784,17 +799,48 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return baseId;
     }
 
+    /**
+     * @return how many recipes may run at once: the structure's limit, else the controller's, else the config's;
+     * 0 means one at a time
+     */
+    public int getParallelLimit() {
+        int limit = controllerModel.maxParallelRecipes();
+        if (structure != null) {
+            int structLimit = structure.maxParallelRecipes();
+            if (structLimit >= 0) limit = structLimit;
+        }
+        if (limit < 0) limit = MMConfig.MAX_PARALLEL_RECIPES;
+        return limit;
+    }
+
+    /**
+     * @return how many different recipes can run at once, as shown to players: 1 when the controller doesn't
+     * run recipes in parallel (a recipe may still enable it for itself), else {@link #getParallelLimit()}.
+     * The same recipe never runs twice at once.
+     */
+    public int getDisplayedParallelLimit() {
+        if (!controllerModel.parallelProcessingDefault()) {
+            return 1;
+        }
+        return Math.max(1, getParallelLimit());
+    }
+
+    /**
+     * @return what the machine is doing, as the suffix of the gui.mm.controller.status.* lang keys
+     */
+    public String statusKey() {
+        if (structure == null || !isFormed) return "not_formed";
+        if (!isAllowedByRedstone()) return "paused";
+        if (getDisplayedRecipe() != null) return "running";
+        return "idle";
+    }
+
     private boolean canStartRecipeGivenParallelRules(RecipeModel recipe) {
         boolean allowParallel = recipe.parallelProcessing();
         if (recipe.parallelProcessing() == MMConfig.PARALLEL_PROCESSING_DEFAULT) {
             allowParallel = controllerModel.parallelProcessingDefault();
         }
-        int controllerLimit = controllerModel.maxParallelRecipes();
-        if (structure != null) {
-            int structLimit = structure.maxParallelRecipes();
-            if (structLimit >= 0) controllerLimit = structLimit;
-        }
-        if (controllerLimit < 0) controllerLimit = MMConfig.MAX_PARALLEL_RECIPES;
+        int controllerLimit = getParallelLimit();
         boolean canStartBasedOnParallelFlag = allowParallel || activeRecipes.isEmpty();
         boolean canStartBasedOnLimit = controllerLimit == 0
                 ? activeRecipes.isEmpty()
@@ -802,7 +848,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return canStartBasedOnParallelFlag && canStartBasedOnLimit;
     }
 
-     private void startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+    /**
+     * @return false if a KubeJS script cancelled the start (MMEvents.recipeStarted)
+     */
+     private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+         if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
+             return false;
+         }
          RecipeStateModel newState = new RecipeStateModel();
          recipe.inputs().process(level, portStorages, newState);
          storageCache.isValid = false;
@@ -819,10 +871,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
         }
         setChanged();
+        return true;
     }
 
     private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @SuppressWarnings("unused") @Nullable ResourceLocation primaryInputItemId) {
-        RecipeSelectionMode mode = controllerModel.recipeSelectionMode();
+        RecipeSelectionMode mode = getRecipeSelectionMode();
         if (mode == RecipeSelectionMode.AVOID_SAME_RECIPE) {
             return lastStartedRecipeId != null && lastStartedRecipeId.equals(recipe.id());
         }
@@ -868,6 +921,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return id.getNamespace() + ":" + id.getPath() + suffix;
     }
 
+    private RecipeConditionContext conditionContext() {
+        return new RecipeConditionContext(level, getBlockPos(), structure);
+    }
+
     private void performRecipeTick() {
         long gameTime = (level == null) ? 0L : level.getGameTime();
         // stall timeout in ticks: if a recipe hasn't updated for this many ticks, ditch it
@@ -889,6 +946,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             ResourceLocation recipeId = entry.getKey();
             RecipeStateModel state = entry.getValue();
             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
+            // a recipe whose conditions stop holding (night ended...) waits; it isn't stalled
+            if (recipe != null && !recipe.conditions().canRun(conditionContext())) {
+                activeRecipeLastUpdate.put(recipeId, gameTime);
+                continue;
+            }
             // check for stalled recipe
             long last = activeRecipeLastUpdate.getOrDefault(recipeId, gameTime);
             if (gameTime - last > recipeStallTimeoutTicks) {
@@ -957,6 +1019,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                      if (canOutputs) {
                          recipe.outputs().process(level, portStorages, state);
                          toRemove.add(recipeId);
+                         MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                          // outputs processed - storages changed
                          storageCache.isValid = false;
                          progressed = true;
@@ -1013,7 +1076,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     public ControllerModel getModel() { return model; }
 
     @Override
-    public @NotNull Component getDisplayName() { return Component.literal(model.name()); }
+    public @NotNull Component getDisplayName() { return getName(); }
 
     @Nullable
     @Override
@@ -1050,6 +1113,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         try {
             tag.putInt("redstoneMode", redstoneMode.ordinal());
         } catch (Throwable ignored) { }
+        if (recipeModeOverride != null) {
+            tag.putString("RecipeSelectionMode", recipeModeOverride.serializedName());
+        }
+        if (customName != null) {
+            tag.putString("CustomName", customName);
+        }
         super.saveAdditional(tag);
     }
 
@@ -1103,6 +1172,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } else {
             currentRecipe = null;
         }
+        recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
+        customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
         // load redstone mode
         try {
             if (tag.contains("redstoneMode")) {
@@ -1153,6 +1224,21 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return MachineRecipeManager.RECIPES.get(lastStartedRecipeId);
     }
 
+    /**
+     * What keeps the multiblock from forming, for the controller screen; empty when it is formed.
+     */
+    public StructureDiagnosis diagnoseStructure() {
+        if (level == null || isFormed) {
+            return StructureDiagnosis.NONE;
+        }
+        try {
+            return StructureDiagnosis.diagnose(level, getBlockPos(), StructureManager.getStructuresForController(controllerId));
+        } catch (RuntimeException e) {
+            Ref.LOG.error("Failed to diagnose the structure of the controller at {}", getBlockPos(), e);
+            return StructureDiagnosis.NONE;
+        }
+    }
+
     public void setNetworkLink(@Nullable LinkData link) {
         this.networkLink = link;
         setChanged();
@@ -1175,8 +1261,35 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return activeRecipes.size();
     }
 
+    /** The recipe order set on this controller (screen), else the controller type's default. */
     public RecipeSelectionMode getRecipeSelectionMode() {
-        return controllerModel.recipeSelectionMode();
+        return recipeModeOverride != null ? recipeModeOverride : controllerModel.recipeSelectionMode();
+    }
+
+    public void setRecipeSelectionMode(RecipeSelectionMode mode) {
+        recipeModeOverride = mode == controllerModel.recipeSelectionMode() ? null : mode;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    @Override
+    public @NotNull Component getName() {
+        return customName != null ? Component.literal(customName) : Component.literal(model.name());
+    }
+
+    @Override
+    public @Nullable Component getCustomName() {
+        return customName == null ? null : Component.literal(customName);
+    }
+
+    /** A name the player gave this controller, or null/blank for the machine's own name. */
+    public void setCustomName(@Nullable String name) {
+        customName = name == null || name.isBlank() ? null : name.strip();
+        if (customName != null && customName.length() > MAX_NAME_LENGTH) {
+            customName = customName.substring(0, MAX_NAME_LENGTH);
+        }
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     // Redstone mode accessors (ordinal used for network/GUI)

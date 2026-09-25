@@ -1,5 +1,9 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
+import net.minecraft.ChatFormatting;
+import java.util.ArrayList;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.item.ItemStack;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
@@ -112,6 +116,23 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             gfx.blit(Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9);
             if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 75, 28, 7, 9)) {
                 gfx.renderTooltip(Minecraft.getInstance().font, Component.translatable("jei.mm.recipes.structure", recipe.structureId().toString()), (int) mouseX, (int) mouseY);
+            }
+        }
+
+        if (!recipe.conditions().isEmpty()) {
+            // a clock under the arrow; its tooltip lists what the recipe needs besides its inputs
+            int cx = structureModel == null ? 86 : 77;
+            var pose = gfx.pose();
+            pose.pushPose();
+            pose.translate(cx, 29, 0);
+            pose.scale(10f / 16f, 10f / 16f, 1);
+            gfx.renderItem(new ItemStack(Items.CLOCK), 0, 0);
+            pose.popPose();
+            if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, cx, 29, 10, 10)) {
+                var lines = new ArrayList<Component>();
+                lines.add(Component.translatable("jei.mm.condition.title").withStyle(ChatFormatting.GOLD));
+                lines.addAll(recipe.conditions().describe());
+                gfx.renderComponentTooltip(Minecraft.getInstance().font, lines, (int) mouseX, (int) mouseY);
             }
         }
 
