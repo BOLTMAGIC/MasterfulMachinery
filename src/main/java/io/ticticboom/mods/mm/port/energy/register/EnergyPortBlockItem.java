@@ -27,6 +27,6 @@ public class EnergyPortBlockItem extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Energy").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
+        return Component.translatable("tooltip.mm.port_type.energy").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
     }
 }

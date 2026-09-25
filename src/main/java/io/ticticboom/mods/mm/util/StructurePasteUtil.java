@@ -39,7 +39,7 @@ public final class StructurePasteUtil {
         PastePlan pastePlan = createPlanForPlacementAnchor(model, clickedPos.relative(clickedFace), rotation, frontDirection);
         List<PlannedBlock> plan = pastePlan.blocks();
         if (plan.isEmpty()) {
-            return PasteResult.failure(Component.literal("Blueprint paste failed: structure has no placeable blocks."));
+            return PasteResult.failure(Component.translatable("message.mm.blueprint.paste_empty"));
         }
 
         List<BlockPos> obstructed = findObstructions(level, plan);
@@ -51,7 +51,7 @@ public final class StructurePasteUtil {
             level.setBlock(planned.pos(), planned.state(), Block.UPDATE_ALL);
         }
 
-        return PasteResult.success(Component.literal("Pasted structure: " + model.name() + " (" + plan.size() + " blocks)"));
+        return PasteResult.success(Component.translatable("message.mm.blueprint.pasted", model.name(), plan.size()));
     }
 
     /**
@@ -222,11 +222,7 @@ public final class StructurePasteUtil {
     }
 
     private static Component obstructionMessage(List<BlockPos> obstructed) {
-        var message = new StringBuilder("Blueprint paste blocked by ").append(obstructed.size()).append(" occupied position");
-        if (obstructed.size() != 1) {
-            message.append('s');
-        }
-        message.append(": ");
+        var message = new StringBuilder();
 
         int shown = Math.min(MAX_OBSTRUCTION_EXAMPLES, obstructed.size());
         for (int i = 0; i < shown; i++) {
@@ -239,7 +235,7 @@ public final class StructurePasteUtil {
         if (obstructed.size() > shown) {
             message.append(", ...");
         }
-        return Component.literal(message.toString());
+        return Component.translatable("message.mm.blueprint.paste_blocked", obstructed.size(), message.toString());
     }
 
     public record PastePlan(BlockPos controllerPos, List<PlannedBlock> blocks) {
