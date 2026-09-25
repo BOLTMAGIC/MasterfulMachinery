@@ -45,8 +45,9 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
                 // when quick-moving into storage, prefer empty slots to avoid stacking onto existing
                 io.ticticboom.mods.mm.port.item.ItemPortHandler.setThreadPreferEmpty(true);
                 if (i >= capSize && i < totalSize) {
-                    // moving from player inv to storage: prefer empty slots in storage range [0, capSize)
-                    if (!tryMoveToEmptySlots(rawStack, 0, capSize)) {
+                    // moving from player inv to storage: item ports first top up stacks of the same item
+                    // (up to their slot capacity), then fill empty slots; other storages only take empty slots
+                    if (!moveIntoItemPort(rawStack, capSize) && !tryMoveToEmptySlots(rawStack, 0, capSize)) {
                         if (i < hbStart) {
                             if (!this.moveItemStackTo(rawStack, hbStart, totalSize, false)) {
                                 return ItemStack.EMPTY;
@@ -127,6 +128,22 @@ public abstract class MMContainerMenu extends AbstractContainerMenu {
     @Override
     public boolean stillValid(Player player) {
         return stillValid(this.access, player, block);
+    }
+
+    /**
+     * Inserts into the menu's item port through its handler, which merges into matching stacks first.
+     *
+     * @return true if anything was moved; the source stack is shrunk by the moved amount
+     */
+    private boolean moveIntoItemPort(ItemStack source, int capSize) {
+        if (capSize <= 0 || !(this.slots.get(0).container instanceof io.ticticboom.mods.mm.port.item.ItemPortContainer ipc)) {
+            return false;
+        }
+        io.ticticboom.mods.mm.port.item.ItemPortHandler.setThreadPreferEmpty(false);
+        int before = source.getCount();
+        ItemStack rest = net.minecraftforge.items.ItemHandlerHelper.insertItemStacked(ipc.getHandler(), source.copy(), false);
+        source.setCount(rest.getCount());
+        return rest.getCount() < before;
     }
 
     private boolean tryMoveToEmptySlots(ItemStack source, int start, int end) {
