@@ -14,6 +14,6 @@ public class MekanismInfusePortBlockItem extends MekanismChemicalPortBlockItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Mekanism Infusion").withStyle(ChatFormatting.BOLD, ChatFormatting.DARK_RED);
+        return Component.translatable("tooltip.mm.port_type.mekanism_infuse").withStyle(ChatFormatting.BOLD, ChatFormatting.DARK_RED);
     }
 }

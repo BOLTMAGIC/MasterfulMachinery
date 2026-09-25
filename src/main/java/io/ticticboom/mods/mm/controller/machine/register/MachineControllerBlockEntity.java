@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
@@ -58,6 +59,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
@@ -91,6 +93,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Nullable
     private LinkData networkLink = null;
     private long lastTick = 0;
+    // players with the controller's screen open; while > 0 the controller is sent to clients every tick
+    private int viewers = 0;
+    private boolean wasActive = false;
+    private int lastClientSignature = 0;
+    private static final int SAVE_FALLBACK_TICKS = 20;
+    // how often input ports are checked for changes made from outside (pipes, players)
+    private static final int EXTERNAL_CHANGE_CHECK_TICKS = 5;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
     private long lastResourceScanTime = -1;
@@ -126,9 +135,45 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         runMachineTick();
         NetworkLink.tickController(level, this);
+        syncAndSave();
+    }
 
-        setChanged();
-        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    /**
+     * Marks the controller for saving and sends it to clients only when that is needed, instead of every tick:
+     * a running recipe changes its progress every tick, so it is saved while running (and on the tick it ends);
+     * clients get the controller every tick only while someone has its screen open, otherwise only when
+     * something they can see changes.
+     */
+    private void syncAndSave() {
+        if (level == null) return;
+        boolean active = !activeRecipes.isEmpty();
+        int signature = clientSignature();
+        boolean visibleChange = signature != lastClientSignature;
+        if (active || wasActive || visibleChange || level.getGameTime() % SAVE_FALLBACK_TICKS == 0) {
+            setChanged();
+        }
+        wasActive = active;
+        if (viewers > 0 || visibleChange) {
+            lastClientSignature = signature;
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** What the client shows about the controller, apart from recipe progress. */
+    private int clientSignature() {
+        return Objects.hash(isFormed, structure == null ? null : structure.id(), activeRecipes.keySet(),
+                currentRecipe == null ? null : currentRecipe.id(), lastStartedRecipeId, lastRecipeStartTime,
+                redstoneMode, networkLink);
+    }
+
+    /** A player opened the controller's screen (server side). */
+    public void addViewer() {
+        viewers++;
+    }
+
+    /** A player closed the controller's screen (server side). */
+    public void removeViewer() {
+        viewers = Math.max(0, viewers - 1);
     }
 
     private void runMachineTick() {
@@ -209,6 +254,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     // Helper split to reduce runRecipe complexity
     private void detectExternalStorageChanges() {
+        // this walks every input slot and tank, so not every tick; a change is noticed within a quarter second
+        if (level == null || level.getGameTime() % EXTERNAL_CHANGE_CHECK_TICKS != 0) {
+            return;
+        }
         try {
             if (portStorages != null) {
                 long sig = 1469598103934665603L; // FNV offset basis
@@ -329,6 +378,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
              if (recipe != null && state.isCanFinish() && recipe.outputs().canProcess(level, portStorages, state)) {
                  recipe.outputs().process(level, portStorages, state);
                  toRemove.add(recipeId);
+                 MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                  // outputs changed storages; mark cache invalid so we rebuild before next decisions
                  storageCache.isValid = false;
              }
@@ -599,8 +649,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     }
                     continue;
                 }
-                startRecipe(recipe, gameTime, primaryInputItemId);
-                startedRecipeThisPass = true;
+                if (startRecipe(recipe, gameTime, primaryInputItemId)) {
+                    startedRecipeThisPass = true;
+                }
             }
         }
         if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
@@ -608,8 +659,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
                 && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
                 && selectedRoundRobinRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
-            startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
-            startedRecipeThisPass = true;
+            startedRecipeThisPass = startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
         }
         if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                 && canStartRecipeGivenParallelRules(deferredRecipe)
@@ -644,17 +694,48 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return baseId;
     }
 
+    /**
+     * @return how many recipes may run at once: the structure's limit, else the controller's, else the config's;
+     * 0 means one at a time
+     */
+    public int getParallelLimit() {
+        int limit = controllerModel.maxParallelRecipes();
+        if (structure != null) {
+            int structLimit = structure.maxParallelRecipes();
+            if (structLimit >= 0) limit = structLimit;
+        }
+        if (limit < 0) limit = MMConfig.MAX_PARALLEL_RECIPES;
+        return limit;
+    }
+
+    /**
+     * @return how many different recipes can run at once, as shown to players: 1 when the controller doesn't
+     * run recipes in parallel (a recipe may still enable it for itself), else {@link #getParallelLimit()}.
+     * The same recipe never runs twice at once.
+     */
+    public int getDisplayedParallelLimit() {
+        if (!controllerModel.parallelProcessingDefault()) {
+            return 1;
+        }
+        return Math.max(1, getParallelLimit());
+    }
+
+    /**
+     * @return what the machine is doing, as the suffix of the gui.mm.controller.status.* lang keys
+     */
+    public String statusKey() {
+        if (structure == null || !isFormed) return "not_formed";
+        if (!isAllowedByRedstone()) return "paused";
+        if (getDisplayedRecipe() != null) return "running";
+        return "idle";
+    }
+
     private boolean canStartRecipeGivenParallelRules(RecipeModel recipe) {
         boolean allowParallel = recipe.parallelProcessing();
         if (recipe.parallelProcessing() == MMConfig.PARALLEL_PROCESSING_DEFAULT) {
             allowParallel = controllerModel.parallelProcessingDefault();
         }
-        int controllerLimit = controllerModel.maxParallelRecipes();
-        if (structure != null) {
-            int structLimit = structure.maxParallelRecipes();
-            if (structLimit >= 0) controllerLimit = structLimit;
-        }
-        if (controllerLimit < 0) controllerLimit = MMConfig.MAX_PARALLEL_RECIPES;
+        int controllerLimit = getParallelLimit();
         boolean canStartBasedOnParallelFlag = allowParallel || activeRecipes.isEmpty();
         boolean canStartBasedOnLimit = controllerLimit == 0
                 ? activeRecipes.isEmpty()
@@ -662,7 +743,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return canStartBasedOnParallelFlag && canStartBasedOnLimit;
     }
 
-     private void startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+    /**
+     * @return false if a KubeJS script cancelled the start (MMEvents.recipeStarted)
+     */
+     private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+         if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
+             return false;
+         }
          RecipeStateModel newState = new RecipeStateModel();
          recipe.inputs().process(level, portStorages, newState);
          storageCache.isValid = false;
@@ -679,6 +766,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
         }
         setChanged();
+        return true;
     }
 
     private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @SuppressWarnings("unused") @Nullable ResourceLocation primaryInputItemId) {
@@ -826,6 +914,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                      if (canOutputs) {
                          recipe.outputs().process(level, portStorages, state);
                          toRemove.add(recipeId);
+                         MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                          // outputs processed - storages changed
                          storageCache.isValid = false;
                          progressed = true;

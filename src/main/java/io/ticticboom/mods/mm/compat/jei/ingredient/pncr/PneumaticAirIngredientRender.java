@@ -21,7 +21,7 @@ public class PneumaticAirIngredientRender  implements IIngredientRenderer<Pneuma
     @Override
     public @NotNull List<Component> getTooltip(PneumaticAirStack pneumaticAirStack, @NotNull TooltipFlag tooltipFlag) {
         var result = new ArrayList<Component>();
-        result.add(Component.literal("PneumaticCraft Air:"));
+        result.add(Component.translatable("jei.mm.ingredient.pneumatic_air"));
         result.add(Component.literal(pneumaticAirStack.air() + " mB"));
         result.add(Component.literal(pneumaticAirStack.pressure() + " Bar"));
         return result;

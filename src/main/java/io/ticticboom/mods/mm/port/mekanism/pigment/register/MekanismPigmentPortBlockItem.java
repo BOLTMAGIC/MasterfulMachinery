@@ -14,6 +14,6 @@ public class MekanismPigmentPortBlockItem extends MekanismChemicalPortBlockItem 
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Mekanism Pigment");
+        return Component.translatable("tooltip.mm.port_type.mekanism_pigment");
     }
 }
