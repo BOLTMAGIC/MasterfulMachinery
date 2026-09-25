@@ -21,6 +21,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.registration.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
@@ -43,6 +44,16 @@ public class MMJeiPlugin implements IModPlugin {
     }
 
     public static final List<MMRecipeCategory> recipeCategories = new ArrayList<>();
+
+    @Override
+    public void onRuntimeAvailable(@NotNull IJeiRuntime jeiRuntime) {
+        JeiRecipeLookup.setRuntime(jeiRuntime);
+    }
+
+    @Override
+    public void onRuntimeUnavailable() {
+        JeiRecipeLookup.setRuntime(null);
+    }
 
     @Override
     public void registerCategories(@NotNull IRecipeCategoryRegistration registration) {

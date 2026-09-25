@@ -22,9 +22,15 @@ import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
-import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
+import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
+import io.ticticboom.mods.mm.compat.jei.JeiRecipeLookup;
+import io.ticticboom.mods.mm.util.ChanceUtils;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.Util;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.fml.ModList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -41,6 +47,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,19 +63,24 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int DIVIDER = 0xFF3A3A3A;
     private static final int LEFT = 10;
     private static final int RIGHT = 163;
-    private static final int VALUE_X = 74;
+    private static final int VALUE_X = 80;
 
+    // everything fits MM's dark panel, y 7 to 125
     private static final int NAME_Y = 10;
     private static final int STATUS_Y = 22;
-    private static final int RECIPE_LABEL_Y = 35;
-    private static final int RECIPE_Y = 44;
-    private static final int ROWS_Y = 68;
-    private static final int ROW_STEP = 10;
+    private static final int RECIPE_Y = 36;
+    private static final int ROWS_Y = 62;
+    private static final int ROW_STEP = 11;
+    // one pixel shorter than a row, so stacked buttons don't touch
+    private static final int BUTTON_HEIGHT = ROW_STEP - 1;
 
     private static final int MAX_INPUTS = 3;
     private static final int MAX_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
     private static final int TOOLTIP_MISSING = 10;
+    // recipes with more inputs or outputs than fit show the next few this often
+    private static final long CYCLE_MS = 2000;
+    private static final boolean JEI = ModList.get().isLoaded("jei");
 
     private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, LINK }
 
@@ -106,6 +118,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private final MachineControllerMenu menu;
     private final MachineControllerBlockEntity be;
     private final ControllerPortList portList;
+    // which few of a long input / output list are shown; advances every CYCLE_MS unless the mouse is on the recipe
+    private int cycle = 0;
+    private long nextCycleMs = 0;
+    @Nullable
+    private ResourceLocation cycledRecipe;
 
     public MachineControllerScreen(MachineControllerMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -145,15 +162,29 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private static void drawSmallItem(GuiGraphics gfx, ItemStack stack, int x, int y) {
+        drawSmallItem(gfx, stack, x, y, 10);
+    }
+
+    private static void drawSmallItem(GuiGraphics gfx, ItemStack stack, int x, int y, int size) {
         var pose = gfx.pose();
         pose.pushPose();
         pose.translate(x, y, 0);
-        pose.scale(10f / 16f, 10f / 16f, 1);
+        pose.scale(size / 16f, size / 16f, 1);
         gfx.renderItem(stack, 0, 0);
         pose.popPose();
     }
 
-    private record Shown(int x, int y, PortContent content, boolean input) {
+    /** @param chance 0-1 for outputs, 1 for inputs */
+    private record Shown(int x, int y, PortContent content, boolean input, double chance) {
+    }
+
+    /**
+     * The running recipe's row: the inputs and outputs shown right now, where the arrow and percentage go,
+     * and how many turns each side needs to show everything (1 when all fit).
+     */
+    private record RecipeRow(List<Shown> slots, int arrowX, int percentX, int inputPages, int outputPages,
+                             int outputX, int outputWidth) {
+        static final RecipeRow EMPTY = new RecipeRow(List.of(), 0, 0, 1, 1, 0, 0);
     }
 
     private Status status() {
@@ -163,41 +194,91 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return Status.IDLE;
     }
 
-    /**
-     * @return the running recipe's inputs and outputs laid out on the recipe row, GUI-relative
-     */
     private List<Shown> recipeSlots() {
+        return recipeRow().slots();
+    }
+
+    /**
+     * @return the running recipe laid out on the recipe row, GUI-relative. Recipes with more inputs or outputs
+     * than fit show them a few at a time, in turn.
+     */
+    private RecipeRow recipeRow() {
         RecipeModel recipe = be.getDisplayedRecipe();
-        var shown = new ArrayList<Shown>();
         if (recipe == null) {
-            return shown;
+            return RecipeRow.EMPTY;
         }
         var inputs = new ArrayList<PortContent>();
         for (var entry : recipe.inputs().inputs()) {
-            if (entry instanceof ConsumeRecipeIngredientEntry consume && inputs.size() < MAX_INPUTS) {
+            if (entry instanceof ConsumeRecipeIngredientEntry consume) {
                 PortContent content = consume.getIngredient().display();
                 if (content != null) inputs.add(content);
             }
         }
         var outputs = new ArrayList<PortContent>();
+        var chances = new ArrayList<Double>();
         for (var entry : recipe.outputs().outputs()) {
-            if (entry instanceof SimpleRecipeOutputEntry simple && outputs.size() < MAX_OUTPUTS) {
-                PortContent content = simple.getIngredient().display();
-                if (content != null) outputs.add(content);
+            for (DisplayedOutput output : entry.displayedOutputs()) {
+                PortContent content = output.ingredient().display();
+                if (content != null) {
+                    outputs.add(content);
+                    chances.add(output.chance());
+                }
             }
         }
-        for (int i = 0; i < inputs.size(); i++) {
-            shown.add(new Shown(LEFT + i * SLOT_STEP, RECIPE_Y, inputs.get(i), true));
+        int inputPages = pages(inputs.size(), MAX_INPUTS);
+        int outputPages = pages(outputs.size(), MAX_OUTPUTS);
+        var shown = new ArrayList<Shown>();
+        // slots, arrow and percentage keep their place while the list turns, even on a shorter last turn
+        int inputFrom = cycle % inputPages * MAX_INPUTS;
+        for (int i = inputFrom; i < Math.min(inputs.size(), inputFrom + MAX_INPUTS); i++) {
+            shown.add(new Shown(LEFT + (i - inputFrom) * SLOT_STEP, RECIPE_Y, inputs.get(i), true, 1));
         }
-        int outputX = arrowX(inputs.size()) + 28;
-        for (int i = 0; i < outputs.size(); i++) {
-            shown.add(new Shown(outputX + i * SLOT_STEP, RECIPE_Y, outputs.get(i), false));
+        int arrowX = LEFT + Math.min(inputs.size(), MAX_INPUTS) * SLOT_STEP + 3;
+        int outputX = arrowX + 28;
+        int outputFrom = cycle % outputPages * MAX_OUTPUTS;
+        for (int i = outputFrom; i < Math.min(outputs.size(), outputFrom + MAX_OUTPUTS); i++) {
+            shown.add(new Shown(outputX + (i - outputFrom) * SLOT_STEP, RECIPE_Y, outputs.get(i), false, chances.get(i)));
         }
-        return shown;
+        int outputWidth = Math.min(outputs.size(), MAX_OUTPUTS) * SLOT_STEP - 1;
+        int percentX = outputs.isEmpty() ? outputX : outputX + outputWidth + 3;
+        return new RecipeRow(shown, arrowX, percentX, inputPages, outputPages, outputX, outputWidth);
     }
 
-    private static int arrowX(int inputCount) {
-        return LEFT + inputCount * SLOT_STEP + 3;
+    private static int pages(int count, int perPage) {
+        return Math.max(1, (count + perPage - 1) / perPage);
+    }
+
+    /** Moves long input / output lists on, unless the mouse is on the recipe (so what it points at stays put). */
+    private void advanceCycle(int mouseX, int mouseY) {
+        RecipeModel recipe = be.getDisplayedRecipe();
+        ResourceLocation id = recipe == null ? null : recipe.id();
+        long now = Util.getMillis();
+        if (!Objects.equals(id, cycledRecipe)) {
+            // a new recipe starts from its first inputs and outputs
+            cycledRecipe = id;
+            cycle = 0;
+            nextCycleMs = now + CYCLE_MS;
+            return;
+        }
+        boolean onRecipe = WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + RECIPE_Y,
+                RIGHT - LEFT, 18);
+        if (onRecipe) {
+            nextCycleMs = now + CYCLE_MS;
+        } else if (now >= nextCycleMs) {
+            cycle++;
+            nextCycleMs = now + CYCLE_MS;
+        }
+    }
+
+    /** A thin track under a group of slots, lit where the shown ones are in the whole list. */
+    private void drawPageTrack(GuiGraphics gfx, int x, int width, int pages) {
+        if (pages <= 1) return;
+        int y = this.topPos + RECIPE_Y + 20;
+        gfx.fill(x, y, x + width, y + 1, 0xFF333333);
+        int page = cycle % pages;
+        int from = width * page / pages;
+        int to = width * (page + 1) / pages;
+        gfx.fill(x + from, y, x + to, y + 1, 0xFFBBBBBB);
     }
 
     private static int rowY(Row row) {
@@ -231,15 +312,16 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             }
         }
 
-        var slots = recipeSlots();
-        if (!slots.isEmpty()) {
-            int inputs = (int) slots.stream().filter(Shown::input).count();
-            for (Shown s : slots) {
+        var row = recipeRow();
+        if (!row.slots().isEmpty()) {
+            for (Shown s : row.slots()) {
                 gfx.blit(Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18);
                 PortContentIcon.draw(gfx, s.content(), x + s.x(), y + s.y());
             }
+            drawPageTrack(gfx, x + LEFT, MAX_INPUTS * SLOT_STEP - 1, row.inputPages());
+            drawPageTrack(gfx, x + row.outputX(), row.outputWidth(), row.outputPages());
             // MM's own progress arrow, as in the JEI categories
-            int ax = x + arrowX(inputs);
+            int ax = x + row.arrowX();
             int ay = y + RECIPE_Y;
             gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 0, 24, 17);
             var state = be.getRecipeState();
@@ -251,12 +333,12 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         // the redstone value is a button: MM's button texture, pressed look on hover
         int by = y + rowY(Row.REDSTONE) - 2;
         var button = isOnRow(Row.REDSTONE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
-        gfx.blitNineSlicedSized(button, x + VALUE_X - 2, by, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-        drawSmallItem(gfx, new ItemStack(Items.REDSTONE), x + VALUE_X, by + 1);
+        gfx.blitNineSlicedSized(button, x + VALUE_X - 2, by, RIGHT - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        drawSmallItem(gfx, new ItemStack(Items.REDSTONE), x + VALUE_X, by + 1, 8);
 
         int my = y + rowY(Row.MODE) - 2;
         var modeButton = isOnRow(Row.MODE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
-        gfx.blitNineSlicedSized(modeButton, x + VALUE_X - 2, my, RIGHT - VALUE_X + 2, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        gfx.blitNineSlicedSized(modeButton, x + VALUE_X - 2, my, RIGHT - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
     }
 
     @Override
@@ -269,28 +351,28 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
 
         Status status = status();
-        drawClipped(gfx, Component.translatable(status.key()), LEFT + 9, STATUS_Y, RIGHT - LEFT - 9, status.color);
-
+        int statusWidth = RIGHT - LEFT - 9;
         if (showsDiagnosis()) {
-            var diagnosis = menu.getDiagnosis();
-            var first = diagnosis.missing().get(0);
-            drawClipped(gfx, Component.translatable("gui.mm.controller.missing", diagnosis.total()), LEFT, RECIPE_LABEL_Y,
-                    RIGHT - LEFT, Status.NOT_FORMED.color);
+            // how many blocks are missing, right-aligned on the status line
+            var count = Component.translatable("gui.mm.controller.missing", menu.getDiagnosis().total());
+            int countWidth = Math.min(this.font.width(count), RIGHT - LEFT - 9 - 40);
+            drawClipped(gfx, count, RIGHT - countWidth, STATUS_Y, countWidth, Status.NOT_FORMED.color);
+            statusWidth -= countWidth + 4;
+        }
+        drawClipped(gfx, Component.translatable(status.key()), LEFT + 9, STATUS_Y, statusWidth, status.color);
+
+        var recipe = recipeRow();
+        if (showsDiagnosis()) {
+            // the first missing block takes the recipe's place
+            var first = menu.getDiagnosis().missing().get(0);
             drawClipped(gfx, first.required(), LEFT + 21, RECIPE_Y, RIGHT - LEFT - 21, TEXT);
             drawClipped(gfx, offsetText(first.pos()), LEFT + 21, RECIPE_Y + 10, RIGHT - LEFT - 21, LABEL);
-        } else {
-            gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe"), LEFT, RECIPE_LABEL_Y, LABEL, false);
-        }
-        var slots = recipeSlots();
-        if (showsDiagnosis()) {
-            // the missing blocks take the recipe's place
-        } else if (slots.isEmpty()) {
+        } else if (recipe.slots().isEmpty()) {
             gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
         } else {
             var state = be.getRecipeState();
             int percent = state == null ? 100 : (int) Math.floor(state.getTickPercentage());
-            int lastX = slots.get(slots.size() - 1).x();
-            gfx.drawString(this.font, percent + "%", lastX + 21, RECIPE_Y + 5, TEXT, false);
+            drawClipped(gfx, Component.literal(percent + "%"), recipe.percentX(), RECIPE_Y + 5, RIGHT - recipe.percentX(), TEXT);
         }
 
         for (Row row : rows()) {
@@ -409,18 +491,28 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+        advanceCycle(mouseX, mouseY);
         renderBackground(gfx);
         super.render(gfx, mouseX, mouseY, partial);
         renderTooltip(gfx, mouseX, mouseY);
 
-        for (Shown s : onPortsPage() ? List.<Shown>of() : recipeSlots()) {
-            if (!WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + s.x(), this.topPos + s.y(), 18, 18)) {
-                continue;
+        Shown hovered = hoveredSlot(mouseX, mouseY);
+        if (hovered != null) {
+            var content = hovered.content();
+            var lines = new ArrayList<Component>(content.kind() == PortContent.Kind.ITEM
+                    ? Screen.getTooltipFromItem(Minecraft.getInstance(), content.item())
+                    : PortContentIcon.tooltip(content));
+            if (hovered.chance() < 1) {
+                lines.add(Component.translatable("gui.mm.controller.recipe.chance", ChanceUtils.formatPercent(hovered.chance()))
+                        .withStyle(ChatFormatting.DARK_AQUA));
             }
-            if (s.content().kind() == PortContent.Kind.ITEM) {
-                gfx.renderTooltip(this.font, s.content().item(), mouseX, mouseY);
+            if (JEI && JeiRecipeLookup.canShow(content)) {
+                lines.add(Component.translatable("gui.mm.controller.recipe.jei").withStyle(ChatFormatting.YELLOW));
+            }
+            if (content.kind() == PortContent.Kind.ITEM) {
+                gfx.renderComponentTooltip(this.font, lines, mouseX, mouseY, content.item());
             } else {
-                gfx.renderComponentTooltip(this.font, PortContentIcon.tooltip(s.content()), mouseX, mouseY);
+                gfx.renderComponentTooltip(this.font, lines, mouseX, mouseY);
             }
             return;
         }
@@ -451,8 +543,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             lines.add(Component.translatable("gui.mm.controller.rename.hint").withStyle(ChatFormatting.YELLOW));
             return lines;
         }
-        if (showsDiagnosis() && WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + RECIPE_LABEL_Y - 1,
-                RIGHT - LEFT, RECIPE_Y + 18 - RECIPE_LABEL_Y + 1)) {
+        if (showsDiagnosis() && WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + RECIPE_Y - 1,
+                RIGHT - LEFT, 20)) {
             return diagnosisTooltip();
         }
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
@@ -498,6 +590,18 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return null;
     }
 
+    /** @return the recipe input or output under the mouse, null when none (or not on the status page) */
+    @Nullable
+    private Shown hoveredSlot(double mouseX, double mouseY) {
+        if (onPortsPage()) return null;
+        for (Shown s : recipeSlots()) {
+            if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + s.x(), this.topPos + s.y(), 18, 18)) {
+                return s;
+            }
+        }
+        return null;
+    }
+
     private boolean isOnRow(Row row, double mouseX, double mouseY) {
         double mx = mouseX - this.leftPos;
         double my = mouseY - this.topPos;
@@ -517,6 +621,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (!onPortsPage() && isOnName(mouseX, mouseY)) {
             startRename();
             return true;
+        }
+        Shown clicked = hoveredSlot(mouseX, mouseY);
+        if (clicked != null && JEI && (button == 0 || button == 1)) {
+            // left: how it's made, right: what uses it (JEI's R / U)
+            return JeiRecipeLookup.show(clicked.content(), button == 1);
         }
         if (isOnPageButton(mouseX, mouseY)) {
             page = (page + 1) % PAGE_COUNT;
