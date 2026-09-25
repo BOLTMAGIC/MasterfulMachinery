@@ -19,7 +19,7 @@ public class CreateKineticPortBlockItem extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Create Rotation").withStyle(ChatFormatting.BOLD, ChatFormatting.YELLOW);
+        return Component.translatable("tooltip.mm.port_type.create_rotation").withStyle(ChatFormatting.BOLD, ChatFormatting.YELLOW);
     }
 
     @Override

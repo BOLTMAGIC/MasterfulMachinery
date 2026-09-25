@@ -39,7 +39,7 @@ public class StructureRenderWidget extends AbstractWidget {
         guiRenderer.setViewport(position);
         guiRenderer.init();
         guiRenderer.setupViewState(viewState.get());
-        guiRenderer.render(guiGraphics, mouseX, mouseY);
+        guiRenderer.render(guiGraphics, mouseX, mouseY, position.contains(mouseX, mouseY));
 
         guiGraphics.pose().popPose();
     }

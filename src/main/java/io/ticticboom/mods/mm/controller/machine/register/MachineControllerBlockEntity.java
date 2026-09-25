@@ -57,6 +57,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
@@ -90,6 +91,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Nullable
     private LinkData networkLink = null;
     private long lastTick = 0;
+    // players with the controller's screen open; while > 0 the controller is sent to clients every tick
+    private int viewers = 0;
+    private boolean wasActive = false;
+    private int lastClientSignature = 0;
+    private static final int SAVE_FALLBACK_TICKS = 20;
+    // how often input ports are checked for changes made from outside (pipes, players)
+    private static final int EXTERNAL_CHANGE_CHECK_TICKS = 5;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
     private long lastResourceScanTime = -1;
@@ -125,9 +133,45 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         runMachineTick();
         NetworkLink.tickController(level, this);
+        syncAndSave();
+    }
 
-        setChanged();
-        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    /**
+     * Marks the controller for saving and sends it to clients only when that is needed, instead of every tick:
+     * a running recipe changes its progress every tick, so it is saved while running (and on the tick it ends);
+     * clients get the controller every tick only while someone has its screen open, otherwise only when
+     * something they can see changes.
+     */
+    private void syncAndSave() {
+        if (level == null) return;
+        boolean active = !activeRecipes.isEmpty();
+        int signature = clientSignature();
+        boolean visibleChange = signature != lastClientSignature;
+        if (active || wasActive || visibleChange || level.getGameTime() % SAVE_FALLBACK_TICKS == 0) {
+            setChanged();
+        }
+        wasActive = active;
+        if (viewers > 0 || visibleChange) {
+            lastClientSignature = signature;
+            level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
+    }
+
+    /** What the client shows about the controller, apart from recipe progress. */
+    private int clientSignature() {
+        return Objects.hash(isFormed, structure == null ? null : structure.id(), activeRecipes.keySet(),
+                currentRecipe == null ? null : currentRecipe.id(), lastStartedRecipeId, lastRecipeStartTime,
+                redstoneMode, networkLink);
+    }
+
+    /** A player opened the controller's screen (server side). */
+    public void addViewer() {
+        viewers++;
+    }
+
+    /** A player closed the controller's screen (server side). */
+    public void removeViewer() {
+        viewers = Math.max(0, viewers - 1);
     }
 
     private void runMachineTick() {
@@ -208,6 +252,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     // Helper split to reduce runRecipe complexity
     private void detectExternalStorageChanges() {
+        // this walks every input slot and tank, so not every tick; a change is noticed within a quarter second
+        if (level == null || level.getGameTime() % EXTERNAL_CHANGE_CHECK_TICKS != 0) {
+            return;
+        }
         try {
             if (portStorages != null) {
                 long sig = 1469598103934665603L; // FNV offset basis

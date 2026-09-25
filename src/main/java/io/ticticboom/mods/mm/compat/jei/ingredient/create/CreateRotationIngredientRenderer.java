@@ -19,6 +19,6 @@ public class CreateRotationIngredientRenderer implements IIngredientRenderer<Cre
     @SuppressWarnings("removal")
     @Override
     public @NotNull List<Component> getTooltip(CreateRotationStack ingredient, @NotNull TooltipFlag tooltipFlag) {
-        return List.of(Component.literal("Create Rotation: " + ingredient.speed()));
+        return List.of(Component.translatable("jei.mm.ingredient.create_rotation", ingredient.speed()));
     }
 }

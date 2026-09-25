@@ -21,7 +21,7 @@ public class BotaniaManaPortBlockItem extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Botania Mana").withStyle(ChatFormatting.BOLD, ChatFormatting.BLUE);
+        return Component.translatable("tooltip.mm.port_type.botania_mana").withStyle(ChatFormatting.BOLD, ChatFormatting.BLUE);
     }
 
     @Override

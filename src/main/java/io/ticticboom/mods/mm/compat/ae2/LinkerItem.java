@@ -6,15 +6,13 @@ import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.networklink.LinkerMode;
 import io.ticticboom.mods.mm.networklink.MultiblockLookup;
 import io.ticticboom.mods.mm.networklink.Permissions;
-import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
-import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
-import io.ticticboom.mods.mm.port.common.autoio.PortSides;
+import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.ChatFormatting;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,17 +28,14 @@ import java.util.List;
  * Machine Network Linker. Sneak + mouse wheel switches between two modes:
  * <ul>
  *     <li>Linking: save an AE2 network (Wireless Access Point slot, or right-click an AE2 block),
- *     then right-click a controller to link it to yourself and that network; sneak + right-click
- *     a controller to unlink it.</li>
- *     <li>Configure: right-click a port side to toggle its auto I/O; sneak + right-click shows all sides.</li>
+ *     then right-click a controller to link it to yourself and that network.</li>
+ *     <li>Info: right-click a controller or port to see what the machine is linked to;
+ *     sneak + right-click it to remove the link, sneak + right-click the air to forget the saved network.</li>
  * </ul>
+ * Port sides are configured with the Machine Wrench.
  */
 public class LinkerItem extends Item {
     private static final String NETWORK_TAG = "Network";
-    private static final PortSides.Relative[] SUMMARY_ORDER = {
-            PortSides.Relative.TOP, PortSides.Relative.BOTTOM, PortSides.Relative.FRONT,
-            PortSides.Relative.BACK, PortSides.Relative.LEFT, PortSides.Relative.RIGHT};
-    private static final Direction[] SUMMARY_COMPASS = {Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
 
     public LinkerItem(Properties properties) {
         super(properties);
@@ -54,12 +49,12 @@ public class LinkerItem extends Item {
             return InteractionResult.PASS;
         }
         BlockEntity be = level.getBlockEntity(context.getClickedPos());
-        if (LinkerMode.get(context.getItemInHand()) == LinkerMode.CONFIGURE) {
-            if (!(be instanceof AbstractPortBlockEntity port)) {
+        if (LinkerMode.get(context.getItemInHand()) == LinkerMode.INFO) {
+            if (!(be instanceof MachineControllerBlockEntity) && !(be instanceof IPortBlockEntity)) {
                 return InteractionResult.PASS;
             }
             if (!level.isClientSide()) {
-                configurePort((ServerLevel) level, player, context, port);
+                showOrRemoveLink((ServerLevel) level, player, context, be);
             }
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
@@ -78,53 +73,46 @@ public class LinkerItem extends Item {
         return InteractionResult.PASS;
     }
 
-    private static void configurePort(ServerLevel level, Player player, UseOnContext context, AbstractPortBlockEntity port) {
-        var owner = MultiblockLookup.findLinkedController(level, context.getClickedPos(), port.getStorage());
-        if (owner != null && !Permissions.canAccess(player, owner.getNetworkLink().owner())) {
-            notOwner(player, owner.getNetworkLink());
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!player.isShiftKeyDown() || LinkerMode.get(stack) != LinkerMode.INFO || getNetwork(stack) == null) {
+            return InteractionResultHolder.pass(stack);
+        }
+        if (!level.isClientSide()) {
+            setNetwork(stack, null);
+            player.displayClientMessage(Component.translatable("message.mm.network_linker.network_cleared"), true);
+        }
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+    }
+
+    private static void showOrRemoveLink(ServerLevel level, Player player, UseOnContext context, BlockEntity be) {
+        MachineControllerBlockEntity controller = be instanceof MachineControllerBlockEntity c
+                ? c
+                : MultiblockLookup.findLinkedController(level, context.getClickedPos(), ((IPortBlockEntity) be).getStorage());
+        LinkData link = controller == null ? null : controller.getNetworkLink();
+        if (link == null) {
+            player.displayClientMessage(Component.translatable("message.mm.network_linker.info.not_linked").withStyle(ChatFormatting.GRAY), true);
             return;
         }
-        PortAutoIO autoIO = port.getAutoIO();
-        if (autoIO == null) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.no_autoio").withStyle(ChatFormatting.RED), true);
+        if (!Permissions.canAccess(player, link.owner())) {
+            notOwner(player, link);
             return;
         }
-        boolean frontChanged = autoIO.refreshFront(level);
         if (player.isShiftKeyDown()) {
-            player.displayClientMessage(summary(autoIO), true);
-            if (frontChanged) {
-                port.setChanged();
-            }
+            controller.setNetworkLink(null);
+            player.displayClientMessage(Component.translatable("message.mm.network_linker.unlinked"), true);
             return;
         }
-        Direction side = context.getClickedFace();
-        autoIO.toggleSide(side);
-        port.setChanged();
-        player.displayClientMessage(Component.translatable(PortSides.nameKey(side, autoIO.getFront()))
-                .append(": ").append(stateName(autoIO, side)), true);
-    }
-
-    private static Component summary(PortAutoIO autoIO) {
-        Direction front = autoIO.getFront();
-        MutableComponent line = Component.empty();
-        for (int i = 0; i < SUMMARY_ORDER.length; i++) {
-            Direction side = front == null ? SUMMARY_COMPASS[i] : PortSides.toWorld(SUMMARY_ORDER[i], front);
-            if (i > 0) {
-                line.append("  ");
-            }
-            line.append(Component.translatable(PortSides.nameKey(side, front))
-                    .withStyle(autoIO.isSideEnabled(side) ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
-        }
-        return line.append(Component.literal("  - ").withStyle(ChatFormatting.GRAY))
-                .append(Component.translatable(autoIO.isPull() ? "gui.mm.port.side.state.pull" : "gui.mm.port.side.state.push"));
-    }
-
-    private static Component stateName(PortAutoIO autoIO, Direction side) {
-        if (!autoIO.isSideEnabled(side)) {
-            return Component.translatable("gui.mm.port.side.state.off").withStyle(ChatFormatting.GRAY);
-        }
-        return Component.translatable(autoIO.isPull() ? "gui.mm.port.side.state.pull" : "gui.mm.port.side.state.push")
-                .withStyle(ChatFormatting.GREEN);
+        LinkData.NetworkPos network = link.network();
+        boolean online = NetworkAccess.storage(level.getServer(), network) != null;
+        player.displayClientMessage(Component.translatable("message.mm.network_linker.info.linked",
+                        link.ownerName(), network.pos().toShortString(), network.dimension().location().getPath())
+                .append(" ")
+                .append(Component.translatable(online ? "message.mm.network_linker.info.online" : "message.mm.network_linker.info.offline")
+                        .withStyle(online ? ChatFormatting.GREEN : ChatFormatting.RED))
+                .append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
+                .append(Component.translatable("message.mm.network_linker.info.unlink_hint").withStyle(ChatFormatting.GRAY)), true);
     }
 
     private static void rememberNetwork(Level level, Player player, UseOnContext context, IInWorldGridNodeHost host) {
@@ -145,10 +133,8 @@ public class LinkerItem extends Item {
         }
 
         if (player.isShiftKeyDown()) {
-            if (existing != null) {
-                controller.setNetworkLink(null);
-                player.displayClientMessage(Component.translatable("message.mm.network_linker.unlinked"), true);
-            }
+            // unlinking moved to Info mode, so a slip while linking can't drop the link
+            player.displayClientMessage(Component.translatable("message.mm.network_linker.use_info_mode").withStyle(ChatFormatting.GRAY), true);
             return;
         }
 

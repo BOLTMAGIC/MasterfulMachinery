@@ -29,7 +29,7 @@ public class MekanismGasPortBlockEntity extends MekanismChemicalPortBlockEntity<
 
     @Override
     public Component getDisplayName() {
-        return Component.literal("Mekanism Gas Port");
+        return Component.translatable("container.mm.port.mekanism_gas");
     }
 
     @Nullable

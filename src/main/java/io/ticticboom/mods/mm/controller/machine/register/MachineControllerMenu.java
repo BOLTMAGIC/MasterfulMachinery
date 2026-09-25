@@ -10,6 +10,7 @@ import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.inventory.DataSlot;
 
@@ -33,7 +34,17 @@ public class MachineControllerMenu extends MMContainerMenu {
         this.inv = inv;
         this.be = be;
         BlockUtils.setupPlayerInventory(this, inv, -1, -1);
+        if (!inv.player.level().isClientSide() && be.getBlockEntity() instanceof MachineControllerBlockEntity controller) {
+            controller.addViewer();
+        }
+    }
 
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (!player.level().isClientSide() && be.getBlockEntity() instanceof MachineControllerBlockEntity controller) {
+            controller.removeViewer();
+        }
     }
 
     public MachineControllerMenu(ControllerModel model, RegistryGroupHolder groupHolder, int windowId, Inventory inv,
