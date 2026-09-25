@@ -98,7 +98,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int SLOT_STEP = 19;
     private static final int TOOLTIP_MISSING = 10;
     // recipes with more inputs or outputs than fit show the next few this often
-    private static final long CYCLE_MS = 2000;
+    private static final long CYCLE_MS = 1200;
     private static final boolean JEI = ModList.get().isLoaded("jei");
 
     private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, SOUND, LINK }
