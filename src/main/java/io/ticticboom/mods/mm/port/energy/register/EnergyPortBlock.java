@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.energy.register;
 
+import net.minecraft.world.level.block.state.StateDefinition;
+import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
@@ -40,6 +42,12 @@ public class EnergyPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
+        // follows the state of the machine the port belongs to; shown as the port's status light
+        builder.add(ControllerState.PROPERTY);
+    }
+
+    @Override
     public void generateModel(MMBlockstateProvider provider) {
         PortUtils.commonGenerateModel(provider, groupHolder, isInput, Ref.Textures.INPUT_ENERGY_PORT_OVERLAY, Ref.Textures.OUTPUT_ENERGY_PORT_OVERLAY);
     }
@@ -66,6 +74,11 @@ public class EnergyPortBlock extends Block implements IPortBlock, EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
+        // also called when only the status light (block state) changes: the port is still here then
+        if (state.is(newState.getBlock())) {
+            super.onRemove(state, level, pos, newState, p_60519_);
+            return;
+        }
         // Notify nearby controllers that a part was removed
         if (!level.isClientSide() && level instanceof ServerLevel sl) {
             var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);

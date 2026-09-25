@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
+import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
@@ -57,6 +59,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -131,6 +135,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private long lastRecipeStartTime = Long.MIN_VALUE;
     /** How long after its start a recipe still counts as running on the screen, in ticks. */
     private static final int RECENT_RECIPE_TICKS = 20;
+    private static final int PORT_STATE_REFRESH_TICKS = 20;
+    // ports whose status light this controller last set
+    private Set<BlockPos> litPorts = new HashSet<>();
     private ResourceLocation lastStartedInputItemId = null;
     private long recipeSelectionSequence = 0L;
     private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
@@ -144,6 +151,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         runMachineTick();
         NetworkLink.tickController(level, this);
+        updateControllerState();
         syncAndSave();
     }
 
@@ -198,6 +206,94 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         lastTick = gameTime;
         if (isFormed) {
             runRecipe();
+        }
+    }
+
+    /**
+     * Mirrors the machine's state into the block state, which picks the controller's model and screen color.
+     * Only clients are notified (no neighbour or shape updates), and only when the state actually changes.
+     */
+    private void updateControllerState() {
+        if (level == null) return;
+        BlockState blockState = getBlockState();
+        if (!blockState.hasProperty(ControllerState.PROPERTY)) return;
+        ControllerState next;
+        if (!isFormed || structure == null) {
+            next = ControllerState.UNFORMED;
+        } else if (isAllowedByRedstone() && getDisplayedRecipe() != null) {
+            // getDisplayedRecipe() also covers recipes that finish within a tick, so a busy machine doesn't flicker
+            next = ControllerState.WORKING;
+        } else {
+            next = ControllerState.IDLE;
+        }
+        boolean changed = blockState.getValue(ControllerState.PROPERTY) != next;
+        if (changed) {
+            level.setBlock(getBlockPos(), blockState.setValue(ControllerState.PROPERTY, next), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
+        }
+        // re-check the ports now and then too, so a port swapped into a running machine picks up its state
+        if (changed || level.getGameTime() % PORT_STATE_REFRESH_TICKS == 0) {
+            updatePortStates(next);
+        }
+    }
+
+    /**
+     * Gives the machine's ports the controller's state (their status light). Ports that left the machine go back to unformed.
+     */
+    private void updatePortStates(ControllerState state) {
+        if (level == null) return;
+        Set<BlockPos> current = new HashSet<>();
+        if (state != ControllerState.UNFORMED && structure != null) {
+            try {
+                current.addAll(structure.getPortPositions(level, getBlockPos()));
+            } catch (Throwable ignored) {
+            }
+        }
+        int[] colors = machineColors();
+        for (BlockPos portPos : litPorts) {
+            if (!current.contains(portPos)) {
+                setPortState(portPos, ControllerState.UNFORMED);
+                setPortColors(portPos, null);
+            }
+        }
+        for (BlockPos portPos : current) {
+            setPortState(portPos, state);
+            setPortColors(portPos, colors);
+        }
+        litPorts = current;
+    }
+
+    /**
+     * @return the controller's own screen colors (unformedColor / idleColor / workingColor from KubeJS or JSON)
+     * for its ports' status lights, -1 where it has none; null when it sets no color at all
+     */
+    @Nullable
+    private int[] machineColors() {
+        int[] colors = new int[ControllerState.values().length];
+        boolean any = false;
+        for (ControllerState s : ControllerState.values()) {
+            Integer color = MMClientConfig.parseColor(controllerModel.screenColor(s.getSerializedName()));
+            colors[s.ordinal()] = color == null ? -1 : color;
+            any |= color != null;
+        }
+        return any ? colors : null;
+    }
+
+    private void setPortColors(BlockPos portPos, @Nullable int[] colors) {
+        if (level != null && level.isLoaded(portPos) && level.getBlockEntity(portPos) instanceof AbstractPortBlockEntity port) {
+            port.setMachineColors(colors);
+        }
+    }
+
+    /** Turns the ports' status lights back to unformed, used when the controller is broken. */
+    public void resetPortStates() {
+        updatePortStates(ControllerState.UNFORMED);
+    }
+
+    private void setPortState(BlockPos portPos, ControllerState state) {
+        if (level == null || !level.isLoaded(portPos)) return;
+        BlockState portState = level.getBlockState(portPos);
+        if (portState.hasProperty(ControllerState.PROPERTY) && portState.getValue(ControllerState.PROPERTY) != state) {
+            level.setBlock(portPos, portState.setValue(ControllerState.PROPERTY, state), Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE);
         }
     }
 
@@ -997,6 +1093,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         tag.put("activeRecipes", recipesTag);
         if (structure != null) tag.putString("structureId", structure.id().toString());
         tag.putBoolean("isFormed", isFormed);
+        tag.putLongArray("litPorts", litPorts.stream().mapToLong(BlockPos::asLong).toArray());
         if (lastStartedRecipeId != null) tag.putString("lastStartedRecipeId", lastStartedRecipeId.toString());
         tag.putLong("lastRecipeStartTime", lastRecipeStartTime);
         if (lastStartedInputItemId != null) tag.putString("lastStartedInputItemId", lastStartedInputItemId.toString());
@@ -1045,6 +1142,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             structure = StructureManager.STRUCTURES.get(structureId);
         } else {
             structure = null;
+        }
+        litPorts = new HashSet<>();
+        for (long packed : tag.getLongArray("litPorts")) {
+            litPorts.add(BlockPos.of(packed));
         }
         if (tag.contains("isFormed")) {
             isFormed = tag.getBoolean("isFormed");

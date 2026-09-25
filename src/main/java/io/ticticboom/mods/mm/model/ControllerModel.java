@@ -76,6 +76,17 @@ public record ControllerModel(
         return json;
     }
 
+    /**
+     * Optional per-controller screen color, e.g. "idleColor": "#55FF55" in the controller's JSON.
+     * @param state unformed, idle or working
+     * @return the color string, or null when the controller doesn't set one
+     */
+    public String screenColor(String state) {
+        var key = state + "Color";
+        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
+        return config.get(key).getAsString();
+    }
+
     private static int clampMaxParallelRecipesMarker(int v) {
         // -1 => use global default; otherwise clamp to [0,100]
         if (v == -1) return -1;

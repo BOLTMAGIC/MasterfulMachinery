@@ -19,11 +19,8 @@ public class PortUtils {
 
     public static void commonGenerateModel(MMBlockstateProvider provider, RegistryGroupHolder groupHolder,
             boolean isInput, ResourceLocation inputOverlay, ResourceLocation outputOverlay) {
-        if (isInput) {
-            provider.dynamicBlock(groupHolder.getBlock().getId(), Ref.Textures.BASE_BLOCK, inputOverlay);
-        } else {
-            provider.dynamicBlock(groupHolder.getBlock().getId(), Ref.Textures.BASE_BLOCK, outputOverlay);
-        }
+        // the status light is drawn by PortStatusLightRenderer, so it also shows on packs' own port models
+        provider.dynamicBlock(groupHolder.getBlock().getId(), Ref.Textures.BASE_BLOCK, isInput ? inputOverlay : outputOverlay);
         provider.simpleBlock(groupHolder.getBlock().get());
     }
 }
