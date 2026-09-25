@@ -29,7 +29,6 @@ import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.ModList;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -47,7 +46,6 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -121,8 +119,6 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     // which few of a long input / output list are shown; advances every CYCLE_MS unless the mouse is on the recipe
     private int cycle = 0;
     private long nextCycleMs = 0;
-    @Nullable
-    private ResourceLocation cycledRecipe;
 
     public MachineControllerScreen(MachineControllerMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -250,16 +246,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     /** Moves long input / output lists on, unless the mouse is on the recipe (so what it points at stays put). */
     private void advanceCycle(int mouseX, int mouseY) {
-        RecipeModel recipe = be.getDisplayedRecipe();
-        ResourceLocation id = recipe == null ? null : recipe.id();
+        // not reset when the shown recipe changes: short recipes come and go faster than one turn
         long now = Util.getMillis();
-        if (!Objects.equals(id, cycledRecipe)) {
-            // a new recipe starts from its first inputs and outputs
-            cycledRecipe = id;
-            cycle = 0;
-            nextCycleMs = now + CYCLE_MS;
-            return;
-        }
         boolean onRecipe = WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + RECIPE_Y,
                 RIGHT - LEFT, 18);
         if (onRecipe) {
