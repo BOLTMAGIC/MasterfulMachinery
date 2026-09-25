@@ -13,6 +13,8 @@
   "jei.mm.ingredient.pneumatic_air": "PneumaticCraft Hava:",
   "jei.mm.recipe.consumed_per_tick": "Tick başına tüketilir",
   "jei.mm.recipe.output_per_tick": "Tick başına üretilir",
+  "jei.mm.recipe.weighted_output": "%%%s ihtimal (bu çıktılardan biri)",
+  "jei.mm.recipe.weighted_nothing": "%%%s ihtimalle hiçbir şey çıkmaz",
   "message.mm.debug_tool.saved_to": "Kaydedildi: ",
   "message.mm.debug_tool.copy_path": "(Yolu kopyalamak için tıkla)",
   "message.mm.debug_tool.saved": "Hata ayıklama dökümü kaydedildi",

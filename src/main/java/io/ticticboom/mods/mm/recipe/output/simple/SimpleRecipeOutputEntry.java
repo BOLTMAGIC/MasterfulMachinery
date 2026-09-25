@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import lombok.Getter;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -65,6 +66,24 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
+        var rSlot = addOutputSlot(builder, model, focus, helpers, grid, ingredient);
+        double percent = chance * 100.0;
+        String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        var fmtChance = percentStr + "% Chance of Output";
+        rSlot.addRichTooltipCallback((v, list) -> {
+            if (chance < 1) {
+                list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
+            }
+            if (perTick) {
+                list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
+            }
+        });
+    }
+
+    /**
+     * Adds a JEI output slot on the next grid cell for the ingredient, with the item count badge.
+     */
+    public static IRecipeSlotBuilder addOutputSlot(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IPortIngredient ingredient) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.OUTPUT, slot.getInnerX(), slot.getInnerY());
@@ -81,17 +100,7 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         } catch (Throwable ignored) {
         }
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
-        double percent = chance * 100.0;
-        String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
-        var fmtChance = percentStr + "% Chance of Output";
-        rSlot.addRichTooltipCallback((v, list) -> {
-            if (chance < 1) {
-                list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
-            }
-            if (perTick) {
-                list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
-            }
-        });
+        return rSlot;
     }
 
     @Override
