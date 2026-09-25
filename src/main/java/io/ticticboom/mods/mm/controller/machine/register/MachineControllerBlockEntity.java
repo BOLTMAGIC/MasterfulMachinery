@@ -47,6 +47,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.Nameable;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -60,7 +61,7 @@ import java.util.Map;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
-public class MachineControllerBlockEntity extends BlockEntity implements IControllerBlockEntity, IControllerPart {
+public class MachineControllerBlockEntity extends BlockEntity implements IControllerBlockEntity, IControllerPart, Nameable {
 
     private final ControllerModel model;
     private final RegistryGroupHolder groupHolder;
@@ -85,6 +86,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // Redstone control for the controller: IGNORE, RUN_WHEN_POWERED, RUN_WHEN_UNPOWERED
     private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
+    // recipe order picked on the screen; null = the controller type's default
+    @Nullable
+    private RecipeSelectionMode recipeModeOverride = null;
+    // name given by a player (screen, or a named controller item); null = the machine's name
+    @Nullable
+    private String customName = null;
+    public static final int MAX_NAME_LENGTH = 50;
     // owner + AE2 network this machine is linked to (network linker), null when not linked
     @Getter
     @Nullable
@@ -464,7 +472,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
              if (canStartRecipeGivenParallelRules(recipe)) {
                  ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
-                 RecipeSelectionMode selectionMode = controllerModel.recipeSelectionMode();
+                 RecipeSelectionMode selectionMode = getRecipeSelectionMode();
                  if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
                      // primaryInputItemId may be a composed key (with __ suffix) or a base id.
                      ResourceLocation baseId = getResourceLocation(primaryInputItemId);
@@ -618,9 +626,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private int getChecks(int total) {
         int maxRecipeChecksPerTick;
-        if (total < 300 && !controllerModel.recipeSelectionMode().fairScheduling()) {
+        if (total < 300 && !getRecipeSelectionMode().fairScheduling()) {
             maxRecipeChecksPerTick = total; // scan all recipes every tick for small recipe sets
-        } else if (controllerModel.recipeSelectionMode().fairScheduling()) {
+        } else if (getRecipeSelectionMode().fairScheduling()) {
             maxRecipeChecksPerTick = Math.max(total / 2, 50); // 50% of recipes per tick in fair mode
         } else {
             maxRecipeChecksPerTick = Math.max(total / 2, 100); // 50% or 100 minimum for large recipe sets
@@ -678,7 +686,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     private boolean shouldDeferRecipeBySelectionMode(RecipeModel recipe, @SuppressWarnings("unused") @Nullable ResourceLocation primaryInputItemId) {
-        RecipeSelectionMode mode = controllerModel.recipeSelectionMode();
+        RecipeSelectionMode mode = getRecipeSelectionMode();
         if (mode == RecipeSelectionMode.AVOID_SAME_RECIPE) {
             return lastStartedRecipeId != null && lastStartedRecipeId.equals(recipe.id());
         }
@@ -869,7 +877,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     public ControllerModel getModel() { return model; }
 
     @Override
-    public @NotNull Component getDisplayName() { return Component.literal(model.name()); }
+    public @NotNull Component getDisplayName() { return getName(); }
 
     @Nullable
     @Override
@@ -905,6 +913,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         try {
             tag.putInt("redstoneMode", redstoneMode.ordinal());
         } catch (Throwable ignored) { }
+        if (recipeModeOverride != null) {
+            tag.putString("RecipeSelectionMode", recipeModeOverride.serializedName());
+        }
+        if (customName != null) {
+            tag.putString("CustomName", customName);
+        }
         super.saveAdditional(tag);
     }
 
@@ -954,6 +968,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } else {
             currentRecipe = null;
         }
+        recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
+        customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
         // load redstone mode
         try {
             if (tag.contains("redstoneMode")) {
@@ -1026,8 +1042,35 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return activeRecipes.size();
     }
 
+    /** The recipe order set on this controller (screen), else the controller type's default. */
     public RecipeSelectionMode getRecipeSelectionMode() {
-        return controllerModel.recipeSelectionMode();
+        return recipeModeOverride != null ? recipeModeOverride : controllerModel.recipeSelectionMode();
+    }
+
+    public void setRecipeSelectionMode(RecipeSelectionMode mode) {
+        recipeModeOverride = mode == controllerModel.recipeSelectionMode() ? null : mode;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    @Override
+    public @NotNull Component getName() {
+        return customName != null ? Component.literal(customName) : Component.literal(model.name());
+    }
+
+    @Override
+    public @Nullable Component getCustomName() {
+        return customName == null ? null : Component.literal(customName);
+    }
+
+    /** A name the player gave this controller, or null/blank for the machine's own name. */
+    public void setCustomName(@Nullable String name) {
+        customName = name == null || name.isBlank() ? null : name.strip();
+        if (customName != null && customName.length() > MAX_NAME_LENGTH) {
+            customName = customName.substring(0, MAX_NAME_LENGTH);
+        }
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     // Redstone mode accessors (ordinal used for network/GUI)
