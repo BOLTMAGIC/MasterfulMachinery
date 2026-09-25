@@ -29,6 +29,8 @@ public class AutoTransform {
     private Vector3i maxBound = new Vector3i(Integer.MIN_VALUE);
     private Vector3f pan;
     private Vector3f offset;
+    // structure point the view rotates around, in block coordinates
+    private Vector3f center = new Vector3f();
     private float scaleFactor;
 
     public AutoTransform(StructureModel model) {
@@ -82,6 +84,7 @@ public class AutoTransform {
         var m = new Matrix4f().identity();
         m.translate(offset.x, offset.y, offset.z);
         m.scale(scaleFactor);
+        m.translate(-center.x, -center.y, -center.z);
         return m;
     }
 

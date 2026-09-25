@@ -10,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
+import org.joml.Vector3f;
 import org.joml.Vector3i;
 
 import java.util.ArrayList;
@@ -28,7 +29,8 @@ public class GuiStructureRenderer {
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
     private final StructureRenderYSliceProcessor ySliceProcessor = new StructureRenderYSliceProcessor();
 
-    private int renderZoomAdjustment = 0;
+    // radius of the structure's bounding sphere, in blocks
+    private float boundingRadius = 1;
 
     @Getter
     private Vector3i structureSize = new Vector3i(0);
@@ -81,7 +83,14 @@ public class GuiStructureRenderer {
 
         structureSize = new Vector3i(extentX, extentY, extentZ);
 
-        renderZoomAdjustment = Math.max(extentX, Math.max(extentY, extentZ));
+        // extents are between block origins, so each axis spans extent + 1 blocks
+        boundingRadius = 0.5f * (float) Math.sqrt(sq(extentX + 1) + sq(extentY + 1) + sq(extentZ + 1));
+        // rotate around the middle of the structure rather than the controller
+        viewTransform.setCenter(new Vector3f((minX + maxX) / 2f, (minY + maxY) / 2f, (minZ + maxZ) / 2f));
+    }
+
+    private static float sq(int v) {
+        return (float) v * v;
     }
 
     private void findEnclosedParts() {
@@ -118,7 +127,7 @@ public class GuiStructureRenderer {
         }
 
         viewTransform.run(mouseX, mouseY);
-        renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), renderZoomAdjustment, viewTransform.getViewTransform());
+        renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), boundingRadius, viewTransform.getViewTransform());
         for (PositionedCyclingBlockRenderer part : parts) {
             if (!canRenderPart(part)) {
                 continue;
