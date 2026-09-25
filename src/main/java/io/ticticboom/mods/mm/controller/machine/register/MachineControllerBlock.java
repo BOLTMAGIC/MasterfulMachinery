@@ -111,6 +111,16 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     }
 
     @Override
+    public boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        return level.getBlockEntity(pos) instanceof MachineControllerBlockEntity be ? be.getComparatorSignal() : 0;
+    }
+
+    @Override
     public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
         if (oldState.getBlock() != newState.getBlock()) {
             if (!level.isClientSide() && level instanceof ServerLevel serverLevel) {

@@ -48,6 +48,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -86,6 +87,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Getter
     private StructureModel structure = null;
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
+    private int comparatorSignal = 0;
     private RecipeStorages portStorages = null;
     private boolean isFormed = false;
     @Getter
@@ -152,7 +154,34 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         runMachineTick();
         NetworkLink.tickController(level, this);
         updateControllerState();
+        updateComparatorSignal();
         syncAndSave();
+    }
+
+    /**
+     * Comparator output: 0 while unformed or idle, 1-15 while working, following the progress of the furthest
+     * running recipe. Recipes that finish within a tick have no progress to show and count as done (15).
+     */
+    private int computeComparatorSignal() {
+        BlockState blockState = getBlockState();
+        if (!blockState.hasProperty(ControllerState.PROPERTY) || blockState.getValue(ControllerState.PROPERTY) != ControllerState.WORKING) {
+            return 0;
+        }
+        double percent = activeRecipes.values().stream().mapToDouble(RecipeStateModel::getTickPercentage).max().orElse(100);
+        return 1 + (int) Math.round(Mth.clamp(percent, 0, 100) / 100 * 14);
+    }
+
+    /** Neighbours (comparators) are only told when the signal actually changes. */
+    private void updateComparatorSignal() {
+        int next = computeComparatorSignal();
+        if (next != comparatorSignal) {
+            comparatorSignal = next;
+            level.updateNeighbourForOutputSignal(getBlockPos(), getBlockState().getBlock());
+        }
+    }
+
+    public int getComparatorSignal() {
+        return comparatorSignal;
     }
 
     /**
