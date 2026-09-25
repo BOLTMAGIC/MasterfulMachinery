@@ -22,6 +22,8 @@ public class MachineControllerMenu extends MMContainerMenu {
 
     @Getter
     private final ControllerModel model;
+    /** How much taller than MM's large GUI texture the controller screen is; its status panel gets the room. */
+    public static final int EXTRA_HEIGHT = 24;
     private final Inventory inv;
     @Getter
     private final IControllerBlockEntity be;
@@ -38,7 +40,7 @@ public class MachineControllerMenu extends MMContainerMenu {
         this.model = model;
         this.inv = inv;
         this.be = be;
-        BlockUtils.setupPlayerInventory(this, inv, -1, -1);
+        BlockUtils.setupPlayerInventory(this, inv, -1, -1 + EXTRA_HEIGHT);
         if (!inv.player.level().isClientSide() && be.getBlockEntity() instanceof MachineControllerBlockEntity controller) {
             controller.addViewer();
         }

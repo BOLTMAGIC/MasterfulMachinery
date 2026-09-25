@@ -99,6 +99,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // recipe order picked on the screen; null = the controller type's default
     @Nullable
     private RecipeSelectionMode recipeModeOverride = null;
+    // set from the controller screen: this machine plays no working sound (its particles stay)
+    private boolean soundMuted = false;
     // name given by a player (screen, or a named controller item); null = the machine's name
     @Nullable
     private String customName = null;
@@ -153,7 +155,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         if (level.isClientSide()) {
             if (getBlockState().getBlock() instanceof MachineControllerBlock block) {
-                block.tickWorkingEffects(getBlockState(), level, getBlockPos());
+                block.tickWorkingEffects(getBlockState(), level, getBlockPos(), soundMuted);
             }
             return;
         }
@@ -1154,6 +1156,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (customName != null) {
             tag.putString("CustomName", customName);
         }
+        if (soundMuted) {
+            tag.putBoolean("SoundMuted", true);
+        }
         super.saveAdditional(tag);
     }
 
@@ -1209,6 +1214,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
         customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
+        soundMuted = tag.getBoolean("SoundMuted");
         // load redstone mode
         try {
             if (tag.contains("redstoneMode")) {
@@ -1303,6 +1309,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     public void setRecipeSelectionMode(RecipeSelectionMode mode) {
         recipeModeOverride = mode == controllerModel.recipeSelectionMode() ? null : mode;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    public boolean isSoundMuted() {
+        return soundMuted;
+    }
+
+    public void setSoundMuted(boolean muted) {
+        soundMuted = muted;
         setChanged();
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }

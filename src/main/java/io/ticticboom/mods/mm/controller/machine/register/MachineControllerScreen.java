@@ -63,12 +63,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int RIGHT = 163;
     private static final int VALUE_X = 80;
 
-    // everything fits MM's dark panel, y 7 to 125
+    // the texture's dark panel (y 7 to 125) is stretched by EXTRA_HEIGHT, repeating the plain band just above PANEL_SPLIT
+    private static final int EXTRA_HEIGHT = MachineControllerMenu.EXTRA_HEIGHT;
+    private static final int TEXTURE_HEIGHT = 222;
+    private static final int PANEL_SPLIT = 80;
     private static final int NAME_Y = 10;
     private static final int STATUS_Y = 22;
-    private static final int RECIPE_Y = 36;
-    private static final int ROWS_Y = 62;
-    private static final int ROW_STEP = 11;
+    private static final int RECIPE_Y = 37;
+    private static final int ROWS_Y = 64;
+    private static final int ROW_STEP = 12;
     // one pixel shorter than a row, so stacked buttons don't touch
     private static final int BUTTON_HEIGHT = ROW_STEP - 1;
 
@@ -80,7 +83,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final long CYCLE_MS = 2000;
     private static final boolean JEI = ModList.get().isLoaded("jei");
 
-    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, LINK }
+    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, SOUND, LINK }
 
     // packs name tiered structures like "Auto Crusher Tier 1.5"; the tier gets its own row
     private static final Pattern TIER = Pattern.compile("(?i)\\s*\\b(?:tier|seviye|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
@@ -104,7 +107,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int PAGE_BTN_Y = 8;
     private static final int PAGE_BTN = 12;
     private static final int LIST_Y = 24;
-    private static final int LIST_BOTTOM = 123;
+    private static final int LIST_BOTTOM = 123 + EXTRA_HEIGHT;
 
     // 0 status, 1 input ports, 2 output ports; remembered while the game runs, like the port settings panel
     private static int page = 0;
@@ -124,7 +127,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         super(menu, inv, title);
         this.menu = menu;
         this.be = (MachineControllerBlockEntity) menu.getBe();
-        this.imageHeight = 222;
+        this.imageHeight = TEXTURE_HEIGHT + EXTRA_HEIGHT;
         this.imageWidth = 174;
         this.portList = new ControllerPortList(menu.getPortPositions());
     }
@@ -269,13 +272,17 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(x + from, y, x + to, y + 1, 0xFFBBBBBB);
     }
 
-    private static int rowY(Row row) {
-        return ROWS_Y + row.ordinal() * ROW_STEP;
+    // rows are stacked in the order shown, so a hidden row leaves no gap
+    private int rowY(Row row) {
+        return ROWS_Y + rows().indexOf(row) * ROW_STEP;
     }
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        int split = this.topPos + PANEL_SPLIT;
+        gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, this.topPos, 0, 0, this.imageWidth, PANEL_SPLIT);
+        gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, split, 0, PANEL_SPLIT - EXTRA_HEIGHT, this.imageWidth, EXTRA_HEIGHT);
+        gfx.blit(Ref.UiTextures.GUI_LARGE, this.leftPos, split + EXTRA_HEIGHT, 0, PANEL_SPLIT, this.imageWidth, TEXTURE_HEIGHT - PANEL_SPLIT);
         drawPageButton(gfx, mouseX, mouseY);
         if (onPortsPage()) {
             portList.showInputs(page == 1);
@@ -327,6 +334,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         int my = y + rowY(Row.MODE) - 2;
         var modeButton = isOnRow(Row.MODE, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         gfx.blitNineSlicedSized(modeButton, x + VALUE_X - 2, my, RIGHT - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+
+        if (hasWorkingSound()) {
+            int sy = y + rowY(Row.SOUND) - 2;
+            var soundButton = isOnRow(Row.SOUND, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
+            gfx.blitNineSlicedSized(soundButton, x + VALUE_X - 2, sy, RIGHT - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+            drawSmallItem(gfx, new ItemStack(Items.NOTE_BLOCK), x + VALUE_X, sy + 1, 8);
+        }
     }
 
     @Override
@@ -389,6 +403,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 VALUE_X + 12, rowY(Row.REDSTONE), RIGHT - VALUE_X - 14, TEXT);
         drawClipped(gfx, Component.translatable("gui.mm.controller.mode." + recipeMode()),
                 VALUE_X + 1, rowY(Row.MODE), RIGHT - VALUE_X - 3, TEXT);
+        if (hasWorkingSound()) {
+            drawClipped(gfx, Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off" : "gui.mm.controller.sound.on"),
+                    VALUE_X + 12, rowY(Row.SOUND), RIGHT - VALUE_X - 14, be.isSoundMuted() ? LABEL : TEXT);
+        }
         if (NetworkLink.AVAILABLE) {
             LinkData link = be.getNetworkLink();
             if (link != null) {
@@ -399,9 +417,16 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
     }
 
-    /** The rows shown; the network link row only exists with AE2. */
-    private static List<Row> rows() {
-        return NetworkLink.AVAILABLE ? List.of(Row.values()) : List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE);
+    /** The rows shown; the sound row only for machines with a working sound, the network link row only with AE2. */
+    private List<Row> rows() {
+        var rows = new ArrayList<>(List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE));
+        if (hasWorkingSound()) rows.add(Row.SOUND);
+        if (NetworkLink.AVAILABLE) rows.add(Row.LINK);
+        return rows;
+    }
+
+    private boolean hasWorkingSound() {
+        return be.getBlockState().getBlock() instanceof MachineControllerBlock block && block.hasWorkingSound();
     }
 
     /** While the multiblock isn't formed, the recipe section lists what is missing where. */
@@ -561,6 +586,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable("gui.mm.controller.mode." + recipeMode() + ".hint").withStyle(ChatFormatting.GRAY));
                     lines.add(Component.translatable("gui.mm.controller.mode.hint").withStyle(ChatFormatting.YELLOW));
                 }
+                case SOUND -> {
+                    lines.add(Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off.hint" : "gui.mm.controller.sound.on.hint").withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("gui.mm.controller.sound.hint").withStyle(ChatFormatting.YELLOW));
+                }
                 case LINK -> {
                     LinkData link = be.getNetworkLink();
                     if (link != null) {
@@ -624,6 +653,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             var modes = RecipeSelectionMode.values();
             var next = modes[(be.getRecipeSelectionMode().ordinal() + 1) % modes.length];
             MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.RECIPE_ORDER, next.serializedName()));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+            return true;
+        }
+        if (!onPortsPage() && hasWorkingSound() && isOnRow(Row.SOUND, mouseX, mouseY)) {
+            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.SOUND_MUTED, Boolean.toString(!be.isSoundMuted())));
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
             return true;
         }

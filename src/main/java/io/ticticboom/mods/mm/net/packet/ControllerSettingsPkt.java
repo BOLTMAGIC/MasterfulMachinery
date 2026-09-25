@@ -11,10 +11,10 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 /**
- * Controller screen -> server: change the controller's recipe order or its name.
+ * Controller screen -> server: change the controller's recipe order, its name or mute its working sound.
  */
 public record ControllerSettingsPkt(BlockPos pos, Setting setting, String value) {
-    public enum Setting { RECIPE_ORDER, NAME }
+    public enum Setting { RECIPE_ORDER, NAME, SOUND_MUTED }
 
     private static final double MAX_DISTANCE_SQR = 64 * 64;
 
@@ -46,6 +46,7 @@ public record ControllerSettingsPkt(BlockPos pos, Setting setting, String value)
             switch (pkt.setting) {
                 case RECIPE_ORDER -> controller.setRecipeSelectionMode(RecipeSelectionMode.parse(pkt.value));
                 case NAME -> controller.setCustomName(pkt.value);
+                case SOUND_MUTED -> controller.setSoundMuted(Boolean.parseBoolean(pkt.value));
             }
         });
         ctx.get().setPacketHandled(true);
