@@ -20,6 +20,7 @@ import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortStorage;
 import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortStorage;
 import lombok.Setter;
 import net.minecraftforge.registries.ForgeRegistries;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
@@ -508,6 +509,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                  }
              }
 
+            if (!recipe.conditions().canRun(conditionContext())) {
+                continue;
+            }
             if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
                 continue;
             }
@@ -812,6 +816,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return id.getNamespace() + ":" + id.getPath() + suffix;
     }
 
+    private RecipeConditionContext conditionContext() {
+        return new RecipeConditionContext(level, getBlockPos(), structure);
+    }
+
     private void performRecipeTick() {
         long gameTime = (level == null) ? 0L : level.getGameTime();
         // stall timeout in ticks: if a recipe hasn't updated for this many ticks, ditch it
@@ -833,6 +841,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             ResourceLocation recipeId = entry.getKey();
             RecipeStateModel state = entry.getValue();
             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
+            // a recipe whose conditions stop holding (night ended...) waits; it isn't stalled
+            if (recipe != null && !recipe.conditions().canRun(conditionContext())) {
+                activeRecipeLastUpdate.put(recipeId, gameTime);
+                continue;
+            }
             // check for stalled recipe
             long last = activeRecipeLastUpdate.getOrDefault(recipeId, gameTime);
             if (gameTime - last > recipeStallTimeoutTicks) {

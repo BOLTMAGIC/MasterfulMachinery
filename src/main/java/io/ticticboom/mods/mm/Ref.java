@@ -52,6 +52,11 @@ public class Ref {
     public static class RecipeConditions {
         public static final ResourceLocation DIMENSION = id("dimension");
         public static final ResourceLocation WEATHER = id("weather");
+        public static final ResourceLocation BIOME = id("biome");
+        public static final ResourceLocation TIME = id("time");
+        public static final ResourceLocation HEIGHT = id("height");
+        public static final ResourceLocation REDSTONE = id("redstone");
+        public static final ResourceLocation TIER = id("tier");
     }
 
     public static class StructureAttachments {

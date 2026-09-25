@@ -1,10 +1,9 @@
 package io.ticticboom.mods.mm.recipe.condition.dimension;
 
-import io.ticticboom.mods.mm.recipe.RecipeStateModel;
-import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.Level;
 
 public class DimensionRecipeCondition implements IRecipeCondition {
 
@@ -15,7 +14,12 @@ public class DimensionRecipeCondition implements IRecipeCondition {
     }
 
     @Override
-    public boolean canRun(Level level, RecipeStateModel state) {
-        return level.dimension().location().equals(id);
+    public boolean canRun(RecipeConditionContext ctx) {
+        return ctx.level().dimension().location().equals(id);
+    }
+
+    @Override
+    public Component describe() {
+        return Component.translatable("jei.mm.condition.dimension", id.toString());
     }
 }
