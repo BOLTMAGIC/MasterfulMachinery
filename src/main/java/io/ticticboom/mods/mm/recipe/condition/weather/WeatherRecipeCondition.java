@@ -1,7 +1,8 @@
 package io.ticticboom.mods.mm.recipe.condition.weather;
 
-import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 
 public class WeatherRecipeCondition implements IRecipeCondition {
@@ -13,7 +14,13 @@ public class WeatherRecipeCondition implements IRecipeCondition {
     }
 
     @Override
-    public boolean canRun(Level level, RecipeStateModel state) {
+    public Component describe() {
+        return Component.translatable("jei.mm.condition.weather." + type.name().toLowerCase());
+    }
+
+    @Override
+    public boolean canRun(RecipeConditionContext ctx) {
+        Level level = ctx.level();
         if (type == RecipeWeatherType.RAIN) {
             return level.isRaining();
         } else if (type == RecipeWeatherType.THUNDER) {

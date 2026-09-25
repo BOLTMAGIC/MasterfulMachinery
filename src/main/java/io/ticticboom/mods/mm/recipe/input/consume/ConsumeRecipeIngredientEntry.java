@@ -97,7 +97,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
                 list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
             }
             if (perTick) {
-                list.add(Component.literal("Consumed Per Tick").withStyle(ChatFormatting.DARK_AQUA));
+                list.add(Component.translatable("jei.mm.recipe.consumed_per_tick").withStyle(ChatFormatting.DARK_AQUA));
             }
         });
     }

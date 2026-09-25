@@ -26,6 +26,6 @@ public class PneumaticAirPortBlockItem  extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.literal("Pne air").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
+        return Component.translatable("tooltip.mm.port_type.pneumatic_air").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
     }
 }

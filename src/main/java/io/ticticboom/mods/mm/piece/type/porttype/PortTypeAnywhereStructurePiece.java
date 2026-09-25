@@ -97,7 +97,7 @@ public class PortTypeAnywhereStructurePiece extends StructurePiece {
 
     @Override
     public Component createDisplayComponent() {
-        return Component.literal("Port Type (anywhere): ").append(Component.literal(portTypeId.toString()).withStyle(ChatFormatting.DARK_AQUA));
+        return Component.translatable("mm.structure.piece.port_type_anywhere").append(Component.literal(portTypeId.toString()).withStyle(ChatFormatting.DARK_AQUA));
     }
 
     @Override

@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.gateway.InputGatewayBlockEntity;
 import io.ticticboom.mods.mm.item.BlueprintItem;
 import io.ticticboom.mods.mm.item.MultiblockSaverItem;
 import io.ticticboom.mods.mm.item.PrioritySetterItem;
+import io.ticticboom.mods.mm.item.WrenchItem;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -28,6 +29,7 @@ public class MMRegisters {
     public static final RegistryObject<BlueprintItem> BLUEPRINT = ITEMS.register("blueprint", BlueprintItem::new);
     public static final RegistryObject<Item> DEBUG_TOOL = ITEMS.register("debug_tool", DebugToolItem::new);
     public static final RegistryObject<Item> PRIORITY_SETTER = ITEMS.register("priority_setter", PrioritySetterItem::new);
+    public static final RegistryObject<WrenchItem> WRENCH = ITEMS.register("wrench", WrenchItem::new);
     public static final RegistryObject<MultiblockSaverItem> MULTIBLOCK_SAVER = ITEMS.register("multiblock_saver", MultiblockSaverItem::new);
 
     public static final RegistryObject<InputGatewayBlock> INPUT_GATEWAY = BLOCKS.register("input_gateway", InputGatewayBlock::new);

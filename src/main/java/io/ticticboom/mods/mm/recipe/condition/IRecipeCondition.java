@@ -1,9 +1,10 @@
 package io.ticticboom.mods.mm.recipe.condition;
 
-import io.ticticboom.mods.mm.recipe.RecipeStateModel;
-import io.ticticboom.mods.mm.recipe.RecipeStorages;
-import net.minecraft.world.level.Level;
+import net.minecraft.network.chat.Component;
 
 public interface IRecipeCondition {
-    boolean canRun(Level level, RecipeStateModel state);
+    boolean canRun(RecipeConditionContext ctx);
+
+    /** One line for JEI, e.g. "Only at night". */
+    Component describe();
 }

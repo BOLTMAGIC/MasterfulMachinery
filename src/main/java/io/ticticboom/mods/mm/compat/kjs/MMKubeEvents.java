@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.compat.kjs;
 
 import dev.latvian.mods.kubejs.event.EventGroup;
 import dev.latvian.mods.kubejs.event.EventHandler;
+import dev.latvian.mods.kubejs.event.Extra;
 import io.ticticboom.mods.mm.compat.kjs.event.*;
 
 public interface MMKubeEvents {
@@ -12,6 +13,8 @@ public interface MMKubeEvents {
     EventHandler EXTRA = GROUP.startup("registerExtraBlocks", () -> ExtraBlockEventJS.class);
     EventHandler STRUCTURES = GROUP.server("createStructures", () -> StructureEventJS.class);
     EventHandler RECIPES = GROUP.server("createProcesses", () -> RecipeEventJS.class);
+    EventHandler RECIPE_STARTED = GROUP.server("recipeStarted", () -> MachineRecipeEventJS.class).extra(Extra.ID).hasResult();
+    EventHandler RECIPE_FINISHED = GROUP.server("recipeFinished", () -> MachineRecipeEventJS.class).extra(Extra.ID);
 
     static void register() {
         GROUP.register();

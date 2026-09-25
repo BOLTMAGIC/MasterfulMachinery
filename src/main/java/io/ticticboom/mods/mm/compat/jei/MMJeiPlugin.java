@@ -78,7 +78,7 @@ public class MMJeiPlugin implements IModPlugin {
         if (MMConfig.JEI_RECIPE_SPLIT) {
             for (var entry : recipeCategories) {
                 var recipes = MachineRecipeManager.RECIPES.values().stream()
-                        .filter(x -> x.structureId().equals(entry.getStructureModel().id()))
+                        .filter(x -> x.allStructureIds().contains(entry.getStructureModel().id()))
                         .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
                         .toList();
                 registration.addRecipes(entry.getRecipeType(), recipes);

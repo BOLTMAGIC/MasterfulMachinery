@@ -7,12 +7,14 @@ import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
 /**
- * Looks like one always-empty slot; whatever is inserted goes on to the machine's item input ports,
- * filling them in order. Nothing can be extracted.
+ * Shows the slots of the machine's item input ports (read only), followed by one always-empty slot to insert into;
+ * whatever is inserted, into any slot, goes on to the input ports, filling them in order. Nothing can be extracted.
+ * Showing the ports' contents lets an AE2 Pattern Provider in blocking mode wait until the machine has used its inputs.
  */
 public class GatewayItemHandler implements IItemHandler {
     private final Supplier<List<IPortStorage>> inputs;
@@ -21,13 +23,32 @@ public class GatewayItemHandler implements IItemHandler {
         this.inputs = inputs;
     }
 
+    private List<IItemHandler> handlers() {
+        var result = new ArrayList<IItemHandler>();
+        for (IPortStorage storage : inputs.get()) {
+            storage.getCapability(MMCapabilities.ITEM).resolve().ifPresent(result::add);
+        }
+        return result;
+    }
+
     @Override
     public int getSlots() {
-        return 1;
+        int slots = 1;
+        for (IItemHandler handler : handlers()) {
+            slots += handler.getSlots();
+        }
+        return slots;
     }
 
     @Override
     public @NotNull ItemStack getStackInSlot(int slot) {
+        for (IItemHandler handler : handlers()) {
+            if (slot < handler.getSlots()) {
+                return handler.getStackInSlot(slot);
+            }
+            slot -= handler.getSlots();
+        }
+        // the trailing entry slot
         return ItemStack.EMPTY;
     }
 
@@ -53,6 +74,12 @@ public class GatewayItemHandler implements IItemHandler {
 
     @Override
     public int getSlotLimit(int slot) {
+        for (IItemHandler handler : handlers()) {
+            if (slot < handler.getSlots()) {
+                return handler.getSlotLimit(slot);
+            }
+            slot -= handler.getSlots();
+        }
         return 64;
     }
 
