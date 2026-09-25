@@ -129,52 +129,6 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
-    /**
-     * Port model: the same as {@link #dynamicBlock} plus a status light on every face (tintindex 0).
-     */
-    public BlockModelBuilder portModel(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation overlayTexture, ResourceLocation lightTexture) {
-        return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
-                .texture("particle", overlayTexture)
-                .transforms()
-                .transform(ItemDisplayContext.THIRD_PERSON_LEFT_HAND)
-                .rotation(75F, 45F, 0F)
-                .translation(0F, 2.5F, 0)
-                .scale(0.375F, 0.375F, 0.375F)
-                .end()
-                .transform(ItemDisplayContext.THIRD_PERSON_RIGHT_HAND)
-                .rotation(75F, 45F, 0F)
-                .translation(0F, 2.5F, 0)
-                .scale(0.375F, 0.375F, 0.375F)
-                .end()
-                .end()
-                .customLoader(CompositeModelBuilder::begin)
-                .child("base", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/cube_all")))
-                        .texture("all", baseTexture)
-                        .renderType("solid")
-                )
-                .child("overlay", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
-                        .texture("overlay", overlayTexture)
-                        .element()
-                        .from(0, 0, 0)
-                        .to(16, 16, 16)
-                        .allFaces((dir, uv) -> uv.texture("#overlay").uvs(0, 0, 16, 16))
-                        .end()
-                        .renderType("translucent")
-                )
-                // children are drawn in JSON key order and the generator sorts keys alphabetically:
-                // the light must sort after "overlay", or the overlay's transparent pixels cover it
-                .child("status_light", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
-                        .texture("light", lightTexture)
-                        .element()
-                        .from(0, 0, 0)
-                        .to(16, 16, 16)
-                        .allFaces((dir, uv) -> uv.texture("#light").uvs(0, 0, 16, 16).tintindex(0))
-                        .end()
-                        .renderType("translucent")
-                )
-                .end();
-    }
-
     public BlockModelBuilder dynamicBlock(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation overlayTexture) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                 .texture("particle", overlayTexture)

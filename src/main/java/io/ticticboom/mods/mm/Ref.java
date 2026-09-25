@@ -69,8 +69,6 @@ public class Ref {
         public static final ResourceLocation CONTROLLER_OVERLAY = id("block/controller_cutout");
         // controller overlay split in two: the frame, and the screen that is tinted by machine state
         public static final ResourceLocation CONTROLLER_FRAME = id("block/controller_frame");
-        // 2x2 lamp in the middle of each port face, tinted with the machine's state color
-        public static final ResourceLocation PORT_LIGHT = id("block/base_ports/port_light");
         public static ResourceLocation controllerScreen(String state) {
             return id("block/controller_screen_" + state);
         }
