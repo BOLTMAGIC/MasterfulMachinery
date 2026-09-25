@@ -161,7 +161,9 @@ public class MMBlockstateProvider extends BlockStateProvider {
                         .end()
                         .renderType("translucent")
                 )
-                .child("light", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
+                // children are drawn in JSON key order and the generator sorts keys alphabetically:
+                // the light must sort after "overlay", or the overlay's transparent pixels cover it
+                .child("status_light", this.models().nested().parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                         .texture("light", lightTexture)
                         .element()
                         .from(0, 0, 0)
