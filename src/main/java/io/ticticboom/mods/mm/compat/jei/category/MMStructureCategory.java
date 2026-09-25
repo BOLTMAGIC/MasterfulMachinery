@@ -8,6 +8,8 @@ import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
+import io.ticticboom.mods.mm.compat.jei.StructureInfoWidget;
+import io.ticticboom.mods.mm.compat.jei.StructureLayerWidget;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -17,6 +19,9 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableStatic;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
+import mezz.jei.api.gui.inputs.IJeiInputHandler;
+import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
 import mezz.jei.api.helpers.IGuiHelper;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
@@ -31,6 +36,9 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2i;
 import org.joml.Vector4f;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     public static final RecipeType<StructureModel> RECIPE_TYPE = RecipeType.create("mm", "structure", StructureModel.class);
@@ -44,7 +52,11 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     // dynamic fields that can change per-recipe when setRecipe is called
     private IDrawableStatic background;
     private int dynamicHeight = PANEL_SIZE.y;
-    private final MutableComponent title = Component.literal("MM Structure");
+    private static final int LAYER_WIDGET_WIDTH = 80;
+    private static final int LAYER_WIDGET_Y = RENDER_SIZE.y - 12;
+    private final MutableComponent title = Component.translatable("jei.mm.structure.title");
+    // selected Y layer per structure shown in JEI; -1 = whole structure
+    private final Map<ResourceLocation, Integer> selectedLayers = new HashMap<>();
 
     public MMStructureCategory(final IGuiHelper helper) {
         this.helper = helper;
@@ -94,6 +106,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         GuiStructureRenderer guiRenderer = recipe.getGuiRenderer();
         guiRenderer.resetTransforms();
         guiRenderer.init();
+        selectedLayers.put(recipe.id(), -1);
         var countedItemStacks = recipe.getCountedItemStacks();
 
         int columns = 8;
@@ -139,6 +152,39 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
+    public void createRecipeExtras(IRecipeExtrasBuilder builder, StructureModel recipe, IFocusGroup focuses) {
+        GuiStructureRenderer guiRenderer = recipe.getGuiRenderer();
+        guiRenderer.init();
+        int layerCount = guiRenderer.getStructureSize().y + 1;
+        if (layerCount >= 2) {
+            // added first: JEI gives the input to the first handler under the pointer
+            var widget = new StructureLayerWidget(
+                (PANEL_SIZE.x - LAYER_WIDGET_WIDTH) / 2, LAYER_WIDGET_Y, LAYER_WIDGET_WIDTH, layerCount,
+                () -> selectedLayers.getOrDefault(recipe.id(), -1),
+                layer -> selectedLayers.put(recipe.id(), layer));
+            builder.addWidget(widget);
+            builder.addInputHandler(widget);
+        }
+        // blue "i" in the bottom-right corner of the view explains the mouse controls
+        builder.addWidget(new StructureInfoWidget(RENDER_SIZE.x - StructureInfoWidget.SIZE - 1, LAYER_WIDGET_Y + 1));
+        // mouse wheel over the view zooms
+        builder.addInputHandler(new IJeiInputHandler() {
+            private final ScreenRectangle area = new ScreenRectangle(1, 1, RENDER_SIZE.x, RENDER_SIZE.y);
+
+            @Override
+            public ScreenRectangle getArea() {
+                return area;
+            }
+
+            @Override
+            public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollDelta) {
+                guiRenderer.zoom(scrollDelta);
+                return true;
+            }
+        });
+    }
+
+    @Override
     public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics guiGraphics, double mouseX, double mouseY) {
         background.draw(guiGraphics, 0, 0);
 
@@ -164,7 +210,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 }
             }
         }
-        String line = "Max Parallel Processing: " + displayInt;
+        String line = Component.translatable("jei.mm.structure.max_parallel", displayInt).getString();
             // draw structure name first, then the Max Parallel line smaller beneath it
             int nameY = 5;
             TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, nameY, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
@@ -190,10 +236,18 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         guiGraphics.pose().setIdentity();
 
         var renderer = recipe.getGuiRenderer();
+        // the renderer is shared with the blueprint screen, so apply this view's layer every frame
+        int layer = selectedLayers.getOrDefault(recipe.id(), -1);
+        renderer.setYSlice(layer >= 0, renderer.getMinBound().y() + layer);
         renderer.setViewport(GuiPos.of(pos.x + 1, pos.y + 1, RENDER_SIZE.x, RENDER_SIZE.y));
-        renderer.render(guiGraphics, (int) mouseX, (int) mouseY);
+        renderer.render(guiGraphics, (int) mouseX, (int) mouseY, isOverView(mouseX, mouseY));
 
         guiGraphics.pose().popPose();
+    }
+
+    /** Over the 3D view, but not over the layer selector at its bottom. */
+    private static boolean isOverView(double mouseX, double mouseY) {
+        return mouseX >= 1 && mouseX < 1 + RENDER_SIZE.x && mouseY >= 1 && mouseY < LAYER_WIDGET_Y;
     }
 
     private Vector2i getGuiPosition(PoseStack poseStack) {
