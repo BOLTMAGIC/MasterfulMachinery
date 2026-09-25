@@ -23,8 +23,12 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
   - Machine Wrench tool,
   - comprehensive Controller Screen enhancements,
   - full Recipe Conditions system,
-  - KubeJS Event system, and
-  - Input Gateway Storage for AE2 integration.
+  - KubeJS Event system,
+  - Input Gateway Storage for AE2 integration,
+  - Redstone Comparator support,
+  - Weighted output entries,
+  - Working effects (sounds & particles), and
+  - critical fluid transfer bug fix.
 
 Without his contribution, this update would not have been possible!
 
@@ -129,6 +133,56 @@ Without his contribution, this update would not have been possible!
 - Pattern Provider in blocking mode now correctly waits for inputs to be consumed.
 - With Network Linker, outputs return to AE2 network.
 
+#### #60 – Comparator Support for Controllers
+- **Redstone comparator** placed against a machine controller now reads the machine's state:
+  - Unformed or idle: signal 0
+  - Working: signal 1–15, following recipe progress (furthest running recipe)
+  - Recipes finishing within a tick read 15
+- Works with every controller, no setup needed.
+- Use cases: "working" lamp, trigger automation on idle, chain machines, simple progress indicator.
+- **Implementation**: MachineControllerBlock has `hasAnalogOutputSignal` / `getAnalogOutputSignal`; updates only trigger when signal value changes.
+
+#### #61 – Weighted Output Entry Type
+- New output entry type `mm:output/weighted`: picks exactly one option by weight each recipe finish (loot table style).
+- **Syntax** (KubeJS):
+  ```javascript
+'.output({
+    type: 'mm:output/weighted',
+    options: [
+      { weight: 70, item: 'minecraft:iron_nugget', count: 3 },
+      { weight: 20, item: 'minecraft:gold_nugget', count: 3 },
+      { weight: 5, item: 'minecraft:diamond' },
+      { weight: 5 }   // outputs nothing
+    ],
+'  })
+  ```
+- Each option takes an ingredient (any port type) or item shorthand (item, count, nbt, etc.); option without both outputs nothing.
+- Weights don't need to sum to 100; optional `chance` applies to whole entry.
+- **JEI**: shows every possible output with its chance, plus no-output chance.
+- **Bonus**: missing count on `mm:item` ingredient now defaults to 1 (was NullPointerException).
+
+#### #62 – Working Effects (Sound & Particles)
+- Machines can play sound and show particles while working (pack configurable, nothing hardcoded).
+- **Global config** (`config/mm/working_effects.json`, keyed by controller block id):
+  ```json
+  {
+    "mm:auto_crusher_controller": {
+      "sound": "minecraft:block.grindstone.use",
+      "interval": 25,
+      "particle": "minecraft:smoke"
+    }
+  }
+  ```
+  - `sound`: sound while working
+  - `particle`: particle from controller's screen side
+  - `interval`: ticks between sounds (default 40)
+  - All fields optional; `""` disables effect
+  - Auto-created on first run, re-read on F3+T for live tuning
+- **Per-controller** (KubeJS / JSON): `.workingSound()`, `.workingSoundInterval()`, `.workingParticle()`; global config overrides.
+- **Client-side**: runs from controller's client tick only while `working` state active, no networking overhead.
+- **Sound offset**: by position so neighboring machines don't play in unison.
+- **Player opt-out**: `[controller] workingEffects` in `mm-client.toml`.
+
 ### Fixed
 
 #### #42 – Per-side auto I/O
@@ -148,6 +202,13 @@ Without his contribution, this update would not have been possible!
 #### #50 – Port State & Network Updates
 - Port on-remove side effects only trigger on actual block change, not block state changes.
 - State changes skip neighbor shape updates (UPDATE_KNOWN_SHAPE).
+
+#### #59 – Fluid Port Auto-Transfer Bug Fix
+- **CRITICAL FIX**: Fluid ports stopped auto-transferring due to swapped source/destination in `FluidUtil.tryFluidTransfer()` call.
+  - Input ports no longer pull from neighboring tanks (Mekanism, etc.)
+  - Output ports no longer push into them
+  - Root cause: recent commit swapped from/to parameters and set `doTransfer = false` (simulation mode)
+  - **Fixed**: restored correct parameter order and `doTransfer = true`
 
 #### #58 – Build & Localization Fixes
 - MachineControllerScreen: restored missing imports (EditBox, GLFW, ControllerSettingsPkt, RecipeSelectionMode).
