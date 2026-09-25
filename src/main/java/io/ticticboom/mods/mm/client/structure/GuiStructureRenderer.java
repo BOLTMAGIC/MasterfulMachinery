@@ -7,16 +7,22 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
 import org.joml.Vector3i;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class GuiStructureRenderer {
     public static boolean shouldEnsureValidated = false;
     private final StructureModel model;
     private List<PositionedCyclingBlockRenderer> parts;
+    // parts fully enclosed by opaque cubes; they can't be seen in the full (unsliced) view
+    private Set<PositionedCyclingBlockRenderer> enclosedParts = Set.of();
     private final GuiStructureLayout guiLayout;
     private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
@@ -46,9 +52,10 @@ public class GuiStructureRenderer {
             parts = guiLayout.createBlockRenderers();
             parts.add(model.controllerUiRenderer());
             for (PositionedCyclingBlockRenderer part : parts) {
-                part.part.setInterval(60);
+                part.part.setInterval(20);
             }
             getExtents();
+            findEnclosedParts();
             isInitialized = true;
         }
     }
@@ -77,6 +84,29 @@ public class GuiStructureRenderer {
         renderZoomAdjustment = Math.max(extentX, Math.max(extentY, extentZ));
     }
 
+    private void findEnclosedParts() {
+        var opaquePositions = new HashSet<BlockPos>();
+        for (PositionedCyclingBlockRenderer part : parts) {
+            if (part.part.getPart().stream().allMatch(GuiBlockRenderer::isOpaqueCube)) {
+                opaquePositions.add(part.pos);
+            }
+        }
+        var enclosed = new HashSet<PositionedCyclingBlockRenderer>();
+        for (PositionedCyclingBlockRenderer part : parts) {
+            boolean surrounded = true;
+            for (Direction dir : Direction.values()) {
+                if (!opaquePositions.contains(part.pos.relative(dir))) {
+                    surrounded = false;
+                    break;
+                }
+            }
+            if (surrounded) {
+                enclosed.add(part);
+            }
+        }
+        enclosedParts = enclosed;
+    }
+
     public void setViewport(GuiPos viewport) {
         renderSetup.setViewportPos(viewport);
     }
@@ -97,15 +127,24 @@ public class GuiStructureRenderer {
             GuiBlockRenderer next = part.part.next();
             next.render(gfx, mouseX, mouseY, viewTransform);
         }
+        // one flush for the whole structure instead of one draw call per block
+        gfx.bufferSource().endBatch();
         renderSetup.postRender();
         RenderUtil.resetViewport();
     }
     public void setupViewState(BlueprintStructureViewState state) {
-        ySliceProcessor.setShouldSlice(state.isShouldSlice());
-        ySliceProcessor.setYSlice(state.getYSlice());
+        setYSlice(state.isShouldSlice(), state.getYSlice());
+    }
+
+    public void setYSlice(boolean shouldSlice, int ySlice) {
+        ySliceProcessor.setShouldSlice(shouldSlice);
+        ySliceProcessor.setYSlice(ySlice);
     }
 
     private boolean canRenderPart(PositionedCyclingBlockRenderer part) {
+        if (!ySliceProcessor.isShouldSlice() && enclosedParts.contains(part)) {
+            return false;
+        }
         return ySliceProcessor.canProcess(part);
     }
 

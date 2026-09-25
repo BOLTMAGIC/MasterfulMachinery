@@ -14,6 +14,7 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.CommonColors;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -78,7 +79,15 @@ public class GuiBlockRenderer {
 
             }
         }
-        bufferSource.endBatch();
+        // no endBatch() here: the structure renderer flushes once per frame after all blocks
         pose.popPose();
+    }
+
+    /**
+     * True when this block is a full opaque cube with nothing drawn by a block entity renderer,
+     * so a neighbour fully surrounded by such blocks can never be seen.
+     */
+    public boolean isOpaqueCube() {
+        return ber == null && state != null && state.isSolidRender(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
     }
 }

@@ -1,4 +1,9 @@
 {
+  "jei.mm.structure.title": "MM Yapısı",
+  "jei.mm.structure.max_parallel": "En fazla paralel işlem: %s",
+  "jei.mm.structure.layer.all": "Tüm katmanlar",
+  "jei.mm.structure.layer": "Katman %s/%s",
+  "jei.mm.structure.layer.hint": "Katmanları alttan üste tek tek görmek için oklara tıkla ya da tekerleği çevir.",
   "config.jade.plugin_mm.controller_progress": "İlerleme",
   "item.mm.debug_tool": "Hata Ayıklama Aleti",
   "tab.mm.main": "Masterful Machinery",
