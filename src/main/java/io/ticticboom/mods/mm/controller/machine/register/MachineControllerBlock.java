@@ -9,6 +9,12 @@ import io.ticticboom.mods.mm.port.kinetic.register.CreateKineticGenPortBlockEnti
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.WorldUtil;
+import io.ticticboom.mods.mm.config.MMConfigSetup;
+import net.minecraft.core.particles.SimpleParticleType;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.RandomSource;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -108,6 +114,56 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
             return (l, pos, s, be) -> ((MachineControllerBlockEntity) be).tick();
         }
         return null;
+    }
+
+    /**
+     * Client side, like the furnace: while the machine works, plays the controller's workingSound now and then and
+     * puts its workingParticle on the screen side. Both are optional and off unless the controller sets them.
+     */
+    @Override
+    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+        if (!state.hasProperty(ControllerState.PROPERTY) || state.getValue(ControllerState.PROPERTY) != ControllerState.WORKING
+                || !MMConfigSetup.CLIENT.workingEffects.get()) {
+            return;
+        }
+        resolveWorkingEffects();
+        double x = pos.getX() + 0.5;
+        double z = pos.getZ() + 0.5;
+        if (workingSound != null && random.nextDouble() < 0.1) {
+            level.playLocalSound(x, pos.getY() + 0.5, z, workingSound, SoundSource.BLOCKS, 1.0F, 1.0F, false);
+        }
+        if (workingParticle != null) {
+            Direction front = state.getValue(FACING).getOpposite();
+            double along = random.nextDouble() * 0.6 - 0.3;
+            double offsetX = front.getAxis() == Direction.Axis.X ? front.getStepX() * 0.52 : along;
+            double offsetZ = front.getAxis() == Direction.Axis.Z ? front.getStepZ() * 0.52 : along;
+            level.addParticle(workingParticle, x + offsetX, pos.getY() + 0.2 + random.nextDouble() * 0.6, z + offsetZ, 0, 0, 0);
+        }
+    }
+
+    // resolved on first use, once the registries are filled
+    private boolean workingEffectsResolved;
+    @Nullable
+    private SoundEvent workingSound;
+    @Nullable
+    private SimpleParticleType workingParticle;
+
+    private void resolveWorkingEffects() {
+        if (workingEffectsResolved) return;
+        workingEffectsResolved = true;
+        var soundId = model.workingSound();
+        if (soundId != null) {
+            workingSound = ForgeRegistries.SOUND_EVENTS.getValue(soundId);
+            if (workingSound == null) Ref.LOG.warn("Unknown workingSound {} on controller {}", soundId, model.id());
+        }
+        var particleId = model.workingParticle();
+        if (particleId != null) {
+            if (ForgeRegistries.PARTICLE_TYPES.getValue(particleId) instanceof SimpleParticleType simple) {
+                workingParticle = simple;
+            } else {
+                Ref.LOG.warn("workingParticle {} on controller {} is unknown or needs options, only simple particles are supported", particleId, model.id());
+            }
+        }
     }
 
     @Override

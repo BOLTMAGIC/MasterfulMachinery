@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.model;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.Nullable;
 
 
 public record ControllerModel(
@@ -85,6 +86,31 @@ public record ControllerModel(
         var key = state + "Color";
         if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
         return config.get(key).getAsString();
+    }
+
+    /**
+     * Optional sound played while the machine works, e.g. "workingSound": "minecraft:block.blastfurnace.fire_crackle".
+     * @return the sound id, or null when the controller doesn't set one (or it isn't a valid id)
+     */
+    @Nullable
+    public ResourceLocation workingSound() {
+        return configId("workingSound");
+    }
+
+    /**
+     * Optional particle shown on the controller's front while the machine works, e.g. "workingParticle": "minecraft:smoke".
+     * Only particles without extra options can be used.
+     * @return the particle id, or null when the controller doesn't set one (or it isn't a valid id)
+     */
+    @Nullable
+    public ResourceLocation workingParticle() {
+        return configId("workingParticle");
+    }
+
+    @Nullable
+    private ResourceLocation configId(String key) {
+        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
+        return ResourceLocation.tryParse(config.get(key).getAsString());
     }
 
     private static int clampMaxParallelRecipesMarker(int v) {

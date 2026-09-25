@@ -7,6 +7,7 @@ public class MMClientConfig {
     public final ForgeConfigSpec.ConfigValue<String> controllerUnformedColor;
     public final ForgeConfigSpec.ConfigValue<String> controllerIdleColor;
     public final ForgeConfigSpec.ConfigValue<String> controllerWorkingColor;
+    public final ForgeConfigSpec.BooleanValue workingEffects;
     public final ForgeConfigSpec.BooleanValue portStatusLight;
 
     public MMClientConfig(ForgeConfigSpec.Builder builder) {
@@ -20,6 +21,9 @@ public class MMClientConfig {
                 .define("idleColor", "#5CFF89", MMClientConfig::isColor);
         controllerWorkingColor = builder.comment("Screen color while a recipe is running, as #RRGGBB")
                 .define("workingColor", "#FFC94D", MMClientConfig::isColor);
+        workingEffects = builder.comment("Play the sound and show the particles a controller sets with workingSound / workingParticle (KubeJS or JSON)",
+                        "while its machine is working. Controllers that set neither stay silent either way.")
+                .define("workingEffects", true);
         builder.pop();
 
         builder.push("ports");

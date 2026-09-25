@@ -18,6 +18,8 @@ public class ControllerBuilderJS {
     private String unformedColor;
     private String idleColor;
     private String workingColor;
+    private String workingSound;
+    private String workingParticle;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -77,6 +79,25 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    /** Sound played now and then while a recipe is running, e.g. "minecraft:block.blastfurnace.fire_crackle". */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS workingSound(String sound) {
+        this.workingSound = checkId(sound);
+        return this;
+    }
+
+    /** Particle shown on the controller's front while a recipe is running, e.g. "minecraft:smoke" (particles without options only). */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS workingParticle(String particle) {
+        this.workingParticle = checkId(particle);
+        return this;
+    }
+
+    private static String checkId(String id) {
+        if (ResourceLocation.tryParse(id) == null) throw new IllegalArgumentException("Invalid id: " + id);
+        return id;
+    }
+
     private static String checkColor(String color) {
         if (MMClientConfig.parseColor(color) == null) throw new IllegalArgumentException("Invalid color, expected #RRGGBB: " + color);
         return color;
@@ -88,6 +109,8 @@ public class ControllerBuilderJS {
         if (unformedColor != null) model.config().addProperty("unformedColor", unformedColor);
         if (idleColor != null) model.config().addProperty("idleColor", idleColor);
         if (workingColor != null) model.config().addProperty("workingColor", workingColor);
+        if (workingSound != null) model.config().addProperty("workingSound", workingSound);
+        if (workingParticle != null) model.config().addProperty("workingParticle", workingParticle);
         return model;
     }
 }
