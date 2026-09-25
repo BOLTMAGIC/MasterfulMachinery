@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.util;
 
+import io.ticticboom.mods.mm.builder.AssemblyPlanner;
+import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -20,13 +22,12 @@ import net.minecraft.world.phys.AABB;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 /**
  * Small, conservative helper for creative-only structure pasting from blueprint items.
  *
- * This intentionally does not try to be a full schematic system. It places the first
- * possible block candidate for each structure piece, refuses to overwrite solid blocks,
+ * This intentionally does not try to be a full schematic system. It places the lowest fitting
+ * port tier, and the first candidate for other pieces, refuses to overwrite solid blocks,
  * and leaves normal survival gameplay untouched.
  */
 public final class StructurePasteUtil {
@@ -110,12 +111,8 @@ public final class StructurePasteUtil {
     }
 
     private static BlockState createBlockState(StructureLayoutPiece layoutPiece, BlockPos pos, Rotation rotation) {
-        List<Block> blocks = layoutPiece.piece().createBlocksSupplier().get();
-        if (blocks == null || blocks.isEmpty()) {
-            return null;
-        }
-
-        Block block = blocks.stream().filter(Objects::nonNull).findFirst().orElse(null);
+        // lowest fitting port tier instead of whatever happens to be registered first
+        Block block = AssemblyPlanner.chooseBlock(layoutPiece.piece(), new TierPrefs(), b -> false);
         if (block == null) {
             return null;
         }
