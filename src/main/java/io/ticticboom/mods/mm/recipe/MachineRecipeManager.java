@@ -19,6 +19,7 @@ import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntryPa
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntryParser;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntryParser;
+import io.ticticboom.mods.mm.recipe.output.weighted.WeightedRecipeOutputEntryParser;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
@@ -49,6 +50,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         ENTRY_INGREDIENT_PARSERS.clear();
         ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.CONSUME_INPUT, new ConsumeRecipeIngredientEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.SIMPLE_OUTPUT, new SimpleRecipeOutputEntryParser());
+        ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.WEIGHTED_OUTPUT, new WeightedRecipeOutputEntryParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.DIMENSION, new DimensionRecipeConditionParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.WEATHER, new WeatherRecipeConditionParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.BIOME, BiomeRecipeCondition::parse);

@@ -47,6 +47,7 @@ public class Ref {
     public static class RecipeEntries {
         public static final ResourceLocation CONSUME_INPUT = id("input/consume");
         public static final ResourceLocation SIMPLE_OUTPUT = id("output/simple");
+        public static final ResourceLocation WEIGHTED_OUTPUT = id("output/weighted");
     }
 
     public static class RecipeConditions {

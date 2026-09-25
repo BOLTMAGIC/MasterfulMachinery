@@ -13,6 +13,8 @@
   "jei.mm.ingredient.pneumatic_air": "PneumaticCraft Air:",
   "jei.mm.recipe.consumed_per_tick": "Consumed Per Tick",
   "jei.mm.recipe.output_per_tick": "Output Per Tick",
+  "jei.mm.recipe.weighted_output": "%s%% chance (one of these outputs)",
+  "jei.mm.recipe.weighted_nothing": "%s%% chance of no output",
   "message.mm.debug_tool.saved_to": "Saved To: ",
   "message.mm.debug_tool.copy_path": "(Click to copy path)",
   "message.mm.debug_tool.saved": "Debug Dump Saved Successfully",
