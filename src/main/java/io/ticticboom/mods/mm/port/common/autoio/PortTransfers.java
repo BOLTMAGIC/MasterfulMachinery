@@ -101,14 +101,23 @@ public final class PortTransfers {
     }
 
     public static boolean moveEnergy(IEnergyStorage from, IEnergyStorage to) {
-        int available = from.extractEnergy(Integer.MAX_VALUE, true);
-        if (available <= 0) {
+        int canExtract = from.extractEnergy(Integer.MAX_VALUE, true);
+        if (canExtract <= 0) {
             return false;
         }
-        int accepted = to.receiveEnergy(available, true);
-        if (accepted <= 0) {
+        int canReceive = to.receiveEnergy(canExtract, true);
+        if (canReceive <= 0) {
             return false;
         }
-        return to.receiveEnergy(from.extractEnergy(accepted, false), false) > 0;
+        int extracted = from.extractEnergy(canReceive, true);
+        if (extracted <= 0) {
+            return false;
+        }
+        int inserted = to.receiveEnergy(extracted, false);
+        if (inserted <= 0) {
+            return false;
+        }
+        from.extractEnergy(inserted, false);
+        return true;
     }
 }
