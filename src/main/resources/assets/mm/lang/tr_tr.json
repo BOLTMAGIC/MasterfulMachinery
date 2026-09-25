@@ -261,5 +261,8 @@
   "message.mm.assemble.done": "%s blok yerleştirildi",
   "message.mm.assemble.missing": "Eksik: %s",
   "message.mm.assemble.blocked": "%s konum engelli",
-  "message.mm.assemble.stopped": "Kurulum durdu: çok uzaklaştın"
+  "message.mm.assemble.stopped": "Kurulum durdu: çok uzaklaştın",
+  "message.mm.assemble.no_structure": "Bu controller'ın yapısı yok",
+  "message.mm.assemble.already": "Zaten kurulu",
+  "message.mm.assemble.busy": "Zaten bir kurulum sürüyor"
 }

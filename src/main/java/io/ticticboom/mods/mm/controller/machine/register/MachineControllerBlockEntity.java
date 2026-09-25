@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
 import io.ticticboom.mods.mm.controller.IControllerPart;
@@ -99,6 +100,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // recipe order picked on the screen; null = the controller type's default
     @Nullable
     private RecipeSelectionMode recipeModeOverride = null;
+    /** Assemble: preferred port tier per port type, and which structure to build (null = first). */
+    private final TierPrefs assemblyTiers = new TierPrefs();
+    @Nullable
+    private ResourceLocation assemblyStructureId = null;
     // set from the controller screen: this machine plays no working sound (its particles stay)
     private boolean soundMuted = false;
     // name given by a player (screen, or a named controller item); null = the machine's name
@@ -1159,6 +1164,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (soundMuted) {
             tag.putBoolean("SoundMuted", true);
         }
+        if (!assemblyTiers.asMap().isEmpty()) tag.put("AssemblyTiers", assemblyTiers.save());
+        if (assemblyStructureId != null) tag.putString("AssemblyStructure", assemblyStructureId.toString());
         super.saveAdditional(tag);
     }
 
@@ -1225,6 +1232,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 redstoneMode = RedstoneMode.IGNORED;
             }
         } catch (Throwable ignored) { redstoneMode = RedstoneMode.IGNORED; }
+        assemblyTiers.copyFrom(TierPrefs.load(tag.getCompound("AssemblyTiers")));
+        assemblyStructureId = tag.contains("AssemblyStructure") ? ResourceLocation.tryParse(tag.getString("AssemblyStructure")) : null;
     }
 
     @Override
@@ -1450,5 +1459,48 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }, "mm-controller-validate-delayed");
         t.setDaemon(true);
         return t;
+    }
+
+    public ResourceLocation getControllerId() {
+        return controllerId;
+    }
+
+    public TierPrefs getAssemblyTiers() {
+        return assemblyTiers;
+    }
+
+    public void setAssemblyTier(String key, int rank) {
+        assemblyTiers.set(key, rank);
+        syncAssemblySettings();
+    }
+
+    public @Nullable ResourceLocation getAssemblyStructureId() {
+        return assemblyStructureId;
+    }
+
+    public void setAssemblyStructureId(@Nullable ResourceLocation id) {
+        assemblyStructureId = id;
+        syncAssemblySettings();
+    }
+
+    public List<StructureModel> getAssemblyCandidates() {
+        return StructureManager.getStructuresForController(controllerId);
+    }
+
+    public @Nullable StructureModel getAssemblyStructure() {
+        List<StructureModel> candidates = getAssemblyCandidates();
+        for (StructureModel candidate : candidates) {
+            if (candidate.id().equals(assemblyStructureId)) {
+                return candidate;
+            }
+        }
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    private void syncAssemblySettings() {
+        setChanged();
+        if (level != null) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
     }
 }
