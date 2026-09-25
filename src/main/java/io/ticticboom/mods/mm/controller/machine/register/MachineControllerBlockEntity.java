@@ -822,6 +822,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                      if (canOutputs) {
                          recipe.outputs().process(level, portStorages, state);
                          toRemove.add(recipeId);
+                         MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                          // outputs processed - storages changed
                          storageCache.isValid = false;
                          progressed = true;
