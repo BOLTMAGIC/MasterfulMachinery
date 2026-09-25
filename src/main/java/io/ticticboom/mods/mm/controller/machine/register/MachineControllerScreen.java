@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
+import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
@@ -50,16 +52,16 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
     private static final int NAME_Y = 10;
     private static final int STATUS_Y = 22;
-    private static final int RECIPE_LABEL_Y = 36;
-    private static final int RECIPE_Y = 46;
-    private static final int ROWS_Y = 72;
-    private static final int ROW_STEP = 11;
+    private static final int RECIPE_LABEL_Y = 35;
+    private static final int RECIPE_Y = 44;
+    private static final int ROWS_Y = 68;
+    private static final int ROW_STEP = 10;
 
     private static final int MAX_INPUTS = 3;
     private static final int MAX_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
 
-    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE }
+    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, LINK }
 
     // packs name tiered structures like "Auto Crusher Tier 1.5"; the tier gets its own row
     private static final Pattern TIER = Pattern.compile("(?i)\\s*\\b(?:tier|seviye|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
@@ -195,7 +197,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(x + LEFT, y + STATUS_Y + 1, x + LEFT + 5, y + STATUS_Y + 6, 0xFF000000 | status().color);
 
         gfx.fill(x + LEFT, y + STATUS_Y + 11, x + RIGHT, y + STATUS_Y + 12, DIVIDER);
-        gfx.fill(x + LEFT, y + ROWS_Y - 5, x + RIGHT, y + ROWS_Y - 4, DIVIDER);
+        gfx.fill(x + LEFT, y + ROWS_Y - 4, x + RIGHT, y + ROWS_Y - 3, DIVIDER);
 
         var slots = recipeSlots();
         if (!slots.isEmpty()) {
@@ -242,7 +244,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             gfx.drawString(this.font, percent + "%", lastX + 21, RECIPE_Y + 5, TEXT, false);
         }
 
-        for (Row row : Row.values()) {
+        for (Row row : rows()) {
             drawClipped(gfx, Component.translatable("gui.mm.controller.row." + row.name().toLowerCase()),
                     LEFT, rowY(row), VALUE_X - LEFT - 4, LABEL);
         }
@@ -268,6 +270,19 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 VALUE_X + 12, rowY(Row.REDSTONE), RIGHT - VALUE_X - 14, TEXT);
         drawClipped(gfx, Component.translatable("gui.mm.controller.mode." + recipeMode()),
                 VALUE_X, rowY(Row.MODE), RIGHT - VALUE_X, TEXT);
+        if (NetworkLink.AVAILABLE) {
+            LinkData link = be.getNetworkLink();
+            if (link != null) {
+                drawClipped(gfx, Component.literal(link.ownerName()), VALUE_X, rowY(Row.LINK), RIGHT - VALUE_X, TEXT);
+            } else {
+                drawClipped(gfx, Component.translatable("gui.mm.controller.link.none"), VALUE_X, rowY(Row.LINK), RIGHT - VALUE_X, LABEL);
+            }
+        }
+    }
+
+    /** The rows shown; the network link row only exists with AE2. */
+    private static List<Row> rows() {
+        return NetworkLink.AVAILABLE ? List.of(Row.values()) : List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE);
     }
 
     private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
@@ -333,7 +348,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT, this.topPos + STATUS_Y - 1, RIGHT - LEFT, 10)) {
             return List.of(Component.translatable(status().key() + ".hint").withStyle(ChatFormatting.GRAY));
         }
-        for (Row row : Row.values()) {
+        for (Row row : rows()) {
             if (!isOnRow(row, mouseX, mouseY)) continue;
             String key = "gui.mm.controller.row." + row.name().toLowerCase();
             var lines = new ArrayList<Component>();
@@ -353,6 +368,17 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable("gui.mm.controller.redstone.hint").withStyle(ChatFormatting.YELLOW));
                 }
                 case MODE -> lines.add(Component.translatable("gui.mm.controller.mode." + recipeMode() + ".hint").withStyle(ChatFormatting.GRAY));
+                case LINK -> {
+                    LinkData link = be.getNetworkLink();
+                    if (link != null) {
+                        lines.add(Component.translatable("gui.mm.controller.link.owner", link.ownerName()).withStyle(ChatFormatting.WHITE));
+                        lines.add(Component.translatable("gui.mm.controller.link.network", link.network().pos().toShortString(),
+                                link.network().dimension().location().getPath()).withStyle(ChatFormatting.AQUA));
+                        lines.add(Component.translatable("gui.mm.controller.row.link.hint.linked").withStyle(ChatFormatting.GRAY));
+                    } else {
+                        lines.add(Component.translatable("gui.mm.controller.row.link.hint.none").withStyle(ChatFormatting.GRAY));
+                    }
+                }
             }
             return lines;
         }

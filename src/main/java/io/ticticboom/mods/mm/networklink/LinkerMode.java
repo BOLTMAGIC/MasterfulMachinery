@@ -6,8 +6,8 @@ import net.minecraft.world.item.ItemStack;
 public enum LinkerMode {
     /** Save a network, link / unlink controllers. */
     LINK,
-    /** Toggle the auto I/O of the clicked port side. */
-    CONFIGURE;
+    /** Show what the clicked machine is linked to; sneak + right-click removes the link. */
+    INFO;
 
     private static final String TAG = "Mode";
 
