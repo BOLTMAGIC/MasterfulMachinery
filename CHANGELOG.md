@@ -10,7 +10,21 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 **Version 0.1.35.0** represents a major update with substantial feature additions and improvements.
 
 **Special Thanks:**
-- **Knozyy** – Primary developer and architect of all new features and changes in this version (Per-side Auto I/O, Port & Controller GUI Redesign, Input Gateway, Machine Network Linker)
+- **Knozyy** – Lead architect and primary developer of this entire version.
+- Single-handedly implemented all major features:
+  - Per-side Auto I/O,
+  - complete Port & Controller GUI Redesign,
+  - Input Gateway,
+  - Machine Network Linker with dual modes,
+  - Controller Sync Optimization,
+  - massive Localization overhaul,
+  - JEI Structure Preview with complete freeze fix and new controls,
+  - Controller States & Status Lights,
+  - Machine Wrench tool,
+  - comprehensive Controller Screen enhancements,
+  - full Recipe Conditions system,
+  - KubeJS Event system, and
+  - Input Gateway Storage for AE2 integration.
 
 Without his contribution, this update would not have been possible!
 
@@ -48,8 +62,72 @@ Without his contribution, this update would not have been possible!
 - **Machine Network Linker**: Links a machine to its owner (shared with their FTB team) and to an AE2 network.
   - Only the owner/team can open or break the machine's parts; OPs bypass this.
   - When a port breaks, its contents go into the AE2 network instead of dropping on the ground (Mekanism gases go through Applied Mekanistics).
-  - Configure mode: right-click a port face to toggle that side's auto I/O.
+  - Network Linker modes: *Linking* (pairs machine to owner/AE2) and *Info* (view owner, position, online status; sneak+right-click to unlink).
   - AE2, FTB Teams and Applied Mekanism are all optional dependencies.
+
+#### #47 – Controller: Optimized Sync
+- Block entity sync only on GUI open or relevant changes (formed, structure, recipes, redstone, link).
+- `detectExternalStorageChanges()` now runs every 5 ticks instead of every tick (matches idle scan interval).
+
+#### #48 – Localization Overhaul
+- 58 hardcoded UI texts moved to lang keys (JEI titles, tooltips, blueprint messages, debug tools, port labels).
+- Full en_us and tr_tr translations; removed duplicate block.mm.input_gateway keys.
+
+#### #49 – JEI Structure Preview: Freeze Fix & Controls
+- Fixed freeze on large structures by optimizing buffer flushing and skipping enclosed blocks.
+- **Layer view**: Cycles through layers from bottom up with < All layers > selector.
+- **Camera improvements**: Auto-positioned from bounding sphere, rotates around structure center, fills screen view.
+- **Mouse controls**: Left/middle drag rotates, right drag/wheel zooms, Shift+drag pans; on-screen i icon explains controls.
+- **Connected textures**: Preview blocks see neighbors, so AE2 quartz glass, CTM, and modded textures render correctly.
+
+#### #50 – Controller State & Port Status Lights
+- Controller block state: `unformed` / `idle` / `working` (tints screen red/green/yellow).
+- All port types show matching status light (block entity renderer, always bright).
+- **Client config** (`mm-client.toml`): customize controller/port colors and status light visibility.
+- **Per-machine customization**: `unformedColor`, `idleColor`, `workingColor` in KubeJS controller builder or JSON.
+- Per-state model variants (`<id>`, `<id>_idle`, `<id>_working`) and screen textures for full resource pack support.
+
+#### #51 – Machine Wrench & Network Linker Modes
+- **mm:wrench** item (3 iron + green dye): right-click a port side to toggle auto I/O; sneak+right-click shows all six sides.
+- Controller screen shows "Linked to" row (AE2 only) with tooltip for owner and unlink info.
+- New Network Linker texture (ME remote style).
+
+#### #52 – Controller Screen: Recipe Order, Rename & Pages
+- **Recipe order button** (Default / Avoid Same Recipe / Round Robin) saved per controller.
+- **Machine renaming**: click the controller name to edit; Enter saves, Esc cancels, empty restores original. Names are preserved in anvil and on drop (copy_name).
+- **Port page split**: cycles through Status → Input Ports → Output Ports.
+- Settings sync via `ControllerSettingsPkt` with server-side permission checks.
+
+#### #53 – Missing Blocks Detection
+- Server finds best-fit structure rotation and sends with screen preview.
+- Shows "Missing blocks: N" with item name and relative position (e.g., "2 up, 1 left").
+- Tooltip lists up to ten wrong positions with what's there instead.
+
+#### #54 – Jade: Fuller Controller & Port Tooltips
+- **Controller**: state (translated), progress, running recipes count, parallel limit, redstone mode, owner.
+- **Ports**: parent machine, current activity, auto I/O status.
+- **Parallel limit fix**: `getDisplayedParallelLimit()` shows 1 (serial) or the structure/controller/config limit (parallel).
+- Texts use "different recipes" (same recipe never runs twice).
+
+#### #55 – Recipe Conditions System
+- Dimension, weather, biome, time, height, and redstone conditions now actually work (were parsed but ignored).
+- Running recipes pause when conditions fail; not counted as stalled.
+- **New conditions**: `mm:biome` (id or #tag), `mm:time` (day/night), `mm:height` (minY/maxY), `mm:redstone` (powered/unpowered), `mm:tier` (minTier/maxTier).
+- **Multi-structure recipes**: `structureIds` in JSON, `.structureIds(...)` in KubeJS. JEI shows recipe in all categories.
+- **KubeJS API**: `.dimension()`, `.biome()`, `.time()`, `.weather()`, `.minY()`, `.maxY()`, `.redstone()`, `.minTier()`, `.maxTier()`.
+- **JEI**: condition clock icon under recipe arrow.
+
+#### #56 – KubeJS Server Events
+- `MMEvents.recipeStarted(recipeId, event => {...})` – cancellable event before recipe starts.
+- `MMEvents.recipeFinished(recipeId, event => {...})` – event after recipe completes.
+- Event object includes: recipeId, controller, controllerId, structureId, level, pos, block.
+- No overhead if no scripts listen.
+
+#### #57 – Input Gateway: Storage Display
+- Input Gateway now displays read-only list of machine's input port slots and tanks.
+- Shows one always-empty slot/tank for AE2 Pattern Provider interaction.
+- Pattern Provider in blocking mode now correctly waits for inputs to be consumed.
+- With Network Linker, outputs return to AE2 network.
 
 ### Fixed
 
@@ -63,6 +141,19 @@ Without his contribution, this update would not have been possible!
 - Item counts above 127 now show correctly in the port GUI (vanilla sends slot counts as a single byte).
 - Fluid ports never drain more than requested.
 - `mods.toml`: replaced the example-mod placeholder text.
+
+#### #49 – Structure Preview Fixes
+- Fixed freeze on big structures with optimized buffer flushing.
+
+#### #50 – Port State & Network Updates
+- Port on-remove side effects only trigger on actual block change, not block state changes.
+- State changes skip neighbor shape updates (UPDATE_KNOWN_SHAPE).
+
+#### #58 – Build & Localization Fixes
+- MachineControllerScreen: restored missing imports (EditBox, GLFW, ControllerSettingsPkt, RecipeSelectionMode).
+- MachineControllerScreen: restored recipe order text position and tooltip.
+- Lang files: restored ten missing `jei.mm.structure.*` keys (structure view title, max parallel line, layer selector, controls).
+- Removed duplicate `config.jade.plugin_mm.controller_progress` key.
 
 ### Changed
 - Network protocol version bumped to 2 (new port config packet).
