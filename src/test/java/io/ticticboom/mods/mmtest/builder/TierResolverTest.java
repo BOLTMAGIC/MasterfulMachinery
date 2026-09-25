@@ -1,4 +1,6 @@
-package io.ticticboom.mods.mm.builder;
+package io.ticticboom.mods.mmtest.builder;
+
+import io.ticticboom.mods.mm.builder.TierResolver;
 
 import org.junit.jupiter.api.Test;
 
