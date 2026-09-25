@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.energy;
 
+import io.ticticboom.mods.mm.port.PortContent;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
@@ -26,6 +28,11 @@ public class EnergyPortIngredient implements IPortIngredient {
     }
 
     public int getAmount() { return this.amount; }
+
+    @Override
+    public PortContent display() {
+        return PortContent.energy(amount, 0);
+    }
 
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {

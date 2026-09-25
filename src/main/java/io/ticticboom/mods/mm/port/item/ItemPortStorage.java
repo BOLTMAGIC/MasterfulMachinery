@@ -8,6 +8,8 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
+import io.ticticboom.mods.mm.port.common.PortGuiLayout;
+import io.ticticboom.mods.mm.util.BlockUtils;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
@@ -19,6 +21,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 
+import io.ticticboom.mods.mm.port.PortContent;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -112,8 +118,8 @@ public class ItemPortStorage implements IPortStorage {
         var columns = model.columns();
         var rows = model.rows();
 
-        int offsetX = ((162 - (columns * 18)) / 2) + 8;
-        int offsetY = ((108 - (rows * 18)) / 2) + 8;
+        int offsetX = PortGuiLayout.slotGridX(columns);
+        int offsetY = PortGuiLayout.slotGridY(rows);
 
         var portInv = new ItemPortContainer(this.handler);
         boolean clientSide = inv.player.level().isClientSide();
@@ -124,7 +130,34 @@ public class ItemPortStorage implements IPortStorage {
             }
         }
 
-        IPortStorage.super.setupContainer(container, inv, portModel);
+        BlockUtils.setupPlayerInventory(container, inv, PortGuiLayout.inventoryOffsetX(columns), PortGuiLayout.extraHeight(rows));
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        var stacks = new ArrayList<ItemStack>();
+        var counts = new ArrayList<Long>();
+        outer:
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            long count = handler.getActualCount(slot);
+            for (int i = 0; i < stacks.size(); i++) {
+                if (ItemStack.isSameItemSameTags(stacks.get(i), stack)) {
+                    counts.set(i, counts.get(i) + count);
+                    continue outer;
+                }
+            }
+            stacks.add(stack.copyWithCount(1));
+            counts.add(count);
+        }
+        var contents = new ArrayList<PortContent>();
+        for (int i = 0; i < stacks.size(); i++) {
+            contents.add(PortContent.item(stacks.get(i), counts.get(i)));
+        }
+        return contents;
     }
 
     public int canExtract(Predicate<ItemStack> item, int count) {

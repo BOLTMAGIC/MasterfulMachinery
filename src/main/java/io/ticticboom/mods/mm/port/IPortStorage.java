@@ -9,6 +9,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface IPortStorage {
@@ -25,6 +26,13 @@ public interface IPortStorage {
     UUID getStorageUid();
 
     JsonObject debugDump();
+
+    /**
+     * @return what the port holds, for the controller's port list; empty when there is nothing to show
+     */
+    default List<PortContent> contents() {
+        return List.of();
+    }
 
     default void setupContainer(AbstractContainerMenu container, Inventory inv, PortModel model) {
         BlockUtils.setupPlayerInventory(container, inv, 0, 0);

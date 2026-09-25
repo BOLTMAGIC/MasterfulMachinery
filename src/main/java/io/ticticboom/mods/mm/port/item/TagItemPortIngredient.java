@@ -43,6 +43,12 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
                 () -> !Objects.requireNonNull(ForgeRegistries.ITEMS.tags()).getTag(tag).isEmpty(), List.of());
     }
 
+    @Override
+    public ItemStack displayItem() {
+        var all = stacks.get();
+        return all.isEmpty() ? ItemStack.EMPTY : all.get(0).copy();
+    }
+
     private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
         var key = ItemTags.create(id);
         return  i -> i.is(key);

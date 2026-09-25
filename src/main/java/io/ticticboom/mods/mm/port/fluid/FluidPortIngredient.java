@@ -40,6 +40,11 @@ public class FluidPortIngredient implements IPortIngredient {
     }
 
     @Override
+    public FluidStack displayFluid() {
+        return new FluidStack(fluid, amount);
+    }
+
+    @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (amount <= 0) return true; // nothing to drain
         if (storages == null) return false;

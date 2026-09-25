@@ -7,7 +7,6 @@ import io.ticticboom.mods.mm.port.IPortMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.phys.Vec2;
@@ -17,18 +16,16 @@ import java.util.ArrayList;
 public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu> extends AbstractContainerScreen<T> {
 
     protected final T menu;
-    protected final FormattedText header;
     protected ArrayList<Vec2> slots = new ArrayList<>();
     protected final PortConfigPanel configPanel;
 
     public SlottedContainerScreen(T menu, Inventory inv, Component displayName) {
         super(menu, inv, displayName);
         this.menu = menu;
-        this.imageHeight = 222;
-        this.imageWidth = 174;
-        String name = menu.getModel().name();
-        int subStrLength = Math.min(55, name.length());
-        header = FormattedText.of(name.substring(0, subStrLength) + (subStrLength < 55 ? "" : "..."));
+        IPortBlockEntity portBe = menu.getBlockEntity();
+        var model = (ISlottedPortStorageModel) portBe.getStorage().getStorageModel();
+        this.imageWidth = PortGuiLayout.width(model.columns());
+        this.imageHeight = PortGuiLayout.HEIGHT + PortGuiLayout.extraHeight(model.rows());
         configPanel = new PortConfigPanel(menu.getBlockEntity());
         setupSlots();
     }
@@ -36,7 +33,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
     @Override
     protected void init() {
         super.init();
-        configPanel.setPosition(this.leftPos + this.imageWidth + 2, this.topPos + 4);
+        configPanel.setPosition(this.leftPos, this.topPos, this.imageWidth);
     }
 
     @Override
@@ -60,8 +57,9 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
         var columns = model.columns();
         var rows = model.rows();
 
-        int offsetX = ((162 - (columns * 18)) / 2) + 7;
-        int offsetY = ((108 - (rows * 18)) / 2) + 7;
+        // slot backgrounds are drawn one pixel up-left of the menu's slot positions
+        int offsetX = PortGuiLayout.slotGridX(columns) - 1;
+        int offsetY = PortGuiLayout.slotGridY(rows) - 1;
         slots.ensureCapacity(columns * rows);
 
         for (int y = 0; y < rows; y++) {
@@ -73,7 +71,17 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
 
     @Override
     protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        if (this.imageWidth == PortGuiLayout.WIDTH && this.imageHeight == PortGuiLayout.HEIGHT) {
+            gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+        } else {
+            // grid larger than 9x6: stretch the window, then copy the player inventory from the standard
+            // background, shifted like the menu's inventory slots
+            gfx.blitNineSlicedSized(Ref.UiTextures.TILING_GUI, this.leftPos, this.topPos, this.imageWidth, this.imageHeight,
+                    4, 4, 4, 4, 12, 12, 0, 0, 12, 12);
+            int invX = this.leftPos + (this.imageWidth - PortGuiLayout.WIDTH) / 2;
+            int invY = this.topPos + this.imageHeight - PortGuiLayout.HEIGHT;
+            gfx.blit(Ref.UiTextures.PORT_GUI, invX + 7, invY + 139, 7, 139, 162, 78);
+        }
         for (Vec2 slot : slots) {
             gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + (int) slot.x, this.topPos + (int) slot.y, 0, 26, 18, 18);
         }
@@ -81,7 +89,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
 
     @Override
     protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+        PortConfigPanel.drawTitle(gfx, this.font, menu.getModel().name(), this.imageWidth);
     }
 
     @Override

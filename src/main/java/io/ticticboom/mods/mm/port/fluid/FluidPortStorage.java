@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import io.ticticboom.mods.mm.port.PortContent;
+import java.util.List;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -10,9 +13,6 @@ import io.ticticboom.mods.mm.port.common.ILockablePortStorage;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -67,13 +67,11 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         tag.putInt("Priority", this.priority);
         if (handler.isLocked()) {
             tag.putBoolean("Locked", true);
-            var lockedFluids = new ListTag();
-            for (int i = 0; i < handler.getTanks(); i++) {
-                Fluid fluid = handler.getLockedFluid(i);
-                ResourceLocation id = fluid == null ? null : ForgeRegistries.FLUIDS.getKey(fluid);
-                lockedFluids.add(StringTag.valueOf(id == null ? "" : id.toString()));
+            Fluid fluid = handler.getLockedFluid();
+            ResourceLocation id = fluid == null ? null : ForgeRegistries.FLUIDS.getKey(fluid);
+            if (id != null) {
+                tag.putString("LockedFluid", id.toString());
             }
-            tag.put("LockedFluids", lockedFluids);
         }
         return tag;
     }
@@ -87,15 +85,14 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         } else {
             this.priority = 0;
         }
-        var lockedList = tag.getList("LockedFluids", Tag.TAG_STRING);
-        var lockedFluids = new Fluid[lockedList.size()];
-        for (int i = 0; i < lockedList.size(); i++) {
-            var id = ResourceLocation.tryParse(lockedList.getString(i));
+        Fluid lockedFluid = null;
+        if (tag.contains("LockedFluid")) {
+            var id = ResourceLocation.tryParse(tag.getString("LockedFluid"));
             var fluid = id == null ? null : ForgeRegistries.FLUIDS.getValue(id);
             // unknown ids resolve to the registry default (empty), which means "not locked"
-            lockedFluids[i] = fluid == Fluids.EMPTY ? null : fluid;
+            lockedFluid = fluid == Fluids.EMPTY ? null : fluid;
         }
-        handler.loadLock(tag.getBoolean("Locked"), lockedFluids);
+        handler.loadLock(tag.getBoolean("Locked"), lockedFluid);
     }
 
     @Override
@@ -142,6 +139,25 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
             }
         }
         return json;
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        FluidStack shown = FluidStack.EMPTY;
+        long amount = 0;
+        long capacity = 0;
+        for (int tank = 0; tank < handler.getTanks(); tank++) {
+            FluidStack stack = handler.getFluidInTank(tank);
+            capacity += handler.getTankCapacity(tank);
+            if (!stack.isEmpty()) {
+                if (shown.isEmpty()) {
+                    shown = stack;
+                }
+                amount += stack.getAmount();
+            }
+        }
+        FluidStack total = shown.isEmpty() ? FluidStack.EMPTY : new FluidStack(shown, (int) Math.min(Integer.MAX_VALUE, amount));
+        return List.of(PortContent.fluid(total, capacity));
     }
 
     public FluidStack getStackInSlot(int slot) {

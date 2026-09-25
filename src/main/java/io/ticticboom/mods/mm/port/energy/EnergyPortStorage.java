@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.energy;
 
+import io.ticticboom.mods.mm.port.PortContent;
+import java.util.List;
+
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -89,6 +92,11 @@ public class EnergyPortStorage implements IPortStorage {
 
     public int internalInsert(int amount, boolean simulate) {
         return handler.unboundedReceiveEnergy(amount, simulate);
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        return List.of(PortContent.energy(handler.getEnergyStored(), handler.getMaxEnergyStored()));
     }
 
     public int getStoredEnergy()  {

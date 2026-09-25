@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.util;
 
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerMenu;
+
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
@@ -41,7 +44,11 @@ public class BlockUtils {
                             && port.getAutoIO().refreshFront((ServerLevel) level)) {
                         port.setChanged();
                     }
-                    NetworkHooks.openScreen((ServerPlayer) player, (T) be, pos);
+                    if (be instanceof MachineControllerBlockEntity controller) {
+                        NetworkHooks.openScreen((ServerPlayer) player, controller, buf -> MachineControllerMenu.writeOpenData(buf, controller));
+                    } else {
+                        NetworkHooks.openScreen((ServerPlayer) player, (T) be, pos);
+                    }
                 }
             }
         }
