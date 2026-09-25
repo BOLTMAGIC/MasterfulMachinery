@@ -7,6 +7,10 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue splitRecipesJei;
     public final ForgeConfigSpec.BooleanValue portsAutoExtractByDefault;
     public final ForgeConfigSpec.IntValue portAutoIOInterval;
+    public final ForgeConfigSpec.IntValue networkLinkOutputInterval;
+    public final ForgeConfigSpec.BooleanValue networkLinkOpBypass;
+    public final ForgeConfigSpec.BooleanValue networkLinkSendOnRemove;
+    public final ForgeConfigSpec.IntValue networkLinkSearchRadius;
     public final ForgeConfigSpec.BooleanValue asyncStructureValidation;
     public final ForgeConfigSpec.IntValue structureValidationRate;
     public final ForgeConfigSpec.BooleanValue previewBlueprintScreen;
@@ -34,6 +38,18 @@ public class MMCommonConfig {
                 .defineInRange("maxParallelRecipes", 5, 1, 100);
         showJeiMaxParallel = builder.comment("Show 'Max Parallel Processing' line in JEI structure view. Default: true")
                 .define("showJeiMaxParallel", true);
+
+        builder.comment("Network linker (needs AE2): links a multiblock to an owner and an AE2 network.")
+                .push("network_link");
+        networkLinkOutputInterval = builder.comment("How often linked machines send their output port contents to the AE2 network, in ticks. Default: 20")
+                .defineInRange("outputInterval", 20, 1, 1200);
+        networkLinkOpBypass = builder.comment("Operators (permission level 2+) can open and break any linked machine. Default: true")
+                .define("opBypass", true);
+        networkLinkSendOnRemove = builder.comment("When a port of a linked machine is removed (broken, exploded...), send its contents to the AE2 network instead of dropping them. Default: true")
+                .define("sendContentsOnRemove", true);
+        networkLinkSearchRadius = builder.comment("How far from a port to look for the controller it belongs to. Must cover your largest multiblock. Default: 16")
+                .defineInRange("controllerSearchRadius", 16, 4, 64);
+        builder.pop();
 
         builder.comment("Preview features that are not yet stable or ready for use.")
                 .push("preview_features");

@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.port.item.register;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -62,6 +63,10 @@ public class ItemPortBlock extends Block implements IPortBlock, EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
+        if (!state.is(newState.getBlock())) {
+            // a linked machine's port sends its contents to the network instead of dropping them
+            NetworkLink.beforePortRemoved(level, pos);
+        }
         var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
         if (be instanceof ItemPortBlockEntity pbe) {
             var storage = (ItemPortStorage) pbe.getStorage();

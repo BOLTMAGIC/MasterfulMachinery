@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.net;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
 import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
@@ -27,5 +28,6 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::decode,
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::handle);
         INSTANCE.registerMessage(index++, PortConfigPkt.class, PortConfigPkt::encode, PortConfigPkt::decode, PortConfigPkt::handle);
+        INSTANCE.registerMessage(index++, CycleLinkerModePkt.class, CycleLinkerModePkt::encode, CycleLinkerModePkt::decode, CycleLinkerModePkt::handle);
     }
 }

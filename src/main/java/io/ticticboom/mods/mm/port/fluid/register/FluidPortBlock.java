@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
@@ -92,6 +93,10 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
 
     @Override
     public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
+        if (!state.is(newState.getBlock())) {
+            // a linked machine's port sends its fluid to the network instead of losing it
+            NetworkLink.beforePortRemoved(level, pos);
+        }
         // Notify nearby controllers that a part was removed
         if (!level.isClientSide() && level instanceof ServerLevel sl) {
             var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);

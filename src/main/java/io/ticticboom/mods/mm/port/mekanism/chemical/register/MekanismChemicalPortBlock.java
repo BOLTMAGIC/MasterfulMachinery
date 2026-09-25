@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.port.mekanism.chemical.register;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
@@ -56,6 +57,15 @@ public abstract class MekanismChemicalPortBlock extends Block implements EntityB
                 pbe.tick();
             }
         };
+    }
+
+    @Override
+    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            // chemicals can't be dropped; a linked machine's port sends them to the network instead
+            NetworkLink.beforePortRemoved(level, pos);
+        }
+        super.onRemove(state, level, pos, newState, isMoving);
     }
 
     @Override
