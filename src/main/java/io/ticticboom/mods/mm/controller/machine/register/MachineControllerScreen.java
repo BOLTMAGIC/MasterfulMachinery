@@ -1,12 +1,16 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
+import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.port.common.autoio.PortSides;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import io.ticticboom.mods.mm.networklink.NetworkLink;
-import io.ticticboom.mods.mm.networklink.LinkData;
+import net.minecraft.client.gui.components.EditBox;
+import org.lwjgl.glfw.GLFW;
+import io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt;
+import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
@@ -314,7 +318,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         drawClipped(gfx, Component.translatable("gui.mm.controller.redstone." + redstoneMode()),
                 VALUE_X + 12, rowY(Row.REDSTONE), RIGHT - VALUE_X - 14, TEXT);
         drawClipped(gfx, Component.translatable("gui.mm.controller.mode." + recipeMode()),
-                VALUE_X, rowY(Row.MODE), RIGHT - VALUE_X, TEXT);
+                VALUE_X + 1, rowY(Row.MODE), RIGHT - VALUE_X - 3, TEXT);
         if (NetworkLink.AVAILABLE) {
             LinkData link = be.getNetworkLink();
             if (link != null) {
@@ -473,7 +477,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable("gui.mm.controller.redstone." + redstoneMode() + ".hint").withStyle(ChatFormatting.GRAY));
                     lines.add(Component.translatable("gui.mm.controller.redstone.hint").withStyle(ChatFormatting.YELLOW));
                 }
-                case MODE -> lines.add(Component.translatable("gui.mm.controller.mode." + recipeMode() + ".hint").withStyle(ChatFormatting.GRAY));
+                case MODE -> {
+                    lines.add(Component.translatable("gui.mm.controller.mode." + recipeMode() + ".hint").withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("gui.mm.controller.mode.hint").withStyle(ChatFormatting.YELLOW));
+                }
                 case LINK -> {
                     LinkData link = be.getNetworkLink();
                     if (link != null) {
