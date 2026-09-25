@@ -14,12 +14,16 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 public class InputGatewayBlockEntity extends BlockEntity {
@@ -28,6 +32,10 @@ public class InputGatewayBlockEntity extends BlockEntity {
 
     private final LazyOptional<IItemHandler> itemHandler = LazyOptional.of(() -> new GatewayItemHandler(this::inputs));
     private final LazyOptional<IFluidHandler> fluidHandler = LazyOptional.of(() -> new GatewayFluidHandler(this::inputs));
+    private final LazyOptional<IEnergyStorage> energyHandler = LazyOptional.of(() -> new GatewayEnergyHandler(this::inputs));
+    // Mekanism chemical handlers (gas, infusion, pigment, slurry), made on first request; only used with Mekanism
+    private final Map<Capability<?>, LazyOptional<?>> chemicalHandlers = new HashMap<>();
+    private static final boolean MEKANISM = ModList.get().isLoaded("mekanism");
 
     /** Every this many refreshes the machine is looked up from scratch. */
     private static final int RELINK_EVERY = 10;
@@ -121,6 +129,20 @@ public class InputGatewayBlockEntity extends BlockEntity {
         if (cap == MMCapabilities.FLUID) {
             return fluidHandler.cast();
         }
+        if (cap == MMCapabilities.ENERGY) {
+            return energyHandler.cast();
+        }
+        if (MEKANISM) {
+            LazyOptional<?> chemical = chemicalHandlers.get(cap);
+            if (chemical == null && !chemicalHandlers.containsKey(cap)) {
+                // null for capabilities that aren't chemical ones; remembered so they aren't checked again
+                chemical = GatewayChemicalHandler.create(cap, this::inputs);
+                chemicalHandlers.put(cap, chemical);
+            }
+            if (chemical != null) {
+                return chemical.cast();
+            }
+        }
         return super.getCapability(cap, side);
     }
 
@@ -129,5 +151,10 @@ public class InputGatewayBlockEntity extends BlockEntity {
         super.invalidateCaps();
         itemHandler.invalidate();
         fluidHandler.invalidate();
+        energyHandler.invalidate();
+        chemicalHandlers.values().forEach(handler -> {
+            if (handler != null) handler.invalidate();
+        });
+        chemicalHandlers.clear();
     }
 }
