@@ -339,6 +339,10 @@ dependencies {
 
     // SPARK PROFILER
     runtimeOnly fg.deobf("curse.maven:spark-361579:4738952");
+
+    // UNIT TESTS (plain logic, no Minecraft)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
@@ -418,4 +422,8 @@ mixin {
     config "mixins.mm.json"
     debug.verbose = true
     debug.export = true
+}
+
+test {
+    useJUnitPlatform()
 }
