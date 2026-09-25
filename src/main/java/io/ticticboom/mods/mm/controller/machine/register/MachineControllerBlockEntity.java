@@ -640,17 +640,36 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return baseId;
     }
 
+    /**
+     * @return how many recipes may run at once: the structure's limit, else the controller's, else the config's;
+     * 0 means one at a time
+     */
+    public int getParallelLimit() {
+        int limit = controllerModel.maxParallelRecipes();
+        if (structure != null) {
+            int structLimit = structure.maxParallelRecipes();
+            if (structLimit >= 0) limit = structLimit;
+        }
+        if (limit < 0) limit = MMConfig.MAX_PARALLEL_RECIPES;
+        return limit;
+    }
+
+    /**
+     * @return what the machine is doing, as the suffix of the gui.mm.controller.status.* lang keys
+     */
+    public String statusKey() {
+        if (structure == null || !isFormed) return "not_formed";
+        if (!isAllowedByRedstone()) return "paused";
+        if (getDisplayedRecipe() != null) return "running";
+        return "idle";
+    }
+
     private boolean canStartRecipeGivenParallelRules(RecipeModel recipe) {
         boolean allowParallel = recipe.parallelProcessing();
         if (recipe.parallelProcessing() == MMConfig.PARALLEL_PROCESSING_DEFAULT) {
             allowParallel = controllerModel.parallelProcessingDefault();
         }
-        int controllerLimit = controllerModel.maxParallelRecipes();
-        if (structure != null) {
-            int structLimit = structure.maxParallelRecipes();
-            if (structLimit >= 0) controllerLimit = structLimit;
-        }
-        if (controllerLimit < 0) controllerLimit = MMConfig.MAX_PARALLEL_RECIPES;
+        int controllerLimit = getParallelLimit();
         boolean canStartBasedOnParallelFlag = allowParallel || activeRecipes.isEmpty();
         boolean canStartBasedOnLimit = controllerLimit == 0
                 ? activeRecipes.isEmpty()
