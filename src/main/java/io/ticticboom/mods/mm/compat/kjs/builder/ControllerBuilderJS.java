@@ -20,6 +20,7 @@ public class ControllerBuilderJS {
     private String workingColor;
     private String workingSound;
     private String workingParticle;
+    private Integer workingSoundInterval;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -86,6 +87,14 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    /** Ticks between two plays of the working sound (default 40, two seconds); match it to the sound's length. */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS workingSoundInterval(int ticks) {
+        if (ticks < 1) throw new IllegalArgumentException("workingSoundInterval must be at least 1 tick: " + ticks);
+        this.workingSoundInterval = ticks;
+        return this;
+    }
+
     /** Particle shown on the controller's front while a recipe is running, e.g. "minecraft:smoke" (particles without options only). */
     @SuppressWarnings("unused")
     public ControllerBuilderJS workingParticle(String particle) {
@@ -111,6 +120,7 @@ public class ControllerBuilderJS {
         if (workingColor != null) model.config().addProperty("workingColor", workingColor);
         if (workingSound != null) model.config().addProperty("workingSound", workingSound);
         if (workingParticle != null) model.config().addProperty("workingParticle", workingParticle);
+        if (workingSoundInterval != null) model.config().addProperty("workingSoundInterval", workingSoundInterval);
         return model;
     }
 }

@@ -146,7 +146,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private final Map<ResourceLocation, Long> recipeLastStartedSequence = new HashMap<>();
 
     public void tick() {
-        if (level == null || level.isClientSide() || isRemoved()) {
+        if (level == null || isRemoved()) {
+            return;
+        }
+        if (level.isClientSide()) {
+            if (getBlockState().getBlock() instanceof MachineControllerBlock block) {
+                block.tickWorkingEffects(getBlockState(), level, getBlockPos());
+            }
             return;
         }
         runMachineTick();

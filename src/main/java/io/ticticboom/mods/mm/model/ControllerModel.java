@@ -98,6 +98,14 @@ public record ControllerModel(
     }
 
     /**
+     * Ticks between two plays of the working sound, e.g. "workingSoundInterval": 40 (the default, two seconds).
+     */
+    public int workingSoundInterval() {
+        if (config == null || !config.has("workingSoundInterval") || !config.get("workingSoundInterval").isJsonPrimitive()) return 40;
+        return Math.max(1, config.get("workingSoundInterval").getAsInt());
+    }
+
+    /**
      * Optional particle shown on the controller's front while the machine works, e.g. "workingParticle": "minecraft:smoke".
      * Only particles without extra options can be used.
      * @return the particle id, or null when the controller doesn't set one (or it isn't a valid id)

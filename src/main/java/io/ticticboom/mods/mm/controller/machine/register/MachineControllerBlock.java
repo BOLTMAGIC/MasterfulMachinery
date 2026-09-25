@@ -117,22 +117,24 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     }
 
     /**
-     * Client side, like the furnace: while the machine works, plays the controller's workingSound now and then and
-     * puts its workingParticle on the screen side. Both are optional and off unless the controller sets them.
+     * Called every client tick by the controller: while the machine works, plays the controller's workingSound every
+     * workingSoundInterval ticks and puts its workingParticle on the screen side. Both are optional and off unless the
+     * controller sets them. (animateTick is only called for a few random blocks per tick, far too rarely for a sound.)
      */
-    @Override
-    public void animateTick(BlockState state, Level level, BlockPos pos, RandomSource random) {
+    public void tickWorkingEffects(BlockState state, Level level, BlockPos pos) {
         if (!state.hasProperty(ControllerState.PROPERTY) || state.getValue(ControllerState.PROPERTY) != ControllerState.WORKING
                 || !MMConfigSetup.CLIENT.workingEffects.get()) {
             return;
         }
         resolveWorkingEffects();
+        RandomSource random = level.getRandom();
         double x = pos.getX() + 0.5;
         double z = pos.getZ() + 0.5;
-        if (workingSound != null && random.nextDouble() < 0.1) {
+        // offset by position so machines started together don't all play at once
+        if (workingSound != null && (level.getGameTime() + pos.hashCode()) % model.workingSoundInterval() == 0) {
             level.playLocalSound(x, pos.getY() + 0.5, z, workingSound, SoundSource.BLOCKS, 1.0F, 1.0F, false);
         }
-        if (workingParticle != null) {
+        if (workingParticle != null && random.nextInt(4) == 0) {
             Direction front = state.getValue(FACING).getOpposite();
             double along = random.nextDouble() * 0.6 - 0.3;
             double offsetX = front.getAxis() == Direction.Axis.X ? front.getStepX() * 0.52 : along;
