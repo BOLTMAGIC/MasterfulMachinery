@@ -59,21 +59,25 @@ public class MultiblockToolItem extends Item {
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!player.isShiftKeyDown() || level.isClientSide()) {
+        if (!player.isShiftKeyDown()) {
             return InteractionResultHolder.pass(stack);
         }
-        NetworkHooks.openScreen((ServerPlayer) player, new MenuProvider() {
-            @Override
-            public @NotNull Component getDisplayName() {
-                return stack.getHoverName();
-            }
+        if (!level.isClientSide()) {
+            NetworkHooks.openScreen((ServerPlayer) player, new MenuProvider() {
+                @Override
+                public @NotNull Component getDisplayName() {
+                    return stack.getHoverName();
+                }
 
-            @Override
-            public @NotNull AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player p) {
-                return new MultiblockToolMenu(windowId, inv, hand);
-            }
-        }, buf -> buf.writeEnum(hand));
-        return InteractionResultHolder.success(stack);
+                @Override
+                public @NotNull AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player p) {
+                    return new MultiblockToolMenu(windowId, inv, hand);
+                }
+            }, buf -> buf.writeEnum(hand));
+        }
+        // sidedSuccess (not pass) on both sides: a client-side pass here would also fire use() on the
+        // other hand's item (e.g. eating/placing from the offhand) since vanilla falls through on PASS
+        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 
     @Override
