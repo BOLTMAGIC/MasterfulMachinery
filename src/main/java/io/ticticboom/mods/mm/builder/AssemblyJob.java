@@ -23,21 +23,30 @@ public final class AssemblyJob {
     final ServerLevel level;
     final BlockPos controllerPos;
     private final Deque<AssemblyPlanner.Planned> queue;
+    private final int total;
+    private final int perBlockFe;
     int placed;
     int blocked;
     final int unavailable;
     final Map<Block, Integer> missing = new LinkedHashMap<>();
+    private boolean outOfEnergy;
 
-    AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
+    AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
         this.level = level;
         this.controllerPos = controllerPos;
         this.queue = new ArrayDeque<>(plan.steps());
+        this.total = plan.steps().size();
         this.unavailable = plan.unavailable();
+        this.perBlockFe = perBlockFe;
     }
 
-    /** For game tests; players start jobs through {@link AssemblyJobs#start}. */
+    /** For game tests; players start jobs through {@link AssemblyJobs#start}. Controller path: 0 FE per block. */
     public static AssemblyJob create(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
-        return new AssemblyJob(level, controllerPos, plan);
+        return new AssemblyJob(level, controllerPos, plan, 0);
+    }
+
+    public static AssemblyJob create(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
+        return new AssemblyJob(level, controllerPos, plan, perBlockFe);
     }
 
     public int placed() {
@@ -52,6 +61,16 @@ public final class AssemblyJob {
         return unavailable;
     }
 
+    /** Total planned positions, for "out of energy (x/y)" style reporting. */
+    public int total() {
+        return total;
+    }
+
+    /** True once the job stopped early because the source could not pay for the next block. */
+    public boolean outOfEnergy() {
+        return outOfEnergy;
+    }
+
     public Map<Block, Integer> missing() {
         return Collections.unmodifiableMap(missing);
     }
@@ -61,8 +80,8 @@ public final class AssemblyJob {
         return level.isLoaded(controllerPos) && level.getBlockEntity(controllerPos) instanceof MachineControllerBlockEntity;
     }
 
-    /** @return true when every planned block has been handled */
-    public boolean tick(Player player, int budget) {
+    /** @return true when every planned block has been handled (or the job stopped early, e.g. out of energy) */
+    public boolean tick(Player player, MaterialSource source, int budget) {
         while (budget > 0 && !queue.isEmpty()) {
             AssemblyPlanner.Planned next = queue.poll();
             BlockPos pos = next.pos();
@@ -79,22 +98,27 @@ public final class AssemblyJob {
                 blocked++;
                 continue; // adventure mode, spawn protection, world border
             }
-            ItemStack taken = PlayerMaterials.take(player, wanted);
-            if (taken == null) {
+            if (!source.has(wanted)) {
                 missing.merge(wanted, 1, Integer::sum);
                 continue;
             }
+            if (!source.payEnergy(perBlockFe)) {
+                outOfEnergy = true;
+                queue.clear();
+                break; // remaining positions are left untouched, not counted missing
+            }
+            ItemStack taken = source.take(wanted);
             // placed like a player would: claim and protection mods may cancel it
             BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
             if (!level.setBlock(pos, next.state(), Block.UPDATE_ALL)) {
-                PlayerMaterials.refund(player, taken);
+                source.refund(taken);
                 blocked++;
                 budget--;
                 continue;
             }
             if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) {
                 snapshot.restore(true, true);
-                PlayerMaterials.refund(player, taken);
+                source.refund(taken);
                 blocked++;
                 budget--;
                 continue;

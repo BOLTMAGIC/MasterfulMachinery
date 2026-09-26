@@ -22,16 +22,26 @@ import java.util.UUID;
 public final class AssemblyJobs {
     private static final double MAX_DISTANCE_SQR = 64 * 64;
     private static final int MISSING_SHOWN = 2;
-    private static final Map<UUID, AssemblyJob> JOBS = new HashMap<>();
+    private static final Map<UUID, Running> JOBS = new HashMap<>();
 
     private AssemblyJobs() {
     }
 
+    /** A job paired with the source it draws blocks from, ticked together each server tick. */
+    private record Running(AssemblyJob job, MaterialSource source) {
+    }
+
+    /** The controller's own Assemble: draws from the player's inventory, 0 FE per block. */
     public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
+        return start(player, controllerPos, plan, new PlayerMaterialSource(player), 0);
+    }
+
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
         if (JOBS.containsKey(player.getUUID())) {
             return false;
         }
-        JOBS.put(player.getUUID(), new AssemblyJob(player.serverLevel(), controllerPos, plan));
+        AssemblyJob job = AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe);
+        JOBS.put(player.getUUID(), new Running(job, source));
         return true;
     }
 
@@ -41,10 +51,10 @@ public final class AssemblyJobs {
             return;
         }
         int budget = MMConfigSetup.COMMON.assemblyBlocksPerTick.get();
-        Iterator<Map.Entry<UUID, AssemblyJob>> it = JOBS.entrySet().iterator();
+        Iterator<Map.Entry<UUID, Running>> it = JOBS.entrySet().iterator();
         while (it.hasNext()) {
             var entry = it.next();
-            AssemblyJob job = entry.getValue();
+            AssemblyJob job = entry.getValue().job();
             ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
             if (player == null || player.level() != job.level
                     || player.distanceToSqr(job.controllerPos.getCenter()) > MAX_DISTANCE_SQR) {
@@ -59,7 +69,7 @@ public final class AssemblyJobs {
                 it.remove();
                 continue;
             }
-            if (job.tick(player, budget)) {
+            if (job.tick(player, entry.getValue().source(), budget)) {
                 player.displayClientMessage(summary(job), true);
                 it.remove();
             }
@@ -92,6 +102,9 @@ public final class AssemblyJobs {
         }
         if (job.unavailable > 0) {
             text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.unavailable", job.unavailable));
+        }
+        if (job.outOfEnergy()) {
+            text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.out_of_energy", job.placed(), job.total()));
         }
         return text;
     }
