@@ -3,16 +3,20 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.MaterialSource;
+import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.networklink.Permissions;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
+import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -28,10 +32,17 @@ public final class ToolBuilds {
     public record Prepared(BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
     }
 
-    /** Exactly one of {@code prepared} and {@code error} is set. */
-    public record Result(@Nullable Prepared prepared, @Nullable Component error) {
+    /**
+     * Exactly one of {@code prepared} and {@code error} is set. {@code notice}, when set, is worth telling the player
+     * either way (the tool's ME network could not be reached, so only the store and inventory were used).
+     */
+    public record Result(@Nullable Prepared prepared, @Nullable Component error, @Nullable Component notice) {
         static Result error(Component error) {
-            return new Result(null, error);
+            return new Result(null, error, null);
+        }
+
+        Result withNotice(@Nullable Component notice) {
+            return new Result(prepared, error, notice);
         }
     }
 
@@ -55,9 +66,27 @@ public final class ToolBuilds {
         if (structure == null) {
             return Result.error(Component.translatable("message.mm.tool.no_structure"));
         }
-        int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
         ChainedMaterialSource source = ToolBuildPlan.source(player, tool);
+        return prepare(level, player, tool, clickedPos, clickedFace, structure, source).withNotice(meNotice(player, tool, source));
+    }
 
+    /**
+     * A bound tool whose network is turned on but cannot be reached right now (chunk not loaded, block removed,
+     * unpowered): the build goes on from the store and inventory, and the player should know why ME was not used.
+     */
+    private static @Nullable Component meNotice(Player player, ItemStack tool, ChainedMaterialSource source) {
+        LinkData.NetworkPos network = ToolData.network(tool);
+        if (network == null || source.me() != null || source.free() || !ToolData.useMe(tool)
+                || !(player instanceof ServerPlayer) || !MeAccessFactory.available()) {
+            return null;
+        }
+        return Component.translatable("message.mm.tool.me_unreachable",
+                network.pos().toShortString(), network.dimension().location().getPath()).withStyle(ChatFormatting.YELLOW);
+    }
+
+    private static Result prepare(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace,
+                                  StructureModel structure, ChainedMaterialSource source) {
+        int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
         MachineControllerBlockEntity controller = acceptingController(level, clickedPos, tool);
         if (controller != null) {
             var link = controller.getNetworkLink();
@@ -72,7 +101,7 @@ public final class ToolBuilds {
             return startable(tool, new Prepared(controller.getBlockPos(), plan, source, perBlockFe));
         }
 
-        ToolBuildPlan build = ToolBuildPlan.create(level, player, tool, structure, clickedPos, clickedFace);
+        ToolBuildPlan build = ToolBuildPlan.create(level, player, tool, structure, clickedPos, clickedFace, source.snapshot());
         if (build == null) {
             return Result.error(Component.translatable("message.mm.tool.no_controller"));
         }
@@ -99,6 +128,6 @@ public final class ToolBuilds {
                 && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {
             return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, prepared.plan().steps().size()));
         }
-        return new Result(prepared, null);
+        return new Result(prepared, null, null);
     }
 }

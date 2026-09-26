@@ -25,6 +25,11 @@ public final class MeAccessFactory {
         lookup = value;
     }
 
+    /** Whether ME access exists at all (AE2 is installed), so a bound but unreachable network is worth mentioning. */
+    public static boolean available() {
+        return lookup != null;
+    }
+
     @Nullable
     public static MeAccess forTool(ServerPlayer player, ItemStack tool) {
         return lookup == null ? null : lookup.apply(player, tool);

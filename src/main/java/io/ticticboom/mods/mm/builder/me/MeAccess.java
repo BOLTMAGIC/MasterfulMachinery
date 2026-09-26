@@ -12,7 +12,17 @@ public interface MeAccess {
     /** Whether the bound network can currently be reached (its chunk loaded, the node still there). */
     boolean reachable();
 
-    /** Snapshot stock of {@code item} in the network, for planning; not a live value. */
+    /**
+     * Re-resolves the network and drops the stock snapshot; called once per job tick, since the network may have
+     * changed (or gone away) since the last one.
+     */
+    default void refresh() {
+    }
+
+    /**
+     * Snapshot stock of plain (untagged) {@code item} in the network, for planning; not a live value. Taken at the
+     * first call after {@link #refresh}, then lowered by this access's own extractions only.
+     */
     long stock(Item item);
 
     /**

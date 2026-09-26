@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.compat.ae2;
 import appeng.api.features.GridLinkables;
 import appeng.api.networking.security.IActionSource;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.networklink.MultiblockLookup;
@@ -32,6 +33,8 @@ public final class Ae2NetworkLink {
         // like AE2's wireless terminals, the linker can be linked in a Wireless Access Point's slot
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(() -> GridLinkables.register(linker.get(), new LinkerGridLinkable())));
         MinecraftForge.EVENT_BUS.register(new NetworkLinkProtection());
+        // the Multiblock Tool pulls blocks from the network it is bound to
+        MeAccessFactory.setLookup(Ae2MeAccess::forTool);
         return linker;
     }
 

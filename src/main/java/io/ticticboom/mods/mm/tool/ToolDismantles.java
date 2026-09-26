@@ -63,7 +63,7 @@ public final class ToolDismantles {
         }
         List<DismantlePlanner.Target> positions = DismantlePlanner.positions(level, controller);
         int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
-        ItemSink sink = ToolBuildPlan.source(player, tool);
+        ItemSink sink = ToolBuildPlan.sink(player, tool);
         if (!sink.free() && perBlockFe > 0
                 && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < perBlockFe) {
             return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, positions.size()));

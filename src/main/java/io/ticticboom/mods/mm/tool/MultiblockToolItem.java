@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -113,7 +114,8 @@ public class MultiblockToolItem extends Item {
 
     /**
      * Right-click on any other block face builds the selected structure in front of it, controller included.
-     * Shift+right-click on a machine dismantles it after a second click; on any other block it opens the store.
+     * Shift+right-click on an AE2 network block binds the tool to that network; on a machine it dismantles it after a
+     * second click; on any other block it opens the store.
      */
     @Override
     public @NotNull InteractionResult useOn(UseOnContext context) {
@@ -126,6 +128,10 @@ public class MultiblockToolItem extends Item {
         }
         // the server decides machine or not; the client only must not also fire use()
         if (player instanceof ServerPlayer serverPlayer) {
+            if (NetworkLink.bindTool(serverPlayer, context)) {
+                // an AE2 network block: bound to its network, never dismantled or opened through
+                return InteractionResult.SUCCESS;
+            }
             if (DismantlePlanner.resolve(context.getLevel(), context.getClickedPos()) != null) {
                 ToolDismantles.shiftClick(serverPlayer, context.getItemInHand(), context.getClickedPos());
             } else {
@@ -155,6 +161,10 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
+        if (result.notice() != null) {
+            // in chat: the action bar is soon taken by the result or the job's summary
+            player.displayClientMessage(result.notice(), false);
+        }
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);
             return InteractionResult.FAIL;

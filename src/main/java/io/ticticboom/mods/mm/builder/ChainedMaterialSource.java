@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.builder;
 
+import io.ticticboom.mods.mm.builder.me.MeAccess;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
@@ -9,26 +10,42 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.items.ItemHandlerHelper;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
 /**
- * The multiblock tool's source: blocks come from the tool's own store first, then the player's inventory;
- * energy comes from the tool. Nothing is taken or paid in creative. As a sink (dismantling) it stores items the
- * same way a refund does: tool store, then inventory, then the ground.
+ * The multiblock tool's source: blocks come from the tool's own store first, then the player's inventory, then the
+ * ME network the tool is bound to (when given one); energy comes from the tool. Nothing is taken or paid in creative.
+ * Refunds, and a sink's items (dismantling), never go to the network: tool store, then inventory, then the ground.
  */
 public final class ChainedMaterialSource implements MaterialSource, ItemSink {
     private final ToolStore store;
     private final Player player;
     private final ToolEnergy energy;
+    @Nullable
+    private final MeAccess me;
 
     public ChainedMaterialSource(ToolStore store, Player player, ToolEnergy energy) {
+        this(store, player, energy, null);
+    }
+
+    /** @param me the tool's reachable ME network, or null to use the store and inventory only */
+    public ChainedMaterialSource(ToolStore store, Player player, ToolEnergy energy, @Nullable MeAccess me) {
         this.store = store;
         this.player = player;
         this.energy = energy;
+        this.me = me;
+    }
+
+    /** The ME network this source may draw from, or null. */
+    public @Nullable MeAccess me() {
+        return me;
     }
 
     @Override
@@ -36,13 +53,21 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         if (free()) {
             return true;
         }
-        return storeSlot(block) >= 0 || PlayerMaterials.has(player, block);
+        return storeSlot(block) >= 0 || PlayerMaterials.has(player, block) || meHas(block.asItem());
+    }
+
+    /**
+     * The network can give one item right now. The snapshot rules most items out; a simulated extraction confirms the
+     * rest, since the job relies on {@link #take} delivering what {@code has} promised (the snapshot may lag a tick).
+     */
+    private boolean meHas(Item item) {
+        return meStock(item) > 0 && !me.extract(item, 1, true).isEmpty();
     }
 
     /**
      * {@link #has} frozen now, as a set lookup: for planning and previews that ask about many blocks at once. Later
      * changes to the store or inventory are not seen; the store is as read at construction or the last
-     * {@link #beginTick}.
+     * {@link #beginTick}. The network is asked once per item (from its stock snapshot), never per position.
      */
     public Predicate<Block> snapshot() {
         if (free()) {
@@ -59,7 +84,14 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         }
         // empty stacks and blocks without an item both map to air
         items.remove(Items.AIR);
-        return block -> items.contains(block.asItem());
+        if (me == null) {
+            return block -> items.contains(block.asItem());
+        }
+        Map<Item, Boolean> inMe = new HashMap<>();
+        return block -> {
+            Item item = block.asItem();
+            return items.contains(item) || inMe.computeIfAbsent(item, i -> meStock(i) > 0);
+        };
     }
 
     private static void addBuildable(Set<Item> items, ItemStack stack) {
@@ -78,7 +110,18 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
             return store.extractItem(slot, 1, false);
         }
         ItemStack taken = PlayerMaterials.take(player, block);
-        return taken == null ? ItemStack.EMPTY : taken;
+        if (taken != null) {
+            return taken;
+        }
+        return meStock(block.asItem()) > 0 ? me.extract(block.asItem(), 1, false) : ItemStack.EMPTY;
+    }
+
+    /** Stock of item in the bound network: 0 without one, while it is unreachable, or while the tool is not carried. */
+    private long meStock(Item item) {
+        if (me == null || item == Items.AIR || !me.reachable() || !toolCarried()) {
+            return 0;
+        }
+        return me.stock(item);
     }
 
     @Override
@@ -135,12 +178,16 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
 
     /**
      * Re-reads the store from the tool once per job tick. Within a tick only this store writes the tool's store NBT:
-     * the menu (the other writer) is closed whenever {@link #ready()} lets the job run.
+     * the menu (the other writer) is closed whenever {@link #ready()} lets the job run. The network is looked up again
+     * too, with a fresh stock snapshot.
      */
     @Override
     public void beginTick() {
         if (toolCarried()) {
             store.reload();
+        }
+        if (me != null) {
+            me.refresh();
         }
     }
 
