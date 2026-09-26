@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.chunk.LevelChunk;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Locale;
 import java.util.function.Predicate;
 
 /**
@@ -54,7 +55,7 @@ public final class PortSides {
         if (front == null) {
             return "gui.mm.port.side." + world.getName();
         }
-        return "gui.mm.port.side.rel." + toRelative(world, front).name().toLowerCase();
+        return "gui.mm.port.side.rel." + toRelative(world, front).name().toLowerCase(Locale.ROOT);
     }
 
     public static String shortKey(Direction world, @Nullable Direction front) {

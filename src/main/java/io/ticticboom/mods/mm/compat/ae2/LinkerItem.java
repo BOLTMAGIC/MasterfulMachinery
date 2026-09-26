@@ -23,6 +23,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Machine Network Linker. Sneak + mouse wheel switches between two modes:
@@ -190,7 +191,7 @@ public class LinkerItem extends Item {
                     network.pos().toShortString(), network.dimension().location().toString()).withStyle(ChatFormatting.AQUA));
         }
         var mode = LinkerMode.get(stack);
-        tooltip.add(Component.translatable("tooltip.mm.network_linker.usage." + mode.name().toLowerCase()).withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("tooltip.mm.network_linker.usage." + mode.name().toLowerCase(Locale.ROOT)).withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.translatable("tooltip.mm.network_linker.mode_hint").withStyle(ChatFormatting.DARK_GRAY));
     }
 
