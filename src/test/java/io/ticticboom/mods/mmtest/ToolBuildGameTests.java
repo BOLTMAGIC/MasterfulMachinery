@@ -3,12 +3,14 @@ package io.ticticboom.mods.mmtest;
 import com.mojang.authlib.GameProfile;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
+import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.MaterialSource;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
 import io.ticticboom.mods.mm.tool.ToolData;
@@ -240,7 +242,7 @@ public class ToolBuildGameTests {
         try {
             // a big budget: nothing after the controller may be placed in the same tick either
             job = AssemblyJob.create(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
-            job.tick(player, build.source(), 64);
+            AssemblyJobs.tickBuild(player, job, build.source(), 64);
         } finally {
             MinecraftForge.EVENT_BUS.unregister(claims);
         }
@@ -302,6 +304,41 @@ public class ToolBuildGameTests {
         helper.succeed();
     }
 
+    /**
+     * While the tool's store is open the job waits (the menu and the job would otherwise write over each other's
+     * store); after closing it goes on and sees what the player moved meanwhile.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void toolBuildWaitsWhileStoreOpen(GameTestHelper helper) {
+        Player player = player(helper, 180);
+        ItemStack tool = tool(player);
+        stockStore(tool);
+        ToolBuilds.Prepared build = prepare(helper, player, tool);
+        AssemblyJob job = AssemblyJob.create(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
+
+        MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
+        player.containerMenu = menu;
+        for (int i = 0; i < 5; i++) {
+            check(helper, !AssemblyJobs.tickBuild(player, job, build.source(), 64), "the job must not finish while the store is open");
+        }
+        check(helper, job.placed() == 0, "nothing may be placed while the store is open, got " + job.placed());
+        check(helper, helper.getLevel().getBlockState(build.controllerPos()).isAir(), "the controller must not be placed yet");
+        // the player moves the glass out of the store meanwhile
+        menu.quickMoveStack(player, 2);
+        check(helper, player.getInventory().countItem(Items.GLASS) == 1, "the glass should be moved to the inventory");
+        menu.removed(player);
+        player.containerMenu = player.inventoryMenu;
+
+        AssemblyJob done = run(helper, player, build, job);
+
+        check(helper, done.placed() == 4, "expected 4 placed after closing, got " + done.placed());
+        check(helper, structure(helper).formed(helper.getLevel(), build.controllerPos()), "structure not formed after closing");
+        // the glass now came from the inventory; the store's old copy of it must not be used as well
+        check(helper, storeCount(tool) == 0, "the store should be empty, has " + storeCount(tool));
+        check(helper, player.getInventory().countItem(Items.GLASS) == 0, "the moved glass should be used, not duplicated");
+        helper.succeed();
+    }
+
     @GameTest(template = TEMPLATE)
     public static void chainedSourceUsesStoreThenInventory(GameTestHelper helper) {
         List<ItemStack> dropped = new ArrayList<>();
@@ -342,6 +379,7 @@ public class ToolBuildGameTests {
         for (int i = 0; i < store.getSlots(); i++) {
             store.insertItem(i, new ItemStack(Blocks.DIRT, ToolStore.LIMIT), false);
         }
+        source.beginTick(); // what the job runner does each tick: see the store as changed elsewhere
         source.refund(new ItemStack(Blocks.GLASS));
         check(helper, player.getInventory().countItem(Items.GLASS) == 1, "with the store full, a refund should go into the inventory");
 
@@ -385,9 +423,13 @@ public class ToolBuildGameTests {
     }
 
     private static AssemblyJob run(GameTestHelper helper, Player player, ToolBuilds.Prepared build) {
-        AssemblyJob job = AssemblyJob.create(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
+        return run(helper, player, build, AssemblyJob.create(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe()));
+    }
+
+    /** Ticks the job like the server does (one block per tick) until it is done. */
+    private static AssemblyJob run(GameTestHelper helper, Player player, ToolBuilds.Prepared build, AssemblyJob job) {
         int ticks = 0;
-        while (!job.tick(player, build.source(), 1)) {
+        while (!AssemblyJobs.tickBuild(player, job, build.source(), 1)) {
             if (++ticks > 100) {
                 helper.fail("tool build did not finish");
             }

@@ -43,7 +43,7 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
      *                     it becomes the bottom-middle-front of the structure (like a blueprint paste)
      * @param playerFacing the player's horizontal facing, which also defines "front" for the anchor
      * @param available    blocks the player can supply, to pick among a position's candidates (see
-     *                     {@link #availableFor})
+     *                     {@link #availableSnapshot})
      * @return null when the structure has no registered controller block
      */
     public static @Nullable ToolBuildPlan create(Level level, StructureModel model, BlockPos clickedPos, Direction clickedFace,
@@ -79,15 +79,13 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
 
     /** The plan for this player using this tool: its extra turns and tier preferences, and what it and the player carry. */
     public static @Nullable ToolBuildPlan create(Level level, Player player, ItemStack tool, StructureModel model, BlockPos clickedPos, Direction clickedFace) {
-        return create(level, model, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool), ToolData.tiers(tool), availableFor(player, tool));
+        return create(level, model, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool), ToolData.tiers(tool), availableSnapshot(player, tool));
     }
 
-    /** Blocks the tool's store or the player's inventory can supply (everything in creative). */
-    public static Predicate<Block> availableFor(Player player, ItemStack tool) {
-        return source(player, tool)::has;
-    }
-
-    /** {@link #availableFor} read once (the store is deserialized a single time), for previews such as the hologram. */
+    /**
+     * Blocks the tool's store or the player's inventory can supply (everything in creative), read once: the store is
+     * deserialized a single time however many blocks are asked about.
+     */
     public static Predicate<Block> availableSnapshot(Player player, ItemStack tool) {
         return source(player, tool).snapshot();
     }

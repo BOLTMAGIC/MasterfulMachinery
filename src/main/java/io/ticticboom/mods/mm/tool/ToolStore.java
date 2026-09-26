@@ -54,8 +54,8 @@ public class ToolStore extends ItemStackHandler {
     }
 
     /**
-     * Re-reads the contents from the bound tool's NBT. Long-lived stores (an assembly job's) call this before each
-     * use so they never write back counts another store instance (the menu's) has changed since.
+     * Re-reads the contents from the bound tool's NBT. Long-lived stores (an assembly job's) call this once per job
+     * tick so they never write back counts another store instance (the menu's) has changed since.
      */
     public void reload() {
         if (toolStack.isEmpty()) {

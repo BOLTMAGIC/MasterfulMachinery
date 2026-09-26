@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.DismantleJob;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
@@ -315,7 +316,7 @@ public class DismantleGameTests {
     private static DismantleJob run(GameTestHelper helper, Player player, ToolDismantles.Prepared prepared) {
         DismantleJob job = prepared.job(helper.getLevel());
         int ticks = 0;
-        while (!job.tick(player, prepared.sink(), 1)) {
+        while (!AssemblyJobs.tickDismantle(player, job, prepared.sink(), 1)) {
             if (++ticks > 100) {
                 helper.fail("dismantle did not finish");
             }

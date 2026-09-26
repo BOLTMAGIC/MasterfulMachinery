@@ -3,12 +3,12 @@ package io.ticticboom.mods.mm.builder;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 
-/** Where an assembly job draws its blocks from: a player's inventory today, a multiblock tool's own store later. */
+/** Where an assembly job draws its blocks from: the player's inventory, or a multiblock tool's store and inventory. */
 public interface MaterialSource {
     /** Can this source supply one of block's item (creative: always). */
     boolean has(Block block);
 
-    /** Removes one item for block; EMPTY if none. Creative: returns EMPTY but succeeded() semantics via has(). */
+    /** Removes one item for block; EMPTY if none. Creative: always EMPTY, callers rely on {@link #has} instead. */
     ItemStack take(Block block);
 
     /** Gives an item back (placement failed/cancelled). Must never delete it: store, inventory, or drop. */
@@ -31,6 +31,13 @@ public interface MaterialSource {
     /** False while the source cannot be drawn from safely right now (the job waits, e.g. the tool's store is open). */
     default boolean ready() {
         return true;
+    }
+
+    /**
+     * Called once per job tick, after {@link #ready()} and before any other call: sources that cache state (the
+     * tool's store) re-read it here, since others may have changed it between ticks.
+     */
+    default void beginTick() {
     }
 
     /** Creative: nothing is taken, nothing is paid. */

@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
@@ -40,8 +41,6 @@ public final class AssemblyJobs {
         @Nullable
         Component stopReason();
 
-        boolean ready();
-
         /** @return true when done */
         boolean tick(ServerPlayer player, int budget);
 
@@ -62,12 +61,8 @@ public final class AssemblyJobs {
             return job.controllerPresent() ? null : Component.translatable("message.mm.assemble.controller_gone");
         }
 
-        public boolean ready() {
-            return source.ready();
-        }
-
         public boolean tick(ServerPlayer player, int budget) {
-            return job.tick(player, source, budget);
+            return tickBuild(player, job, source, budget);
         }
 
         public Component summary() {
@@ -89,17 +84,36 @@ public final class AssemblyJobs {
             return null; // the job removes the controller itself
         }
 
-        public boolean ready() {
-            return sink.ready();
-        }
-
         public boolean tick(ServerPlayer player, int budget) {
-            return job.tick(player, sink, budget);
+            return tickDismantle(player, job, sink, budget);
         }
 
         public Component summary() {
             return AssemblyJobs.summary(job);
         }
+    }
+
+    /**
+     * One server tick of a build: waits while the source is not {@link MaterialSource#ready ready} (e.g. the tool's
+     * store is open), else lets it re-read its state and places up to budget blocks.
+     *
+     * @return true when done
+     */
+    public static boolean tickBuild(Player player, AssemblyJob job, MaterialSource source, int budget) {
+        if (!source.ready()) {
+            return false;
+        }
+        source.beginTick();
+        return job.tick(player, source, budget);
+    }
+
+    /** One server tick of a dismantle, paused and refreshed like {@link #tickBuild}. */
+    public static boolean tickDismantle(Player player, DismantleJob job, ItemSink sink, int budget) {
+        if (!sink.ready()) {
+            return false;
+        }
+        sink.beginTick();
+        return job.tick(player, sink, budget);
     }
 
     /** True while the player has a job of either kind running. */
@@ -153,9 +167,6 @@ public final class AssemblyJobs {
             if (stop != null) {
                 player.displayClientMessage(stop, true);
                 it.remove();
-                continue;
-            }
-            if (!job.ready()) {
                 continue;
             }
             if (job.tick(player, budget)) {

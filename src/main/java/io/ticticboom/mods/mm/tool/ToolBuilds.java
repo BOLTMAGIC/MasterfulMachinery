@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.tool;
 
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
+import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.MaterialSource;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -55,7 +56,7 @@ public final class ToolBuilds {
             return Result.error(Component.translatable("message.mm.tool.no_structure"));
         }
         int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
-        MaterialSource source = ToolBuildPlan.source(player, tool);
+        ChainedMaterialSource source = ToolBuildPlan.source(player, tool);
 
         MachineControllerBlockEntity controller = acceptingController(level, clickedPos, tool);
         if (controller != null) {
@@ -64,7 +65,7 @@ public final class ToolBuilds {
                 return Result.error(Component.translatable("message.mm.tool.no_access"));
             }
             // same as the controller's own Assemble, with the tool's tiers and the tool as source
-            var plan = AssemblyPlanner.planCompletion(level, structure, controller.getBlockPos(), ToolData.tiers(tool), source::has);
+            var plan = AssemblyPlanner.planCompletion(level, structure, controller.getBlockPos(), ToolData.tiers(tool), source.snapshot());
             if (plan == null) {
                 return Result.error(Component.translatable("message.mm.assemble.already"));
             }

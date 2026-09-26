@@ -40,8 +40,9 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
     }
 
     /**
-     * {@link #has} frozen now: the store is read once instead of per call. For previews that ask about many
-     * blocks at once; later changes to the store or inventory are not seen.
+     * {@link #has} frozen now, as a set lookup: for planning and previews that ask about many blocks at once. Later
+     * changes to the store or inventory are not seen; the store is as read at construction or the last
+     * {@link #beginTick}.
      */
     public Predicate<Block> snapshot() {
         if (free()) {
@@ -49,7 +50,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         }
         Set<Item> items = new HashSet<>();
         if (toolCarried()) {
-            store.reload();
             for (int i = 0; i < store.getSlots(); i++) {
                 items.add(store.getStackInSlot(i).getItem());
             }
@@ -82,7 +82,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         }
         ItemStack leftover = stack;
         if (toolCarried()) {
-            store.reload();
             leftover = ItemHandlerHelper.insertItemStacked(store, stack, false);
         }
         if (!leftover.isEmpty()) {
@@ -128,6 +127,17 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return !(player.containerMenu instanceof MultiblockToolMenu);
     }
 
+    /**
+     * Re-reads the store from the tool once per job tick. Within a tick only this store writes the tool's store NBT:
+     * the menu (the other writer) is closed whenever {@link #ready()} lets the job run.
+     */
+    @Override
+    public void beginTick() {
+        if (toolCarried()) {
+            store.reload();
+        }
+    }
+
     @Override
     public boolean free() {
         return player.getAbilities().instabuild;
@@ -139,7 +149,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         if (item == Items.AIR || !toolCarried()) {
             return -1;
         }
-        store.reload();
         int tagged = -1;
         for (int i = 0; i < store.getSlots(); i++) {
             ItemStack stack = store.getStackInSlot(i);

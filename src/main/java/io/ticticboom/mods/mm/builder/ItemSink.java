@@ -19,6 +19,10 @@ public interface ItemSink {
     /** False while the sink cannot be written safely right now (the job waits, e.g. the tool's store is open). */
     boolean ready();
 
+    /** Called once per job tick, after {@link #ready()} and before any other call (see {@link MaterialSource#beginTick}). */
+    default void beginTick() {
+    }
+
     /** Creative: nothing is paid. */
     boolean free();
 }
