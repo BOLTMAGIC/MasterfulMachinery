@@ -475,6 +475,13 @@ public final class ClientSmokeTest {
                     + (int) staticField(MachineControllerScreen.class, "PAGE_BTN") / 2;
             screen.mouseClicked(x, y, 0);
             check(mc.screen instanceof AssemblyScreen, "the Assemble button should open the Assemble screen, got " + mc.screen);
+            // it shows the structure the machine is formed as, not just the first candidate (Assembly Extra)
+            check(mc.level.getBlockEntity(controller) instanceof MachineControllerBlockEntity be && be.getStructure() != null
+                    && be.getStructure().id().equals(STRUCTURE), "the client controller should know it is formed as " + STRUCTURE);
+            StructureModel shown = (StructureModel) field(mc.screen, AssemblyScreen.class, "structure");
+            StructureModel formed = ((MachineControllerBlockEntity) mc.level.getBlockEntity(controller)).getStructure();
+            check(shown != null && shown.id().equals(STRUCTURE) && shown.name().equals(formed.name()),
+                    "the Assemble screen should show '" + formed.name() + "', shows " + (shown == null ? null : "'" + shown.name() + "' (" + shown.id() + ")"));
         } else if (tick == 5) {
             check(mc.screen instanceof AssemblyScreen, "the Assemble screen should stay open, got " + mc.screen);
             screenshot("smoke_assemble_screen.png");
