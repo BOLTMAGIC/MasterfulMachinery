@@ -59,6 +59,8 @@ final class Ae2CraftHandle implements CraftHandle {
     /** The item's stock at submission plus the requested amount. */
     private long target;
     private int shortPolls;
+    /** The last poll found the network unreachable or unpowered. */
+    private boolean waiting;
 
     private Ae2CraftHandle(Item item, int amount, IGrid grid, Supplier<IGrid> network, IActionSource source, Future<ICraftingPlan> calculation) {
         this.item = item;
@@ -97,11 +99,27 @@ final class Ae2CraftHandle implements CraftHandle {
 
     @Override
     public void update() {
+        if (!state.active()) {
+            waiting = false;
+            return;
+        }
+        IGrid now = network.get();
+        waiting = now == null || !now.getEnergyService().isNetworkPowered();
+        if (waiting) {
+            // unreachable or unpowered: nothing can be submitted or judged, and the job may well go on afterwards
+            return;
+        }
+        grid = now;
         if (state == State.CALCULATING && calculation.isDone()) {
             submit();
         } else if (state == State.CRAFTING) {
             follow();
         }
+    }
+
+    @Override
+    public boolean waiting() {
+        return waiting;
     }
 
     /** The plan is ready (never waited for): submit it, or fail when it lacks ingredients. */
@@ -163,12 +181,6 @@ final class Ae2CraftHandle implements CraftHandle {
     }
 
     private void follow() {
-        IGrid now = network.get();
-        if (now == null || !now.getEnergyService().isNetworkPowered()) {
-            // unreachable or unpowered: nothing can be judged, and the job may well go on afterwards
-            return;
-        }
-        grid = now;
         ICraftingService crafting = grid.getCraftingService();
         Set<ICraftingCPU> cpus = crafting.getCpus();
         boolean cpuGone = cpu != null && !cpus.contains(cpu);

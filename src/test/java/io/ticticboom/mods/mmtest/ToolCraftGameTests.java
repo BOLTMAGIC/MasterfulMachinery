@@ -7,8 +7,10 @@ import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.me.CraftHandle;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
+import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.builder.me.MeAccess;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
@@ -368,6 +370,122 @@ public class ToolCraftGameTests {
         helper.succeed();
     }
 
+    /**
+     * The HUD state follows the crafts: progress by count with the items still in progress, "waiting" while the network
+     * can't be reached, then ready; hidden once the build starts.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void hudFollowsCrafts(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(Blocks.GLASS), false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        me.craftable.add(port("l").asItem());
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.NONE, "no crafts, no HUD");
+        prepare(helper, player, tool, me);
+
+        HudState hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.CRAFTING && hud.done() == 0 && hud.total() == 2
+                && hud.inProgress().equals(List.of(port("s").asItem(), port("l").asItem())) && hud.failure() == null,
+                "expected crafting 0/2 with both ports, got " + hud);
+
+        me.requests.get(0).state = CraftHandle.State.DONE;
+        me.requests.get(1).waiting = true;
+        CraftTracker.update(player);
+        hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.WAITING && hud.done() == 1 && hud.total() == 2
+                && hud.inProgress().equals(List.of(port("l").asItem())), "expected waiting 1/2 on the large port, got " + hud);
+
+        me.requests.get(1).waiting = false;
+        CraftTracker.update(player);
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.CRAFTING, "the network is back: crafting again, got " + CraftTracker.hud(player));
+
+        me.requests.get(1).state = CraftHandle.State.DONE;
+        CraftTracker.update(player);
+        hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.READY && hud.done() == 2 && hud.total() == 2 && hud.inProgress().isEmpty(),
+                "expected ready 2/2, got " + hud);
+
+        me.stock.put(port("s").asItem(), 1L);
+        me.stock.put(port("l").asItem(), 1L);
+        check(helper, prepare(helper, player, tool, me).prepared() != null, "everything is there, the build should start");
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.NONE, "a started build hides the HUD");
+        helper.succeed();
+    }
+
+    /** A failed craft is the HUD's failure line while others go on, and its phase once nothing else is left. */
+    @GameTest(template = TEMPLATE)
+    public static void hudShowsFailure(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(Blocks.GLASS), false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        me.craftable.add(port("l").asItem());
+        prepare(helper, player, tool, me);
+
+        me.requests.get(0).state = CraftHandle.State.FAILED;
+        me.requests.get(0).failure = Component.translatable("message.mm.tool.craft.missing_ingredients");
+        CraftTracker.update(player);
+        HudState hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.CRAFTING && hud.total() == 1
+                && find(hud.failure(), "message.mm.tool.craft.missing_ingredients") != null
+                && text(hud.failure()).contains(port("s").getName().getString()),
+                "expected crafting with the small port's failure line, got " + hud + " / " + text(hud.failure()));
+
+        me.requests.get(1).state = CraftHandle.State.DONE;
+        CraftTracker.update(player);
+        hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.FAILED && hud.failure() != null, "nothing left on its way and one failed: " + hud);
+        CraftTracker.clear(player);
+        helper.succeed();
+    }
+
+    /** Forgetting the network is the way out of a craft stuck on a network that is gone: the crafts are forgotten. */
+    @GameTest(template = TEMPLATE)
+    public static void forgetNetworkClearsCrafts(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        prepare(helper, player, tool, me);
+        me.requests.forEach(craft -> craft.waiting = true);
+        CraftTracker.update(player);
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.WAITING, "the craft should wait for the network, got " + CraftTracker.hud(player));
+
+        check(helper, ToolSettingsPkt.apply(player, tool, ToolSettingsPkt.Action.FORGET_NETWORK, "", 0), "forget should be accepted");
+
+        check(helper, CraftTracker.orders(player).isEmpty() && CraftTracker.active(player, port("s").asItem()) == 0,
+                "forgetting the network should forget the crafts: " + CraftTracker.orders(player).size());
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.NONE, "the HUD should hide");
+        helper.succeed();
+    }
+
+    /** Turning auto-craft off forgets the crafts too; turning it on keeps them. */
+    @GameTest(template = TEMPLATE)
+    public static void autoCraftOffClearsCrafts(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        prepare(helper, player, tool, me);
+        check(helper, !CraftTracker.orders(player).isEmpty(), "the small port should be crafting");
+
+        check(helper, ToolSettingsPkt.apply(player, tool, ToolSettingsPkt.Action.SET_AUTOCRAFT, "", 1), "auto-craft on should be accepted");
+        check(helper, CraftTracker.active(player, port("s").asItem()) == 1, "turning auto-craft on must keep the crafts");
+
+        check(helper, ToolSettingsPkt.apply(player, tool, ToolSettingsPkt.Action.SET_AUTOCRAFT, "", 0), "auto-craft off should be accepted");
+        check(helper, !ToolData.autoCraft(tool), "auto-craft should be off");
+        check(helper, CraftTracker.orders(player).isEmpty() && CraftTracker.hud(player).phase() == HudState.Phase.NONE,
+                "turning auto-craft off should forget the crafts and hide the HUD");
+        helper.succeed();
+    }
+
     // --- helpers ---
 
     private static ToolBuilds.Result prepare(GameTestHelper helper, TestPlayer player, ItemStack tool, FakeMe me) {
@@ -487,6 +605,12 @@ public class ToolCraftGameTests {
         State state = State.CRAFTING;
         @Nullable
         Component failure;
+        boolean waiting;
+
+        @Override
+        public boolean waiting() {
+            return waiting;
+        }
 
         FakeCraft(Item item, int amount) {
             this.item = item;

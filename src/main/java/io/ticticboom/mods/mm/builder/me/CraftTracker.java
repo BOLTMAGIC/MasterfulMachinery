@@ -1,6 +1,8 @@
 package io.ticticboom.mods.mm.builder.me;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.net.MMNetwork;
+import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -13,6 +15,7 @@ import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -37,6 +40,8 @@ public final class CraftTracker {
     private static final int DONE_GRACE = 2;
     /** Polls orders are kept once nothing is left to follow (for the HUD's "ready"), then dropped. */
     private static final int KEEP_FINISHED = 30;
+    /** Polls between HUD updates sent while nothing changes (20 ticks). */
+    private static final int RESEND = 2;
     private static final Map<UUID, Orders> ORDERS = new HashMap<>();
 
     private CraftTracker() {
@@ -95,6 +100,9 @@ public final class CraftTracker {
         boolean readyTold;
         /** Polls since nothing was left to follow. */
         int finishedPolls;
+        /** The HUD state last sent to the player, and polls since. */
+        HudState sent = HudState.NONE;
+        int sentPolls;
 
         Orders(Player player) {
             this.player = player;
@@ -153,9 +161,74 @@ public final class CraftTracker {
         return orders == null ? List.of() : List.copyOf(orders.byItem.values());
     }
 
-    /** Forgets player's crafts (a build started with everything on hand); AE2 still finishes any that run. */
+    /**
+     * Forgets player's crafts (a build started with everything on hand, the network was forgotten, auto-craft was turned
+     * off) and hides their HUD; AE2 still finishes any that run.
+     */
     public static void clear(Player player) {
-        ORDERS.remove(player.getUUID());
+        if (ORDERS.remove(player.getUUID()) != null) {
+            send(player, HudState.NONE);
+        }
+    }
+
+    /**
+     * What player's HUD shows: progress while crafts are on their way ("waiting" when the network can't be reached),
+     * then ready, or failed when some crafts failed; hidden without orders.
+     */
+    public static HudState hud(Player player) {
+        Orders orders = ORDERS.get(player.getUUID());
+        if (orders == null || orders.byItem.isEmpty()) {
+            return HudState.NONE;
+        }
+        int done = 0;
+        int total = 0;
+        boolean active = false;
+        boolean waiting = false;
+        List<Item> inProgress = new ArrayList<>();
+        CraftHandle failed = null;
+        int failures = 0;
+        for (Order order : orders.byItem.values()) {
+            done += order.done();
+            total += order.requested();
+            if (order.active() > 0 && inProgress.size() < HudState.ICONS) {
+                inProgress.add(order.item);
+            }
+            for (CraftHandle handle : order.handles) {
+                if (handle.state().active()) {
+                    active = true;
+                    waiting |= handle.waiting();
+                } else if (handle.state() == CraftHandle.State.FAILED) {
+                    failed = handle;
+                    failures++;
+                }
+            }
+        }
+        Component failure = null;
+        if (failed != null) {
+            MutableComponent line = entry(failed.item(), failed.amount(), failed.failure());
+            failure = failures > 1 ? line.append(Component.literal(" +" + (failures - 1))) : line;
+        }
+        HudState.Phase phase = active ? (waiting ? HudState.Phase.WAITING : HudState.Phase.CRAFTING)
+                : failed != null ? HudState.Phase.FAILED : HudState.Phase.READY;
+        return new HudState(phase, done, total, List.copyOf(inProgress), failure);
+    }
+
+    /** Sends player's HUD state when it changed, and every {@value #RESEND} polls while crafts are on their way. */
+    private static void sendHud(Player player, Orders orders) {
+        HudState state = hud(player);
+        boolean active = state.phase() == HudState.Phase.CRAFTING || state.phase() == HudState.Phase.WAITING;
+        if (!state.equals(orders.sent) || (active && ++orders.sentPolls >= RESEND)) {
+            orders.sent = state;
+            orders.sentPolls = 0;
+            send(player, state);
+        }
+    }
+
+    private static void send(Player player, HudState state) {
+        // fake players (machines, tests) have no client to show it
+        if (player instanceof ServerPlayer real && !(player instanceof FakePlayer) && real.connection != null) {
+            MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> real), new ToolHudPkt(state));
+        }
     }
 
     /**
@@ -193,6 +266,7 @@ public final class CraftTracker {
             player.displayClientMessage(Component.translatable("message.mm.tool.craft.ready").withStyle(ChatFormatting.GREEN), true);
         }
         orders.finishedPolls = active ? 0 : orders.finishedPolls + 1;
+        sendHud(player, orders);
     }
 
     /** "Oak Planks ×12". */
@@ -220,6 +294,9 @@ public final class CraftTracker {
             Player player = listed != null ? listed : orders.player instanceof FakePlayer fake && !fake.isRemoved() ? fake : null;
             if (player == null || orders.finishedPolls > KEEP_FINISHED) {
                 it.remove();
+                if (player != null) {
+                    send(player, HudState.NONE);
+                }
                 continue;
             }
             update(player);

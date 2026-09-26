@@ -5,12 +5,17 @@ import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
 import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
+import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
 
+import java.util.Optional;
+
 public class MMNetwork {
 
-    private static final String PROTOCOL_VERSION = "3";
+    // 4: tool ME settings actions and the tool HUD packet
+    private static final String PROTOCOL_VERSION = "4";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -49,5 +54,7 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::encode,
                 io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::decode,
                 io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::handle);
+        INSTANCE.registerMessage(index++, ToolHudPkt.class, ToolHudPkt::encode, ToolHudPkt::decode, ToolHudPkt::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 }

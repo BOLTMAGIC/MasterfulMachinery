@@ -42,6 +42,11 @@ public interface CraftHandle {
     default void update() {
     }
 
+    /** The last {@link #update} found the network unreachable or unpowered, so it could not look at the craft. */
+    default boolean waiting() {
+        return false;
+    }
+
     /** A request that failed at once (e.g. the network went away meanwhile). */
     static CraftHandle failed(Item item, int amount, Component reason) {
         return new CraftHandle() {
