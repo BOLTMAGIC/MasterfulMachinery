@@ -15,6 +15,7 @@ public interface MMKubeEvents {
     EventHandler RECIPES = GROUP.server("createProcesses", () -> RecipeEventJS.class);
     EventHandler RECIPE_STARTED = GROUP.server("recipeStarted", () -> MachineRecipeEventJS.class).extra(Extra.ID).hasResult();
     EventHandler RECIPE_FINISHED = GROUP.server("recipeFinished", () -> MachineRecipeEventJS.class).extra(Extra.ID);
+    EventHandler BUILDER_STRUCTURES = GROUP.server("builderStructures", () -> BuilderStructureEventJS.class);
 
     static void register() {
         GROUP.register();
