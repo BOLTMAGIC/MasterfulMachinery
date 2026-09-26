@@ -107,10 +107,6 @@ public class GalleryList {
         }
     }
 
-    public void setSelected(@Nullable ResourceLocation selected) {
-        this.selected = selected;
-    }
-
     /** Scrolls so the selected structure is in view. */
     public void showSelected() {
         for (int i = 0; i < lines.size(); i++) {
