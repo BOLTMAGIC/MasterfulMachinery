@@ -89,7 +89,8 @@ public final class CraftTracker {
     }
 
     private static final class Orders {
-        final Player player;
+        /** The player's current object: a respawn (death, leaving the End) replaces it, the UUID stays. */
+        Player player;
         final Map<Item, Order> byItem = new LinkedHashMap<>();
         boolean readyTold;
         /** Polls since nothing was left to follow. */
@@ -134,6 +135,7 @@ public final class CraftTracker {
      */
     public static void add(Player player, CraftHandle handle) {
         Orders orders = ORDERS.computeIfAbsent(player.getUUID(), id -> new Orders(player));
+        orders.player = player;
         Order order = orders.byItem.computeIfAbsent(handle.item(), Order::new);
         order.handles.removeIf(h -> h.state() == CraftHandle.State.FAILED);
         order.reported.clear();
@@ -165,6 +167,7 @@ public final class CraftTracker {
         if (orders == null) {
             return;
         }
+        orders.player = player;
         boolean active = false;
         boolean failed = false;
         for (Order order : orders.byItem.values()) {
@@ -208,21 +211,19 @@ public final class CraftTracker {
         if (event.phase != TickEvent.Phase.END || ORDERS.isEmpty() || event.getServer().getTickCount() % INTERVAL != 0) {
             return;
         }
-        var it = ORDERS.values().iterator();
+        var it = ORDERS.entrySet().iterator();
         while (it.hasNext()) {
-            Orders orders = it.next();
-            if (!present(event.getServer().getPlayerList().getPlayer(orders.player.getUUID()), orders.player)
-                    || orders.finishedPolls > KEEP_FINISHED) {
+            var entry = it.next();
+            Orders orders = entry.getValue();
+            // matched by UUID: the listed player is the current object even after a respawn
+            ServerPlayer listed = event.getServer().getPlayerList().getPlayer(entry.getKey());
+            Player player = listed != null ? listed : orders.player instanceof FakePlayer fake && !fake.isRemoved() ? fake : null;
+            if (player == null || orders.finishedPolls > KEEP_FINISHED) {
                 it.remove();
                 continue;
             }
-            update(orders.player);
+            update(player);
         }
-    }
-
-    /** Still in the game: the listed player itself, or a fake player (a machine's or a test's) not removed. */
-    private static boolean present(@Nullable ServerPlayer listed, Player player) {
-        return listed == player || (player instanceof FakePlayer && !player.isRemoved());
     }
 
     @SubscribeEvent

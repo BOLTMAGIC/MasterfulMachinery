@@ -260,7 +260,7 @@
   "message.mm.tool.craft.no_pattern": "desen yok",
   "message.mm.tool.craft.missing_ingredients": "ME'de malzeme eksik",
   "message.mm.tool.craft.no_cpu": "boşta üretim CPU'su yok",
-  "message.mm.tool.craft.cancelled": "üretim iptal edildi",
+  "message.mm.tool.craft.ended": "üretim bitti ama eşyalar ME ağında değil",
   "message.mm.tool.craft.error": "üretim başarısız",
   "message.mm.tool.craft.unreachable": "ME ağına ulaşılamıyor",
   "message.mm.tool.craft.ready": "Üretim bitti: kurmak için sağ tıkla",

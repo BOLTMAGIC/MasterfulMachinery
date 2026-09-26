@@ -387,9 +387,9 @@ public class MeToolGameTests {
                 })
                 .thenExecute(() -> {
                     CraftHandle failed = CraftTracker.orders(player).get(0).failed();
-                    check(helper, failed.failure().getContents() instanceof TranslatableContents c && c.getKey().equals("message.mm.tool.craft.cancelled"),
-                            "expected cancelled, got " + failed.failure().getString());
-                    long told = player.messages.stream().filter(m -> hasKey(m, "message.mm.tool.craft.cancelled")).count();
+                    check(helper, failed.failure().getContents() instanceof TranslatableContents c && c.getKey().equals("message.mm.tool.craft.ended"),
+                            "expected the craft-ended failure, got " + failed.failure().getString());
+                    long told = player.messages.stream().filter(m -> hasKey(m, "message.mm.tool.craft.ended")).count();
                     check(helper, told == 1, "the cancel should be told once, got " + player.messages);
                     check(helper, CraftTracker.active(player, planks) == 0, "a cancelled craft is not on its way");
                     KeyCounter left = liveStock(helper, drive);

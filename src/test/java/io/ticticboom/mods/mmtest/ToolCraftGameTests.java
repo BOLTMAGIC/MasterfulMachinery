@@ -283,6 +283,29 @@ public class ToolCraftGameTests {
         helper.succeed();
     }
 
+    /** A respawn makes a new player object with the same UUID: the crafts stay, and messages go to the new one. */
+    @GameTest(template = TEMPLATE)
+    public static void ordersFollowRespawnedPlayer(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(Blocks.GLASS), false);
+        store.insertItem(2, new ItemStack(port("l")), false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        prepare(helper, player, tool, me);
+
+        TestPlayer respawned = new TestPlayer(helper.getLevel(), player.getGameProfile());
+        check(helper, CraftTracker.active(respawned, port("s").asItem()) == 1, "the craft should still be followed after a respawn");
+        me.requests.get(0).state = CraftHandle.State.DONE;
+        CraftTracker.update(respawned);
+        check(helper, respawned.lastKey().equals("message.mm.tool.craft.ready") && player.messages.isEmpty(),
+                "the ready message should reach the new player object: " + respawned.messages + " / " + player.messages);
+        CraftTracker.clear(respawned);
+        helper.succeed();
+    }
+
     /** No crafts are requested for a build the tool can't pay even one block for. */
     @GameTest(template = TEMPLATE)
     public static void noCraftsWithoutEnergy(GameTestHelper helper) {
@@ -509,7 +532,11 @@ public class ToolCraftGameTests {
         final List<Component> messages = new ArrayList<>();
 
         TestPlayer(ServerLevel level) {
-            super(level, new GameProfile(UUID.randomUUID(), "tool-craft-test"));
+            this(level, new GameProfile(UUID.randomUUID(), "tool-craft-test"));
+        }
+
+        TestPlayer(ServerLevel level, GameProfile profile) {
+            super(level, profile);
         }
 
         @Override

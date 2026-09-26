@@ -10,37 +10,36 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class CraftProgressTest {
 
     @Test
-    void knownCpuBusyWaits() {
-        assertEquals(Verdict.WAIT, CraftProgress.judge(true, true, 3, 7, false));
+    void ourCpuCraftingWaits() {
+        assertEquals(Verdict.WAIT, CraftProgress.judge(3, 7, true, true, false));
     }
 
     @Test
-    void knownCpuIdleWithItemsIsDone() {
-        assertEquals(Verdict.DONE, CraftProgress.judge(true, false, 7, 7, false));
+    void itemsThereIsDone() {
+        assertEquals(Verdict.DONE, CraftProgress.judge(7, 7, false, false, false));
     }
 
     @Test
-    void knownCpuIdleWithoutItemsIsShort() {
-        // cancelled, or the stock not caught up yet: the handle gives it a grace poll
-        assertEquals(Verdict.SHORT, CraftProgress.judge(true, false, 3, 7, true));
+    void itemsThereWhileStillCraftingIsDone() {
+        // the CPU may already run someone else's next job for the same item
+        assertEquals(Verdict.DONE, CraftProgress.judge(9, 7, true, true, true));
     }
 
     @Test
-    void itemsThereWhileCpuBusyIsDone() {
-        // the CPU may already run someone else's next job
-        assertEquals(Verdict.DONE, CraftProgress.judge(true, true, 9, 7, true));
+    void noJobAndNoItemsIsShort() {
+        // cancelled, used up, or the stock not caught up yet: the handle gives it grace polls
+        assertEquals(Verdict.SHORT, CraftProgress.judge(3, 7, false, false, false));
     }
 
     @Test
-    void unknownCpuNeverDoneBeforeItemsArrive() {
-        // an addon CPU that can't be told apart: followed by whether the network still crafts the item
-        assertEquals(Verdict.WAIT, CraftProgress.judge(false, false, 3, 7, true));
-        assertEquals(Verdict.DONE, CraftProgress.judge(false, false, 7, 7, true));
-        assertEquals(Verdict.SHORT, CraftProgress.judge(false, false, 3, 7, false));
+    void unidentifiedCpuCraftingTheItemWaits() {
+        // an addon CPU (or AE2's own between pattern pushes) that AE2's isRequesting doesn't report: the CPU's job
+        // status names the item, so the craft is still on its way
+        assertEquals(Verdict.WAIT, CraftProgress.judge(3, 7, false, true, false));
     }
 
     @Test
-    void unknownCpuIgnoresBusyFlag() {
-        assertEquals(Verdict.SHORT, CraftProgress.judge(false, true, 3, 7, false));
+    void requestingAloneStillWaits() {
+        assertEquals(Verdict.WAIT, CraftProgress.judge(3, 7, false, false, true));
     }
 }

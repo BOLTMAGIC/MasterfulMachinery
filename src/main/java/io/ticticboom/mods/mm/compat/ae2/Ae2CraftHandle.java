@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -37,13 +38,17 @@ import java.util.stream.Collectors;
  * told apart (e.g. an addon's) is followed by whether the network still crafts the item.
  */
 final class Ae2CraftHandle implements CraftHandle {
-    /** Polls a finished job may show too little stock (the network catching up) before it counts as cancelled. */
+    /** Polls a finished job may show too little stock (the network catching up) before it counts as failed. */
     private static final int SHORT_POLLS = 2;
+    /** The same when our CPU is gone from the list (AE2 leaves out clusters that lost power for a moment). */
+    private static final int CPU_GONE_POLLS = 10;
 
     private final Item item;
     private final int amount;
     private final AEItemKey key;
-    private final IGrid grid;
+    /** The grid as submitted to; later polls look it up again ({@link #network}), since it may re-form or go away. */
+    private IGrid grid;
+    private final Supplier<IGrid> network;
     private final IActionSource source;
     private final Future<ICraftingPlan> calculation;
     private State state = State.CALCULATING;
@@ -55,17 +60,22 @@ final class Ae2CraftHandle implements CraftHandle {
     private long target;
     private int shortPolls;
 
-    private Ae2CraftHandle(Item item, int amount, IGrid grid, IActionSource source, Future<ICraftingPlan> calculation) {
+    private Ae2CraftHandle(Item item, int amount, IGrid grid, Supplier<IGrid> network, IActionSource source, Future<ICraftingPlan> calculation) {
         this.item = item;
         this.amount = amount;
         this.key = AEItemKey.of(item);
         this.grid = grid;
+        this.network = network;
         this.source = source;
         this.calculation = calculation;
     }
 
-    /** Starts calculating a plan for amount of item, as player. */
-    static CraftHandle start(ServerPlayer player, IGrid grid, Item item, int amount) {
+    /**
+     * Starts calculating a plan for amount of item, as player.
+     *
+     * @param network the bound network looked up again (null while it can't be reached)
+     */
+    static CraftHandle start(ServerPlayer player, IGrid grid, Supplier<IGrid> network, Item item, int amount) {
         IActionSource source = IActionSource.ofPlayer(player);
         // the calculation only looks for patterns on the requester's grid: without a node it finds none
         IGridNode node = grid.getPivot();
@@ -82,7 +92,7 @@ final class Ae2CraftHandle implements CraftHandle {
         };
         Future<ICraftingPlan> calculation = grid.getCraftingService().beginCraftingCalculation(player.level(), requester,
                 AEItemKey.of(item), amount, CalculationStrategy.REPORT_MISSING_ITEMS);
-        return new Ae2CraftHandle(item, amount, grid, source, calculation);
+        return new Ae2CraftHandle(item, amount, grid, network, source, calculation);
     }
 
     @Override
@@ -153,15 +163,24 @@ final class Ae2CraftHandle implements CraftHandle {
     }
 
     private void follow() {
-        Set<ICraftingCPU> cpus = grid.getCraftingService().getCpus();
-        boolean cpuBusy = cpu != null && cpus.contains(cpu) && cpu.isBusy();
-        boolean requesting = grid.getCraftingService().isRequesting(key);
-        switch (CraftProgress.judge(cpu != null, cpuBusy, stock(), target, requesting)) {
+        IGrid now = network.get();
+        if (now == null || !now.getEnergyService().isNetworkPowered()) {
+            // unreachable or unpowered: nothing can be judged, and the job may well go on afterwards
+            return;
+        }
+        grid = now;
+        ICraftingService crafting = grid.getCraftingService();
+        Set<ICraftingCPU> cpus = crafting.getCpus();
+        boolean cpuGone = cpu != null && !cpus.contains(cpu);
+        boolean ourCpuCrafting = cpu != null && !cpuGone && cpu.isBusy() && crafts(cpu);
+        boolean anyCpuCrafting = cpus.stream().anyMatch(each -> each.isBusy() && crafts(each));
+        switch (CraftProgress.judge(stock(), target, ourCpuCrafting, anyCpuCrafting, crafting.isRequesting(key))) {
             case DONE -> state = State.DONE;
             case WAIT -> shortPolls = 0;
             case SHORT -> {
-                if (++shortPolls >= SHORT_POLLS) {
-                    fail("message.mm.tool.craft.cancelled");
+                if (++shortPolls >= (cpuGone ? CPU_GONE_POLLS : SHORT_POLLS)) {
+                    // public API can't tell a cancelled job from one whose items were used up at once
+                    fail("message.mm.tool.craft.ended");
                 }
             }
         }

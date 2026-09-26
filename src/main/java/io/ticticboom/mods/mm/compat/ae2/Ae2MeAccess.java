@@ -124,6 +124,6 @@ public final class Ae2MeAccess implements MeAccess {
         if (grid == null) {
             return CraftHandle.failed(item, amount, Component.translatable("message.mm.tool.craft.unreachable"));
         }
-        return Ae2CraftHandle.start(player, grid, item, amount);
+        return Ae2CraftHandle.start(player, grid, () -> NetworkAccess.grid(player.server, network), item, amount);
     }
 }

@@ -260,7 +260,7 @@
   "message.mm.tool.craft.no_pattern": "no pattern",
   "message.mm.tool.craft.missing_ingredients": "missing ingredients in ME",
   "message.mm.tool.craft.no_cpu": "no free crafting CPU",
-  "message.mm.tool.craft.cancelled": "craft cancelled",
+  "message.mm.tool.craft.ended": "craft ended, but the items are not in the ME network",
   "message.mm.tool.craft.error": "crafting failed",
   "message.mm.tool.craft.unreachable": "ME network unreachable",
   "message.mm.tool.craft.ready": "Crafting done: right-click to build",
