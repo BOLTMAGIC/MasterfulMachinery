@@ -3,7 +3,6 @@ package io.ticticboom.mods.mm.client.tool;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
-import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolDismantlePkt;
 import io.ticticboom.mods.mm.net.packet.ToolRotatePkt;
@@ -30,6 +29,7 @@ import net.minecraftforge.fml.common.Mod;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * The multiblock tool's key: hold it while looking at a machine to dismantle it. Also tracks which machine a
@@ -45,16 +45,21 @@ public class ToolKeys {
     /** How long the hologram stays visible while sneaking after a Shift+scroll: 2 s. */
     private static final int ROTATE_PREVIEW_TICKS = 40;
 
-    // V hold: the aimed-at block, its machine's positions, ticks held, whether the packet went out
-    private static BlockPos holdTarget;
+    // V hold: the aimed-at block, the machine's controller and positions, ticks held on that machine
+    private static BlockPos holdAim;
+    private static BlockPos holdController;
     private static List<BlockPos> holdPositions = List.of();
     private static int holdTicks;
-    private static boolean holdSent;
+    // set once the packet went out; nothing more happens until V is released
+    private static boolean holdLatched;
+    private static boolean barShown;
+    private static boolean noMachineShown;
     // first Shift+right-click on a machine: outlined until the server's confirmation window ends
     private static BlockPos pendingController;
     private static List<BlockPos> pendingPositions = List.of();
     private static long pendingUntil;
     private static long lastRotateTime = -ROTATE_PREVIEW_TICKS - 1;
+    private static double scrollAccum;
 
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
@@ -74,7 +79,7 @@ public class ToolKeys {
 
     /** Positions of the machine a dismantle is aimed at, to outline in red; empty when none. */
     static List<BlockPos> dismantleHighlight(Level level) {
-        if (holdTarget != null) {
+        if (holdController != null) {
             return holdPositions;
         }
         if (pendingController != null && level.getGameTime() <= pendingUntil) {
@@ -89,16 +94,16 @@ public class ToolKeys {
         return since >= 0 && since <= ROTATE_PREVIEW_TICKS;
     }
 
-    private static List<BlockPos> machinePositions(Level level, BlockPos target) {
-        MachineControllerBlockEntity controller = DismantlePlanner.resolve(level, target);
-        return controller == null ? List.of() : DismantlePlanner.positions(level, controller);
-    }
-
-    private static void resetHold() {
-        holdTarget = null;
+    /** Forgets the aimed-at machine and clears the progress bar if it was showing. */
+    private static void loseTarget(Player player) {
+        if (barShown) {
+            player.displayClientMessage(Component.empty(), true);
+            barShown = false;
+        }
+        holdAim = null;
+        holdController = null;
         holdPositions = List.of();
         holdTicks = 0;
-        holdSent = false;
     }
 
     /** Client-side input handling; the server re-validates everything. */
@@ -116,42 +121,65 @@ public class ToolKeys {
             Player player = mc.player;
             Level level = mc.level;
             if (player == null || level == null) {
-                resetHold();
+                holdAim = null;
+                holdController = null;
+                holdPositions = List.of();
+                holdTicks = 0;
+                holdLatched = false;
+                barShown = false;
+                noMachineShown = false;
                 pendingController = null;
                 return;
             }
-            boolean holding = !heldTool(player).isEmpty();
-            if (!holding || mc.screen != null || !DISMANTLE.isDown()) {
-                if (holdTarget != null && !holdSent) {
-                    // released early: clear the progress bar
-                    player.displayClientMessage(Component.empty(), true);
-                }
-                resetHold();
+            if (heldTool(player).isEmpty() || mc.screen != null || !DISMANTLE.isDown()) {
+                // released (early or not): the next press starts over
+                loseTarget(player);
+                holdLatched = false;
+                noMachineShown = false;
+                return;
+            }
+            if (holdLatched) {
                 return;
             }
             BlockPos target = mc.hitResult instanceof BlockHitResult hit && hit.getType() == HitResult.Type.BLOCK ? hit.getBlockPos() : null;
             if (target == null) {
-                resetHold();
+                loseTarget(player);
                 return;
             }
-            if (!target.equals(holdTarget)) {
-                // new aim: resolve once, not every frame (resolve scans nearby controllers)
-                resetHold();
-                holdTarget = target.immutable();
-                holdPositions = machinePositions(level, holdTarget);
+            if (!target.equals(holdAim)) {
+                // new aim: resolve once, not every tick; progress carries over while it is the same machine
+                holdAim = target.immutable();
+                List<BlockPos> positions = DismantlePlanner.previewPositions(level, holdAim);
+                BlockPos controller = positions.isEmpty() ? null : positions.get(positions.size() - 1);
+                if (!Objects.equals(controller, holdController)) {
+                    holdTicks = 0;
+                }
+                holdController = controller;
+                holdPositions = positions;
             }
-            if (holdPositions.isEmpty()) {
-                player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.no_machine"), true);
-                return;
-            }
-            if (holdSent) {
+            if (holdController == null) {
+                if (barShown) {
+                    player.displayClientMessage(Component.empty(), true);
+                    barShown = false;
+                }
+                if (!noMachineShown) {
+                    player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.no_machine"), true);
+                    noMachineShown = true;
+                }
                 return;
             }
             holdTicks++;
             player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)), true);
+            barShown = true;
             if (holdTicks >= HOLD_TICKS) {
-                MMNetwork.INSTANCE.sendToServer(new ToolDismantlePkt(holdTarget));
-                holdSent = true;
+                // the server resolves the machine again from the aimed-at block
+                MMNetwork.INSTANCE.sendToServer(new ToolDismantlePkt(holdAim));
+                holdLatched = true;
+                barShown = false;
+                holdAim = null;
+                holdController = null;
+                holdPositions = List.of();
+                holdTicks = 0;
             }
         }
 
@@ -165,10 +193,11 @@ public class ToolKeys {
         public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
             Level level = event.getLevel();
             Player player = event.getEntity();
-            if (!level.isClientSide() || !player.isShiftKeyDown() || !(event.getItemStack().getItem() instanceof MultiblockToolItem)) {
+            if (!level.isClientSide() || !player.isShiftKeyDown()
+                    || !(player.getItemInHand(event.getHand()).getItem() instanceof MultiblockToolItem)) {
                 return;
             }
-            List<BlockPos> positions = machinePositions(level, event.getPos());
+            List<BlockPos> positions = DismantlePlanner.previewPositions(level, event.getPos());
             if (positions.isEmpty()) {
                 pendingController = null;
                 return;
@@ -197,7 +226,17 @@ public class ToolKeys {
                 return;
             }
             event.setCanceled(true);
-            MMNetwork.INSTANCE.sendToServer(new ToolRotatePkt(event.getScrollDelta() > 0 ? 1 : -1));
+            double delta = event.getScrollDelta();
+            if (Math.signum(delta) != Math.signum(scrollAccum)) {
+                scrollAccum = 0;
+            }
+            // one quarter turn per whole notch, so smooth-scrolling touchpads do not flood the server
+            scrollAccum += delta;
+            while (Math.abs(scrollAccum) >= 1) {
+                int step = scrollAccum > 0 ? 1 : -1;
+                MMNetwork.INSTANCE.sendToServer(new ToolRotatePkt(step));
+                scrollAccum -= step;
+            }
             lastRotateTime = mc.level.getGameTime();
         }
     }

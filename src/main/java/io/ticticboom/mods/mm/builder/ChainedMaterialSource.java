@@ -10,7 +10,10 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.items.ItemHandlerHelper;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.function.Predicate;
 
 /**
  * The multiblock tool's source: blocks come from the tool's own store first, then the player's inventory;
@@ -34,6 +37,29 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
             return true;
         }
         return storeSlot(block) >= 0 || PlayerMaterials.has(player, block);
+    }
+
+    /**
+     * {@link #has} frozen now: the store is read once instead of per call. For previews that ask about many
+     * blocks at once; later changes to the store or inventory are not seen.
+     */
+    public Predicate<Block> snapshot() {
+        if (free()) {
+            return block -> true;
+        }
+        Set<Item> items = new HashSet<>();
+        if (toolCarried()) {
+            store.reload();
+            for (int i = 0; i < store.getSlots(); i++) {
+                items.add(store.getStackInSlot(i).getItem());
+            }
+        }
+        for (ItemStack stack : player.getInventory().items) {
+            items.add(stack.getItem());
+        }
+        // empty stacks and blocks without an item both map to air
+        items.remove(Items.AIR);
+        return block -> items.contains(block.asItem());
     }
 
     @Override

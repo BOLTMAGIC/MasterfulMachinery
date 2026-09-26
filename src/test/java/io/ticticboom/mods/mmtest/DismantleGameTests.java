@@ -2,6 +2,7 @@ package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.DismantleJob;
+import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -33,6 +34,7 @@ import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -193,6 +195,38 @@ public class DismantleGameTests {
         ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
         check(helper, prepared.positions().equals(List.of(controller)), "only the controller should be dismantled, got " + prepared.positions());
         helper.succeed();
+    }
+
+    /**
+     * The client's outline uses a resolver that never runs the structure's formed checks (they cast to ServerLevel);
+     * it must find the same machine and blocks as the server's. Only the logic can be checked here: a real
+     * ClientLevel cannot be created headless.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void previewPositionsMatchServer(GameTestHelper helper) {
+        BlockPos controller = buildMachine(helper);
+        var level = helper.getLevel();
+        BlockPos stray = controller.offset(0, 0, 3);
+        level.setBlockAndUpdate(stray, Blocks.GLASS.defaultBlockState());
+        helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
+            for (BlockPos target : List.of(controller, controller.offset(GLASS), controller.offset(FLEX), controller.offset(STRICT))) {
+                MachineControllerBlockEntity resolved = DismantlePlanner.resolve(level, target);
+                check(helper, resolved != null, "the server should resolve " + target);
+                List<BlockPos> server = DismantlePlanner.positions(level, resolved);
+                List<BlockPos> preview = DismantlePlanner.previewPositions(level, target);
+                check(helper, new HashSet<>(preview).equals(new HashSet<>(server)) && preview.size() == server.size(),
+                        "preview " + preview + " differs from server " + server + " for " + target);
+                check(helper, preview.get(preview.size() - 1).equals(controller), "the controller must come last: " + preview);
+            }
+            check(helper, DismantlePlanner.previewPositions(level, stray).isEmpty(), "a block of no machine has no preview");
+
+            // broken: like the server, the controller alone and nothing for its former pieces
+            level.removeBlock(controller.offset(GLASS), false);
+            check(helper, DismantlePlanner.previewPositions(level, controller).equals(List.of(controller)),
+                    "an unformed controller previews only itself");
+            check(helper, DismantlePlanner.previewPositions(level, controller.offset(STRICT)).isEmpty(),
+                    "a piece of an unformed machine has no preview");
+        }).thenSucceed();
     }
 
     @GameTest(template = TEMPLATE)

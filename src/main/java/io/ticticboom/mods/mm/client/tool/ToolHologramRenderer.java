@@ -9,7 +9,6 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
 import io.ticticboom.mods.mm.tool.ToolData;
-import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
@@ -20,10 +19,8 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -40,14 +37,14 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Predicate;
 
 /**
  * Client-only preview of what the multiblock tool would build where the crosshair is: translucent ghost blocks, red
  * boxes on obstructed positions and one outline around it all (green, red when anything is in the way). Also
  * outlines a machine about to be dismantled in red. The plan comes from the same {@link ToolBuildPlan#create} the
  * server uses; it is rebuilt on the client tick only when its inputs change (or every {@link #REFRESH_TICKS}), never
- * per frame.
+ * per frame. Tier preferences and the available blocks are not part of the cache key: changes to them (made in the
+ * tool's screen, or by picking blocks up) show within {@link #REFRESH_TICKS}.
  */
 @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ToolHologramRenderer {
@@ -111,7 +108,7 @@ public final class ToolHologramRenderer {
     }
 
     private static void rebuild(Level level, Player player, ItemStack tool, StructureModel structure) {
-        ToolBuildPlan plan = ToolBuildPlan.create(level, structure, keyPos, keyFace, keyFacing, keyTurns, ToolData.tiers(tool), availableSnapshot(player, tool));
+        ToolBuildPlan plan = ToolBuildPlan.create(level, structure, keyPos, keyFace, keyFacing, keyTurns, ToolData.tiers(tool), ToolBuildPlan.availableSnapshot(player, tool));
         if (plan == null || plan.plan().steps().isEmpty()) {
             clear();
             return;
@@ -131,30 +128,6 @@ public final class ToolHologramRenderer {
         ghosts = toDraw;
         obstructed = plan.obstructed();
         bounds = box;
-    }
-
-    /**
-     * What the tool's store and the player's inventory hold, read once per rebuild (the build's own source would
-     * re-read the whole store for every candidate). Everything in creative.
-     */
-    private static Predicate<Block> availableSnapshot(Player player, ItemStack tool) {
-        if (player.getAbilities().instabuild) {
-            return block -> true;
-        }
-        Set<Item> items = new HashSet<>();
-        ToolStore store = new ToolStore(tool);
-        for (int i = 0; i < store.getSlots(); i++) {
-            ItemStack stack = store.getStackInSlot(i);
-            if (!stack.isEmpty()) {
-                items.add(stack.getItem());
-            }
-        }
-        for (ItemStack stack : player.getInventory().items) {
-            if (!stack.isEmpty()) {
-                items.add(stack.getItem());
-            }
-        }
-        return block -> items.contains(block.asItem());
     }
 
     private static void clear() {

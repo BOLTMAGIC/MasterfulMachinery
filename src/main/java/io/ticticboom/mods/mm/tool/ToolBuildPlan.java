@@ -87,6 +87,11 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
         return source(player, tool)::has;
     }
 
+    /** {@link #availableFor} read once (the store is deserialized a single time), for previews such as the hologram. */
+    public static Predicate<Block> availableSnapshot(Player player, ItemStack tool) {
+        return source(player, tool).snapshot();
+    }
+
     /** Where a build with this tool draws blocks and energy from. */
     public static ChainedMaterialSource source(Player player, ItemStack tool) {
         return new ChainedMaterialSource(new ToolStore(tool), player, new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()));

@@ -134,7 +134,8 @@ public final class AssemblyPlanner {
         return nonNull.stream().filter(available).findFirst().orElse(nonNull.get(0));
     }
 
-    private static List<PositionedLayoutPiece> pieces(StructureModel model, Rotation rotation) {
+    /** The structure's pieces turned by rotation. */
+    static List<PositionedLayoutPiece> pieces(StructureModel model, Rotation rotation) {
         return model.layout().getRotatedPositionedPieces().getOrDefault(rotation, model.layout().getPositionedPieces());
     }
 }
