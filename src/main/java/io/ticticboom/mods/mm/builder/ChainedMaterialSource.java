@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.builder.me.MeAccess;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,6 +31,8 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
     private final ToolEnergy energy;
     @Nullable
     private final MeAccess me;
+    /** The network could not be used at some tick of the job (gone, unpowered, access withdrawn). */
+    private boolean meLost;
 
     public ChainedMaterialSource(ToolStore store, Player player, ToolEnergy energy) {
         this(store, player, energy, null);
@@ -188,7 +191,15 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         }
         if (me != null) {
             me.refresh();
+            if (!me.reachable()) {
+                meLost = true;
+            }
         }
+    }
+
+    @Override
+    public @Nullable Component summaryNote() {
+        return meLost ? Component.translatable("message.mm.tool.me_lost") : null;
     }
 
     @Override

@@ -6,12 +6,10 @@ import io.ticticboom.mods.mm.builder.MaterialSource;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.networklink.Permissions;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
@@ -34,7 +32,7 @@ public final class ToolBuilds {
 
     /**
      * Exactly one of {@code prepared} and {@code error} is set. {@code notice}, when set, is worth telling the player
-     * either way (the tool's ME network could not be reached, so only the store and inventory were used).
+     * either way (the tool's ME network could not be reached or used, so only the store and inventory were).
      */
     public record Result(@Nullable Prepared prepared, @Nullable Component error, @Nullable Component notice) {
         static Result error(Component error) {
@@ -71,17 +69,15 @@ public final class ToolBuilds {
     }
 
     /**
-     * A bound tool whose network is turned on but cannot be reached right now (chunk not loaded, block removed,
-     * unpowered): the build goes on from the store and inventory, and the player should know why ME was not used.
+     * A bound tool whose network is turned on but cannot be used right now (chunk not loaded, block removed, unpowered,
+     * or no access to it): the build goes on from the store and inventory, and the player should know why ME was not
+     * used.
      */
     private static @Nullable Component meNotice(Player player, ItemStack tool, ChainedMaterialSource source) {
-        LinkData.NetworkPos network = ToolData.network(tool);
-        if (network == null || source.me() != null || source.free() || !ToolData.useMe(tool)
-                || !(player instanceof ServerPlayer) || !MeAccessFactory.available()) {
+        if (source.me() != null || source.free() || !(player instanceof ServerPlayer serverPlayer)) {
             return null;
         }
-        return Component.translatable("message.mm.tool.me_unreachable",
-                network.pos().toShortString(), network.dimension().location().getPath()).withStyle(ChatFormatting.YELLOW);
+        return MeAccessFactory.problem(serverPlayer, tool);
     }
 
     private static Result prepare(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace,

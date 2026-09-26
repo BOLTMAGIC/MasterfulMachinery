@@ -1,7 +1,9 @@
 package io.ticticboom.mods.mm.builder;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import org.jetbrains.annotations.Nullable;
 
 /** Where an assembly job draws its blocks from: the player's inventory, or a multiblock tool's store and inventory. */
 public interface MaterialSource {
@@ -38,6 +40,11 @@ public interface MaterialSource {
      * tool's store) re-read it here, since others may have changed it between ticks.
      */
     default void beginTick() {
+    }
+
+    /** Something about the source itself for the job's summary (e.g. its ME network was lost), or null. */
+    default @Nullable Component summaryNote() {
+        return null;
     }
 
     /** Creative: nothing is taken, nothing is paid. */

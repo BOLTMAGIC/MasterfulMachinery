@@ -20,8 +20,8 @@ public interface MeAccess {
     }
 
     /**
-     * Snapshot stock of plain (untagged) {@code item} in the network, for planning; not a live value. Taken at the
-     * first call after {@link #refresh}, then lowered by this access's own extractions only.
+     * Snapshot stock of plain (untagged) {@code item} in the network, for planning; not a live value: the network's
+     * stock as of the last tick, less this access's own extractions since {@link #refresh}.
      */
     long stock(Item item);
 

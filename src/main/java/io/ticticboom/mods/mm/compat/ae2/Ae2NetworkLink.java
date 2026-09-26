@@ -34,7 +34,7 @@ public final class Ae2NetworkLink {
         modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(() -> GridLinkables.register(linker.get(), new LinkerGridLinkable())));
         MinecraftForge.EVENT_BUS.register(new NetworkLinkProtection());
         // the Multiblock Tool pulls blocks from the network it is bound to
-        MeAccessFactory.setLookup(Ae2MeAccess::forTool);
+        MeAccessFactory.setLookup(Ae2MeAccess::forTool, Ae2MeAccess::problem);
         return linker;
     }
 
