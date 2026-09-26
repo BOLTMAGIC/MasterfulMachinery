@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.tool;
 
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.SlotItemHandler;
 import org.jetbrains.annotations.NotNull;
@@ -10,6 +11,10 @@ import org.jetbrains.annotations.NotNull;
  * (the client already has the real count from the held tool's own NBT, synced by vanilla as part of
  * the held stack), and {@code remove()} hands out at most one normal stack so the cursor never holds
  * an oversized stack.
+ * <p>
+ * Also refuses pickup/place/remove outright once the store's bound tool stack is gone (e.g. the tool
+ * was dropped or destroyed while the menu was open) - defense in depth alongside {@link ToolStore}'s
+ * own guards and {@link MultiblockToolMenu#stillValid}.
  */
 public class ToolSlot extends SlotItemHandler {
     private final ToolStore store;
@@ -62,8 +67,21 @@ public class ToolSlot extends SlotItemHandler {
 
     @Override
     public @NotNull ItemStack remove(int amount) {
+        if (!store.isToolStackPresent()) {
+            return ItemStack.EMPTY;
+        }
         ItemStack inSlot = getItem();
         int max = inSlot.isEmpty() ? amount : inSlot.getMaxStackSize();
         return super.remove(Math.min(amount, max));
+    }
+
+    @Override
+    public boolean mayPickup(@NotNull Player player) {
+        return store.isToolStackPresent() && super.mayPickup(player);
+    }
+
+    @Override
+    public boolean mayPlace(@NotNull ItemStack stack) {
+        return store.isToolStackPresent() && super.mayPlace(stack);
     }
 }

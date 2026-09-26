@@ -95,21 +95,36 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
 
     @Override
     public boolean stillValid(@NotNull Player checkPlayer) {
-        return checkPlayer == player && player.getItemInHand(hand) == toolStack;
+        return checkPlayer == player && isToolStackValid();
+    }
+
+    /**
+     * True while the stack this menu was opened with is still the same instance, still actually held
+     * in that hand, and still a real (non-empty) Multiblock Tool. A same-instance-but-emptied stack
+     * (e.g. a client dropping the item: {@code ItemStack.split} hands the dropped copy the full NBT
+     * while the original instance shrinks to count 0 in place, keeping its identity) must NOT count as
+     * valid - otherwise the menu would stay open and usable against a store no longer attached to
+     * anything the player actually holds.
+     */
+    private boolean isToolStackValid() {
+        return !toolStack.isEmpty() && toolStack.getItem() instanceof MultiblockToolItem
+                && player.getItemInHand(hand) == toolStack;
     }
 
     /**
      * Client-only: vanilla resyncs the held stack by handing our locked slot a brand-new
      * {@link ItemStack} instance (see {@link ToolSlot#set}, which lets that through since it's a plain
      * {@link LockedSlot}, not a {@link ToolSlot}). Catches that up by re-deriving the store's contents
-     * from whichever instance is now actually held, without ever touching server state.
+     * from whichever instance is now actually held, without ever touching server state. Skips a
+     * momentarily empty stack (e.g. a predicted client-side click) rather than rebinding onto it -
+     * {@link ToolStore#rebind} refuses that too, but stillValid closing the menu is the real backstop.
      */
     void refreshClientStore() {
         if (!player.level().isClientSide()) {
             return;
         }
         ItemStack current = player.getItemInHand(hand);
-        if (current != toolStack) {
+        if (current != toolStack && !current.isEmpty()) {
             toolStack = current;
             store.rebind(current);
         }
@@ -117,6 +132,12 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int button, @NotNull ClickType clickType, @NotNull Player clicker) {
+        if (!isToolStackValid()) {
+            // the tool is gone (dropped/consumed/swapped out from under the menu): refuse every
+            // interaction; ToolStore/ToolSlot back this up independently, but this is the one place
+            // every click type funnels through
+            return;
+        }
         if (clickType == ClickType.SWAP) {
             handleSwap(slotId, button, clicker);
             return;
@@ -140,9 +161,21 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
      * Handles {@link ClickType#SWAP} (number-key / offhand-key) fully ourselves rather than delegating
      * to vanilla, which would otherwise write a store slot's raw (possibly oversized) stack straight
      * into a hotbar/offhand slot via {@code Inventory#setItem}, bypassing {@link ToolSlot#remove}.
-     * Also refuses any swap whose destination is the held tool's own slot, from any source slot.
+     * Also refuses any swap whose destination is the held tool's own slot, from any source slot, and
+     * any destination index outside vanilla's own valid range (0-8 hotbar, or {@link #OFFHAND_INV_INDEX}).
+     * <p>
+     * Direction is decided by what's actually in the store slot: empty or the same item+tags as the
+     * hotbar/offhand stack merges (inserts) the hotbar stack into the store, capped at
+     * {@link ToolStore#LIMIT} with any leftover staying behind in the hotbar/offhand slot; a non-empty
+     * store slot with nothing (or a different item) on the other side hands out at most one normal
+     * stack. A different, non-empty item on both sides is refused outright - vanilla's raw exchange is
+     * never used for a store slot, so an oversized store stack can never leave except one capped stack
+     * at a time.
      */
     private void handleSwap(int slotId, int button, Player clicker) {
+        if ((button < 0 || button > 8) && button != OFFHAND_INV_INDEX) {
+            return;
+        }
         if (isLockedInventoryIndex(button) || slotId == lockedSlotIndex) {
             return;
         }
@@ -153,30 +186,40 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
 
         Slot fromSlot = this.slots.get(slotId);
         ItemStack fromStack = fromSlot.getItem();
-        if (fromStack.isEmpty()) {
-            return;
-        }
         Inventory inv = clicker.getInventory();
         ItemStack destStack = inv.getItem(button);
-        if (!destStack.isEmpty() && !ItemStack.isSameItemSameTags(fromStack, destStack)) {
-            // a raw swap here would hand the destination the full (possibly oversized) store stack
+        if (fromStack.isEmpty() && destStack.isEmpty()) {
             return;
         }
 
-        int normalMax = fromStack.getMaxStackSize();
-        int space = destStack.isEmpty() ? normalMax : normalMax - destStack.getCount();
-        if (space <= 0) {
+        if (fromStack.isEmpty() || ItemStack.isSameItemSameTags(fromStack, destStack)) {
+            // hotbar/offhand -> store: insert into the empty or matching store slot, capped at the
+            // store's own limit; whatever doesn't fit stays behind in the hotbar/offhand slot
+            if (destStack.isEmpty()) {
+                return;
+            }
+            ItemStack leftover = store.insertItem(slotId, destStack.copy(), false);
+            if (leftover.getCount() == destStack.getCount()) {
+                return;
+            }
+            inv.setItem(button, leftover);
+            fromSlot.setChanged();
             return;
         }
-        ItemStack moving = fromSlot.remove(Math.min(fromStack.getCount(), space));
+
+        if (!destStack.isEmpty()) {
+            // different items on both sides: a raw exchange would hand the destination the full
+            // (possibly oversized) store stack, so it's refused outright rather than attempted
+            return;
+        }
+
+        // store -> empty hotbar/offhand: hand out at most one normal stack, never the raw slot content
+        int normalMax = fromStack.getMaxStackSize();
+        ItemStack moving = fromSlot.remove(Math.min(fromStack.getCount(), normalMax));
         if (moving.isEmpty()) {
             return;
         }
-        if (destStack.isEmpty()) {
-            inv.setItem(button, moving);
-        } else {
-            destStack.grow(moving.getCount());
-        }
+        inv.setItem(button, moving);
         fromSlot.setChanged();
     }
 
@@ -186,7 +229,7 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
 
     @Override
     public @NotNull ItemStack quickMoveStack(@NotNull Player mover, int index) {
-        if (index == lockedSlotIndex) {
+        if (!isToolStackValid() || index == lockedSlotIndex) {
             return ItemStack.EMPTY;
         }
         Slot sourceSlot = this.slots.get(index);

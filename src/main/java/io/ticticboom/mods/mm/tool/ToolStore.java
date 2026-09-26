@@ -25,7 +25,11 @@ public class ToolStore extends ItemStackHandler {
 
     public ToolStore(ItemStack toolStack) {
         super(SLOTS);
-        rebind(toolStack);
+        // always bind, even in the (unexpected) case this is constructed with an empty stack -
+        // onContentsChanged guards writes, and rebind() below is only ever called post-construction
+        this.toolStack = toolStack;
+        CompoundTag tag = toolStack.getTagElement(KEY);
+        deserializeNBT(tag != null ? tag : new CompoundTag());
     }
 
     /**
@@ -34,16 +38,48 @@ public class ToolStore extends ItemStackHandler {
      * it re-syncs (e.g. our own locked inventory slot receiving an update), which would otherwise leave
      * a store built once at menu-open time stuck showing stale counts. The server never needs to call
      * this outside construction; it stays authoritative via its own single, stable {@code toolStack}.
+     * <p>
+     * Refuses to bind onto an empty stack (e.g. a predicted client-side click that briefly empties the
+     * held slot): that would otherwise point this handler at the shared {@code ItemStack.EMPTY}
+     * singleton, and the next {@link #onContentsChanged} would try to tag it. The store just keeps
+     * showing its last known-good contents until a real (non-empty) stack comes back.
      */
     public void rebind(ItemStack newToolStack) {
+        if (newToolStack.isEmpty()) {
+            return;
+        }
         this.toolStack = newToolStack;
         CompoundTag tag = newToolStack.getTagElement(KEY);
         deserializeNBT(tag != null ? tag : new CompoundTag());
     }
 
+    /** False once the bound tool stack is gone (dropped, consumed, ...): every operation then refuses. */
+    public boolean isToolStackPresent() {
+        return !toolStack.isEmpty();
+    }
+
     @Override
     protected void onContentsChanged(int slot) {
+        if (toolStack.isEmpty()) {
+            return;
+        }
         toolStack.getOrCreateTag().put(KEY, serializeNBT());
+    }
+
+    @Override
+    public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
+        if (!isToolStackPresent()) {
+            return stack;
+        }
+        return super.insertItem(slot, stack, simulate);
+    }
+
+    @Override
+    public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
+        if (!isToolStackPresent()) {
+            return ItemStack.EMPTY;
+        }
+        return super.extractItem(slot, amount, simulate);
     }
 
     @Override

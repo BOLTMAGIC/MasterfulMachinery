@@ -159,6 +159,33 @@ public class ToolGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void menuInvalidAfterToolDropped(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        player.setItemInHand(InteractionHand.MAIN_HAND, tool);
+        MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
+        menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 512), false);
+
+        // simulate a dropped-item split (ServerboundPlayerActionPacket DROP_ITEM/DROP_ALL_ITEMS):
+        // the dropped copy carries the full store NBT, while the ORIGINAL instance - still the exact
+        // object the menu and the player's hand reference - shrinks to empty count in place, keeping
+        // its identity. Identity-only staleness checks would miss this entirely.
+        ItemStack dropped = tool.split(tool.getCount());
+        check(helper, tool.isEmpty(), "the original held-stack instance should now be empty");
+        check(helper, dropped.getTagElement("ToolStore") != null, "the dropped copy should carry the store's NBT (this is the dupe vector)");
+        check(helper, player.getItemInHand(InteractionHand.MAIN_HAND) == tool, "the hand should still reference the same (now empty) instance");
+
+        check(helper, !menu.stillValid(player), "the menu must be invalid once the held tool is emptied, even though the instance is unchanged");
+
+        menu.clicked(0, 0, ClickType.QUICK_MOVE, player);
+        check(helper, menu.getStore().getStackInSlot(0).getCount() == 512,
+                "nothing should be extractable once the tool is gone, got " + menu.getStore().getStackInSlot(0).getCount());
+        ItemStack pickupAttempt = menu.quickMoveStack(player, 0);
+        check(helper, pickupAttempt.isEmpty(), "quickMoveStack should also refuse once the tool is gone");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void cannotStoreTool(GameTestHelper helper) {
         Player player = helper.makeMockPlayer();
         ItemStack heldTool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
