@@ -44,6 +44,13 @@ public class ToolEnergy implements IEnergyStorage {
         return extracted;
     }
 
+    /** Gives back energy the tool paid for something that did not happen; not limited by the receive rate. */
+    public void restore(int fe) {
+        if (fe > 0) {
+            setEnergy(getEnergyStored() + fe);
+        }
+    }
+
     @Override
     public int getEnergyStored() {
         CompoundTag tag = stack.getTag();

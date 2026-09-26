@@ -75,8 +75,15 @@ public final class AssemblyJob {
         return Collections.unmodifiableMap(missing);
     }
 
-    /** False once the controller was broken or replaced; the job should stop then. */
+    /**
+     * False once the controller was broken or replaced; the job should stop then. A job that places the controller
+     * itself (multiblock tool) does not need it before that step.
+     */
     public boolean controllerPresent() {
+        AssemblyPlanner.Planned next = queue.peek();
+        if (next != null && next.pos().equals(controllerPos)) {
+            return true;
+        }
         return level.isLoaded(controllerPos) && level.getBlockEntity(controllerPos) instanceof MachineControllerBlockEntity;
     }
 
@@ -112,6 +119,7 @@ public final class AssemblyJob {
             BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
             if (!level.setBlock(pos, next.state(), Block.UPDATE_ALL)) {
                 source.refund(taken);
+                source.refundEnergy(perBlockFe);
                 blocked++;
                 budget--;
                 continue;
@@ -119,6 +127,7 @@ public final class AssemblyJob {
             if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) {
                 snapshot.restore(true, true);
                 source.refund(taken);
+                source.refundEnergy(perBlockFe);
                 blocked++;
                 budget--;
                 continue;

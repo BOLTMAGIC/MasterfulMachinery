@@ -100,7 +100,8 @@ public final class StructurePasteUtil {
         return plan;
     }
 
-    private static Block findControllerBlock(StructureModel model) {
+    /** The first registered controller block of the structure, or null. */
+    public static Block findControllerBlock(StructureModel model) {
         for (ResourceLocation controllerId : model.controllerIds().getIds()) {
             Block block = MMControllerRegistry.getControllerBlock(controllerId);
             if (block != null) {
@@ -219,6 +220,11 @@ public final class StructurePasteUtil {
     }
 
     private static Component obstructionMessage(List<BlockPos> obstructed) {
+        return obstructionMessage("message.mm.blueprint.paste_blocked", obstructed);
+    }
+
+    /** {@code key} gets the number of obstructed positions and the first few of them as "x y z, ...". */
+    public static Component obstructionMessage(String key, List<BlockPos> obstructed) {
         var message = new StringBuilder();
 
         int shown = Math.min(MAX_OBSTRUCTION_EXAMPLES, obstructed.size());
@@ -232,7 +238,7 @@ public final class StructurePasteUtil {
         if (obstructed.size() > shown) {
             message.append(", ...");
         }
-        return Component.translatable("message.mm.blueprint.paste_blocked", obstructed.size(), message.toString());
+        return Component.translatable(key, obstructed.size(), message.toString());
     }
 
     public record PastePlan(BlockPos controllerPos, List<PlannedBlock> blocks) {

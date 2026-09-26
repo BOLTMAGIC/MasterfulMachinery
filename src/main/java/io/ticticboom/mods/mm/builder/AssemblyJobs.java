@@ -69,6 +69,9 @@ public final class AssemblyJobs {
                 it.remove();
                 continue;
             }
+            if (!entry.getValue().source().ready()) {
+                continue;
+            }
             if (job.tick(player, entry.getValue().source(), budget)) {
                 player.displayClientMessage(summary(job), true);
                 it.remove();

@@ -53,6 +53,23 @@ public class ToolStore extends ItemStackHandler {
         deserializeNBT(tag != null ? tag : new CompoundTag());
     }
 
+    /**
+     * Re-reads the contents from the bound tool's NBT. Long-lived stores (an assembly job's) call this before each
+     * use so they never write back counts another store instance (the menu's) has changed since.
+     */
+    public void reload() {
+        if (toolStack.isEmpty()) {
+            return;
+        }
+        CompoundTag tag = toolStack.getTagElement(KEY);
+        deserializeNBT(tag != null ? tag : new CompoundTag());
+    }
+
+    /** The tool stack this store reads from and writes to. */
+    public ItemStack toolStack() {
+        return toolStack;
+    }
+
     /** False once the bound tool stack is gone (dropped, consumed, ...): every operation then refuses. */
     public boolean isToolStackPresent() {
         return !toolStack.isEmpty();

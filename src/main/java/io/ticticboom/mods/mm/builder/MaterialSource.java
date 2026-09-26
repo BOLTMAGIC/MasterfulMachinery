@@ -19,6 +19,15 @@ public interface MaterialSource {
         return true;
     }
 
+    /** Gives back energy paid for a block that could not be placed after all. */
+    default void refundEnergy(int fe) {
+    }
+
+    /** False while the source cannot be drawn from safely right now (the job waits, e.g. the tool's store is open). */
+    default boolean ready() {
+        return true;
+    }
+
     /** Creative: nothing is taken, nothing is paid. */
     boolean free();
 }

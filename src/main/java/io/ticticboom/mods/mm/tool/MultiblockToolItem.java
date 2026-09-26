@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.tool;
 
+import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
@@ -8,6 +9,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
@@ -16,6 +18,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
@@ -30,7 +33,7 @@ import java.util.List;
 
 /**
  * Carries a chosen Masterful Machinery structure, a 54-slot block store and FE; right-click builds it
- * in the world (see the plan's Task 4), Shift+use opens the gallery/settings screen (Task 6).
+ * in the world or completes a matching controller, Shift+use opens the gallery/settings screen (Task 6).
  */
 public class MultiblockToolItem extends Item {
     private static final int BAR_COLOR = 0x3399FF;
@@ -54,7 +57,7 @@ public class MultiblockToolItem extends Item {
 
     /**
      * Shift+use on air opens the block store menu (Task 3). Right-click on a block is handled
-     * separately (build/dismantle, Task 4); this only fires when there's nothing to interact with.
+     * separately ({@link #useOn}); this only fires when there's nothing to interact with.
      */
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
@@ -78,6 +81,56 @@ public class MultiblockToolItem extends Item {
         // sidedSuccess (not pass) on both sides: a client-side pass here would also fire use() on the
         // other hand's item (e.g. eating/placing from the offhand) since vanilla falls through on PASS
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+    }
+
+    /**
+     * Right-click on a controller that can assemble the selected structure completes it. Runs before the block's own
+     * use, which would otherwise open the controller's screen.
+     */
+    @Override
+    public InteractionResult onItemUseFirst(ItemStack stack, UseOnContext context) {
+        Player player = context.getPlayer();
+        if (player == null || player.isShiftKeyDown()
+                || ToolBuilds.acceptingController(context.getLevel(), context.getClickedPos(), stack) == null) {
+            return InteractionResult.PASS;
+        }
+        return build(context);
+    }
+
+    /** Right-click on any other block face builds the selected structure in front of it, controller included. */
+    @Override
+    public @NotNull InteractionResult useOn(UseOnContext context) {
+        Player player = context.getPlayer();
+        if (player == null || player.isShiftKeyDown()) {
+            return InteractionResult.PASS; // Shift+use opens the menu (use)
+        }
+        return build(context);
+    }
+
+    private static InteractionResult build(UseOnContext context) {
+        Level level = context.getLevel();
+        Player player = context.getPlayer();
+        ItemStack stack = context.getItemInHand();
+        if (ToolBuilds.selectedStructure(stack) == null) {
+            if (!level.isClientSide()) {
+                player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
+            }
+            return InteractionResult.sidedSuccess(level.isClientSide());
+        }
+        if (level.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.sidedSuccess(level.isClientSide());
+        }
+        ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
+        if (result.prepared() == null) {
+            player.displayClientMessage(result.error(), true);
+            return InteractionResult.FAIL;
+        }
+        ToolBuilds.Prepared build = result.prepared();
+        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe())) {
+            player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
+            return InteractionResult.FAIL;
+        }
+        return InteractionResult.CONSUME;
     }
 
     @Override

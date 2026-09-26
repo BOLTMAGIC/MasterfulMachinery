@@ -37,5 +37,9 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::encode,
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::decode,
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolRotatePkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::handle);
     }
 }
