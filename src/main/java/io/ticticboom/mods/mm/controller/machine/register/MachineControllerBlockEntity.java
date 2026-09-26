@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
@@ -68,6 +69,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
@@ -1469,32 +1471,56 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return assemblyTiers;
     }
 
+    /** Stores a tier a client chose; ignores keys this machine does not have and clamps the tier to what exists. */
     public void setAssemblyTier(String key, int rank) {
-        assemblyTiers.set(key, rank);
-        syncAssemblySettings();
+        int valid = TierPrefs.validate(PortTiers.maxTiers(getAssemblyCandidates()), key, rank);
+        if (valid != TierPrefs.REJECTED && assemblyTiers.set(key, valid)) {
+            syncAssemblySettings();
+        }
     }
 
     public @Nullable ResourceLocation getAssemblyStructureId() {
         return assemblyStructureId;
     }
 
-    public void setAssemblyStructureId(@Nullable ResourceLocation id) {
+    /** Ignores ids that are not one of {@link #getAssemblyCandidates()}. */
+    public void setAssemblyStructureId(ResourceLocation id) {
+        if (findAssemblyCandidate(id) == null || id.equals(assemblyStructureId)) {
+            return;
+        }
         assemblyStructureId = id;
         syncAssemblySettings();
     }
 
+    /** Structures this controller can assemble, without duplicates and sorted by id so client and server agree. */
     public List<StructureModel> getAssemblyCandidates() {
-        return StructureManager.getStructuresForController(controllerId);
+        var byId = new TreeMap<ResourceLocation, StructureModel>();
+        for (StructureModel structure : StructureManager.getStructuresForController(controllerId)) {
+            byId.putIfAbsent(structure.id(), structure);
+        }
+        return List.copyOf(byId.values());
     }
 
+    /** The chosen structure, else the first candidate. */
     public @Nullable StructureModel getAssemblyStructure() {
+        StructureModel chosen = findAssemblyCandidate(assemblyStructureId);
+        if (chosen != null) {
+            return chosen;
+        }
         List<StructureModel> candidates = getAssemblyCandidates();
-        for (StructureModel candidate : candidates) {
-            if (candidate.id().equals(assemblyStructureId)) {
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    public @Nullable StructureModel findAssemblyCandidate(@Nullable ResourceLocation id) {
+        if (id == null) {
+            return null;
+        }
+        for (StructureModel candidate : getAssemblyCandidates()) {
+            if (candidate.id().equals(id)) {
                 return candidate;
             }
         }
-        return candidates.isEmpty() ? null : candidates.get(0);
+        return null;
     }
 
     private void syncAssemblySettings() {

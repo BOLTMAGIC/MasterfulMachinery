@@ -4,6 +4,7 @@ import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.PlayerMaterials;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerMenu;
 import io.ticticboom.mods.mm.networklink.Permissions;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.core.BlockPos;
@@ -13,10 +14,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraftforge.network.NetworkEvent;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Supplier;
 
-/** Controller Assemble screen -> server: choose a tier or structure, or start building. */
+/**
+ * Controller Assemble screen -> server: choose a tier or structure, or start building. START carries the
+ * structure id the screen shows in {@code key}.
+ */
 public record AssemblyPkt(BlockPos pos, Action action, String key, int value) {
     public enum Action { SET_TIER, SET_STRUCTURE, START }
 
@@ -43,21 +48,34 @@ public record AssemblyPkt(BlockPos pos, Action action, String key, int value) {
             if (!(sender.level().getBlockEntity(pkt.pos) instanceof MachineControllerBlockEntity controller)) {
                 return;
             }
+            // only from the controller's own screen, which the server keeps open while Assemble is shown
+            if (!(sender.containerMenu instanceof MachineControllerMenu menu) || menu.getBe() != controller) {
+                return;
+            }
             var link = controller.getNetworkLink();
             if (link != null && !Permissions.canAccess(sender, link.owner())) {
                 return;
             }
             switch (pkt.action) {
                 case SET_TIER -> controller.setAssemblyTier(pkt.key, pkt.value);
-                case SET_STRUCTURE -> controller.setAssemblyStructureId(ResourceLocation.tryParse(pkt.key));
-                case START -> start(sender, controller);
+                case SET_STRUCTURE -> {
+                    ResourceLocation id = ResourceLocation.tryParse(pkt.key);
+                    if (id != null) {
+                        controller.setAssemblyStructureId(id);
+                    }
+                }
+                case START -> start(sender, controller, ResourceLocation.tryParse(pkt.key));
             }
         });
         ctx.get().setPacketHandled(true);
     }
 
-    private static void start(ServerPlayer player, MachineControllerBlockEntity controller) {
-        StructureModel structure = controller.getAssemblyStructure();
+    private static void start(ServerPlayer player, MachineControllerBlockEntity controller, @Nullable ResourceLocation shownId) {
+        // build what the screen showed; fall back to the stored choice if that is not a candidate
+        StructureModel structure = controller.findAssemblyCandidate(shownId);
+        if (structure == null) {
+            structure = controller.getAssemblyStructure();
+        }
         if (structure == null) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.no_structure"), true);
             return;
