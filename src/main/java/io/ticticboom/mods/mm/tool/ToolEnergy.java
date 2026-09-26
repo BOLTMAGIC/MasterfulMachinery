@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.tool;
 
+import io.ticticboom.mods.mm.config.MMConfigSetup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.energy.IEnergyStorage;
@@ -20,7 +21,8 @@ public class ToolEnergy implements IEnergyStorage {
 
     @Override
     public int receiveEnergy(int maxReceive, boolean simulate) {
-        int received = Math.min(maxReceive, capacity - getEnergyStored());
+        int rate = MMConfigSetup.COMMON.toolEnergyReceiveRate.get();
+        int received = Math.min(Math.min(maxReceive, rate), capacity - getEnergyStored());
         if (received <= 0) {
             return 0;
         }
