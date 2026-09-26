@@ -233,7 +233,7 @@
   "gui.mm.port.dump": "İçeriği boşalt",
   "gui.mm.port.dump.hint": "Shift+Tık: tüm içeriği kalıcı olarak siler",
   "block.mm.input_gateway": "Giriş Kapısı",
-  "block.mm.input_gateway.tooltip": "Makinede bir kasa ya da cam bloğunun yerine koy veya bir input port'unun yanına yerleştir: borudan gelen item ve sıvılar o makinenin input port'larına gider",
+  "block.mm.input_gateway.tooltip": "Makinede bir kasa ya da cam bloğunun yerine koy veya bir input port'unun yanına yerleştir: borudan gelen item, sıvı, enerji ve Mekanism kimyasalları (gaz, infusion, pigment, slurry) o makinenin input port'larına gider",
   "gui.mm.port.energy": "Enerji",
   "gui.mm.controller.page.status": "Makine durumuna dön",
   "gui.mm.controller.page.inputs": "Girdi port'larını göster",
