@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.net;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.net.packet.BuildableStructureSyncPkt;
 import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
@@ -14,8 +15,8 @@ import java.util.Optional;
 
 public class MMNetwork {
 
-    // 4: tool ME settings actions and the tool HUD packet
-    private static final String PROTOCOL_VERSION = "4";
+    // 4: tool ME settings actions and the tool HUD packet; 5: builder structure sync
+    private static final String PROTOCOL_VERSION = "5";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -56,5 +57,7 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::handle);
         INSTANCE.registerMessage(index++, ToolHudPkt.class, ToolHudPkt::encode, ToolHudPkt::decode, ToolHudPkt::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, BuildableStructureSyncPkt.class, BuildableStructureSyncPkt::encode,
+                BuildableStructureSyncPkt::decode, BuildableStructureSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 }
