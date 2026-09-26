@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " DB",
+    " IR",
+    "I  "
+  ],
+  "key": {
+    "D": { "item": "minecraft:diamond" },
+    "B": { "item": "mm:blueprint" },
+    "I": { "item": "minecraft:iron_ingot" },
+    "R": { "item": "minecraft:redstone_block" }
+  },
+  "result": { "item": "mm:multiblock_tool" }
+}

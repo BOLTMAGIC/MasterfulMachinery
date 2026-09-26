@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.item.MultiblockSaverItem;
 import io.ticticboom.mods.mm.item.PrioritySetterItem;
 import io.ticticboom.mods.mm.item.WrenchItem;
 import io.ticticboom.mods.mm.structure.StructureManager;
+import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.MenuType;
@@ -31,6 +32,7 @@ public class MMRegisters {
     public static final RegistryObject<Item> PRIORITY_SETTER = ITEMS.register("priority_setter", PrioritySetterItem::new);
     public static final RegistryObject<WrenchItem> WRENCH = ITEMS.register("wrench", WrenchItem::new);
     public static final RegistryObject<MultiblockSaverItem> MULTIBLOCK_SAVER = ITEMS.register("multiblock_saver", MultiblockSaverItem::new);
+    public static final RegistryObject<MultiblockToolItem> MULTIBLOCK_TOOL = ITEMS.register("multiblock_tool", MultiblockToolItem::new);
 
     public static final RegistryObject<InputGatewayBlock> INPUT_GATEWAY = BLOCKS.register("input_gateway", InputGatewayBlock::new);
     public static final RegistryObject<BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new BlockItem(INPUT_GATEWAY.get(), new Item.Properties()));

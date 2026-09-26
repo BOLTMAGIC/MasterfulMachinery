@@ -18,6 +18,10 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue parallelProcessingDefault;
     public final ForgeConfigSpec.IntValue maxParallelRecipes;
     public final ForgeConfigSpec.BooleanValue showJeiMaxParallel;
+    public final ForgeConfigSpec.IntValue toolEnergyCapacity;
+    public final ForgeConfigSpec.IntValue toolEnergyPerPlacedBlock;
+    public final ForgeConfigSpec.IntValue toolEnergyPerDismantledBlock;
+    public final ForgeConfigSpec.IntValue toolEnergyReceiveRate;
 
     public MMCommonConfig(ForgeConfigSpec.Builder builder) {
         asyncStructureValidation = builder.comment("Enables async structure validation to improve TPS. Disable in case of issues. Default: true")
@@ -52,6 +56,18 @@ public class MMCommonConfig {
                 .define("sendContentsOnRemove", true);
         networkLinkSearchRadius = builder.comment("How far from a port to look for the controller it belongs to. Must cover your largest multiblock. Default: 16")
                 .defineInRange("controllerSearchRadius", 16, 4, 64);
+        builder.pop();
+
+        builder.comment("Multiblock Tool: item block store energy.")
+                .push("tool");
+        toolEnergyCapacity = builder.comment("Max FE the Multiblock Tool can store. Default: 1,000,000")
+                .defineInRange("energyCapacity", 1_000_000, 1, Integer.MAX_VALUE);
+        toolEnergyPerPlacedBlock = builder.comment("FE cost per block placed by the Multiblock Tool. Default: 50")
+                .defineInRange("energyPerPlacedBlock", 50, 0, Integer.MAX_VALUE);
+        toolEnergyPerDismantledBlock = builder.comment("FE cost per block dismantled by the Multiblock Tool. Default: 25")
+                .defineInRange("energyPerDismantledBlock", 25, 0, Integer.MAX_VALUE);
+        toolEnergyReceiveRate = builder.comment("Max FE/t the Multiblock Tool accepts from an external charger. Default: 10,000")
+                .defineInRange("energyReceiveRate", 10_000, 1, Integer.MAX_VALUE);
         builder.pop();
 
         builder.comment("Preview features that are not yet stable or ready for use.")
