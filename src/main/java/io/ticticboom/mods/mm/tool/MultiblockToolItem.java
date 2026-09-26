@@ -140,6 +140,12 @@ public class MultiblockToolItem extends Item {
         if (level.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
+        // before any planning: a player runs one job at a time
+        Component busy = AssemblyJobs.busyMessage(serverPlayer);
+        if (busy != null) {
+            player.displayClientMessage(busy, true);
+            return InteractionResult.FAIL;
+        }
         ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);

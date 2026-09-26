@@ -45,6 +45,12 @@ public final class AssemblyJobs {
         boolean tick(ServerPlayer player, int budget);
 
         Component summary();
+
+        /** Shown when the job stops because the player went too far or left the dimension. */
+        Component tooFar();
+
+        /** Shown when the player tries to start another job meanwhile. */
+        Component busy();
     }
 
     /** An assembly paired with the source it draws blocks from. */
@@ -68,6 +74,14 @@ public final class AssemblyJobs {
         public Component summary() {
             return AssemblyJobs.summary(job);
         }
+
+        public Component tooFar() {
+            return Component.translatable("message.mm.assemble.stopped");
+        }
+
+        public Component busy() {
+            return Component.translatable("message.mm.assemble.busy");
+        }
     }
 
     /** A dismantle paired with the sink its blocks go into. */
@@ -90,6 +104,14 @@ public final class AssemblyJobs {
 
         public Component summary() {
             return AssemblyJobs.summary(job);
+        }
+
+        public Component tooFar() {
+            return Component.translatable("message.mm.tool.dismantle.stopped");
+        }
+
+        public Component busy() {
+            return Component.translatable("message.mm.tool.dismantle.busy");
         }
     }
 
@@ -116,9 +138,10 @@ public final class AssemblyJobs {
         return job.tick(player, sink, budget);
     }
 
-    /** True while the player has a job of either kind running. */
-    public static boolean busy(ServerPlayer player) {
-        return JOBS.containsKey(player.getUUID());
+    /** What to tell a player who tries to start a job while one runs ("already assembling/dismantling"), or null. */
+    public static @Nullable Component busyMessage(ServerPlayer player) {
+        Running running = JOBS.get(player.getUUID());
+        return running == null ? null : running.busy();
     }
 
     /** The controller's own Assemble: draws from the player's inventory, 0 FE per block. */
@@ -158,7 +181,7 @@ public final class AssemblyJobs {
             if (player == null || player.level() != job.level()
                     || player.distanceToSqr(job.center().getCenter()) > MAX_DISTANCE_SQR) {
                 if (player != null) {
-                    player.displayClientMessage(Component.translatable("message.mm.assemble.stopped"), true);
+                    player.displayClientMessage(job.tooFar(), true);
                 }
                 it.remove();
                 continue;

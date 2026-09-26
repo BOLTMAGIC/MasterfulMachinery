@@ -88,6 +88,9 @@ public final class ToolDismantles {
 
     /** Shift+right-click on a machine: the first click asks, the second one within 3 s starts. */
     public static void shiftClick(ServerPlayer player, ItemStack tool, BlockPos target) {
+        if (refuseBusy(player)) {
+            return;
+        }
         Result result = prepare(player.level(), player, tool, target);
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);
@@ -103,6 +106,9 @@ public final class ToolDismantles {
 
     /** Validated V-hold request: starts at once. */
     public static void start(ServerPlayer player, ItemStack tool, BlockPos target) {
+        if (refuseBusy(player)) {
+            return;
+        }
         Result result = prepare(player.level(), player, tool, target);
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);
@@ -113,8 +119,17 @@ public final class ToolDismantles {
 
     private static void start(ServerPlayer player, Prepared prepared) {
         if (!AssemblyJobs.startDismantle(player, prepared.job(player.serverLevel()), prepared.sink())) {
-            player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
+            refuseBusy(player);
         }
+    }
+
+    /** Checked before any planning: a player runs one job at a time. */
+    private static boolean refuseBusy(ServerPlayer player) {
+        Component busy = AssemblyJobs.busyMessage(player);
+        if (busy != null) {
+            player.displayClientMessage(busy, true);
+        }
+        return busy != null;
     }
 
     /** Forgets pending confirmations (server stopping). */

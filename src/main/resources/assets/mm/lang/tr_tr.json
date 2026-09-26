@@ -244,6 +244,8 @@
   "message.mm.tool.dismantle.done": "%s blok söküldü",
   "message.mm.tool.dismantle.no_machine": "Burada kurulmuş bir makine yok",
   "message.mm.tool.dismantle.protected": "Bu makineyi sökemezsin",
+  "message.mm.tool.dismantle.stopped": "Sökme durdu: çok uzaklaştın",
+  "message.mm.tool.dismantle.busy": "Zaten bir makine sökülüyor",
   "message.mm.tool.dismantle.progress": "Sökülüyor %s",
   "message.mm.assemble.controller_not_placed": "Durdu: controller yerleştirilemedi",
   "message.mm.wrench.no_autoio": "Bu port'ta otomatik giriş/çıkış yok",
