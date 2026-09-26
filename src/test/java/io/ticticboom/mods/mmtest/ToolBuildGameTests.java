@@ -269,6 +269,40 @@ public class ToolBuildGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void creativeToolBuildContinuesWhenToolNotCarried(GameTestHelper helper) {
+        Player player = player(helper, 180);
+        player.getAbilities().instabuild = true;
+        ItemStack tool = tool(player);
+        ToolBuilds.Prepared build = prepare(helper, player, tool);
+        player.setItemInHand(InteractionHand.MAIN_HAND, ItemStack.EMPTY); // put away
+
+        AssemblyJob job = run(helper, player, build);
+
+        check(helper, !job.sourceGone(), "a creative build needs nothing from the tool and should go on");
+        check(helper, job.placed() == 4, "expected 4 placed, got " + job.placed());
+        check(helper, structure(helper).formed(helper.getLevel(), build.controllerPos()), "structure not formed");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void toolBuildRefusedWithoutEnergy(GameTestHelper helper) {
+        Player player = player(helper, 180);
+        ItemStack tool = tool(player);
+        stockStore(tool);
+        var energy = new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get());
+        energy.extractEnergy(START_FE - MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get() + 1, false);
+        int left = energy.getEnergyStored();
+
+        ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+
+        expectError(helper, result, "message.mm.assemble.out_of_energy");
+        check(helper, energy(tool) == left, "no energy should be spent, have " + energy(tool));
+        check(helper, storeCount(tool) == 4, "the store should be untouched, has " + storeCount(tool));
+        check(helper, helper.getLevel().getBlockState(helper.absolutePos(ANCHOR)).isAir(), "nothing should be placed");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void chainedSourceUsesStoreThenInventory(GameTestHelper helper) {
         List<ItemStack> dropped = new ArrayList<>();
         Player player = new Player(helper.getLevel(), helper.absolutePos(ANCHOR), 0, new GameProfile(UUID.randomUUID(), "tool-test")) {

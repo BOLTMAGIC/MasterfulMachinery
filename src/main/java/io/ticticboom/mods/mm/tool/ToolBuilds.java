@@ -68,7 +68,7 @@ public final class ToolBuilds {
             if (plan == null) {
                 return Result.error(Component.translatable("message.mm.assemble.already"));
             }
-            return new Result(new Prepared(controller.getBlockPos(), plan, source, perBlockFe), null);
+            return startable(tool, new Prepared(controller.getBlockPos(), plan, source, perBlockFe));
         }
 
         ToolBuildPlan build = ToolBuildPlan.create(level, player, tool, structure, clickedPos, clickedFace);
@@ -89,6 +89,15 @@ public final class ToolBuilds {
         if (!controllerThere && !source.has(controllerBlock)) {
             return Result.error(Component.translatable("message.mm.assemble.missing", controllerBlock.getName()));
         }
-        return new Result(new Prepared(build.controllerPos(), build.plan(), source, perBlockFe), null);
+        return startable(tool, new Prepared(build.controllerPos(), build.plan(), source, perBlockFe));
+    }
+
+    /** Refuses a build the tool cannot pay even its first block for, so it never starts only to stop at once. */
+    private static Result startable(ItemStack tool, Prepared prepared) {
+        if (!prepared.source().free() && prepared.perBlockFe() > 0
+                && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {
+            return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, prepared.plan().steps().size()));
+        }
+        return new Result(prepared, null);
     }
 }

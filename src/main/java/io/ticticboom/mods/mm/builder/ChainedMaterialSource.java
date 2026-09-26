@@ -84,10 +84,10 @@ public final class ChainedMaterialSource implements MaterialSource {
         energy.restore(fe);
     }
 
-    /** The tool left the player (dropped, stored away or split off). */
+    /** The tool left the player (dropped, stored away or split off); creative builds need nothing from it. */
     @Override
     public boolean gone() {
-        return !toolCarried();
+        return !free() && !toolCarried();
     }
 
     /** Waits while the tool's own store is open, so the menu and the job never write over each other. */
