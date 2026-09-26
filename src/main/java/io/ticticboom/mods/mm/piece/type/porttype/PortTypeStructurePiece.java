@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.piece.type.porttype;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
+import io.ticticboom.mods.mm.builder.TieredPortPiece;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.piece.type.StructurePiece;
@@ -30,7 +31,7 @@ import java.util.TreeMap;
 import java.util.function.Supplier;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-public class PortTypeStructurePiece extends StructurePiece {
+public class PortTypeStructurePiece extends StructurePiece implements TieredPortPiece {
 
     @Getter
     private final ResourceLocation portTypeId;
@@ -43,7 +44,7 @@ public class PortTypeStructurePiece extends StructurePiece {
 
     private final List<Block> blocks = new ArrayList<>();
 
-    /** Tier -> first port block of that tier, for assembly (inputs only when the piece does not fix a direction). */
+    /** Tier -> port block assembly places for it, see {@link PortTiers#byRank}. */
     @Getter
     private final NavigableMap<Integer, Block> blocksByRank = new TreeMap<>();
 
@@ -67,6 +68,7 @@ public class PortTypeStructurePiece extends StructurePiece {
 
     @Override
     public void validateSetup(StructurePieceSetupMetadata meta) {
+        List<PortTiers.RankedPort<Block>> ranked = new ArrayList<>();
         for (RegistryGroupHolder port : MMPortRegistry.PORTS) {
             if (port.getBlock().get() instanceof IPortBlock pb) {
                 PortModel model = pb.getModel();
@@ -84,11 +86,11 @@ public class PortTypeStructurePiece extends StructurePiece {
                 if (!blocks.contains(blk)) {
                     blocks.add(blk);
                 }
-                if (input.isPresent() || model.input()) {
-                    blocksByRank.putIfAbsent(candidateRank, blk);
-                }
+                ranked.add(new PortTiers.RankedPort<>(candidateRank, model.input(), blk));
             }
         }
+        blocksByRank.clear();
+        blocksByRank.putAll(PortTiers.byRank(ranked));
     }
 
     @Override

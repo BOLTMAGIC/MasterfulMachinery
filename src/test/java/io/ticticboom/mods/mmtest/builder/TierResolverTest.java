@@ -54,4 +54,9 @@ class TierResolverTest {
         assertEquals(-1, TierResolver.resolve(1, 4, 4, tiers(1, 2, 3)));
         assertEquals(-1, TierResolver.resolve(1, 1, 5, tiers()));
     }
+
+    @Test
+    void invertedRangeFitsNothing() {
+        assertEquals(-1, TierResolver.resolve(2, 3, 1, tiers(1, 2, 3)));
+    }
 }

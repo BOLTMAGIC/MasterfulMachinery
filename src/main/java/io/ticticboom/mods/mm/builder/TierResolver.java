@@ -20,6 +20,9 @@ public final class TierResolver {
      * @return the chosen tier, or -1 when no existing tier fits the range
      */
     public static int resolve(int preferred, int minTier, int maxTier, SortedSet<Integer> available) {
+        if (minTier > maxTier) {
+            return -1;
+        }
         NavigableSet<Integer> allowed = new TreeSet<>(available).subSet(minTier, true, maxTier, true);
         if (allowed.isEmpty()) {
             return -1;
