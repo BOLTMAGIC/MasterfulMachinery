@@ -230,6 +230,77 @@ public class ToolCraftGameTests {
         helper.succeed();
     }
 
+    /** Items the network already crafts (anyone's job, or the tool's from before a relog) are not asked for again. */
+    @GameTest(template = TEMPLATE)
+    public static void networkCraftingNotRequestedAgain(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(Blocks.GLASS), false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        me.craftable.add(port("l").asItem());
+        me.requested.put(port("s").asItem(), 1L);
+
+        ToolBuilds.Result result = prepare(helper, player, tool, me);
+
+        check(helper, me.requests.size() == 1 && me.requests.get(0).item() == port("l").asItem(),
+                "only the large port should be requested, the network already crafts the small one: " + me.requests);
+        TranslatableContents crafting = find(result.error(), "message.mm.tool.crafting");
+        check(helper, crafting != null && crafting.getArgs()[0].equals(2), "both ports are on their way: " + text(result.error()));
+        CraftTracker.clear(player);
+        helper.succeed();
+    }
+
+    /**
+     * A craft just reported done still counts as coming while the stock may lag behind: no second request. Once the
+     * grace is over and the items still aren't there, the next right-click asks again.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void doneCraftNotRequestedAgainBeforeStockCatchesUp(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(Blocks.GLASS), false);
+        store.insertItem(2, new ItemStack(port("l")), false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+        prepare(helper, player, tool, me);
+        me.requests.get(0).state = CraftHandle.State.DONE;
+        CraftTracker.update(player); // done, the stock doesn't show it yet
+
+        ToolBuilds.Result waiting = prepare(helper, player, tool, me);
+        check(helper, me.requests.size() == 1, "a just finished craft must not be requested again: " + me.requests);
+        check(helper, find(waiting.error(), "message.mm.tool.crafting") != null, "still coming: " + text(waiting.error()));
+
+        CraftTracker.update(player);
+        CraftTracker.update(player);
+        prepare(helper, player, tool, me);
+        check(helper, me.requests.size() == 2, "after the grace the items are really missing and requested again: " + me.requests);
+        CraftTracker.clear(player);
+        helper.succeed();
+    }
+
+    /** No crafts are requested for a build the tool can't pay even one block for. */
+    @GameTest(template = TEMPLATE)
+    public static void noCraftsWithoutEnergy(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        var energy = new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get());
+        energy.extractEnergy(START_FE, false);
+        FakeMe me = new FakeMe();
+        me.craftable.add(port("s").asItem());
+
+        ToolBuilds.Result result = prepare(helper, player, tool, me);
+
+        check(helper, result.error() != null && result.error().getContents() instanceof TranslatableContents c
+                && c.getKey().equals("message.mm.assemble.out_of_energy"), "expected out of energy, got " + text(result.error()));
+        check(helper, me.requests.isEmpty(), "nothing should be requested: " + me.requests);
+        helper.succeed();
+    }
+
     /** Auto-craft turned off: the missing blocks are named, nothing is requested. */
     @GameTest(template = TEMPLATE)
     public static void autoCraftOffOnlyReports(GameTestHelper helper) {
@@ -344,6 +415,13 @@ public class ToolCraftGameTests {
         final Map<Item, Long> stock = new HashMap<>();
         final Set<Item> craftable = new HashSet<>();
         final List<FakeCraft> requests = new ArrayList<>();
+        /** What the network's own jobs are still crafting. */
+        final Map<Item, Long> requested = new HashMap<>();
+
+        @Override
+        public long requestedAmount(Item item) {
+            return requested.getOrDefault(item, 0L);
+        }
 
         @Override
         public boolean reachable() {

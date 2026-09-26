@@ -7,6 +7,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
+import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStoppingEvent;
@@ -32,6 +33,10 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(modid = Ref.ID)
 public final class CraftTracker {
     private static final int INTERVAL = 10;
+    /** Polls a finished craft still counts as coming until a stock check has seen its items (the stock may lag). */
+    private static final int DONE_GRACE = 2;
+    /** Polls orders are kept once nothing is left to follow (for the HUD's "ready"), then dropped. */
+    private static final int KEEP_FINISHED = 30;
     private static final Map<UUID, Orders> ORDERS = new HashMap<>();
 
     private CraftTracker() {
@@ -43,6 +48,10 @@ public final class CraftTracker {
         private final List<CraftHandle> handles = new ArrayList<>();
         /** Failures already told to the player. */
         private final Set<CraftHandle> reported = Collections.newSetFromMap(new IdentityHashMap<>());
+        /** Finished crafts -> polls since they finished; removed once a stock check saw their items. */
+        private final Map<CraftHandle, Integer> unseen = new IdentityHashMap<>();
+        /** Crafts already seen finishing by an update. */
+        private final Set<CraftHandle> finished = Collections.newSetFromMap(new IdentityHashMap<>());
 
         private Order(Item item) {
             this.item = item;
@@ -67,6 +76,12 @@ public final class CraftTracker {
             return handles.stream().filter(h -> h.state() == CraftHandle.State.DONE).mapToInt(CraftHandle::amount).sum();
         }
 
+        /** Amount on its way: calculating, crafting, or just finished and not yet seen in the stock. */
+        public int coming() {
+            int unseenDone = unseen.entrySet().stream().filter(e -> e.getValue() < DONE_GRACE).mapToInt(e -> e.getKey().amount()).sum();
+            return active() + unseenDone;
+        }
+
         /** The first failed craft of this item, or null. */
         public @Nullable CraftHandle failed() {
             return handles.stream().filter(h -> h.state() == CraftHandle.State.FAILED).findFirst().orElse(null);
@@ -74,15 +89,43 @@ public final class CraftTracker {
     }
 
     private static final class Orders {
+        final Player player;
         final Map<Item, Order> byItem = new LinkedHashMap<>();
         boolean readyTold;
+        /** Polls since nothing was left to follow. */
+        int finishedPolls;
+
+        Orders(Player player) {
+            this.player = player;
+        }
     }
 
-    /** How many of item are on their way for player (calculating or crafting). */
+    /** How many of item are calculating or crafting for player. */
     public static int active(Player player, Item item) {
-        Orders orders = ORDERS.get(player.getUUID());
-        Order order = orders == null ? null : orders.byItem.get(item);
+        Order order = order(player, item);
         return order == null ? 0 : order.active();
+    }
+
+    /**
+     * How many of item are on their way for player: calculating, crafting, or finished so recently that the stock may
+     * not show them yet (see {@link #seen}).
+     */
+    public static int coming(Player player, Item item) {
+        Order order = order(player, item);
+        return order == null ? 0 : order.coming();
+    }
+
+    /** A stock check found enough of item: its finished crafts no longer count as coming. */
+    public static void seen(Player player, Item item) {
+        Order order = order(player, item);
+        if (order != null) {
+            order.unseen.clear();
+        }
+    }
+
+    private static @Nullable Order order(Player player, Item item) {
+        Orders orders = ORDERS.get(player.getUUID());
+        return orders == null ? null : orders.byItem.get(item);
     }
 
     /**
@@ -90,7 +133,7 @@ public final class CraftTracker {
      * is the new attempt). A craft that failed at once is not told again by {@link #update}: its caller reports it.
      */
     public static void add(Player player, CraftHandle handle) {
-        Orders orders = ORDERS.computeIfAbsent(player.getUUID(), id -> new Orders());
+        Orders orders = ORDERS.computeIfAbsent(player.getUUID(), id -> new Orders(player));
         Order order = orders.byItem.computeIfAbsent(handle.item(), Order::new);
         order.handles.removeIf(h -> h.state() == CraftHandle.State.FAILED);
         order.reported.clear();
@@ -99,6 +142,7 @@ public final class CraftTracker {
             order.reported.add(handle);
         }
         orders.readyTold = false;
+        orders.finishedPolls = 0;
     }
 
     /** Player's orders, in request order (for the HUD); empty when none. */
@@ -128,6 +172,11 @@ public final class CraftTracker {
                 handle.update();
                 CraftHandle.State state = handle.state();
                 active |= state.active();
+                if (state == CraftHandle.State.DONE && order.finished.add(handle)) {
+                    order.unseen.put(handle, 0);
+                } else if (state == CraftHandle.State.DONE) {
+                    order.unseen.computeIfPresent(handle, (h, polls) -> polls + 1);
+                }
                 if (state == CraftHandle.State.FAILED) {
                     failed = true;
                     if (order.reported.add(handle)) {
@@ -140,6 +189,7 @@ public final class CraftTracker {
             orders.readyTold = true;
             player.displayClientMessage(Component.translatable("message.mm.tool.craft.ready").withStyle(ChatFormatting.GREEN), true);
         }
+        orders.finishedPolls = active ? 0 : orders.finishedPolls + 1;
     }
 
     /** "Oak Planks ×12". */
@@ -158,13 +208,21 @@ public final class CraftTracker {
         if (event.phase != TickEvent.Phase.END || ORDERS.isEmpty() || event.getServer().getTickCount() % INTERVAL != 0) {
             return;
         }
-        // players not in the list (offline, or a test's fake player) are left alone; logging out drops them
-        for (UUID id : List.copyOf(ORDERS.keySet())) {
-            ServerPlayer player = event.getServer().getPlayerList().getPlayer(id);
-            if (player != null) {
-                update(player);
+        var it = ORDERS.values().iterator();
+        while (it.hasNext()) {
+            Orders orders = it.next();
+            if (!present(event.getServer().getPlayerList().getPlayer(orders.player.getUUID()), orders.player)
+                    || orders.finishedPolls > KEEP_FINISHED) {
+                it.remove();
+                continue;
             }
+            update(orders.player);
         }
+    }
+
+    /** Still in the game: the listed player itself, or a fake player (a machine's or a test's) not removed. */
+    private static boolean present(@Nullable ServerPlayer listed, Player player) {
+        return listed == player || (player instanceof FakePlayer && !player.isRemoved());
     }
 
     @SubscribeEvent

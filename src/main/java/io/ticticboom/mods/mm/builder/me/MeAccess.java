@@ -36,6 +36,14 @@ public interface MeAccess {
     /** Whether the network has a pattern able to craft {@code item}. */
     boolean isCraftable(Item item);
 
+    /**
+     * How many of item the network's crafting jobs (anyone's, the tool's own included) are still making: items on their
+     * way, which must not be asked for again.
+     */
+    default long requestedAmount(Item item) {
+        return 0;
+    }
+
     /** Requests a craft of {@code amount} of {@code item}; the returned handle tracks its progress. */
     CraftHandle requestCraft(Item item, int amount);
 }

@@ -115,6 +115,11 @@ public final class Ae2MeAccess implements MeAccess {
     }
 
     @Override
+    public long requestedAmount(Item item) {
+        return grid == null ? 0 : grid.getCraftingService().getRequestedAmount(AEItemKey.of(item));
+    }
+
+    @Override
     public CraftHandle requestCraft(Item item, int amount) {
         if (grid == null) {
             return CraftHandle.failed(item, amount, Component.translatable("message.mm.tool.craft.unreachable"));

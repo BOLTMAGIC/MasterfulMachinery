@@ -133,25 +133,28 @@ public final class ToolBuilds {
 
     /**
      * All or nothing: a build starts only with every block it still needs on hand (controller included), else missing
-     * ones are crafted where possible ({@link ToolCrafts}). It is also refused when the tool cannot pay even its first
+     * ones are crafted where possible ({@link ToolCrafts}). It is refused first when the tool cannot pay even its first
      * block, so it never starts only to stop at once. A build that starts forgets the player's tracked crafts.
      */
     private static Result startable(Level level, Player player, ItemStack tool, ChainedMaterialSource source, Prepared prepared) {
+        // energy first: no crafts are requested for a build that could not start anyway
+        if (!source.free() && prepared.perBlockFe() > 0
+                && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {
+            return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, prepared.plan().steps().size()));
+        }
         if (!source.free()) {
             Map<Item, Integer> missing = new LinkedHashMap<>();
             needed(level, player, prepared.plan()).forEach((item, count) -> {
                 long have = source.available(item);
                 if (have < count) {
                     missing.put(item, (int) (count - have));
+                } else {
+                    CraftTracker.seen(player, item);
                 }
             });
             if (!missing.isEmpty()) {
                 return Result.error(ToolCrafts.request(player, tool, source.me(), missing));
             }
-        }
-        if (!source.free() && prepared.perBlockFe() > 0
-                && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {
-            return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, prepared.plan().steps().size()));
         }
         CraftTracker.clear(player);
         return new Result(prepared, null, null);

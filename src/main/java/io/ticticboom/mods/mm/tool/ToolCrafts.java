@@ -41,13 +41,21 @@ public final class ToolCrafts {
         for (Map.Entry<Item, Integer> e : missing.entrySet()) {
             Item item = e.getKey();
             int count = e.getValue();
-            int coming = CraftTracker.active(player, item);
+            // on its way: the tool's own crafts (also just finished ones the stock may not show yet), or any of the
+            // network's jobs (someone else's, or the tool's from before a relog)
+            long coming = Math.max(CraftTracker.coming(player, item), me == null ? 0 : me.requestedAmount(item));
             if (coming > 0) {
-                // already on its way (whatever the network says now); ask only for what that does not cover
-                if (craft && count > coming && me.isCraftable(item)) {
-                    CraftTracker.add(player, me.requestCraft(item, count - coming));
-                }
+                // whatever the network says now, never "missing"; ask only for what that does not cover (the next
+                // right-click after it arrives checks again)
                 crafting += count;
+                if (craft && count > coming && me.isCraftable(item)) {
+                    CraftHandle extra = me.requestCraft(item, (int) (count - coming));
+                    CraftTracker.add(player, extra);
+                    if (extra.state() == CraftHandle.State.FAILED) {
+                        crafting -= extra.amount();
+                        problems.add(CraftTracker.entry(item, extra.amount(), extra.failure()));
+                    }
+                }
                 continue;
             }
             if (!craft) {

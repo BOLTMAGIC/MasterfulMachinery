@@ -1,38 +1,48 @@
 package io.ticticboom.mods.mm.compat.ae2;
 
+import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.CalculationStrategy;
+import appeng.api.networking.crafting.CraftingJobStatus;
 import appeng.api.networking.crafting.CraftingSubmitErrorCode;
 import appeng.api.networking.crafting.ICraftingCPU;
-import appeng.api.networking.crafting.ICraftingLink;
 import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.crafting.ICraftingSubmitResult;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
-import appeng.me.cluster.implementations.CraftingCPUCluster;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.me.CraftHandle;
+import io.ticticboom.mods.mm.builder.me.CraftProgress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.IdentityHashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 /**
  * One craft the Multiblock Tool asked AE2 for: the crafting plan is calculated off-thread, then submitted as a
  * standalone job (as a terminal does), whose output goes into the network's storage.
  * <p>
- * AE2 15 gives no link for a job submitted without a requester, and never marks a standalone job's link done, so the
- * job is followed through its crafting CPU: the CPU's link to it is cancelled, or the CPU has moved on (done).
+ * AE2 15 gives no link for a job submitted without a requester (and never marks a standalone job's link done), so the
+ * job is followed through public API only: the CPU that went from idle to busy during the submit is ours, and the
+ * craft is done once the item's stock has grown by the requested amount ({@link CraftProgress}). A CPU that can't be
+ * told apart (e.g. an addon's) is followed by whether the network still crafts the item.
  */
 final class Ae2CraftHandle implements CraftHandle {
+    /** Polls a finished job may show too little stock (the network catching up) before it counts as cancelled. */
+    private static final int SHORT_POLLS = 2;
+
     private final Item item;
     private final int amount;
+    private final AEItemKey key;
     private final IGrid grid;
     private final IActionSource source;
     private final Future<ICraftingPlan> calculation;
@@ -40,13 +50,15 @@ final class Ae2CraftHandle implements CraftHandle {
     @Nullable
     private Component failure;
     @Nullable
-    private CraftingCPUCluster cpu;
-    @Nullable
-    private ICraftingLink link;
+    private ICraftingCPU cpu;
+    /** The item's stock at submission plus the requested amount. */
+    private long target;
+    private int shortPolls;
 
     private Ae2CraftHandle(Item item, int amount, IGrid grid, IActionSource source, Future<ICraftingPlan> calculation) {
         this.item = item;
         this.amount = amount;
+        this.key = AEItemKey.of(item);
         this.grid = grid;
         this.source = source;
         this.calculation = calculation;
@@ -88,6 +100,7 @@ final class Ae2CraftHandle implements CraftHandle {
         try {
             plan = calculation.get();
         } catch (Exception e) {
+            Ref.LOG.warn("ME crafting calculation for {} x{} failed", key, amount, e);
             fail("message.mm.tool.craft.error");
             return;
         }
@@ -96,12 +109,9 @@ final class Ae2CraftHandle implements CraftHandle {
             return;
         }
         ICraftingService crafting = grid.getCraftingService();
-        Map<ICraftingCPU, ICraftingLink> before = new IdentityHashMap<>();
-        for (ICraftingCPU each : crafting.getCpus()) {
-            if (each instanceof CraftingCPUCluster cluster) {
-                before.put(cluster, cluster.craftingLogic.getLastLink());
-            }
-        }
+        // all on the server thread: the only CPU to go from idle to busy during the submit is the one that took it
+        List<ICraftingCPU> idle = crafting.getCpus().stream().filter(c -> !c.isBusy()).collect(Collectors.toList());
+        long before = stock();
         ICraftingSubmitResult result = crafting.submitJob(plan, null, null, false, source);
         if (!result.successful()) {
             CraftingSubmitErrorCode code = result.errorCode();
@@ -112,28 +122,54 @@ final class Ae2CraftHandle implements CraftHandle {
             }
             return;
         }
-        // the CPU that took the job is the one whose job changed
-        for (ICraftingCPU each : crafting.getCpus()) {
-            if (each instanceof CraftingCPUCluster cluster) {
-                ICraftingLink now = cluster.craftingLogic.getLastLink();
-                if (now != null && now != before.get(cluster)) {
-                    cpu = cluster;
-                    link = now;
-                }
-            }
-        }
+        target = before + amount;
+        cpu = ourCpu(idle);
         state = State.CRAFTING;
     }
 
-    private void follow() {
-        if (link == null || cpu == null) {
-            // submitted, but its CPU could not be told apart: AE2 crafts on, the next right-click will see the items
-            state = State.DONE;
-        } else if (link.isCanceled() || cpu.isDestroyed()) {
-            fail("message.mm.tool.craft.cancelled");
-        } else if (link.isDone() || cpu.craftingLogic.getLastLink() != link) {
-            state = State.DONE;
+    /** The CPU that went busy, confirmed by what it crafts when it says; null when that isn't one clear CPU. */
+    private @Nullable ICraftingCPU ourCpu(List<ICraftingCPU> idleBefore) {
+        List<ICraftingCPU> started = new ArrayList<>();
+        for (ICraftingCPU each : idleBefore) {
+            if (each.isBusy()) {
+                started.add(each);
+            }
         }
+        List<ICraftingCPU> confirmed = started.stream().filter(this::crafts).toList();
+        if (confirmed.size() == 1) {
+            return confirmed.get(0);
+        }
+        return started.size() == 1 && jobUnknown(started.get(0)) ? started.get(0) : null;
+    }
+
+    private boolean crafts(ICraftingCPU each) {
+        CraftingJobStatus status = each.getJobStatus();
+        return status != null && status.crafting() != null && key.equals(status.crafting().what());
+    }
+
+    private static boolean jobUnknown(ICraftingCPU each) {
+        CraftingJobStatus status = each.getJobStatus();
+        return status == null || status.crafting() == null;
+    }
+
+    private void follow() {
+        Set<ICraftingCPU> cpus = grid.getCraftingService().getCpus();
+        boolean cpuBusy = cpu != null && cpus.contains(cpu) && cpu.isBusy();
+        boolean requesting = grid.getCraftingService().isRequesting(key);
+        switch (CraftProgress.judge(cpu != null, cpuBusy, stock(), target, requesting)) {
+            case DONE -> state = State.DONE;
+            case WAIT -> shortPolls = 0;
+            case SHORT -> {
+                if (++shortPolls >= SHORT_POLLS) {
+                    fail("message.mm.tool.craft.cancelled");
+                }
+            }
+        }
+    }
+
+    /** The item's live stock (a simulated extraction, not the per-tick cache). */
+    private long stock() {
+        return grid.getStorageService().getInventory().extract(key, Long.MAX_VALUE, Actionable.SIMULATE, source);
     }
 
     private void fail(String reason) {

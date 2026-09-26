@@ -3,6 +3,7 @@ package io.ticticboom.mods.mmtest;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
+import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
@@ -17,6 +18,7 @@ import com.mojang.authlib.GameProfile;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
+import io.ticticboom.mods.mm.builder.me.CraftHandle;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.compat.ae2.NetworkAccess;
@@ -338,6 +340,63 @@ public class MeToolGameTests {
                     check(helper, left.get(AEItemKey.of(Items.OAK_LOG)) == 0 && left.get(AEItemKey.of(planks)) == 3,
                             "the log should be crafted into four planks and one used, ME holds " + left);
                     check(helper, CraftTracker.orders(player).isEmpty(), "a started build forgets the crafts");
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * The same setup, but the job is cancelled on its CPU as soon as it is submitted: the tool reports the craft as
+     * cancelled (once), the log goes back into ME, and nothing is built.
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    public static void toolAutoCraftCancelledReported(GameTestHelper helper) {
+        BlockPos drive = craftingNetwork(helper);
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        ToolData.setStructure(tool, CRAFT_STRUCTURE);
+        Item planks = Items.OAK_PLANKS;
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    check(helper, grid != null, "the network is not up yet");
+                    check(helper, grid.getCraftingService().isCraftable(AEItemKey.of(planks)), "the planks pattern is not known yet");
+                    check(helper, !grid.getCraftingService().getCpus().isEmpty(), "the crafting CPU is not formed yet");
+                })
+                .thenExecute(() -> {
+                    bind(player, tool, drive);
+                    ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+                    check(helper, hasKey(result.error(), "message.mm.tool.crafting"), "the planks should be requested: " + result.error().getString());
+                })
+                .thenWaitUntil(() -> {
+                    // the submit happens in an update; cancel in the same tick, before the CPU hands anything out
+                    CraftTracker.update(player);
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    boolean cancelled = false;
+                    for (ICraftingCPU cpu : grid.getCraftingService().getCpus()) {
+                        if (cpu.isBusy()) {
+                            cpu.cancelJob();
+                            cancelled = true;
+                        }
+                    }
+                    check(helper, cancelled, "the job is not submitted yet");
+                })
+                .thenWaitUntil(() -> {
+                    CraftTracker.update(player);
+                    check(helper, CraftTracker.orders(player).get(0).failed() != null, "the cancel is not noticed yet");
+                })
+                .thenExecute(() -> {
+                    CraftHandle failed = CraftTracker.orders(player).get(0).failed();
+                    check(helper, failed.failure().getContents() instanceof TranslatableContents c && c.getKey().equals("message.mm.tool.craft.cancelled"),
+                            "expected cancelled, got " + failed.failure().getString());
+                    long told = player.messages.stream().filter(m -> hasKey(m, "message.mm.tool.craft.cancelled")).count();
+                    check(helper, told == 1, "the cancel should be told once, got " + player.messages);
+                    check(helper, CraftTracker.active(player, planks) == 0, "a cancelled craft is not on its way");
+                    KeyCounter left = liveStock(helper, drive);
+                    check(helper, left.get(AEItemKey.of(Items.OAK_LOG)) == 1 && left.get(AEItemKey.of(planks)) == 0,
+                            "the log should be back in ME and no planks made, ME holds " + left);
+                    check(helper, helper.getLevel().getBlockState(helper.absolutePos(CLICKED).above()).isAir(), "nothing may be built");
+                    CraftTracker.clear(player);
                 })
                 .thenSucceed();
     }
