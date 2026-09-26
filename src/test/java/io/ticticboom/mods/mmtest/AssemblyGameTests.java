@@ -341,6 +341,28 @@ public class AssemblyGameTests {
         }
     }
 
+    @GameTest(template = TEMPLATE)
+    public static void assembleDefaultsToFormedStructure(GameTestHelper helper) {
+        BlockPos pos = placeController(helper, Direction.NORTH);
+        var controller = (MachineControllerBlockEntity) helper.getLevel().getBlockEntity(pos);
+        check(helper, controller.getAssemblyStructureId() == null, "no structure should be chosen yet");
+        check(helper, controller.getAssemblyStructure() != null && controller.getAssemblyStructure().id().equals(EXTRA),
+                "an empty controller should default to the first candidate, got " + controller.getAssemblyStructure());
+        // assembly_test (lowest tiers), which is not the first candidate
+        helper.setBlock(CONTROLLER.offset(FLEX), port("s"));
+        helper.setBlock(CONTROLLER.offset(GLASS), Blocks.GLASS);
+        helper.setBlock(CONTROLLER.offset(STRICT), port("l"));
+        helper.startSequence().thenWaitUntil(() -> check(helper, structure(helper).formed(helper.getLevel(), pos) && controller.getStructure() != null
+                && controller.getStructure().id().equals(STRUCTURE), "assembly_test not formed yet")).thenExecute(() -> {
+            check(helper, controller.getAssemblyStructureId() == null, "forming should not store a choice");
+            StructureModel shown = controller.getAssemblyStructure();
+            check(helper, shown != null && shown.id().equals(STRUCTURE), "Assemble should default to the formed assembly_test, got " + shown);
+            // an explicit choice still wins
+            controller.setAssemblyStructureId(EXTRA);
+            check(helper, controller.getAssemblyStructure().id().equals(EXTRA), "a stored choice should win over the formed structure");
+        }).thenSucceed();
+    }
+
     private static AssemblyJob assemble(GameTestHelper helper, StructureModel structure, BlockPos controller, Direction facing, TierPrefs prefs, Player player) {
         Rotation rotation = AssemblyPlanner.bestRotation(helper.getLevel(), structure, controller, facing);
         var plan = AssemblyPlanner.plan(structure, controller, rotation, prefs, b -> PlayerMaterials.has(player, b));
