@@ -106,6 +106,12 @@ public final class AssemblyJobs {
         if (job.unavailable > 0) {
             text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.unavailable", job.unavailable));
         }
+        if (job.controllerNotPlaced()) {
+            text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.controller_not_placed"));
+        }
+        if (job.sourceGone()) {
+            text.append(Component.literal(" · ")).append(Component.translatable("message.mm.tool.not_carried"));
+        }
         if (job.outOfEnergy()) {
             text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.out_of_energy", job.placed(), job.total()));
         }

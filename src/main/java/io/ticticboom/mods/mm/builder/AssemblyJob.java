@@ -30,6 +30,8 @@ public final class AssemblyJob {
     final int unavailable;
     final Map<Block, Integer> missing = new LinkedHashMap<>();
     private boolean outOfEnergy;
+    private boolean sourceGone;
+    private boolean controllerNotPlaced;
 
     AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
         this.level = level;
@@ -71,6 +73,16 @@ public final class AssemblyJob {
         return outOfEnergy;
     }
 
+    /** True once the job stopped because its source went away (the multiblock tool is no longer carried). */
+    public boolean sourceGone() {
+        return sourceGone;
+    }
+
+    /** True once a job that places its own controller stopped because the controller could not be placed. */
+    public boolean controllerNotPlaced() {
+        return controllerNotPlaced;
+    }
+
     public Map<Block, Integer> missing() {
         return Collections.unmodifiableMap(missing);
     }
@@ -87,56 +99,78 @@ public final class AssemblyJob {
         return level.isLoaded(controllerPos) && level.getBlockEntity(controllerPos) instanceof MachineControllerBlockEntity;
     }
 
+    /** What happened to one planned position. */
+    private enum Outcome { ALREADY, BLOCKED, MISSING, NO_ENERGY, FAILED, PLACED }
+
     /** @return true when every planned block has been handled (or the job stopped early, e.g. out of energy) */
     public boolean tick(Player player, MaterialSource source, int budget) {
         while (budget > 0 && !queue.isEmpty()) {
+            if (source.gone()) {
+                sourceGone = true;
+                queue.clear();
+                break;
+            }
             AssemblyPlanner.Planned next = queue.poll();
-            BlockPos pos = next.pos();
-            BlockState existing = level.getBlockState(pos);
-            Block wanted = next.state().getBlock();
-            if (existing.is(wanted) || next.accepted().contains(existing.getBlock())) {
-                continue; // already right (maybe another allowed tier), costs nothing
-            }
-            if (!existing.isAir() && !existing.canBeReplaced()) {
-                blocked++;
-                continue; // never break what the player built
-            }
-            if (!player.mayBuild() || !level.mayInteract(player, pos)) {
-                blocked++;
-                continue; // adventure mode, spawn protection, world border
-            }
-            if (!source.has(wanted)) {
-                missing.merge(wanted, 1, Integer::sum);
-                continue;
-            }
-            if (!source.payEnergy(perBlockFe)) {
-                outOfEnergy = true;
+            Outcome outcome = handle(player, source, next);
+            if (outcome == Outcome.NO_ENERGY) {
                 queue.clear();
                 break; // remaining positions are left untouched, not counted missing
             }
-            ItemStack taken = source.take(wanted);
-            // placed like a player would: claim and protection mods may cancel it
-            BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
-            if (!level.setBlock(pos, next.state(), Block.UPDATE_ALL)) {
-                source.refund(taken);
-                source.refundEnergy(perBlockFe);
-                blocked++;
+            if (outcome == Outcome.PLACED || outcome == Outcome.FAILED) {
                 budget--;
-                continue;
             }
-            if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) {
-                snapshot.restore(true, true);
-                source.refund(taken);
-                source.refundEnergy(perBlockFe);
-                blocked++;
-                budget--;
-                continue;
+            // a job placing its own controller (multiblock tool) builds nothing more once that fails
+            if (next.pos().equals(controllerPos) && outcome != Outcome.PLACED && outcome != Outcome.ALREADY) {
+                controllerNotPlaced = true;
+                queue.clear();
+                break;
             }
-            var sound = next.state().getSoundType();
-            level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1f) / 2f, sound.getPitch() * 0.8f);
-            placed++;
-            budget--;
         }
         return queue.isEmpty();
+    }
+
+    private Outcome handle(Player player, MaterialSource source, AssemblyPlanner.Planned next) {
+        BlockPos pos = next.pos();
+        BlockState existing = level.getBlockState(pos);
+        Block wanted = next.state().getBlock();
+        if (existing.is(wanted) || next.accepted().contains(existing.getBlock())) {
+            return Outcome.ALREADY; // already right (maybe another allowed tier), costs nothing
+        }
+        if (!existing.isAir() && !existing.canBeReplaced()) {
+            blocked++;
+            return Outcome.BLOCKED; // never break what the player built
+        }
+        if (!player.mayBuild() || !level.mayInteract(player, pos)) {
+            blocked++;
+            return Outcome.BLOCKED; // adventure mode, spawn protection, world border
+        }
+        if (!source.has(wanted)) {
+            missing.merge(wanted, 1, Integer::sum);
+            return Outcome.MISSING;
+        }
+        if (!source.payEnergy(perBlockFe)) {
+            outOfEnergy = true;
+            return Outcome.NO_ENERGY;
+        }
+        ItemStack taken = source.take(wanted);
+        // placed like a player would: claim and protection mods may cancel it
+        BlockSnapshot snapshot = BlockSnapshot.create(level.dimension(), level, pos);
+        if (!level.setBlock(pos, next.state(), Block.UPDATE_ALL)) {
+            source.refund(taken);
+            source.refundEnergy(perBlockFe);
+            blocked++;
+            return Outcome.FAILED;
+        }
+        if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) {
+            snapshot.restore(true, true);
+            source.refund(taken);
+            source.refundEnergy(perBlockFe);
+            blocked++;
+            return Outcome.FAILED;
+        }
+        var sound = next.state().getSoundType();
+        level.playSound(null, pos, sound.getPlaceSound(), SoundSource.BLOCKS, (sound.getVolume() + 1f) / 2f, sound.getPitch() * 0.8f);
+        placed++;
+        return Outcome.PLACED;
     }
 }

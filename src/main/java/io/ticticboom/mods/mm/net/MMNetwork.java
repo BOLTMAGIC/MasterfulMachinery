@@ -10,7 +10,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public class MMNetwork {
 
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,

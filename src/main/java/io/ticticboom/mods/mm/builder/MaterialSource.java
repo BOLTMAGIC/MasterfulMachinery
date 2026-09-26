@@ -23,6 +23,11 @@ public interface MaterialSource {
     default void refundEnergy(int fe) {
     }
 
+    /** True once the source itself is gone (e.g. the tool was dropped); the job then stops. */
+    default boolean gone() {
+        return false;
+    }
+
     /** False while the source cannot be drawn from safely right now (the job waits, e.g. the tool's store is open). */
     default boolean ready() {
         return true;
