@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.tool;
 
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
+import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
@@ -33,7 +34,8 @@ import java.util.List;
 
 /**
  * Carries a chosen Masterful Machinery structure, a 54-slot block store and FE; right-click builds it
- * in the world or completes a matching controller, Shift+use opens the gallery/settings screen (Task 6).
+ * in the world or completes a matching controller, Shift+right-click on a machine (or holding V) dismantles it,
+ * Shift+use elsewhere opens the store/gallery/settings screen.
  */
 public class MultiblockToolItem extends Item {
     private static final int BAR_COLOR = 0x3399FF;
@@ -66,21 +68,25 @@ public class MultiblockToolItem extends Item {
             return InteractionResultHolder.pass(stack);
         }
         if (!level.isClientSide()) {
-            NetworkHooks.openScreen((ServerPlayer) player, new MenuProvider() {
-                @Override
-                public @NotNull Component getDisplayName() {
-                    return stack.getHoverName();
-                }
-
-                @Override
-                public @NotNull AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player p) {
-                    return new MultiblockToolMenu(windowId, inv, hand);
-                }
-            }, buf -> buf.writeEnum(hand));
+            openStore((ServerPlayer) player, stack, hand);
         }
         // sidedSuccess (not pass) on both sides: a client-side pass here would also fire use() on the
         // other hand's item (e.g. eating/placing from the offhand) since vanilla falls through on PASS
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+    }
+
+    private static void openStore(ServerPlayer player, ItemStack stack, InteractionHand hand) {
+        NetworkHooks.openScreen(player, new MenuProvider() {
+            @Override
+            public @NotNull Component getDisplayName() {
+                return stack.getHoverName();
+            }
+
+            @Override
+            public @NotNull AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player p) {
+                return new MultiblockToolMenu(windowId, inv, hand);
+            }
+        }, buf -> buf.writeEnum(hand));
     }
 
     /**
@@ -97,14 +103,28 @@ public class MultiblockToolItem extends Item {
         return build(context);
     }
 
-    /** Right-click on any other block face builds the selected structure in front of it, controller included. */
+    /**
+     * Right-click on any other block face builds the selected structure in front of it, controller included.
+     * Shift+right-click on a machine dismantles it after a second click; on any other block it opens the store.
+     */
     @Override
     public @NotNull InteractionResult useOn(UseOnContext context) {
         Player player = context.getPlayer();
-        if (player == null || player.isShiftKeyDown()) {
-            return InteractionResult.PASS; // Shift+use opens the menu (use)
+        if (player == null) {
+            return InteractionResult.PASS;
         }
-        return build(context);
+        if (!player.isShiftKeyDown()) {
+            return build(context);
+        }
+        // the server decides machine or not; the client only must not also fire use()
+        if (player instanceof ServerPlayer serverPlayer) {
+            if (DismantlePlanner.resolve(context.getLevel(), context.getClickedPos()) != null) {
+                ToolDismantles.shiftClick(serverPlayer, context.getItemInHand(), context.getClickedPos());
+            } else {
+                openStore(serverPlayer, context.getItemInHand(), context.getHand());
+            }
+        }
+        return InteractionResult.sidedSuccess(context.getLevel().isClientSide());
     }
 
     private static InteractionResult build(UseOnContext context) {

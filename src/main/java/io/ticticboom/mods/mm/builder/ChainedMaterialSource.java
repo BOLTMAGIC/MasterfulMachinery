@@ -14,9 +14,10 @@ import java.util.List;
 
 /**
  * The multiblock tool's source: blocks come from the tool's own store first, then the player's inventory;
- * energy comes from the tool. Nothing is taken or paid in creative.
+ * energy comes from the tool. Nothing is taken or paid in creative. As a sink (dismantling) it stores items the
+ * same way a refund does: tool store, then inventory, then the ground.
  */
-public final class ChainedMaterialSource implements MaterialSource {
+public final class ChainedMaterialSource implements MaterialSource, ItemSink {
     private final ToolStore store;
     private final Player player;
     private final ToolEnergy energy;
@@ -62,6 +63,11 @@ public final class ChainedMaterialSource implements MaterialSource {
             // drops whatever the inventory cannot hold
             player.getInventory().placeItemBackInInventory(leftover);
         }
+    }
+
+    @Override
+    public void insert(ItemStack stack) {
+        refund(stack);
     }
 
     @Override
