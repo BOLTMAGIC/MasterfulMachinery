@@ -72,9 +72,18 @@ public final class Ae2MeAccess implements MeAccess {
     /** Looks the grid up again (it may be gone, or its owners changed) and starts a new tick's stock. */
     @Override
     public void refresh() {
-        IGrid found = NetworkAccess.grid(player.server, network);
-        grid = found != null && NetworkAccess.mayUse(player, found) ? found : null;
+        grid = usableGrid();
         extracted.clear();
+    }
+
+    /**
+     * The bound grid when the player may use it, else null. Crafts look it up through this too, so one waiting for its
+     * network never submits to, or follows, a grid the player lost access to (or that re-formed under another owner).
+     */
+    @Nullable
+    private IGrid usableGrid() {
+        IGrid found = NetworkAccess.grid(player.server, network);
+        return found != null && NetworkAccess.mayUse(player, found) ? found : null;
     }
 
     @Override
@@ -124,6 +133,6 @@ public final class Ae2MeAccess implements MeAccess {
         if (grid == null) {
             return CraftHandle.failed(item, amount, Component.translatable("message.mm.tool.craft.unreachable"));
         }
-        return Ae2CraftHandle.start(player, grid, () -> NetworkAccess.grid(player.server, network), item, amount);
+        return Ae2CraftHandle.start(player, grid, this::usableGrid, item, amount);
     }
 }

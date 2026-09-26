@@ -75,7 +75,7 @@ final class Ae2CraftHandle implements CraftHandle {
     /**
      * Starts calculating a plan for amount of item, as player.
      *
-     * @param network the bound network looked up again (null while it can't be reached)
+     * @param network the bound network looked up again (null while it can't be reached or player may not use it)
      */
     static CraftHandle start(ServerPlayer player, IGrid grid, Supplier<IGrid> network, Item item, int amount) {
         IActionSource source = IActionSource.ofPlayer(player);
@@ -106,7 +106,7 @@ final class Ae2CraftHandle implements CraftHandle {
         IGrid now = network.get();
         waiting = now == null || !now.getEnergyService().isNetworkPowered();
         if (waiting) {
-            // unreachable or unpowered: nothing can be submitted or judged, and the job may well go on afterwards
+            // unreachable, unpowered or no access: nothing is submitted or judged, and the job may well go on afterwards
             return;
         }
         grid = now;

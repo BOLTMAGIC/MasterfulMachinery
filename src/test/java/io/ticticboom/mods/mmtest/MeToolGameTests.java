@@ -406,16 +406,92 @@ public class MeToolGameTests {
     }
 
     /**
+     * The owner's network, but a craft is only calculating when the owner loses access to it (another player's block
+     * joins its owners): the plan is never submitted, the craft just waits, and it goes on once access is back.
+     */
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    public static void craftNotSubmittedAfterAccessRevoked(GameTestHelper helper) {
+        BlockPos drive = craftingNetwork(helper);
+        TestPlayer owner = player(helper);
+        TestPlayer stranger = player(helper);
+        ItemStack tool = tool(owner);
+        ToolData.setStructure(tool, CRAFT_STRUCTURE);
+        Item planks = Items.OAK_PLANKS;
+        BlockPos energy = helper.absolutePos(CRAFT_ENERGY);
+        int[] polls = {0};
+        boolean[] busySeen = {false};
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    check(helper, grid != null, "the network is not up yet");
+                    check(helper, grid.getCraftingService().isCraftable(AEItemKey.of(planks)), "the planks pattern is not known yet");
+                    check(helper, !grid.getCraftingService().getCpus().isEmpty(), "the crafting CPU is not formed yet");
+                })
+                .thenExecute(() -> {
+                    for (BlockPos each : CRAFTING_NETWORK) {
+                        own(helper, helper.absolutePos(each), owner);
+                    }
+                    bind(owner, tool, drive);
+                    check(helper, ToolData.network(tool) != null, "the owner should bind to their own network");
+                    ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), owner, tool, helper.absolutePos(CLICKED), Direction.UP);
+                    check(helper, hasKey(result.error(), "message.mm.tool.crafting"), "the planks should be requested: "
+                            + (result.error() == null ? "?" : result.error().getString()));
+                    check(helper, CraftTracker.active(owner, planks) == 1, "one plank should be calculating");
+                    // before any update could submit it: the grid now has an owner who doesn't allow the tool's player
+                    own(helper, energy, stranger);
+                })
+                .thenWaitUntil(() -> {
+                    // far longer than the calculation takes; every poll could have submitted it
+                    CraftTracker.update(owner);
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    busySeen[0] |= grid.getCraftingService().getCpus().stream().anyMatch(ICraftingCPU::isBusy);
+                    check(helper, ++polls[0] >= 100, "still polling");
+                })
+                .thenExecute(() -> {
+                    check(helper, !busySeen[0], "no job may be submitted to a network the player lost access to");
+                    KeyCounter left = liveStock(helper, drive);
+                    check(helper, left.get(AEItemKey.of(Items.OAK_LOG)) == 1 && left.get(AEItemKey.of(planks)) == 0,
+                            "nothing may be crafted, ME holds " + left);
+                    List<CraftTracker.Order> orders = CraftTracker.orders(owner);
+                    check(helper, orders.size() == 1 && orders.get(0).failed() == null && orders.get(0).active() == 1,
+                            "the craft should still wait, not fail or finish");
+                    check(helper, CraftTracker.hud(owner).phase() == HudState.Phase.WAITING, "the HUD should wait, shows " + CraftTracker.hud(owner));
+                    // access is back: the same craft is submitted (so it was ready all along)
+                    own(helper, energy, owner);
+                })
+                .thenWaitUntil(() -> {
+                    CraftTracker.update(owner);
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    check(helper, grid.getCraftingService().getCpus().stream().anyMatch(ICraftingCPU::isBusy), "the job is not submitted yet");
+                })
+                .thenExecute(() -> {
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    grid.getCraftingService().getCpus().forEach(ICraftingCPU::cancelJob);
+                    CraftTracker.clear(owner);
+                })
+                .thenSucceed();
+    }
+
+    /** The crafting network's blocks: energy cell, drive, 1k crafting storage, pattern provider, molecular assembler. */
+    private static final BlockPos CRAFT_ENERGY = new BlockPos(0, 1, 6);
+    private static final BlockPos CRAFT_DRIVE = new BlockPos(0, 1, 5);
+    private static final BlockPos CRAFT_CPU = new BlockPos(1, 1, 6);
+    private static final BlockPos CRAFT_PROVIDER = new BlockPos(2, 1, 6);
+    private static final BlockPos CRAFT_ASSEMBLER = new BlockPos(3, 1, 6);
+    private static final List<BlockPos> CRAFTING_NETWORK = List.of(CRAFT_ENERGY, CRAFT_DRIVE, CRAFT_CPU, CRAFT_PROVIDER, CRAFT_ASSEMBLER);
+
+    /**
      * Energy cell, drive (the craft_test controller and one oak log in a 1k cell), 1k crafting storage, and a pattern
      * provider holding the oak planks crafting pattern with a molecular assembler beside it; returns the drive.
      */
     private static BlockPos craftingNetwork(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        BlockPos energy = helper.absolutePos(new BlockPos(0, 1, 6));
-        BlockPos drive = helper.absolutePos(new BlockPos(0, 1, 5));
-        BlockPos cpu = helper.absolutePos(new BlockPos(1, 1, 6));
-        BlockPos provider = helper.absolutePos(new BlockPos(2, 1, 6));
-        BlockPos assembler = helper.absolutePos(new BlockPos(3, 1, 6));
+        BlockPos energy = helper.absolutePos(CRAFT_ENERGY);
+        BlockPos drive = helper.absolutePos(CRAFT_DRIVE);
+        BlockPos cpu = helper.absolutePos(CRAFT_CPU);
+        BlockPos provider = helper.absolutePos(CRAFT_PROVIDER);
+        BlockPos assembler = helper.absolutePos(CRAFT_ASSEMBLER);
         level.setBlockAndUpdate(energy, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
         level.setBlockAndUpdate(drive, AEBlocks.DRIVE.block().defaultBlockState());
         level.setBlockAndUpdate(cpu, AEBlocks.CRAFTING_STORAGE_1K.block().defaultBlockState());
