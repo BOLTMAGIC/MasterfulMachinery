@@ -55,7 +55,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayer;
 import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
@@ -70,10 +69,13 @@ import java.util.function.Consumer;
  * The Multiblock Tool on a real AE2 network: a creative energy cell powering an ME drive that holds a 1k cell filled
  * through AE2's cell API (an ad-hoc network, no controller). The tool is bound with Shift+right-click and builds
  * mmtest:assembly_test from the network only, or is refused it.
+ * <p>
+ * Not a {@code @GameTestHolder}: Forge loads every holder, and this class needs AE2. {@link MeGameTests} registers it
+ * only when AE2 is installed, so each test names its template namespace itself.
  */
-@GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)
 public class MeToolGameTests {
+    private static final String NAMESPACE = "mmtest";
     private static final String TEMPLATE = "empty";
     private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
     private static final int START_FE = 1000;
@@ -90,7 +92,7 @@ public class MeToolGameTests {
     /** Its controller and one oak planks block. */
     private static final ResourceLocation CRAFT_STRUCTURE = ResourceLocation.tryBuild("mmtest", "craft_test");
 
-    @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void toolBindsAndBuildsFromMeNetwork(GameTestHelper helper) {
         BlockPos drive = network(helper);
         TestPlayer player = player(helper);
@@ -127,7 +129,7 @@ public class MeToolGameTests {
     }
 
     /** The bound block is gone: the build still goes on from the store, says why ME was not used, and ME is untouched. */
-    @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void toolFallsBackWhenMeUnreachable(GameTestHelper helper) {
         BlockPos drive = network(helper);
         BlockPos energyCell = helper.absolutePos(ENERGY_CELL);
@@ -168,7 +170,7 @@ public class MeToolGameTests {
      * AE2 15 has no security of its own: a network placed by one player can't be bound by another, and a tool bound by
      * the owner does nothing for them either.
      */
-    @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void nonOwnerCannotBindOrUseNetwork(GameTestHelper helper) {
         BlockPos drive = network(helper);
         TestPlayer owner = player(helper);
@@ -205,7 +207,7 @@ public class MeToolGameTests {
     }
 
     /** A block taken from ME whose placement is cancelled goes back to the tool's store, not to ME, and is taken once. */
-    @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void cancelledMePlacementRefundedToStore(GameTestHelper helper) {
         BlockPos drive = network(helper);
         TestPlayer player = player(helper);
@@ -241,7 +243,7 @@ public class MeToolGameTests {
     }
 
     /** The network goes away between two job ticks: the job goes on from the store alone and its summary says so. */
-    @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void networkLostMidJobContinuesFromStore(GameTestHelper helper) {
         BlockPos drive = network(helper);
         BlockPos energyCell = helper.absolutePos(ENERGY_CELL);
@@ -291,7 +293,7 @@ public class MeToolGameTests {
      * CPU). The build is refused and the planks are requested; a second right-click while crafting only waits; once
      * AE2 is done the tracker says so and the next right-click builds from ME.
      */
-    @GameTest(template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
     public static void toolAutoCraftsMissingBlock(GameTestHelper helper) {
         BlockPos drive = craftingNetwork(helper);
         TestPlayer player = player(helper);
@@ -350,7 +352,7 @@ public class MeToolGameTests {
      * The same setup, but the job is cancelled on its CPU as soon as it is submitted: the tool reports the craft as
      * cancelled (once), the log goes back into ME, and nothing is built.
      */
-    @GameTest(template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
     public static void toolAutoCraftCancelledReported(GameTestHelper helper) {
         BlockPos drive = craftingNetwork(helper);
         TestPlayer player = player(helper);

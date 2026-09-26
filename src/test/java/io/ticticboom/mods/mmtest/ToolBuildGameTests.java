@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -213,8 +214,14 @@ public class ToolBuildGameTests {
         String message = result.error().getString();
         check(helper, message.contains(controllerBlock().getName().getString()) && !message.contains(port("s").getName().getString())
                 && !message.contains(port("l").getName().getString()), "only the controller should be named: " + message);
-        check(helper, result.error().getSiblings().stream().anyMatch(part -> part.getContents() instanceof TranslatableContents c
-                && c.getKey().equals("message.mm.tool.no_me")), "an unbound tool should say it has no ME network: " + message);
+        boolean noMe = result.error().getSiblings().stream().anyMatch(part -> part.getContents() instanceof TranslatableContents c
+                && c.getKey().equals("message.mm.tool.no_me"));
+        if (ModList.get().isLoaded("ae2")) {
+            check(helper, noMe, "an unbound tool should say it has no ME network: " + message);
+        } else {
+            // without AE2 there is no network to bind, so nothing to point out
+            check(helper, !noMe, "without AE2 the tool must not mention ME networks: " + message);
+        }
         expectNothingBuilt(helper, tool, 3);
         helper.succeed();
     }
