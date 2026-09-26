@@ -1,12 +1,17 @@
 package io.ticticboom.mods.mm.builder;
 
 import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.port.IPortBlock;
+import io.ticticboom.mods.mm.port.MMPortRegistry;
+import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
 
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
@@ -50,6 +55,30 @@ public final class PortTiers {
                 }
             }
         }
+        return result;
+    }
+
+    /**
+     * Every tier preference key of the registered ports that come in more than one tier, in registration order,
+     * with tier -> the first registered port block of that tier.
+     */
+    public static Map<String, NavigableMap<Integer, Block>> registeredTiered() {
+        var result = new LinkedHashMap<String, NavigableMap<Integer, Block>>();
+        for (RegistryGroupHolder holder : MMPortRegistry.PORTS) {
+            Block block = holder.getBlock().get();
+            if (block instanceof IPortBlock port) {
+                PortModel model = port.getModel();
+                result.computeIfAbsent(key(model.type(), model.input()), k -> new TreeMap<>()).putIfAbsent(rankOf(model), block);
+            }
+        }
+        result.values().removeIf(tiers -> tiers.size() < 2);
+        return result;
+    }
+
+    /** {@link #registeredTiered()} keys with their highest tier, as {@link TierPrefs#validate} takes them. */
+    public static Map<String, Integer> registeredMaxTiers() {
+        var result = new HashMap<String, Integer>();
+        registeredTiered().forEach((key, tiers) -> result.put(key, tiers.lastKey()));
         return result;
     }
 

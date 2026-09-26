@@ -34,6 +34,7 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
     private static final int OFFHAND_INV_INDEX = 40;
 
     private final Player player;
+    @Getter
     private final InteractionHand hand;
     @Getter
     private final ToolStore store;
@@ -130,8 +131,31 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
         }
     }
 
+    /**
+     * Client only: moves a slot to where the screen draws it. Slot positions only matter on the client,
+     * so the slot is replaced by a copy of the same kind at the new position.
+     */
+    public void moveSlot(int index, int x, int y) {
+        if (!player.level().isClientSide()) {
+            return;
+        }
+        Slot old = this.slots.get(index);
+        Slot moved;
+        if (old instanceof ToolSlot) {
+            moved = new ToolSlot(store, old.getContainerSlot(), x, y, true, this);
+        } else if (old instanceof LockedSlot) {
+            moved = new LockedSlot(player.getInventory(), old.getContainerSlot(), x, y);
+        } else {
+            moved = new Slot(old.container, old.getContainerSlot(), x, y);
+        }
+        moved.index = old.index;
+        this.slots.set(index, moved);
+    }
+
     @Override
     public void clicked(int slotId, int button, @NotNull ClickType clickType, @NotNull Player clicker) {
+        // client: catch up with a replaced held stack first, or the check below skips the click's prediction
+        refreshClientStore();
         if (!isToolStackValid()) {
             // the tool is gone (dropped/consumed/swapped out from under the menu): refuse every
             // interaction; ToolStore/ToolSlot back this up independently, but this is the one place
@@ -229,6 +253,7 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
 
     @Override
     public @NotNull ItemStack quickMoveStack(@NotNull Player mover, int index) {
+        refreshClientStore();
         if (!isToolStackValid() || index == lockedSlotIndex) {
             return ItemStack.EMPTY;
         }

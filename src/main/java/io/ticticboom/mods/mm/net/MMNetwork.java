@@ -45,5 +45,9 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::encode,
                 io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::decode,
                 io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolSettingsPkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::handle);
     }
 }

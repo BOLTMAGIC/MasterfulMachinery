@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.client.builder;
 
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.TierResolver;
-import io.ticticboom.mods.mm.builder.TieredPortPiece;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.AssemblyPkt;
@@ -16,10 +15,7 @@ import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 /** Pick the structure (when there are several) and a port tier per port type, then assemble. */
 public class AssemblyScreen extends Screen {
@@ -31,10 +27,7 @@ public class AssemblyScreen extends Screen {
     private final MachineControllerBlockEntity be;
     private final TierPrefs prefs = new TierPrefs();
     private StructureModel structure;
-    /** port type key -> tier -> block, over every port_type position of the structure */
-    private final Map<String, TreeMap<Integer, Block>> rows = new LinkedHashMap<>();
-    /** port type key -> its positions, each with its own tier range */
-    private final Map<String, List<TieredPortPiece>> positions = new LinkedHashMap<>();
+    private StructureTierRows tierRows = new StructureTierRows(null);
     private int left;
     private int top;
 
@@ -49,7 +42,7 @@ public class AssemblyScreen extends Screen {
     @Override
     protected void init() {
         collectRows();
-        int height = 44 + rows.size() * ROW + 24;
+        int height = 44 + tierRows.rows().size() * ROW + 24;
         left = (this.width - WIDTH) / 2;
         top = (this.height - height) / 2;
         int y = top + 22;
@@ -60,7 +53,7 @@ public class AssemblyScreen extends Screen {
             addRenderableWidget(Button.builder(Component.literal(">"), b -> cycleStructure(1)).bounds(left + WIDTH - 22, y - 2, 14, 14).build());
         }
         y += ROW + 4;
-        for (String key : rows.keySet()) {
+        for (String key : tierRows.rows().keySet()) {
             addRenderableWidget(Button.builder(Component.literal("<"), b -> cycleTier(key, -1)).bounds(left + WIDTH - 44, y - 2, 14, 14).build());
             addRenderableWidget(Button.builder(Component.literal(">"), b -> cycleTier(key, 1)).bounds(left + WIDTH - 22, y - 2, 14, 14).build());
             y += ROW;
@@ -70,33 +63,7 @@ public class AssemblyScreen extends Screen {
     }
 
     private void collectRows() {
-        rows.clear();
-        positions.clear();
-        if (structure == null) {
-            return;
-        }
-        for (var positioned : structure.layout().getPositionedPieces()) {
-            if (positioned.piece().piece() instanceof TieredPortPiece tiered) {
-                String key = tiered.tierKey();
-                var tiers = rows.computeIfAbsent(key, k -> new TreeMap<>());
-                tiered.tierOptions().forEach(tiers::putIfAbsent);
-                positions.computeIfAbsent(key, k -> new ArrayList<>()).add(tiered);
-            }
-        }
-        rows.values().removeIf(Map::isEmpty);
-    }
-
-    /** True when some position of this port type cannot take the preferred tier and gets another one. */
-    private boolean adjusted(String key, int preferred) {
-        if (preferred == TierResolver.LOWEST) {
-            return false;
-        }
-        for (TieredPortPiece piece : positions.getOrDefault(key, List.of())) {
-            if (piece.resolveTier(preferred) != preferred) {
-                return true;
-            }
-        }
-        return false;
+        tierRows = new StructureTierRows(structure);
     }
 
     private void cycleStructure(int step) {
@@ -111,7 +78,7 @@ public class AssemblyScreen extends Screen {
         // options: "lowest" followed by every tier this structure accepts for the port type
         List<Integer> options = new ArrayList<>();
         options.add(TierResolver.LOWEST);
-        options.addAll(rows.get(key).keySet());
+        options.addAll(tierRows.rows().get(key).keySet());
         int index = Math.max(0, options.indexOf(prefs.get(key)));
         int next = options.get(Math.floorMod(index + step, options.size()));
         prefs.set(key, next);
@@ -127,7 +94,7 @@ public class AssemblyScreen extends Screen {
     @Override
     public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
         renderBackground(gfx);
-        int height = 44 + rows.size() * ROW + 24;
+        int height = 44 + tierRows.rows().size() * ROW + 24;
         gfx.fill(left, top, left + WIDTH, top + height, PANEL);
         gfx.drawString(font, this.title, left + 8, top + 7, 0xFFFFFF, false);
 
@@ -136,15 +103,14 @@ public class AssemblyScreen extends Screen {
         gfx.drawString(font, name, left + 8, y + 1, 0xE0E0E0, false);
         y += ROW + 4;
         boolean anyAdjusted = false;
-        for (var entry : rows.entrySet()) {
-            int preferred = prefs.get(entry.getKey());
-            int chosen = TierResolver.resolve(preferred, Integer.MIN_VALUE, Integer.MAX_VALUE, entry.getValue().navigableKeySet());
-            Block block = entry.getValue().get(chosen);
+        for (String key : tierRows.rows().keySet()) {
+            int preferred = prefs.get(key);
+            Block block = tierRows.chosenBlock(key, preferred);
             Component label = block == null ? Component.literal("?") : block.getName();
             if (preferred == TierResolver.LOWEST) {
                 label = Component.translatable("gui.mm.assemble.lowest", label);
             }
-            boolean adjusted = adjusted(entry.getKey(), preferred);
+            boolean adjusted = tierRows.adjusted(key, preferred);
             anyAdjusted |= adjusted;
             gfx.drawString(font, font.plainSubstrByWidth(label.getString(), WIDTH - 60) + (adjusted ? " *" : ""),
                     left + 8, y + 1, adjusted ? 0xFFD84D : 0xE0E0E0, false);
