@@ -12,6 +12,8 @@ import snownee.jade.api.IServerDataProvider;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
 
+import java.util.Locale;
+
 /**
  * Jade tooltip of a machine controller: state, recipe progress, parallel recipes, redstone mode and owner.
  */
@@ -40,7 +42,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
             data.putInt(RUNNING_KEY, cbe.getActiveRecipeCount());
             data.putInt(LIMIT_KEY, cbe.getDisplayedParallelLimit());
         }
-        data.putString(REDSTONE_KEY, cbe.getRedstoneModeName().toLowerCase());
+        data.putString(REDSTONE_KEY, cbe.getRedstoneModeName().toLowerCase(Locale.ROOT));
         if (cbe.getNetworkLink() != null) {
             data.putString(OWNER_KEY, cbe.getNetworkLink().ownerName());
         }

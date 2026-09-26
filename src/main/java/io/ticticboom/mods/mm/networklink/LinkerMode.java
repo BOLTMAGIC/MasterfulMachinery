@@ -3,6 +3,8 @@ package io.ticticboom.mods.mm.networklink;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Locale;
+
 public enum LinkerMode {
     /** Save a network, link / unlink controllers. */
     LINK,
@@ -12,7 +14,7 @@ public enum LinkerMode {
     private static final String TAG = "Mode";
 
     public Component displayName() {
-        return Component.translatable("mode.mm.network_linker." + name().toLowerCase());
+        return Component.translatable("mode.mm.network_linker." + name().toLowerCase(Locale.ROOT));
     }
 
     public LinkerMode cycle(int direction) {
