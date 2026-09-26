@@ -26,7 +26,9 @@ import java.util.function.Predicate;
 
 /**
  * What the multiblock tool builds when used on a block face: the controller first, then every piece. Common code
- * (server build and client hologram share it), so both always agree for the same inputs.
+ * (server build and client hologram share it), so both plan the same for the same inputs; the inputs differ, though,
+ * where the ME network comes in: the client knows nothing of its stock ({@link #availableSnapshot}), so the hologram
+ * may show a tier or block the server then takes from the network differently.
  *
  * @param controllerPos where the controller goes
  * @param rotation      the structure's rotation; the controller faces the way {@link AssemblyPlanner#rotationFor} maps
