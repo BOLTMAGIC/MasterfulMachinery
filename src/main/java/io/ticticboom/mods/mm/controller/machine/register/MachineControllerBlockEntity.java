@@ -1501,11 +1501,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return List.copyOf(byId.values());
     }
 
-    /** The chosen structure, else the first candidate. */
+    /** The chosen structure, else the one this controller has (formed or last found), else the first candidate. */
     public @Nullable StructureModel getAssemblyStructure() {
         StructureModel chosen = findAssemblyCandidate(assemblyStructureId);
         if (chosen != null) {
             return chosen;
+        }
+        StructureModel current = structure == null ? null : findAssemblyCandidate(structure.id());
+        if (current != null) {
+            return current;
         }
         List<StructureModel> candidates = getAssemblyCandidates();
         return candidates.isEmpty() ? null : candidates.get(0);
