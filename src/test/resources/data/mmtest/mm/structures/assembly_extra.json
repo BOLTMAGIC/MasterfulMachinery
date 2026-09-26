@@ -1,0 +1,24 @@
+{
+  "name": "Assembly Extra",
+  "controllerIds": "mm:assembly_test",
+  "layout": [
+    [
+      "ACO"
+    ]
+  ],
+  "key": {
+    "A": {
+      "portType": "mm:item",
+      "input": true,
+      "anywhere": true,
+      "minTier": 2,
+      "maxTier": 3
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 3
+    }
+  }
+}

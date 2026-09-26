@@ -14,7 +14,6 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,7 +27,7 @@ public final class AssemblyJobs {
     private AssemblyJobs() {
     }
 
-    public static boolean start(ServerPlayer player, BlockPos controllerPos, List<AssemblyPlanner.Planned> plan) {
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
         if (JOBS.containsKey(player.getUUID())) {
             return false;
         }
@@ -52,6 +51,11 @@ public final class AssemblyJobs {
                 if (player != null) {
                     player.displayClientMessage(Component.translatable("message.mm.assemble.stopped"), true);
                 }
+                it.remove();
+                continue;
+            }
+            if (!job.controllerPresent()) {
+                player.displayClientMessage(Component.translatable("message.mm.assemble.controller_gone"), true);
                 it.remove();
                 continue;
             }
@@ -85,6 +89,9 @@ public final class AssemblyJobs {
         }
         if (job.blocked > 0) {
             text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.blocked", job.blocked));
+        }
+        if (job.unavailable > 0) {
+            text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.unavailable", job.unavailable));
         }
         return text;
     }

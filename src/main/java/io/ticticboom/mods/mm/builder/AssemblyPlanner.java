@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.builder;
 
 import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import io.ticticboom.mods.mm.piece.type.StructurePiece;
-import io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import net.minecraft.core.BlockPos;
@@ -21,7 +20,15 @@ import java.util.function.Predicate;
 /** Turns an MM structure into "put this block here" steps around an existing controller. */
 public final class AssemblyPlanner {
 
-    public record Planned(BlockPos pos, BlockState state) {
+    /**
+     * Put {@code state} at {@code pos}; any block in {@code accepted} already there counts as done
+     * (e.g. another tier the position allows).
+     */
+    public record Planned(BlockPos pos, BlockState state, List<Block> accepted) {
+    }
+
+    /** @param unavailable positions nothing can be chosen for (no port of an allowed tier exists) */
+    public record Plan(List<Planned> steps, int unavailable) {
     }
 
     private AssemblyPlanner() {
@@ -66,11 +73,14 @@ public final class AssemblyPlanner {
         return count;
     }
 
-    public static List<Planned> plan(StructureModel model, BlockPos controllerPos, Rotation rotation, TierPrefs prefs, Predicate<Block> available) {
-        var result = new ArrayList<Planned>();
+    public static Plan plan(StructureModel model, BlockPos controllerPos, Rotation rotation, TierPrefs prefs, Predicate<Block> available) {
+        var steps = new ArrayList<Planned>();
+        int unavailable = 0;
         for (PositionedLayoutPiece positioned : pieces(model, rotation)) {
-            Block block = chooseBlock(positioned.piece().piece(), prefs, available);
+            StructurePiece piece = positioned.piece().piece();
+            Block block = chooseBlock(piece, prefs, available);
             if (block == null) {
+                unavailable++;
                 continue;
             }
             BlockPos pos = positioned.findAbsolutePos(controllerPos);
@@ -81,24 +91,21 @@ public final class AssemblyPlanner {
                     state = modifier.modifyBlockState(state, null, pos);
                 }
             }
-            result.add(new Planned(pos, state));
+            List<Block> candidates = piece.createBlocksSupplier().get();
+            List<Block> accepted = candidates == null ? List.of() : candidates.stream().filter(Objects::nonNull).toList();
+            steps.add(new Planned(pos, state, accepted));
         }
-        return result;
+        return new Plan(steps, unavailable);
     }
 
     /**
-     * port_type positions follow the tier preference; other positions take the first candidate the
+     * port_type positions (anywhere or not) follow the tier preference; other positions take the first candidate the
      * player can supply, else the first candidate.
      */
     public static @Nullable Block chooseBlock(StructurePiece piece, TierPrefs prefs, Predicate<Block> available) {
-        if (piece instanceof PortTypeStructurePiece portType) {
-            var byRank = portType.getBlocksByRank();
-            if (byRank.isEmpty()) {
-                return null;
-            }
-            String key = PortTiers.key(portType.getPortTypeId(), portType.getInput().orElse(true));
-            int rank = TierResolver.resolve(prefs.get(key), portType.getMinTier(), portType.getMaxTier(), byRank.navigableKeySet());
-            return rank < 0 ? null : byRank.get(rank);
+        if (piece instanceof TieredPortPiece tiered) {
+            int rank = tiered.resolveTier(prefs.get(tiered.tierKey()));
+            return rank < 0 ? null : tiered.getBlocksByRank().get(rank);
         }
         List<Block> candidates = piece.createBlocksSupplier().get();
         if (candidates == null) {

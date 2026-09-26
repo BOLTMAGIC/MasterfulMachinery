@@ -261,6 +261,8 @@
   "message.mm.assemble.done": "Placed %s blocks",
   "message.mm.assemble.missing": "Missing: %s",
   "message.mm.assemble.blocked": "%s spots blocked",
+  "message.mm.assemble.unavailable": "%s spots have no part",
+  "message.mm.assemble.controller_gone": "Assembly stopped: the controller is gone",
   "message.mm.assemble.stopped": "Assembly stopped: you went too far",
   "message.mm.assemble.no_structure": "This controller has no structure",
   "message.mm.assemble.already": "Already assembled",
