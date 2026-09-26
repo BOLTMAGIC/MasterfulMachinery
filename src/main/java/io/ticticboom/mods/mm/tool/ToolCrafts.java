@@ -79,7 +79,7 @@ public final class ToolCrafts {
         }
         MutableComponent text = Component.empty();
         if (crafting > 0) {
-            text.append(Component.translatable("message.mm.tool.crafting", crafting));
+            text.append(Component.translatable("message.mm.tool.crafting", crafting, CraftTracker.itemsWord(crafting)));
         }
         if (!problems.isEmpty()) {
             if (crafting > 0) {

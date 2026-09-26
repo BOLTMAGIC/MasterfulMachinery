@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.client.tool;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
@@ -25,7 +26,7 @@ import java.util.List;
  * items still in progress below it, "Waiting for the ME network…" (with the items that wait) while the network can't be
  * reached, a yellow failure line for {@value #SHOW_MS} ms when a craft fails, and the green "Ready — right-click to
  * build" for {@value #SHOW_MS} ms once all are done (the only place that says so). It sits above the action bar and the
- * health/food rows, however high those are stacked.
+ * health/food rows, however high those are stacked, and is drawn smaller rather than come near the crosshair.
  */
 @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ToolHudOverlay {
@@ -36,6 +37,8 @@ public final class ToolHudOverlay {
     /** The action bar's text ends this far above the bottom. */
     private static final int ACTION_BAR = 72;
     private static final int GAP = 4;
+    /** The panel's top stays at least this far below the screen centre (the crosshair). */
+    private static final int CROSSHAIR_CLEARANCE = 24;
     private static final int PAD = 3;
     private static final int ICON = 16;
     private static final int PANEL = 0x80000000;
@@ -78,7 +81,8 @@ public final class ToolHudOverlay {
                 }
                 lines.add(state.phase() == HudState.Phase.WAITING
                         ? Component.translatable("message.mm.tool.hud.waiting").withStyle(s -> s.withColor(WAITING))
-                        : Component.translatable("message.mm.tool.hud.crafting", bar(state.done(), state.total()), state.done(), state.total()));
+                        : Component.translatable("message.mm.tool.hud.crafting", bar(state.done(), state.total()), state.done(), state.total(),
+                                CraftTracker.itemsWord(state.total())));
             }
             case READY -> {
                 if (now - phaseSince < SHOW_MS) {
@@ -126,18 +130,29 @@ public final class ToolHudOverlay {
         }
         // above the action bar and whatever the health, armour, food and air rows take
         int bottom = height - Math.max(ACTION_BAR, Math.max(gui.leftHeight, gui.rightHeight)) - GAP;
-        int top = bottom - contentHeight;
+        // never up to the crosshair: on a short screen the panel is drawn smaller instead
+        int room = bottom - PAD - (height / 2 + CROSSHAIR_CLEARANCE);
+        if (room < font.lineHeight) {
+            return;
+        }
+        float scale = Math.min(1.0F, (float) room / (contentHeight + PAD));
         int center = width / 2;
-        gfx.fill(center - contentWidth / 2 - PAD, top - PAD, center + (contentWidth + 1) / 2 + PAD, bottom + PAD - 2, PANEL);
+        gfx.pose().pushPose();
+        gfx.pose().translate(center, bottom, 0);
+        gfx.pose().scale(scale, scale, 1.0F);
+        // from here on (0, 0) is the panel's bottom centre
+        int top = -contentHeight;
+        gfx.fill(-contentWidth / 2 - PAD, top - PAD, (contentWidth + 1) / 2 + PAD, PAD - 2, PANEL);
         int y = top;
         for (Component line : lines) {
-            gfx.drawString(font, line, center - font.width(line) / 2, y + 1, TEXT, true);
+            gfx.drawString(font, line, -font.width(line) / 2, y + 1, TEXT, true);
             y += lineHeight;
         }
-        int x = center - (icons.size() * (ICON + 2) - 2) / 2;
+        int x = -(icons.size() * (ICON + 2) - 2) / 2;
         for (Item item : icons) {
             gfx.renderItem(new ItemStack(item), x, y);
             x += ICON + 2;
         }
+        gfx.pose().popPose();
     }
 }

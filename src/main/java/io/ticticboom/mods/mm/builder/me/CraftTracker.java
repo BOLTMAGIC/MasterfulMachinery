@@ -264,6 +264,11 @@ public final class CraftTracker {
         return Component.empty().append(item.getDescription()).append(Component.literal(" ×" + count));
     }
 
+    /** "item" or "items" as count asks, for "Crafting 1 item" / "Crafting 3 items". */
+    public static MutableComponent itemsWord(int count) {
+        return Component.translatable(count == 1 ? "message.mm.tool.item" : "message.mm.tool.items");
+    }
+
     /** "Oak Planks ×12: reason". */
     public static MutableComponent entry(Item item, int count, @Nullable Component reason) {
         Component why = reason != null ? reason : Component.translatable("message.mm.tool.craft.error");
