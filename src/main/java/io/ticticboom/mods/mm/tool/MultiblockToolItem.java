@@ -31,7 +31,10 @@ import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -41,6 +44,10 @@ import java.util.function.Supplier;
  */
 public class MultiblockToolItem extends Item {
     private static final int BAR_COLOR = 0x3399FF;
+    /** The "ME network not used" chat notice is repeated at most this often per player (10 s). */
+    private static final int NOTICE_TICKS = 200;
+    /** Server tick each player was last told the notice (server thread only). */
+    private static final Map<UUID, Integer> LAST_NOTICE = new HashMap<>();
     /** The dismantle key's name for the tooltip; the client points this at the bound key (common code cannot). */
     private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
 
@@ -161,7 +168,7 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
-        if (result.notice() != null) {
+        if (result.notice() != null && noticeDue(serverPlayer)) {
             // in chat: the action bar is soon taken by the result or the job's summary
             player.displayClientMessage(result.notice(), false);
         }
@@ -175,6 +182,17 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         return InteractionResult.CONSUME;
+    }
+
+    /** Whether player may be told the ME notice again: once per {@value #NOTICE_TICKS} ticks, not on every right-click. */
+    private static boolean noticeDue(ServerPlayer player) {
+        int now = player.server.getTickCount();
+        Integer last = LAST_NOTICE.get(player.getUUID());
+        if (last != null && now - last >= 0 && now - last < NOTICE_TICKS) {
+            return false;
+        }
+        LAST_NOTICE.put(player.getUUID(), now);
+        return true;
     }
 
     @Override
