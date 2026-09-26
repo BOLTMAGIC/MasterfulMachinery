@@ -123,7 +123,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
      * workingSoundInterval ticks and puts its workingParticle on the screen side. Both are optional and off unless the
      * controller sets them. (animateTick is only called for a few random blocks per tick, far too rarely for a sound.)
      */
-    public void tickWorkingEffects(BlockState state, Level level, BlockPos pos) {
+    public void tickWorkingEffects(BlockState state, Level level, BlockPos pos, boolean soundMuted) {
         if (!state.hasProperty(ControllerState.PROPERTY) || state.getValue(ControllerState.PROPERTY) != ControllerState.WORKING
                 || !MMConfigSetup.CLIENT.workingEffects.get()) {
             return;
@@ -133,7 +133,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
         double x = pos.getX() + 0.5;
         double z = pos.getZ() + 0.5;
         // offset by position so machines started together don't all play at once
-        if (workingSound != null && (level.getGameTime() + pos.hashCode()) % workingSoundInterval == 0) {
+        if (workingSound != null && !soundMuted && (level.getGameTime() + pos.hashCode()) % workingSoundInterval == 0) {
             level.playLocalSound(x, pos.getY() + 0.5, z, workingSound, SoundSource.BLOCKS, 1.0F, 1.0F, false);
         }
         if (workingParticle != null && random.nextInt(4) == 0) {
@@ -177,6 +177,12 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
                 Ref.LOG.warn("Working particle {} on controller {} is unknown or needs options, only simple particles are supported", particleId, blockId);
             }
         }
+    }
+
+    /** Whether this machine plays a working sound at all, so the controller screen only offers muting when it does. */
+    public boolean hasWorkingSound() {
+        resolveWorkingEffects();
+        return workingSound != null;
     }
 
     // "" in the config turns an effect off

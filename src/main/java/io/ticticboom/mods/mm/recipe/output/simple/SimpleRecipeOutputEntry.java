@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import lombok.Getter;
@@ -57,6 +58,11 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
             ingredient.output(level, storages, state);
         }
         ingredient.outputTick(level, storages, state);
+    }
+
+    @Override
+    public java.util.List<DisplayedOutput> displayedOutputs() {
+        return java.util.List.of(new DisplayedOutput(ingredient, chance));
     }
 
     @Override

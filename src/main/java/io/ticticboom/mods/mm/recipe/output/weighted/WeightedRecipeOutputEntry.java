@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
 import io.ticticboom.mods.mm.util.ChanceUtils;
@@ -18,8 +19,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -75,6 +74,14 @@ public class WeightedRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
+    public List<DisplayedOutput> displayedOutputs() {
+        return options.stream()
+                .filter(o -> o.ingredient() != null)
+                .map(o -> new DisplayedOutput(o.ingredient(), chance * o.weight() / totalWeight))
+                .toList();
+    }
+
+    @Override
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
         for (Option option : options) {
             if (option.ingredient() != null) {
@@ -104,7 +111,7 @@ public class WeightedRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     private static String formatPercent(double fraction) {
-        return new BigDecimal(Double.toString(fraction * 100)).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        return ChanceUtils.formatPercent(fraction);
     }
 
     @Override
