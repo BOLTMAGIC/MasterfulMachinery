@@ -11,6 +11,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
@@ -82,17 +83,78 @@ public class ToolGameTests {
         for (int i = 0; i < 3; i++) {
             player.getInventory().setItem(9 + i, new ItemStack(Blocks.STONE, 64));
         }
+        // driven through clicked(..., QUICK_MOVE, ...) rather than quickMoveStack directly, since
+        // that's the real vanilla shift-click entry point (and it loops calling quickMoveStack for as
+        // long as it keeps getting a non-empty result back for the same slot)
         for (int i = 0; i < 3; i++) {
-            menu.quickMoveStack(player, MultiblockToolMenu.STORE_SLOTS + i);
+            menu.clicked(MultiblockToolMenu.STORE_SLOTS + i, 0, ClickType.QUICK_MOVE, player);
         }
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 192,
                 "expected 192 merged into one store slot, got " + menu.getStore().getStackInSlot(0).getCount());
 
-        menu.quickMoveStack(player, 0);
+        // one shift-click on the store slot must hand out exactly one stack (64), not drain it all
+        menu.clicked(0, 0, ClickType.QUICK_MOVE, player);
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 128,
                 "expected 128 left in the store slot after taking one stack back, got " + menu.getStore().getStackInSlot(0).getCount());
         check(helper, player.getInventory().countItem(Blocks.STONE.asItem()) == 64,
                 "expected the player to receive exactly one stack (64) back, got " + player.getInventory().countItem(Blocks.STONE.asItem()));
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void pickupSwapRefusedForOversizedStoreSlot(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        player.setItemInHand(InteractionHand.MAIN_HAND, tool);
+        MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
+        menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 512), false);
+
+        // cursor holds a different item; vanilla's raw swap would otherwise hand the cursor 512 stone
+        menu.setCarried(new ItemStack(Items.DIRT, 1));
+        menu.clicked(0, 0, ClickType.PICKUP, player);
+
+        check(helper, menu.getCarried().getItem() == Items.DIRT && menu.getCarried().getCount() == 1,
+                "the cursor should still hold the original dirt untouched, got " + menu.getCarried());
+        ItemStack storeSlot = menu.getStore().getStackInSlot(0);
+        check(helper, storeSlot.getItem() == Blocks.STONE.asItem() && storeSlot.getCount() == 512,
+                "the store slot should be untouched, got " + storeSlot);
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void swapMovesAtMostOneStackFromStore(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        player.setItemInHand(InteractionHand.MAIN_HAND, tool);
+        MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
+        menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 512), false);
+
+        // hotbar slot 1 is a plain, empty, unlocked hotbar slot (the tool sits in slot 0)
+        menu.clicked(0, 1, ClickType.SWAP, player);
+
+        ItemStack storeSlot = menu.getStore().getStackInSlot(0);
+        ItemStack hotbarSlot = player.getInventory().getItem(1);
+        check(helper, hotbarSlot.getCount() <= hotbarSlot.getMaxStackSize(),
+                "the hotbar slot must never exceed its own max stack size, got " + hotbarSlot.getCount());
+        check(helper, hotbarSlot.getCount() == 64, "expected exactly one stack (64) moved by the number-key swap, got " + hotbarSlot.getCount());
+        check(helper, storeSlot.getCount() == 448, "expected 448 left in the store slot, got " + storeSlot.getCount());
+        check(helper, storeSlot.getCount() + hotbarSlot.getCount() == 512, "total stone must be conserved across the swap");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void swapRefusesLockedDestination(GameTestHelper helper) {
+        Player player = helper.makeMockPlayer();
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        player.setItemInHand(InteractionHand.MAIN_HAND, tool);
+        MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
+        menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 100), false);
+
+        // button 0 is the hotbar slot currently holding the tool (selected defaults to 0)
+        menu.clicked(0, 0, ClickType.SWAP, player);
+
+        check(helper, menu.getStore().getStackInSlot(0).getCount() == 100, "the store slot should be untouched by a swap targeting the locked slot");
+        check(helper, player.getItemInHand(InteractionHand.MAIN_HAND) == tool, "the held tool should be unaffected");
         helper.succeed();
     }
 
