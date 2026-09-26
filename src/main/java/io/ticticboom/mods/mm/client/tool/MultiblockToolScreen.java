@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.client.builder.StructureTierRows;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.client.util.CountFormat;
+import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
@@ -23,9 +24,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
-import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.sounds.SoundEvents;
@@ -55,6 +54,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private static final int MAX_WIDTH = 520;
     private static final int MAX_HEIGHT = 400;
     private static final int WINDOW_MARGIN = 12;
+    // little room above and below: every pixel of height goes to the 3D preview
+    private static final int WINDOW_MARGIN_Y = 4;
     private static final int FRAME = 6;
     private static final int FRAME_BOTTOM = 7;
     // content starts 2px inside the frame
@@ -78,7 +79,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private static final int GALLERY_MIN = 100;
     private static final int GALLERY_MAX = 140;
     private static final int SEARCH_HEIGHT = 12;
-    private static final int INFO_HEIGHT = 22;
+    private static final int INFO_HEIGHT = 13;
     private static final int LAYER_HEIGHT = 11;
     private static final int LAYER_ARROW = 9;
     private static final int TAB = 22;
@@ -135,7 +136,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     @Override
     protected void init() {
         this.imageWidth = Mth.clamp(this.width - 2 * WINDOW_MARGIN - TAB, MIN_WIDTH, MAX_WIDTH);
-        this.imageHeight = Mth.clamp(this.height - 2 * WINDOW_MARGIN, MIN_HEIGHT, MAX_HEIGHT);
+        this.imageHeight = Mth.clamp(this.height - 2 * WINDOW_MARGIN_Y, MIN_HEIGHT, MAX_HEIGHT);
         super.init();
         // centre the window together with the tabs hanging on its right edge
         this.leftPos = (this.width - this.imageWidth - TAB) / 2;
@@ -144,8 +145,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         inventoryX = imageWidth - INSET - GRID_WIDTH;
         inventoryY = imageHeight - FRAME_BOTTOM - INVENTORY_HEIGHT;
         feX = INSET + GRID_WIDTH + GAP;
-        // room for the store / inventory labels above the band
-        bandBottom = storeTop - 13;
+        // no store / inventory labels (hover an empty store slot for its name): the band ends just above the slots
+        bandBottom = storeTop - 3;
         galleryWidth = Mth.clamp((imageWidth - 2 * INSET) * 3 / 10, GALLERY_MIN, GALLERY_MAX);
         previewX = INSET + galleryWidth + GAP;
         previewWidth = imageWidth - INSET - previewX;
@@ -389,7 +390,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         playClick();
     }
 
-    /** Name, size and block count; then the port blocks this structure will get, '*' where the preference is not taken. */
+    /**
+     * One line: name, size and block count, then the port blocks this structure will get, '*' where the preference is
+     * not taken. Cut short when too long; the tooltip has it all.
+     */
     private void drawInfo(GuiGraphics gfx) {
         int x = this.leftPos + previewX + 4;
         int y = this.topPos + infoY + 3;
@@ -398,8 +402,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             drawClipped(gfx, Component.translatable("tooltip.mm.multiblock_tool.no_structure"), x, y, width, LABEL);
             return;
         }
-        drawClipped(gfx, infoLine(), x, y, width, TEXT);
-        drawClipped(gfx, portsLine(), x, y + 9, width, LABEL);
+        MutableComponent line = infoLine().copy().withStyle(Style.EMPTY.withColor(TEXT))
+                .append(Component.literal(" · ").withStyle(Style.EMPTY.withColor(LABEL)))
+                .append(portsLine());
+        drawClipped(gfx, line, x, y, width, TEXT);
     }
 
     private Component infoLine() {
@@ -413,9 +419,9 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
 
     private Component portsLine() {
         if (tierRows.isEmpty()) {
-            return Component.translatable("gui.mm.tool.ports.fixed");
+            return Component.translatable("gui.mm.tool.ports.fixed").withStyle(Style.EMPTY.withColor(LABEL));
         }
-        MutableComponent line = Component.translatable("gui.mm.tool.ports");
+        MutableComponent line = Component.translatable("gui.mm.tool.ports").withStyle(Style.EMPTY.withColor(LABEL));
         boolean first = true;
         for (String key : tierRows.rows().keySet()) {
             if (!first) {
@@ -481,15 +487,12 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
-        FormattedText clipped = this.font.ellipsize(text, maxWidth);
-        gfx.drawString(this.font, Language.getInstance().getVisualOrder(clipped), x, y, color, false);
+        TextRenderUtil.drawClipped(gfx, this.font, text, x, y, maxWidth, color);
     }
 
     @Override
     protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {
         drawClipped(gfx, this.title, INSET, 6, imageWidth - 2 * INSET, TITLE);
-        drawClipped(gfx, Component.translatable("gui.mm.tool.store"), INSET, storeTop - 10, GRID_WIDTH, TITLE);
-        drawClipped(gfx, this.playerInventoryTitle, inventoryX, inventoryY - 10, GRID_WIDTH, TITLE);
     }
 
     /** Store slots hold up to 512: counts above two digits are drawn compact, like the item port's screen. */
@@ -515,7 +518,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         }
         List<Component> tooltip = null;
         Tab hoveredTab = tabAt(mouseX, mouseY);
-        if (hoveredTab != null) {
+        if (this.hoveredSlot instanceof ToolSlot && this.menu.getCarried().isEmpty()) {
+            // the store has no label on screen
+            tooltip = List.of(Component.translatable("gui.mm.tool.store"));
+        } else if (hoveredTab != null) {
             tooltip = List.of(Component.translatable(hoveredTab == Tab.STRUCTURES ? "gui.mm.tool.tab.structures" : "gui.mm.tool.tab.settings"));
         } else if (isOnEnergy(mouseX, mouseY)) {
             tooltip = List.of(Component.translatable("tooltip.mm.multiblock_tool.energy",

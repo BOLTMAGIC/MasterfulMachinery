@@ -4,11 +4,11 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.TierResolver;
+import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.Block;
@@ -38,6 +38,9 @@ public class ToolSettingsTab {
     private final ObjIntConsumer<String> onChange;
     /** port type key -> tier -> block, from the registered ports */
     private final Map<String, NavigableMap<Integer, Block>> rows = PortTiers.registeredTiered();
+    private final List<String> keys = List.copyOf(rows.keySet());
+    /** the note and the key hint, wrapped to the width; set by {@link #setBounds} */
+    private List<FormattedCharSequence> footer = List.of();
     private int x;
     private int y;
     private int width;
@@ -59,6 +62,10 @@ public class ToolSettingsTab {
         this.y = y;
         this.width = width;
         this.height = height;
+        var lines = new ArrayList<FormattedCharSequence>();
+        lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.note"), width - 8));
+        lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8));
+        footer = lines;
         clampScroll();
     }
 
@@ -68,23 +75,15 @@ public class ToolSettingsTab {
 
     /** Rows end where the note and the key hint begin. */
     private int rowsBottom() {
-        return y + height - footerHeight();
+        return y + height - footer.size() * 9 - 6;
     }
 
-    private List<FormattedCharSequence> footer() {
-        var lines = new ArrayList<FormattedCharSequence>();
-        lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.note"), width - 8));
-        lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8));
-        return lines;
-    }
-
-    private int footerHeight() {
-        return footer().size() * 9 + 6;
+    private int maxScroll() {
+        return Math.max(0, rows.size() * ROW - (rowsBottom() - rowsTop()));
     }
 
     private void clampScroll() {
-        int max = Math.max(0, rows.size() * ROW - (rowsBottom() - rowsTop()));
-        scroll = Math.max(0, Math.min(max, scroll));
+        scroll = Math.max(0, Math.min(maxScroll(), scroll));
     }
 
     private int labelWidth() {
@@ -100,8 +99,9 @@ public class ToolSettingsTab {
         return leftArrowX() + BUTTON + 4;
     }
 
+    // leaves room for the scroll bar at the right edge
     private int rightArrowX() {
-        return x + width - 4 - BUTTON;
+        return x + width - 6 - BUTTON;
     }
 
     private int valueWidth() {
@@ -124,12 +124,27 @@ public class ToolSettingsTab {
             rowY += ROW;
         }
         gfx.disableScissor();
+        drawScrollBar(gfx, top, bottom);
         int footerY = bottom + 4;
         gfx.fill(x + 4, bottom + 1, x + width - 4, bottom + 2, DIVIDER);
-        for (FormattedCharSequence line : footer()) {
+        for (FormattedCharSequence line : footer) {
             gfx.drawString(font, line, x + 4, footerY, LABEL, false);
             footerY += 9;
         }
+    }
+
+    /** A thin bar at the right edge when the rows don't all fit, like the structure list's. */
+    private void drawScrollBar(GuiGraphics gfx, int top, int bottom) {
+        int max = maxScroll();
+        if (max <= 0) {
+            return;
+        }
+        int visible = bottom - top;
+        int total = rows.size() * ROW;
+        int barHeight = Math.max(8, visible * visible / total);
+        int barY = top + (visible - barHeight) * scroll / max;
+        gfx.fill(x + width - 3, top, x + width - 1, bottom, 0xFF2A2A2A);
+        gfx.fill(x + width - 3, barY, x + width - 1, barY + barHeight, 0xFF8A8A8A);
     }
 
     private void drawRow(GuiGraphics gfx, String key, NavigableMap<Integer, Block> tiers, int rowY, int mouseX, int mouseY) {
@@ -176,11 +191,7 @@ public class ToolSettingsTab {
     }
 
     private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
-        if (maxWidth <= 0) {
-            return;
-        }
-        FormattedText clipped = font.ellipsize(text, maxWidth);
-        gfx.drawString(font, Language.getInstance().getVisualOrder(clipped), drawX, drawY, color, false);
+        TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
     @Nullable
@@ -192,7 +203,7 @@ public class ToolSettingsTab {
         if (index < 0 || index >= rows.size()) {
             return null;
         }
-        return new ArrayList<>(rows.keySet()).get(index);
+        return keys.get(index);
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -211,12 +222,8 @@ public class ToolSettingsTab {
         } else {
             return false;
         }
-        // options: "lowest" followed by every registered tier
-        List<Integer> options = new ArrayList<>();
-        options.add(TierResolver.LOWEST);
-        options.addAll(rows.get(key).keySet());
-        int index = Math.max(0, options.indexOf(prefs.get(key)));
-        int next = options.get(Math.floorMod(index + step, options.size()));
+        // "lowest" followed by every registered tier
+        int next = TierPrefs.cycle(prefs.get(key), rows.get(key).keySet(), step);
         prefs.set(key, next);
         onChange.accept(key, next);
         return true;

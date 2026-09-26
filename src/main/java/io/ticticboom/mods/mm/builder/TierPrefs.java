@@ -2,8 +2,11 @@ package io.ticticboom.mods.mm.builder;
 
 import net.minecraft.nbt.CompoundTag;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -43,6 +46,18 @@ public final class TierPrefs {
             return REJECTED;
         }
         return Math.max(TierResolver.LOWEST, Math.min(max, rank));
+    }
+
+    /**
+     * The next choice when a player steps through "lowest" followed by {@code tiers} (ascending), wrapping around;
+     * an unknown current value counts as "lowest".
+     */
+    public static int cycle(int current, Collection<Integer> tiers, int step) {
+        List<Integer> options = new ArrayList<>();
+        options.add(TierResolver.LOWEST);
+        options.addAll(tiers);
+        int index = Math.max(0, options.indexOf(current));
+        return options.get(Math.floorMod(index + step, options.size()));
     }
 
     public Map<String, Integer> asMap() {

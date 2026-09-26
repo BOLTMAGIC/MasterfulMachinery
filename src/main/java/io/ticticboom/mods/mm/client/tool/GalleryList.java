@@ -1,12 +1,12 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.util.TextMatch;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
@@ -98,7 +98,8 @@ public class GalleryList {
     }
 
     public void setQuery(String query) {
-        String normalized = query.strip().toLowerCase(Locale.ROOT);
+        // not lower-cased: that may change the length; matching ignores case itself (TextMatch)
+        String normalized = query.strip();
         if (!normalized.equals(this.query)) {
             this.query = normalized;
             scroll = 0;
@@ -131,8 +132,8 @@ public class GalleryList {
         for (Group group : groups) {
             var matches = new ArrayList<Line>();
             for (StructureModel structure : group.structures()) {
-                int start = searching ? structure.name().toLowerCase(Locale.ROOT).indexOf(query) : -1;
-                if (searching && start < 0 && !structure.id().toString().contains(query)) {
+                int start = searching ? TextMatch.indexOfIgnoreCase(structure.name(), query) : -1;
+                if (searching && start < 0 && !TextMatch.containsIgnoreCase(structure.id().toString(), query)) {
                     continue;
                 }
                 matches.add(new Line(group, structure, 0, start));
@@ -203,21 +204,17 @@ public class GalleryList {
 
     /** The name with the search text underlined in yellow. */
     private Component highlighted(String name, int start) {
-        if (start < 0 || query.isEmpty()) {
+        int end = start + query.length();
+        if (start < 0 || query.isEmpty() || end > name.length()) {
             return Component.literal(name);
         }
-        int end = Math.min(name.length(), start + query.length());
         return Component.literal(name.substring(0, start))
                 .append(Component.literal(name.substring(start, end)).withStyle(Style.EMPTY.withColor(MATCH).withUnderlined(true)))
                 .append(Component.literal(name.substring(end)));
     }
 
     private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
-        if (maxWidth <= 0) {
-            return;
-        }
-        FormattedText clipped = font.ellipsize(text, maxWidth);
-        gfx.drawString(font, Language.getInstance().getVisualOrder(clipped), drawX, drawY, color, false);
+        TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
     @Nullable

@@ -14,7 +14,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /** Pick the structure (when there are several) and a port tier per port type, then assemble. */
@@ -75,12 +74,8 @@ public class AssemblyScreen extends Screen {
     }
 
     private void cycleTier(String key, int step) {
-        // options: "lowest" followed by every tier this structure accepts for the port type
-        List<Integer> options = new ArrayList<>();
-        options.add(TierResolver.LOWEST);
-        options.addAll(tierRows.rows().get(key).keySet());
-        int index = Math.max(0, options.indexOf(prefs.get(key)));
-        int next = options.get(Math.floorMod(index + step, options.size()));
+        // "lowest" followed by every tier this structure accepts for the port type
+        int next = TierPrefs.cycle(prefs.get(key), tierRows.rows().get(key).keySet(), step);
         prefs.set(key, next);
         MMNetwork.INSTANCE.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.SET_TIER, key, next));
     }

@@ -87,4 +87,15 @@ class TierPrefsTest {
         prefs.set("mm:fluid/output", 4);
         assertEquals(prefs.asMap(), TierPrefs.load(prefs.save()).asMap());
     }
+
+    @Test
+    void cycleStepsThroughLowestAndTiersWrapping() {
+        var tiers = java.util.List.of(1, 2, 5);
+        assertEquals(1, TierPrefs.cycle(TierResolver.LOWEST, tiers, 1));
+        assertEquals(5, TierPrefs.cycle(2, tiers, 1));
+        assertEquals(TierResolver.LOWEST, TierPrefs.cycle(5, tiers, 1));
+        assertEquals(5, TierPrefs.cycle(TierResolver.LOWEST, tiers, -1));
+        // a value that is not an option counts as lowest
+        assertEquals(1, TierPrefs.cycle(3, tiers, 1));
+    }
 }
