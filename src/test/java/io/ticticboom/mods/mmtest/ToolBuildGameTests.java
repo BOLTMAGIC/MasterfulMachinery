@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.MaterialSource;
+import io.ticticboom.mods.mm.builder.PlayerMaterials;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
@@ -20,11 +21,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
@@ -336,6 +339,31 @@ public class ToolBuildGameTests {
         // the glass now came from the inventory; the store's old copy of it must not be used as well
         check(helper, storeCount(tool) == 0, "the store should be empty, has " + storeCount(tool));
         check(helper, player.getInventory().countItem(Items.GLASS) == 0, "the moved glass should be used, not duplicated");
+        helper.succeed();
+    }
+
+    /** Stacks carrying block entity data are never used: the block is placed in its default state, losing the data. */
+    @GameTest(template = TEMPLATE)
+    public static void blockEntityDataStacksNotConsumed(GameTestHelper helper) {
+        Player player = player(helper, 180);
+        ItemStack tool = tool(player);
+        ItemStack tagged = new ItemStack(Blocks.GLASS);
+        tagged.getOrCreateTag().put(BlockItem.BLOCK_ENTITY_TAG, new CompoundTag());
+        // stores filled before the store refused such stacks may still hold one
+        new ToolStore(tool).setStackInSlot(0, tagged.copy());
+        player.getInventory().setItem(9, tagged.copy());
+        MaterialSource source = ToolBuildPlan.source(player, tool);
+
+        check(helper, !source.has(Blocks.GLASS), "tagged glass must not count as available");
+        check(helper, !ToolBuildPlan.availableSnapshot(player, tool).test(Blocks.GLASS), "tagged glass must not count for planning");
+        check(helper, !PlayerMaterials.has(player, Blocks.GLASS), "the inventory's tagged glass must not count either");
+        check(helper, source.take(Blocks.GLASS).isEmpty(), "nothing should be taken");
+        check(helper, storeCount(tool) == 1 && player.getInventory().getItem(9).getCount() == 1, "both tagged stacks must stay");
+
+        player.getInventory().setItem(10, new ItemStack(Blocks.GLASS));
+        ItemStack taken = source.take(Blocks.GLASS);
+        check(helper, !taken.isEmpty() && !taken.hasTag(), "the plain glass should be taken, got " + taken);
+        check(helper, storeCount(tool) == 1 && player.getInventory().getItem(9).getCount() == 1, "the tagged stacks must still stay");
         helper.succeed();
     }
 

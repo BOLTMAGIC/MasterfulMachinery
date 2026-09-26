@@ -3,7 +3,9 @@ package io.ticticboom.mods.mm.tool;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 
@@ -109,10 +111,16 @@ public class ToolStore extends ItemStackHandler {
         return stack.isStackable() ? LIMIT : 1;
     }
 
-    /** A tool can never store another Multiblock Tool (would allow nesting/duplication). */
+    /**
+     * A tool can never store another Multiblock Tool (would allow nesting/duplication), nor anything carrying a block
+     * entity's data or an inventory of its own (a filled shulker box, a backpack): 54 of those could push the tool's
+     * NBT past packet limits, and such stacks are never used for building anyway.
+     */
     @Override
     public boolean isItemValid(int slot, @NotNull ItemStack stack) {
-        return !(stack.getItem() instanceof MultiblockToolItem);
+        return !(stack.getItem() instanceof MultiblockToolItem)
+                && stack.getTagElement(BlockItem.BLOCK_ENTITY_TAG) == null
+                && !stack.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent();
     }
 
     @Override

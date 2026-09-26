@@ -8,15 +8,30 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.event.AttachCapabilitiesEvent;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemStackHandler;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.function.Consumer;
 
 /**
  * The Multiblock Tool's block store (54 x 512) and FE storage, both backed by the tool item's own NBT.
@@ -204,6 +219,50 @@ public class ToolGameTests {
         check(helper, moved.isEmpty(), "quick-moving a multiblock tool into the store should do nothing");
         check(helper, player.getInventory().getItem(9).getItem() instanceof MultiblockToolItem,
                 "the second tool should remain in the player's inventory");
+        helper.succeed();
+    }
+
+    /** Nothing carrying an inventory or block entity data goes into the store (54 of them could overflow packets). */
+    @GameTest(template = TEMPLATE)
+    public static void storeRefusesContainerItems(GameTestHelper helper) {
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        ToolStore store = new ToolStore(tool);
+
+        ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
+        CompoundTag contents = new CompoundTag();
+        ListTag items = new ListTag();
+        CompoundTag diamond = new ItemStack(Items.DIAMOND, 64).save(new CompoundTag());
+        diamond.putByte("Slot", (byte) 0);
+        items.add(diamond);
+        contents.put("Items", items);
+        shulker.getOrCreateTag().put(BlockItem.BLOCK_ENTITY_TAG, contents);
+        check(helper, store.insertItem(0, shulker.copy(), false).getCount() == 1, "a filled shulker box must be refused");
+
+        // an item exposing an item handler (a backpack): attach one to a stick for this test only
+        Consumer<AttachCapabilitiesEvent<ItemStack>> attach = event -> {
+            if (event.getObject().is(Items.STICK)) {
+                LazyOptional<IItemHandler> handler = LazyOptional.of(() -> new ItemStackHandler(1));
+                event.addCapability(ResourceLocation.tryBuild("mmtest", "backpack"), new ICapabilityProvider() {
+                    @Override
+                    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
+                        return cap == ForgeCapabilities.ITEM_HANDLER ? handler.cast() : LazyOptional.empty();
+                    }
+                });
+            }
+        };
+        MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, attach);
+        ItemStack backpack;
+        try {
+            backpack = new ItemStack(Items.STICK);
+            backpack.getCapability(ForgeCapabilities.ITEM_HANDLER); // item capabilities attach lazily, on first use
+        } finally {
+            MinecraftForge.EVENT_BUS.unregister(attach);
+        }
+        check(helper, backpack.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent(), "the test stick should expose an item handler");
+        check(helper, store.insertItem(0, backpack, false).getCount() == 1, "an item with its own inventory must be refused");
+
+        check(helper, store.insertItem(0, new ItemStack(Blocks.GLASS), false).isEmpty(), "a plain block is fine");
+        check(helper, store.insertItem(1, new ItemStack(Items.STICK), false).isEmpty(), "a plain stick is fine");
         helper.succeed();
     }
 

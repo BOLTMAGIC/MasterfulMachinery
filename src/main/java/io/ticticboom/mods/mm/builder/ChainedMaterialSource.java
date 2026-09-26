@@ -51,15 +51,21 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         Set<Item> items = new HashSet<>();
         if (toolCarried()) {
             for (int i = 0; i < store.getSlots(); i++) {
-                items.add(store.getStackInSlot(i).getItem());
+                addBuildable(items, store.getStackInSlot(i));
             }
         }
         for (ItemStack stack : player.getInventory().items) {
-            items.add(stack.getItem());
+            addBuildable(items, stack);
         }
         // empty stacks and blocks without an item both map to air
         items.remove(Items.AIR);
         return block -> items.contains(block.asItem());
+    }
+
+    private static void addBuildable(Set<Item> items, ItemStack stack) {
+        if (PlayerMaterials.buildable(stack, stack.getItem())) {
+            items.add(stack.getItem());
+        }
     }
 
     @Override
@@ -143,7 +149,10 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return player.getAbilities().instabuild;
     }
 
-    /** The store slot to take block's item from (plain stacks before tagged ones, like the inventory), or -1. */
+    /**
+     * The store slot to take block's item from (plain stacks before tagged ones, never block entity data, like the
+     * inventory), or -1.
+     */
     private int storeSlot(Block block) {
         Item item = block.asItem();
         if (item == Items.AIR || !toolCarried()) {
@@ -152,7 +161,7 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         int tagged = -1;
         for (int i = 0; i < store.getSlots(); i++) {
             ItemStack stack = store.getStackInSlot(i);
-            if (stack.is(item)) {
+            if (PlayerMaterials.buildable(stack, item)) {
                 if (!stack.hasTag()) {
                     return i;
                 }
