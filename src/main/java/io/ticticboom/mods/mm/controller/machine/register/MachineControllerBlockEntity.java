@@ -1492,11 +1492,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         syncAssemblySettings();
     }
 
-    /** Structures this controller can assemble, without duplicates and sorted by id so client and server agree. */
+    /** Structures this controller can assemble, one per id (the latest definition), sorted by id so client and server agree. */
     public List<StructureModel> getAssemblyCandidates() {
         var byId = new TreeMap<ResourceLocation, StructureModel>();
         for (StructureModel structure : StructureManager.getStructuresForController(controllerId)) {
-            byId.putIfAbsent(structure.id(), structure);
+            byId.put(structure.id(), structure); // last wins, like StructureManager.STRUCTURES
         }
         return List.copyOf(byId.values());
     }

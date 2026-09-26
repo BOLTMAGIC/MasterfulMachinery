@@ -93,7 +93,7 @@ public final class AssemblyJob {
                 continue;
             }
             if (ForgeEventFactory.onBlockPlace(player, snapshot, Direction.UP)) {
-                snapshot.restore(true, false);
+                snapshot.restore(true, true);
                 PlayerMaterials.refund(player, taken);
                 blocked++;
                 budget--;
