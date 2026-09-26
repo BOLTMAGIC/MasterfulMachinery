@@ -34,6 +34,11 @@ public final class MeAccessFactory {
         MeAccessFactory.problem = problem;
     }
 
+    /** Whether tools can use ME networks at all (AE2 is installed). */
+    public static boolean supported() {
+        return lookup != null;
+    }
+
     @Nullable
     public static MeAccess forTool(ServerPlayer player, ItemStack tool) {
         return lookup == null ? null : lookup.apply(player, tool);

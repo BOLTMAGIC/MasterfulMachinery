@@ -97,6 +97,33 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         };
     }
 
+    /**
+     * How many of item the store, the inventory and the network (its stock snapshot) hold together right now, for
+     * checking a whole build before it starts; stacks carrying block entity data never count. Creative: unlimited.
+     */
+    public long available(Item item) {
+        if (free()) {
+            return Long.MAX_VALUE;
+        }
+        if (item == Items.AIR) {
+            return 0;
+        }
+        long count = 0;
+        if (toolCarried()) {
+            for (int i = 0; i < store.getSlots(); i++) {
+                count += buildableCount(store.getStackInSlot(i), item);
+            }
+        }
+        for (ItemStack stack : player.getInventory().items) {
+            count += buildableCount(stack, item);
+        }
+        return count + meStock(item);
+    }
+
+    private static int buildableCount(ItemStack stack, Item item) {
+        return PlayerMaterials.buildable(stack, item) ? stack.getCount() : 0;
+    }
+
     private static void addBuildable(Set<Item> items, ItemStack stack) {
         if (PlayerMaterials.buildable(stack, stack.getItem())) {
             items.add(stack.getItem());

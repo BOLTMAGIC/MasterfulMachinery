@@ -105,6 +105,11 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
      */
     public static ChainedMaterialSource source(Player player, ItemStack tool) {
         MeAccess me = player instanceof ServerPlayer serverPlayer ? MeAccessFactory.forTool(serverPlayer, tool) : null;
+        return source(player, tool, me);
+    }
+
+    /** As above, with the network given (or none). */
+    public static ChainedMaterialSource source(Player player, ItemStack tool, @Nullable MeAccess me) {
         return new ChainedMaterialSource(new ToolStore(tool), player, energy(tool), me);
     }
 

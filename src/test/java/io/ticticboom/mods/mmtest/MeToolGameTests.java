@@ -1,12 +1,14 @@
 package io.ticticboom.mods.mmtest;
 
 import appeng.api.config.Actionable;
+import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.StorageCells;
 import appeng.api.storage.cells.StorageCell;
+import appeng.blockentity.crafting.PatternProviderBlockEntity;
 import appeng.blockentity.storage.DriveBlockEntity;
 import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
@@ -15,6 +17,7 @@ import com.mojang.authlib.GameProfile;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
+import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.compat.ae2.NetworkAccess;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
@@ -36,8 +39,11 @@ import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.item.crafting.CraftingRecipe;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -52,6 +58,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -75,6 +82,10 @@ public class MeToolGameTests {
     private static final int EXTRA_GLASS = 4;
     /** AE2 creates grid nodes a tick after placement, then boots and assigns channels. */
     private static final int BOOT_TIMEOUT = 300;
+    /** Boot, then AE2 calculates, the provider pushes to the assembler, and the assembler crafts. */
+    private static final int CRAFT_TIMEOUT = 900;
+    /** Its controller and one oak planks block. */
+    private static final ResourceLocation CRAFT_STRUCTURE = ResourceLocation.tryBuild("mmtest", "craft_test");
 
     @GameTest(template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void toolBindsAndBuildsFromMeNetwork(GameTestHelper helper) {
@@ -269,6 +280,102 @@ public class MeToolGameTests {
                             "nothing more may leave the lost network, the cell holds " + cell);
                 })
                 .thenSucceed();
+    }
+
+    /**
+     * Real AE2 auto-crafting: mmtest:craft_test needs its controller (in ME) and oak planks (not anywhere, but one oak
+     * log is, and a pattern provider next to a molecular assembler holds the planks recipe; a 1k crafting storage is the
+     * CPU). The build is refused and the planks are requested; a second right-click while crafting only waits; once
+     * AE2 is done the tracker says so and the next right-click builds from ME.
+     */
+    @GameTest(template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    public static void toolAutoCraftsMissingBlock(GameTestHelper helper) {
+        BlockPos drive = craftingNetwork(helper);
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        ToolData.setStructure(tool, CRAFT_STRUCTURE);
+        Item planks = Items.OAK_PLANKS;
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    check(helper, grid != null, "the network is not up yet");
+                    check(helper, grid.getStorageService().getCachedInventory().get(AEItemKey.of(Items.OAK_LOG)) > 0, "the cell is not visible yet");
+                    check(helper, grid.getCraftingService().isCraftable(AEItemKey.of(planks)), "the planks pattern is not known yet");
+                    check(helper, !grid.getCraftingService().getCpus().isEmpty(), "the crafting CPU is not formed yet");
+                })
+                .thenExecute(() -> {
+                    bind(player, tool, drive);
+                    ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+                    check(helper, result.prepared() == null, "the planks are missing, the build must not start");
+                    check(helper, hasKey(result.error(), "message.mm.tool.crafting"), "the planks should be crafting: " + result.error().getString());
+                    check(helper, CraftTracker.active(player, planks) == 1, "one plank should be on its way");
+                    check(helper, helper.getLevel().getBlockState(helper.absolutePos(CLICKED).above()).isAir(), "nothing may be placed yet");
+
+                    ToolBuilds.Result again = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+                    check(helper, hasKey(again.error(), "message.mm.tool.crafting") && !hasKey(again.error(), "message.mm.tool.craft.no_pattern")
+                            && !hasKey(again.error(), "message.mm.assemble.missing"), "a right-click while crafting only waits: " + again.error().getString());
+                    check(helper, CraftTracker.orders(player).size() == 1 && CraftTracker.orders(player).get(0).requested() == 1,
+                            "the planks must not be requested twice");
+                })
+                .thenWaitUntil(() -> {
+                    CraftTracker.update(player);
+                    CraftTracker.Order order = CraftTracker.orders(player).get(0);
+                    check(helper, order.failed() == null, "the craft failed: " + (order.failed() == null ? "" : order.failed().failure().getString()));
+                    check(helper, order.done() == 1, "the planks are still being crafted");
+                })
+                .thenExecute(() -> {
+                    check(helper, player.lastKey().equals("message.mm.tool.craft.ready"), "the player should be told to right-click, got " + player.messages);
+                    ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+                    check(helper, result.prepared() != null, "the crafted planks are in ME, the build should start: "
+                            + (result.error() == null ? "?" : result.error().getString()));
+                    AssemblyJob job = run(helper, player, result.prepared());
+                    check(helper, job.placed() == 2 && job.missing().isEmpty(), "controller and planks expected, placed " + job.placed() + ", missing " + job.missing());
+                    StructureModel model = StructureManager.STRUCTURES.get(CRAFT_STRUCTURE);
+                    check(helper, model != null && model.formed(helper.getLevel(), result.prepared().controllerPos()), "craft_test not formed");
+                    KeyCounter left = liveStock(helper, drive);
+                    // one log makes four planks, one of which was built
+                    check(helper, left.get(AEItemKey.of(Items.OAK_LOG)) == 0 && left.get(AEItemKey.of(planks)) == 3,
+                            "the log should be crafted into four planks and one used, ME holds " + left);
+                    check(helper, CraftTracker.orders(player).isEmpty(), "a started build forgets the crafts");
+                })
+                .thenSucceed();
+    }
+
+    /**
+     * Energy cell, drive (the craft_test controller and one oak log in a 1k cell), 1k crafting storage, and a pattern
+     * provider holding the oak planks crafting pattern with a molecular assembler beside it; returns the drive.
+     */
+    private static BlockPos craftingNetwork(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        BlockPos energy = helper.absolutePos(new BlockPos(0, 1, 6));
+        BlockPos drive = helper.absolutePos(new BlockPos(0, 1, 5));
+        BlockPos cpu = helper.absolutePos(new BlockPos(1, 1, 6));
+        BlockPos provider = helper.absolutePos(new BlockPos(2, 1, 6));
+        BlockPos assembler = helper.absolutePos(new BlockPos(3, 1, 6));
+        level.setBlockAndUpdate(energy, AEBlocks.CREATIVE_ENERGY_CELL.block().defaultBlockState());
+        level.setBlockAndUpdate(drive, AEBlocks.DRIVE.block().defaultBlockState());
+        level.setBlockAndUpdate(cpu, AEBlocks.CRAFTING_STORAGE_1K.block().defaultBlockState());
+        level.setBlockAndUpdate(provider, AEBlocks.PATTERN_PROVIDER.block().defaultBlockState());
+        level.setBlockAndUpdate(assembler, AEBlocks.MOLECULAR_ASSEMBLER.block().defaultBlockState());
+
+        ItemStack cellStack = AEItems.ITEM_CELL_1K.stack();
+        StorageCell cell = StorageCells.getCellInventory(cellStack, null);
+        check(helper, cell != null, "no cell inventory for the 1k cell");
+        fill(helper, cell, registered("craft_test"), 1);
+        fill(helper, cell, Items.OAK_LOG, 1);
+        cell.persist();
+        ((DriveBlockEntity) level.getBlockEntity(drive)).getInternalInventory().setItemDirect(0, cellStack);
+
+        CraftingRecipe recipe = (CraftingRecipe) level.getRecipeManager().byKey(ResourceLocation.tryBuild("minecraft", "oak_planks"))
+                .orElseThrow(() -> new IllegalStateException("no oak_planks recipe"));
+        ItemStack[] inputs = new ItemStack[9];
+        Arrays.fill(inputs, ItemStack.EMPTY);
+        inputs[0] = new ItemStack(Items.OAK_LOG);
+        ItemStack pattern = PatternDetailsHelper.encodeCraftingPattern(recipe, inputs, recipe.getResultItem(level.registryAccess()), false, false);
+        ItemStack rest = ((PatternProviderBlockEntity) level.getBlockEntity(provider)).getLogic().getPatternInv().addItems(pattern);
+        check(helper, rest.isEmpty(), "the pattern provider did not take the pattern");
+        return drive;
     }
 
     /** Whether component or any part of it (siblings, arguments) is the translation key. */

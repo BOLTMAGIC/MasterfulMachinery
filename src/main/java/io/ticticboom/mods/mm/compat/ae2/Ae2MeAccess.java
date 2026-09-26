@@ -116,7 +116,9 @@ public final class Ae2MeAccess implements MeAccess {
 
     @Override
     public CraftHandle requestCraft(Item item, int amount) {
-        // crafting requests arrive with the craft tracker
-        throw new UnsupportedOperationException("ME crafting requests are not supported yet");
+        if (grid == null) {
+            return CraftHandle.failed(item, amount, Component.translatable("message.mm.tool.craft.unreachable"));
+        }
+        return Ae2CraftHandle.start(player, grid, item, amount);
     }
 }

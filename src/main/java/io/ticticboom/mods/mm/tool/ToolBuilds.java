@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.MaterialSource;
+import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -16,10 +17,16 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /** Decides what using the multiblock tool on a block builds: finish a matching controller, or a whole new machine. */
 public final class ToolBuilds {
@@ -68,6 +75,15 @@ public final class ToolBuilds {
         return prepare(level, player, tool, clickedPos, clickedFace, structure, source).withNotice(meNotice(player, tool, source));
     }
 
+    /** As above, drawing from the given source (its network, if any, is the one crafts are requested from). */
+    public static Result prepare(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace, ChainedMaterialSource source) {
+        StructureModel structure = selectedStructure(tool);
+        if (structure == null) {
+            return Result.error(Component.translatable("message.mm.tool.no_structure"));
+        }
+        return prepare(level, player, tool, clickedPos, clickedFace, structure, source);
+    }
+
     /**
      * A bound tool whose network is turned on but cannot be used right now (chunk not loaded, block removed, unpowered,
      * or no access to it): the build goes on from the store and inventory, and the player should know why ME was not
@@ -94,7 +110,7 @@ public final class ToolBuilds {
             if (plan == null) {
                 return Result.error(Component.translatable("message.mm.assemble.already"));
             }
-            return startable(tool, new Prepared(controller.getBlockPos(), plan, source, perBlockFe));
+            return startable(level, player, tool, source, new Prepared(controller.getBlockPos(), plan, source, perBlockFe));
         }
 
         ToolBuildPlan build = ToolBuildPlan.create(level, player, tool, structure, clickedPos, clickedFace, source.snapshot());
@@ -105,25 +121,66 @@ public final class ToolBuilds {
             // nothing is ever broken; the build does not start at all
             return Result.error(StructurePasteUtil.obstructionMessage("message.mm.tool.obstructed", build.obstructed()));
         }
-        // without its controller nothing else is worth building
+        // without its controller nothing else is worth building, so it must be placeable here
         AssemblyPlanner.Planned controllerStep = build.plan().steps().get(0);
         Block controllerBlock = controllerStep.state().getBlock();
         boolean controllerThere = level.getBlockState(build.controllerPos()).is(controllerBlock);
         if (!controllerThere && (!player.mayBuild() || !level.mayInteract(player, build.controllerPos()))) {
             return Result.error(Component.translatable("message.mm.tool.protected"));
         }
-        if (!controllerThere && !source.has(controllerBlock)) {
-            return Result.error(Component.translatable("message.mm.assemble.missing", controllerBlock.getName()));
-        }
-        return startable(tool, new Prepared(build.controllerPos(), build.plan(), source, perBlockFe));
+        return startable(level, player, tool, source, new Prepared(build.controllerPos(), build.plan(), source, perBlockFe));
     }
 
-    /** Refuses a build the tool cannot pay even its first block for, so it never starts only to stop at once. */
-    private static Result startable(ItemStack tool, Prepared prepared) {
-        if (!prepared.source().free() && prepared.perBlockFe() > 0
+    /**
+     * All or nothing: a build starts only with every block it still needs on hand (controller included), else missing
+     * ones are crafted where possible ({@link ToolCrafts}). It is also refused when the tool cannot pay even its first
+     * block, so it never starts only to stop at once. A build that starts forgets the player's tracked crafts.
+     */
+    private static Result startable(Level level, Player player, ItemStack tool, ChainedMaterialSource source, Prepared prepared) {
+        if (!source.free()) {
+            Map<Item, Integer> missing = new LinkedHashMap<>();
+            needed(level, player, prepared.plan()).forEach((item, count) -> {
+                long have = source.available(item);
+                if (have < count) {
+                    missing.put(item, (int) (count - have));
+                }
+            });
+            if (!missing.isEmpty()) {
+                return Result.error(ToolCrafts.request(player, tool, source.me(), missing));
+            }
+        }
+        if (!source.free() && prepared.perBlockFe() > 0
                 && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {
             return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, prepared.plan().steps().size()));
         }
+        CraftTracker.clear(player);
         return new Result(prepared, null, null);
+    }
+
+    /**
+     * Items the plan still has to place, by count: positions already right, in the way (never broken) or protected
+     * are left out, like the job itself skips them. Blocks without an item cannot be supplied by anything; the job
+     * reports them missing as before.
+     */
+    private static Map<Item, Integer> needed(Level level, Player player, AssemblyPlanner.Plan plan) {
+        Map<Item, Integer> needed = new LinkedHashMap<>();
+        for (AssemblyPlanner.Planned step : plan.steps()) {
+            BlockState existing = level.getBlockState(step.pos());
+            Block wanted = step.state().getBlock();
+            if (existing.is(wanted) || step.accepted().contains(existing.getBlock())) {
+                continue;
+            }
+            if (!existing.isAir() && !existing.canBeReplaced()) {
+                continue;
+            }
+            if (!player.mayBuild() || !level.mayInteract(player, step.pos())) {
+                continue;
+            }
+            Item item = wanted.asItem();
+            if (item != Items.AIR) {
+                needed.merge(item, 1, Integer::sum);
+            }
+        }
+        return needed;
     }
 }
