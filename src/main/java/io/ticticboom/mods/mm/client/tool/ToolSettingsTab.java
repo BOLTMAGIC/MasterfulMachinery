@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
 
@@ -51,7 +52,8 @@ public class ToolSettingsTab {
     // ---- ME network section ----
     private boolean useMe;
     private boolean autoCraft;
-    private boolean bound;
+    /** Read fresh every frame from the tool's (server-synced) NBT: never flipped optimistically. */
+    private final BooleanSupplier bound;
     private final Consumer<Boolean> onToggleUseMe;
     private final Consumer<Boolean> onToggleAutoCraft;
     private final Runnable onForgetNetwork;
@@ -61,13 +63,14 @@ public class ToolSettingsTab {
      * @param onChange          called with the key and the new tier after a change
      * @param useMe             the tool's current "use ME network" setting
      * @param autoCraft         the tool's current "auto-craft missing" setting
-     * @param bound             whether the tool is currently bound to a network (shows the forget button)
+     * @param bound             whether the tool is currently bound to a network (shows the forget button); polled
+     *                          from the tool's own data so the row only reacts once the server confirms a change
      * @param onToggleUseMe     called with the new value after the "use ME network" row is clicked
      * @param onToggleAutoCraft called with the new value after the "auto-craft missing" row is clicked
      * @param onForgetNetwork   called after the "Forget ME network" button is clicked
      */
     public ToolSettingsTab(Font font, TierPrefs prefs, ObjIntConsumer<String> onChange, boolean useMe, boolean autoCraft,
-                            boolean bound, Consumer<Boolean> onToggleUseMe, Consumer<Boolean> onToggleAutoCraft, Runnable onForgetNetwork) {
+                            BooleanSupplier bound, Consumer<Boolean> onToggleUseMe, Consumer<Boolean> onToggleAutoCraft, Runnable onForgetNetwork) {
         this.font = font;
         this.prefs = prefs;
         this.onChange = onChange;
@@ -102,7 +105,7 @@ public class ToolSettingsTab {
 
     /** Two toggle rows, plus a third for the forget button while the tool is bound. */
     private int meRowCount() {
-        return bound ? 3 : 2;
+        return bound.getAsBoolean() ? 3 : 2;
     }
 
     private int meSectionHeight() {
@@ -182,7 +185,7 @@ public class ToolSettingsTab {
         rowY += ROW;
         drawToggleRow(gfx, Component.translatable("gui.mm.tool.settings.autocraft"), autoCraft, rowY, mouseX, mouseY);
         rowY += ROW;
-        if (bound) {
+        if (bound.getAsBoolean()) {
             drawForgetButton(gfx, rowY, mouseX, mouseY);
         }
     }
@@ -293,8 +296,8 @@ public class ToolSettingsTab {
                 onToggleAutoCraft.accept(autoCraft);
                 return true;
             }
-            if (bound && isOnMeRow(mouseX, mouseY, meTop + 2 * ROW)) {
-                bound = false;
+            if (bound.getAsBoolean() && isOnMeRow(mouseX, mouseY, meTop + 2 * ROW)) {
+                // no local flip: the row disappears once the server-confirmed tool data says "not bound"
                 onForgetNetwork.run();
                 return true;
             }
