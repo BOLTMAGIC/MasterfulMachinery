@@ -195,6 +195,13 @@ public class MultiblockToolItem extends Item {
         int capacity = MMConfigSetup.COMMON.toolEnergyCapacity.get();
         int energy = new ToolEnergy(stack, capacity).getEnergyStored();
         tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.energy", energy, capacity).withStyle(ChatFormatting.GRAY));
+        var network = ToolData.network(stack);
+        if (network != null) {
+            tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.network",
+                    network.pos().toShortString(), network.dimension().location().getPath()).withStyle(ChatFormatting.AQUA));
+        } else {
+            tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.no_network").withStyle(ChatFormatting.DARK_GRAY));
+        }
         tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
     }
 }

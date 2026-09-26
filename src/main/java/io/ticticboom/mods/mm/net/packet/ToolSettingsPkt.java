@@ -18,11 +18,12 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * Multiblock tool screen -> server: select a structure ({@code key} = its id) or set a preferred port tier
- * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier) on the held tool.
+ * Multiblock tool screen -> server: select a structure ({@code key} = its id), set a preferred port tier
+ * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier), toggle the ME network options
+ * ({@code value} nonzero = on) or forget the bound network, on the held tool.
  */
 public record ToolSettingsPkt(Action action, String key, int value) {
-    public enum Action { SELECT_STRUCTURE, SET_TIER }
+    public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK }
 
     public static void encode(ToolSettingsPkt pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
@@ -77,6 +78,18 @@ public record ToolSettingsPkt(Action action, String key, int value) {
                 TierPrefs prefs = ToolData.tiers(tool);
                 prefs.set(key, tier);
                 ToolData.setTiers(tool, prefs);
+                return true;
+            }
+            case SET_USE_ME -> {
+                ToolData.setUseMe(tool, value != 0);
+                return true;
+            }
+            case SET_AUTOCRAFT -> {
+                ToolData.setAutoCraft(tool, value != 0);
+                return true;
+            }
+            case FORGET_NETWORK -> {
+                ToolData.setNetwork(tool, null);
                 return true;
             }
         }

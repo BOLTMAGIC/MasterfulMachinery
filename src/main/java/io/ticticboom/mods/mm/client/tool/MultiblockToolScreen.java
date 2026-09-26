@@ -80,6 +80,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private static final int GALLERY_MAX = 140;
     private static final int SEARCH_HEIGHT = 12;
     private static final int INFO_HEIGHT = 13;
+    private static final int ME_HEIGHT = 11;
     private static final int LAYER_HEIGHT = 11;
     private static final int LAYER_ARROW = 9;
     private static final int TAB = 22;
@@ -112,6 +113,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private int previewWidth;
     private int previewHeight;
     private int infoY;
+    private int meY;
 
     public MultiblockToolScreen(MultiblockToolMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -123,7 +125,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         // the screen's own font is only set in init()
         var font = Minecraft.getInstance().font;
         this.gallery = new GalleryList(font, StructureManager.STRUCTURES.values(), selected == null ? null : selected.id(), this::select);
-        this.settings = new ToolSettingsTab(font, prefs, this::setTier);
+        this.settings = new ToolSettingsTab(font, prefs, this::setTier, ToolData.useMe(tool), ToolData.autoCraft(tool),
+                ToolData.network(tool) != null, this::toggleUseMe, this::toggleAutoCraft, this::forgetNetwork);
         if (selected != null) {
             selected.getGuiRenderer().resetTransforms();
         }
@@ -145,8 +148,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         inventoryX = imageWidth - INSET - GRID_WIDTH;
         inventoryY = imageHeight - FRAME_BOTTOM - INVENTORY_HEIGHT;
         feX = INSET + GRID_WIDTH + GAP;
-        // no store / inventory labels (hover an empty store slot for its name): the band ends just above the slots
-        bandBottom = storeTop - 3;
+        // no store / inventory labels (hover an empty store slot for its name): the band ends just above the
+        // ME status line, which sits just above the slots
+        meY = storeTop - 3 - ME_HEIGHT;
+        bandBottom = meY - 1;
         galleryWidth = Mth.clamp((imageWidth - 2 * INSET) * 3 / 10, GALLERY_MIN, GALLERY_MAX);
         previewX = INSET + galleryWidth + GAP;
         previewWidth = imageWidth - INSET - previewX;
@@ -214,6 +219,21 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_TIER, key, tier));
     }
 
+    private void toggleUseMe(boolean value) {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_USE_ME, "", value ? 1 : 0));
+    }
+
+    private void toggleAutoCraft(boolean value) {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_AUTOCRAFT, "", value ? 1 : 0));
+    }
+
+    private void forgetNetwork() {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.FORGET_NETWORK, "", 0));
+    }
+
     private void playClick() {
         this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
     }
@@ -260,6 +280,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
             settings.render(gfx, mouseX, mouseY);
         }
+        drawMeStatus(gfx);
 
         // store slots, then the FE bar beside them
         for (int i = 0; i < MultiblockToolMenu.STORE_SLOTS; i++) {
@@ -486,6 +507,25 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return mouseX >= x && mouseX < x + FE_WIDTH && mouseY >= y && mouseY < y + STORE_HEIGHT;
     }
 
+    /** One line above the FE bar / store row: the tool's bound ME network, or that it isn't bound. */
+    private Component meStatus() {
+        var network = ToolData.network(tool());
+        return network == null ? Component.translatable("gui.mm.tool.me.not_bound")
+                : Component.translatable("gui.mm.tool.me.bound", network.pos().toShortString(), network.dimension().location().getPath());
+    }
+
+    private void drawMeStatus(GuiGraphics gfx) {
+        int x = this.leftPos + INSET;
+        int y = this.topPos + meY + 2;
+        drawClipped(gfx, meStatus(), x, y, imageWidth - 2 * INSET, LABEL);
+    }
+
+    private boolean isOnMeStatus(double mouseX, double mouseY) {
+        int x = this.leftPos + INSET;
+        int y = this.topPos + meY;
+        return mouseX >= x && mouseX < x + imageWidth - 2 * INSET && mouseY >= y && mouseY < y + ME_HEIGHT;
+    }
+
     private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, this.font, text, x, y, maxWidth, color);
     }
@@ -526,6 +566,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         } else if (isOnEnergy(mouseX, mouseY)) {
             tooltip = List.of(Component.translatable("tooltip.mm.multiblock_tool.energy",
                     CountFormat.grouped(energyStored()), CountFormat.grouped(MMConfigSetup.COMMON.toolEnergyCapacity.get())));
+        } else if (isOnMeStatus(mouseX, mouseY)) {
+            tooltip = List.of(meStatus());
         } else if (tab == Tab.SETTINGS) {
             tooltip = settings.tooltip(mouseX, mouseY);
         } else if (isOnLayerBar(mouseX, mouseY)) {
