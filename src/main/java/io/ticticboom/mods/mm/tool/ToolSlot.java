@@ -14,14 +14,16 @@ import org.jetbrains.annotations.NotNull;
 public class ToolSlot extends SlotItemHandler {
     private final ToolStore store;
     private final boolean clientSide;
+    private final MultiblockToolMenu menu;
 
     /**
      * @param clientSide true for the client's copy of the menu
      */
-    public ToolSlot(ToolStore store, int index, int x, int y, boolean clientSide) {
+    public ToolSlot(ToolStore store, int index, int x, int y, boolean clientSide, MultiblockToolMenu menu) {
         super(store, index, x, y);
         this.store = store;
         this.clientSide = clientSide;
+        this.menu = menu;
     }
 
     @Override
@@ -30,6 +32,19 @@ public class ToolSlot extends SlotItemHandler {
             return;
         }
         super.set(stack);
+    }
+
+    /**
+     * On the client, catch up with a fresh sync of the held stack before reading: vanilla replaces the
+     * held {@link ItemStack} instance on resync, and {@link #set} above deliberately ignores those
+     * pushes, so the store must instead be re-derived from whatever the client currently holds.
+     */
+    @Override
+    public @NotNull ItemStack getItem() {
+        if (clientSide) {
+            menu.refreshClientStore();
+        }
+        return super.getItem();
     }
 
     @Override

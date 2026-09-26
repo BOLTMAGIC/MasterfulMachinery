@@ -21,15 +21,24 @@ public class ToolStore extends ItemStackHandler {
     private static final String KEY = "ToolStore";
     private static final String COUNT_KEY = "C";
 
-    private final ItemStack toolStack;
+    private ItemStack toolStack;
 
     public ToolStore(ItemStack toolStack) {
         super(SLOTS);
-        this.toolStack = toolStack;
-        CompoundTag tag = toolStack.getTagElement(KEY);
-        if (tag != null) {
-            deserializeNBT(tag);
-        }
+        rebind(toolStack);
+    }
+
+    /**
+     * Re-reads this store's contents from a (possibly new) tool stack instance, without replacing this
+     * handler object. Used on the client: vanilla replaces the held {@link ItemStack} instance whenever
+     * it re-syncs (e.g. our own locked inventory slot receiving an update), which would otherwise leave
+     * a store built once at menu-open time stuck showing stale counts. The server never needs to call
+     * this outside construction; it stays authoritative via its own single, stable {@code toolStack}.
+     */
+    public void rebind(ItemStack newToolStack) {
+        this.toolStack = newToolStack;
+        CompoundTag tag = newToolStack.getTagElement(KEY);
+        deserializeNBT(tag != null ? tag : new CompoundTag());
     }
 
     @Override
