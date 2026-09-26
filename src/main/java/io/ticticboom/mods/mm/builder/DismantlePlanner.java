@@ -1,8 +1,15 @@
 package io.ticticboom.mods.mm.builder;
 
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.piece.type.StructurePiece;
+import io.ticticboom.mods.mm.piece.type.port.PortAnywhereStructurePiece;
+import io.ticticboom.mods.mm.piece.type.port.PortStructurePiece;
+import io.ticticboom.mods.mm.piece.type.porttype.PortTypeAnywhereStructurePiece;
+import io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
+import io.ticticboom.mods.mm.structure.layout.StructureLayout;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
@@ -14,6 +21,7 @@ import net.minecraft.world.level.chunk.LevelChunk;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -85,8 +93,9 @@ public final class DismantlePlanner {
 
     /**
      * Client-safe preview of {@link #resolve} + {@link #positions} for outlining the aimed-at machine: never calls
-     * the structure's formed checks (they need a server level). A structure counts as formed when, in its best
-     * matching rotation, every piece holds one of its candidate blocks. The server stays authoritative.
+     * the structure's formed checks (they need a server level). Uses the controller's synced formed flag and the
+     * best matching rotation; without the flag, every piece must hold a fitting block. The server stays
+     * authoritative.
      *
      * @return the machine's positions, controller last; empty when the block belongs to no machine
      */
@@ -137,22 +146,74 @@ public final class DismantlePlanner {
         BlockState controllerState = level.getBlockState(controllerPos);
         Direction facing = controllerState.hasProperty(HorizontalDirectionalBlock.FACING)
                 ? controllerState.getValue(HorizontalDirectionalBlock.FACING) : Direction.NORTH;
-        Rotation rotation = AssemblyPlanner.bestRotation(level, structure, controllerPos, facing);
-        Set<BlockPos> positions = new LinkedHashSet<>();
-        for (PositionedLayoutPiece positioned : AssemblyPlanner.pieces(structure, rotation)) {
-            BlockPos piecePos = positioned.findAbsolutePos(controllerPos);
-            BlockState existing = level.getBlockState(piecePos);
-            List<Block> candidates = positioned.piece().piece().createBlocksSupplier().get();
-            if (existing.isAir() || candidates == null || !candidates.contains(existing.getBlock())) {
-                // not formed: like the server, only the controller itself
-                return List.of(controllerPos);
+        Rotation rotation = AssemblyPlanner.rotationFor(facing);
+        int bestScore = previewMatches(level, structure, controllerPos, rotation);
+        for (Rotation candidate : Rotation.values()) {
+            int score = previewMatches(level, structure, controllerPos, candidate);
+            if (score > bestScore) {
+                rotation = candidate;
+                bestScore = score;
             }
-            positions.add(piecePos.immutable());
+        }
+        List<PositionedLayoutPiece> pieces = AssemblyPlanner.pieces(structure, rotation);
+        // the server's formed flag is synced; the own check is only a fallback for a controller not validated yet
+        if (!controller.isFormed() && bestScore < pieces.size()) {
+            // not formed: like the server, only the controller itself
+            return List.of(controllerPos);
+        }
+        Set<BlockPos> positions = new LinkedHashSet<>();
+        for (PositionedLayoutPiece positioned : pieces) {
+            BlockPos piecePos = positioned.findAbsolutePos(controllerPos);
+            if (!level.getBlockState(piecePos).isAir()) {
+                positions.add(piecePos.immutable());
+            }
         }
         positions.remove(controllerPos);
         List<BlockPos> result = new ArrayList<>(positions);
         result.add(controllerPos);
         return result;
+    }
+
+    /**
+     * How many pieces hold a fitting block in this rotation, as loosely as the server's formed check: a port that
+     * may go anywhere fits any anywhere-port candidate, and an input gateway stands in for a non-port piece.
+     */
+    private static int previewMatches(Level level, StructureModel structure, BlockPos controllerPos, Rotation rotation) {
+        StructureLayout layout = structure.layout();
+        List<PositionedLayoutPiece> pieces = AssemblyPlanner.pieces(structure, rotation);
+        Set<Block> anywhere = new HashSet<>();
+        for (PositionedLayoutPiece positioned : pieces) {
+            if (layout.isAnywhere(positioned.piece().piece())) {
+                List<Block> candidates = positioned.piece().piece().createBlocksSupplier().get();
+                if (candidates != null) {
+                    anywhere.addAll(candidates);
+                }
+            }
+        }
+        Block gateway = MMRegisters.INPUT_GATEWAY.get();
+        int count = 0;
+        for (PositionedLayoutPiece positioned : pieces) {
+            StructurePiece piece = positioned.piece().piece();
+            Block existing = level.getBlockState(positioned.findAbsolutePos(controllerPos)).getBlock();
+            List<Block> candidates = piece.createBlocksSupplier().get();
+            boolean fits;
+            if (layout.isAnywhere(piece)) {
+                fits = anywhere.contains(existing);
+            } else if (isPort(piece)) {
+                fits = candidates != null && candidates.contains(existing);
+            } else {
+                fits = existing == gateway || (candidates != null && candidates.contains(existing));
+            }
+            if (fits) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private static boolean isPort(StructurePiece piece) {
+        return piece instanceof PortStructurePiece || piece instanceof PortTypeStructurePiece
+                || piece instanceof PortAnywhereStructurePiece || piece instanceof PortTypeAnywhereStructurePiece;
     }
 
     /** Every piece of the controller's cached structure (ports are pieces too), or none when it is not formed. */

@@ -47,6 +47,7 @@ import java.util.function.Consumer;
 public class DismantleGameTests {
     private static final String TEMPLATE = "empty";
     private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final ResourceLocation PREVIEW_STRUCTURE = ResourceLocation.tryBuild("mmtest", "preview_test");
     private static final int START_FE = 1000;
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos FLEX = new BlockPos(-1, 0, 0);
@@ -226,6 +227,34 @@ public class DismantleGameTests {
                     "an unformed controller previews only itself");
             check(helper, DismantlePlanner.previewPositions(level, controller.offset(STRICT)).isEmpty(),
                     "a piece of an unformed machine has no preview");
+        }).thenSucceed();
+    }
+
+    /**
+     * Same parity for a machine the server only accepts through its looser checks: each anywhere port sits at the
+     * other one's position, and an input gateway stands in for the glass.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void previewPositionsMatchServerWithAnywherePortsAndGateway(GameTestHelper helper) {
+        BlockPos controller = helper.absolutePos(CONTROLLER);
+        var level = helper.getLevel();
+        // its own controller, so assembly_test's candidate list stays as other tests expect
+        level.setBlockAndUpdate(controller, registered("preview_test").defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+        level.setBlockAndUpdate(controller.offset(FLEX), port("l").defaultBlockState()); // A wants tier 1
+        level.setBlockAndUpdate(controller.offset(GLASS), port("s").defaultBlockState()); // B wants tier 3
+        level.setBlockAndUpdate(controller.offset(STRICT), MMRegisters.INPUT_GATEWAY.get().defaultBlockState());
+        helper.startSequence().thenWaitUntil(() -> check(helper, level.getBlockEntity(controller) instanceof MachineControllerBlockEntity be
+                && be.getStructure() != null && be.getStructure().id().equals(PREVIEW_STRUCTURE) && be.isFormed(), "preview_test not formed yet")).thenExecute(() -> {
+            for (BlockPos target : List.of(controller, controller.offset(FLEX), controller.offset(GLASS), controller.offset(STRICT))) {
+                MachineControllerBlockEntity resolved = DismantlePlanner.resolve(level, target);
+                check(helper, resolved != null, "the server should resolve " + target);
+                List<BlockPos> server = DismantlePlanner.positions(level, resolved);
+                List<BlockPos> preview = DismantlePlanner.previewPositions(level, target);
+                check(helper, server.size() == 4, "the server should dismantle 4 blocks, got " + server);
+                check(helper, new HashSet<>(preview).equals(new HashSet<>(server)) && preview.size() == server.size(),
+                        "preview " + preview + " differs from server " + server + " for " + target);
+                check(helper, preview.get(preview.size() - 1).equals(controller), "the controller must come last: " + preview);
+            }
         }).thenSucceed();
     }
 

@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.net.packet.ToolDismantlePkt;
 import io.ticticboom.mods.mm.net.packet.ToolRotatePkt;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
+import net.minecraft.Util;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -59,7 +60,10 @@ public class ToolKeys {
     private static List<BlockPos> pendingPositions = List.of();
     private static long pendingUntil;
     private static long lastRotateTime = -ROTATE_PREVIEW_TICKS - 1;
+    // part of a notch scrolled so far (touchpads send fractions); forgotten after SCROLL_RESET_MS
     private static double scrollAccum;
+    private static long lastScrollMs;
+    private static final long SCROLL_RESET_MS = 500;
 
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
@@ -129,7 +133,11 @@ public class ToolKeys {
                 barShown = false;
                 noMachineShown = false;
                 pendingController = null;
+                scrollAccum = 0;
                 return;
+            }
+            if (!player.isShiftKeyDown() || heldTool(player).isEmpty()) {
+                scrollAccum = 0;
             }
             if (heldTool(player).isEmpty() || mc.screen != null || !DISMANTLE.isDown()) {
                 // released (early or not): the next press starts over
@@ -168,6 +176,8 @@ public class ToolKeys {
                 }
                 return;
             }
+            // a machine was seen: leaving it for a non-machine may say so again
+            noMachineShown = false;
             holdTicks++;
             player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)), true);
             barShown = true;
@@ -221,15 +231,20 @@ public class ToolKeys {
         public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
             Minecraft mc = Minecraft.getInstance();
             Player player = mc.player;
-            if (player == null || mc.level == null || mc.screen != null || !player.isShiftKeyDown()
-                    || event.getScrollDelta() == 0 || heldTool(player).isEmpty()) {
+            if (player == null || mc.level == null || mc.screen != null || !player.isShiftKeyDown() || heldTool(player).isEmpty()) {
+                scrollAccum = 0;
+                return;
+            }
+            if (event.getScrollDelta() == 0) {
                 return;
             }
             event.setCanceled(true);
             double delta = event.getScrollDelta();
-            if (Math.signum(delta) != Math.signum(scrollAccum)) {
+            long now = Util.getMillis();
+            if (Math.signum(delta) != Math.signum(scrollAccum) || now - lastScrollMs > SCROLL_RESET_MS) {
                 scrollAccum = 0;
             }
+            lastScrollMs = now;
             // one quarter turn per whole notch, so smooth-scrolling touchpads do not flood the server
             scrollAccum += delta;
             while (Math.abs(scrollAccum) >= 1) {
