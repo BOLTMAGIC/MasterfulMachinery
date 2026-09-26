@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerScreen;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.ToolData;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
@@ -66,8 +67,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
@@ -139,6 +142,8 @@ public final class ClientSmokeTest {
     private static BlockPos aimed;
     private static boolean highlightSeen;
     private static int turnsBefore;
+    // tick a step's condition was first met (-1: not yet)
+    private static int aimedTick = -1;
 
     private ClientSmokeTest() {
     }
@@ -335,9 +340,6 @@ public final class ClientSmokeTest {
         return false;
     }
 
-    // tick a step's condition was first met (-1: not yet)
-    private static int aimedTick = -1;
-
     private static boolean settingsTab(int tick) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         MultiblockToolScreen screen = toolScreen(mc);
@@ -359,15 +361,29 @@ public final class ClientSmokeTest {
             screen.mouseClicked(area.getX() + area.getWidth() / 2.0, area.getY() + area.getHeight() / 2.0, 0);
             check(String.valueOf(staticField(MultiblockToolScreen.class, "tab")).equals("STRUCTURES"), "the Structures tab should be active");
             EditBox box = searchBox(screen);
-            int before = galleryLines(screen);
+            int before = galleryLines(screen).size();
             screen.mouseClicked(box.getX() + 4, box.getY() + box.getHeight() / 2.0, 0);
             check(box.isFocused(), "clicking the search box should focus it");
             for (char c : "assem".toCharArray()) {
                 screen.charTyped(c, 0);
             }
             check(box.getValue().equals("assem"), "the search box should read 'assem', reads '" + box.getValue() + "'");
-            int after = galleryLines(screen);
-            check(after > 0 && after <= before, "the search should keep some structures: " + before + " -> " + after + " lines");
+            // the fixture has two structures named "Assembly ...", both mmtest's: its group header and those two
+            List<?> lines = galleryLines(screen);
+            int after = lines.size();
+            check(after < before, "the search should hide lines: " + before + " -> " + after);
+            check(after == 3, "expected 3 lines (mmtest header + 2 structures), got " + after);
+            check(record(lines.get(0), "structure") == null, "the first line should be the group header");
+            check("mmtest".equals(record(record(lines.get(0), "group"), "namespace")), "the header should be mmtest's group");
+            var shown = new HashSet<ResourceLocation>();
+            for (Object line : lines.subList(1, after)) {
+                StructureModel structure = (StructureModel) record(line, "structure");
+                check(structure != null, "a structure line expected after the header");
+                check(structure.name().toLowerCase(Locale.ROOT).contains("assem"), "'" + structure.name() + "' does not match 'assem'");
+                shown.add(structure.id());
+            }
+            check(shown.equals(Set.of(ResourceLocation.tryBuild("mmtest", "assembly_extra"), STRUCTURE)),
+                    "expected assembly_extra and assembly_test, got " + shown);
             LOGGER.info(TAG + "gallery lines {} -> {} for 'assem'", before, after);
         } else if (tick == 5) {
             screenshot("smoke_tool_search.png");
@@ -631,9 +647,16 @@ public final class ClientSmokeTest {
         throw new IllegalStateException("the tool screen has no search box");
     }
 
-    private static int galleryLines(MultiblockToolScreen screen) throws Exception {
+    private static List<?> galleryLines(MultiblockToolScreen screen) throws Exception {
         Object gallery = field(screen, MultiblockToolScreen.class, "gallery");
-        return ((List<?>) field(gallery, gallery.getClass(), "lines")).size();
+        return List.copyOf((List<?>) field(gallery, gallery.getClass(), "lines"));
+    }
+
+    /** A component of a private record. */
+    private static Object record(Object record, String component) throws Exception {
+        Method accessor = record.getClass().getDeclaredMethod(component);
+        accessor.setAccessible(true);
+        return accessor.invoke(record);
     }
 
     private static void screenshot(String name) {
