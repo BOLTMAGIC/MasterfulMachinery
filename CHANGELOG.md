@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.1] - 2026-09-26
+
+### INFO:
+**Version 0.1.35.1** represents a minor update with bug fixes and performance improvements.
+**Special Thanks:**
+- **Knozyy**
+
+### Added
+
+#### #63 – Recipe Candidate Indexing & Requirement Caching
+- **RecipeRequirements**: Recipe input needs (port types, item/fluid/chemical IDs, energy/mana/kinetic) now cached on structure load instead of recalculated every tick.
+- **RecipeCandidateIndex**: Recipes grouped by item consumed; candidate list rebuilt only when port contents change, drastically reducing scan iterations.
+  - Only visits recipes whose inputs are actually present
+  - Recipes without specific item input (tags, fluids, energy) always candidate
+- **Scan behavior**: Maintains structure recipe order, resumes where stopped (preserves recipe selection modes and parallel rules).
+- **Skip wait**: Recipes that fail input checks now wait 20 ticks like other skip reasons; port changes clear wait.
+- **Performance**: Eliminates thousands of per-tick allocations and checks in structures with hundreds/thousands of recipes.
+
+#### #64 – Big/Small Controller Screen Toggle
+- **Screen size toggle** (top-right button): switch between big screen (up to 500x380, sized to window) and small screen (classic view).
+- Choice saved in client config (`controller.bigScreen`), applies to all controllers, survives restarts.
+- **Big screen layout** (400px+ wide): machine info & settings on left, scrollable input/output port columns on right; narrower screens keep pages.
+- **Recipe row improvements**:
+  - Shows all outputs including weighted outputs (weren't shown before)
+  - Rotates every 1.2s when more items than fit; thin track shows current position
+  - Stays still while hovered
+  - Left click opens JEI recipes, right click uses (JEI optional)
+  - New `IRecipeOutputEntry#displayedOutputs()` for custom output types
+- **Sound mute button**: toggles working sound (per controller, NBT saved, synced, mutes for everyone; particles unaffected).
+  - Machines without sound show "No sound"
+- **Fixes**: button overlap fixed; energy bars now repeat texture correctly (no read-past).
+
+#### #65 – Input Gateway: Full Energy & Mekanism Support
+- Input Gateway now accepts and routes:
+  - **FE**: passed to machine's energy input ports in order
+  - **Mekanism gas, infusion, pigment, slurry**: routed to matching chemical input ports in order
+- Display shows read-only tank list + one entry tank (AE2 Pattern Provider in blocking mode sees machine contents).
+- **Implementation**: ChemicalHandlers created only when Mekanism is loaded; no hard dependency.
+- **Tooltips**: block tooltip lists all supported types (en_us, tr_tr).
+
 ## [0.1.35.0] - 2026-09-25
 
 ### INFO:
@@ -14,20 +54,21 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - Single-handedly implemented all major features:
   - Per-side Auto I/O,
   - complete Port & Controller GUI Redesign,
-  - Input Gateway,
+  - Input Gateway with full energy & Mekanism chemical support,
   - Machine Network Linker with dual modes,
   - Controller Sync Optimization,
   - massive Localization overhaul,
   - JEI Structure Preview with complete freeze fix and new controls,
   - Controller States & Status Lights,
   - Machine Wrench tool,
-  - comprehensive Controller Screen enhancements,
+  - comprehensive Controller Screen enhancements (big/small toggle, sound mute, recipe rotation),
   - full Recipe Conditions system,
   - KubeJS Event system,
   - Input Gateway Storage for AE2 integration,
   - Redstone Comparator support,
   - Weighted output entries,
-  - Working effects (sounds & particles), and
+  - Working effects (sounds & particles),
+  - Recipe candidate indexing & requirement caching, and
   - critical fluid transfer bug fix.
 
 Without his contribution, this update would not have been possible!

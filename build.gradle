@@ -387,7 +387,7 @@ unifiedPublishing {
         gameLoaders = [publish_modloader]
         displayName = fullname
         version = mod_version
-        changelog = new File("${project.projectDir}/changelog.txt").text.replaceAll("VERSION_NAME", fullname)
+        changelog = new File("${project.projectDir}/changelog.md").text.replaceAll("VERSION_NAME", fullname)
         releaseType = mod_stability_name.toLowerCase()
 
         mainPublication tasks.jar
