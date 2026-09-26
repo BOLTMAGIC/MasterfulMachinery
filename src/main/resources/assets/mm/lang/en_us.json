@@ -244,6 +244,7 @@
   "message.mm.tool.dismantle.done": "Dismantled %s blocks",
   "message.mm.tool.dismantle.no_machine": "No formed machine here",
   "message.mm.tool.dismantle.protected": "You may not dismantle this machine",
+  "message.mm.tool.dismantle.progress": "Dismantling %s",
   "message.mm.assemble.controller_not_placed": "Stopped: the controller could not be placed",
   "message.mm.wrench.no_autoio": "This port has no auto input/output",
   "gui.mm.port.dump": "Dump contents",
