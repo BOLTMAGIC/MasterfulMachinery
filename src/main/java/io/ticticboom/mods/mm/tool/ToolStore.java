@@ -47,6 +47,12 @@ public class ToolStore extends ItemStackHandler {
         return stack.isStackable() ? LIMIT : 1;
     }
 
+    /** A tool can never store another Multiblock Tool (would allow nesting/duplication). */
+    @Override
+    public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+        return !(stack.getItem() instanceof MultiblockToolItem);
+    }
+
     @Override
     public @NotNull CompoundTag serializeNBT() {
         var nbt = new CompoundTag();

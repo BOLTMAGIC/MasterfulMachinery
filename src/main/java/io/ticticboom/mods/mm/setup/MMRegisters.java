@@ -10,12 +10,14 @@ import io.ticticboom.mods.mm.item.PrioritySetterItem;
 import io.ticticboom.mods.mm.item.WrenchItem;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
+import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.*;
 
@@ -33,6 +35,9 @@ public class MMRegisters {
     public static final RegistryObject<WrenchItem> WRENCH = ITEMS.register("wrench", WrenchItem::new);
     public static final RegistryObject<MultiblockSaverItem> MULTIBLOCK_SAVER = ITEMS.register("multiblock_saver", MultiblockSaverItem::new);
     public static final RegistryObject<MultiblockToolItem> MULTIBLOCK_TOOL = ITEMS.register("multiblock_tool", MultiblockToolItem::new);
+
+    public static final RegistryObject<MenuType<MultiblockToolMenu>> MULTIBLOCK_TOOL_MENU = MENUS.register("multiblock_tool",
+            () -> IForgeMenuType.create((windowId, inv, buf) -> new MultiblockToolMenu(windowId, inv, buf)));
 
     public static final RegistryObject<InputGatewayBlock> INPUT_GATEWAY = BLOCKS.register("input_gateway", InputGatewayBlock::new);
     public static final RegistryObject<BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new BlockItem(INPUT_GATEWAY.get(), new Item.Properties()));

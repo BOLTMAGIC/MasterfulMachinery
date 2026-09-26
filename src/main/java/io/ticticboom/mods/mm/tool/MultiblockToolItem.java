@@ -6,6 +6,13 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.MenuProvider;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -15,6 +22,7 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.capabilities.ICapabilityProvider;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.energy.IEnergyStorage;
+import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,6 +50,30 @@ public class MultiblockToolItem extends Item {
                 return cap == ForgeCapabilities.ENERGY ? energy.cast() : LazyOptional.empty();
             }
         };
+    }
+
+    /**
+     * Shift+use on air opens the block store menu (Task 3). Right-click on a block is handled
+     * separately (build/dismantle, Task 4); this only fires when there's nothing to interact with.
+     */
+    @Override
+    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (!player.isShiftKeyDown() || level.isClientSide()) {
+            return InteractionResultHolder.pass(stack);
+        }
+        NetworkHooks.openScreen((ServerPlayer) player, new MenuProvider() {
+            @Override
+            public @NotNull Component getDisplayName() {
+                return stack.getHoverName();
+            }
+
+            @Override
+            public @NotNull AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player p) {
+                return new MultiblockToolMenu(windowId, inv, hand);
+            }
+        }, buf -> buf.writeEnum(hand));
+        return InteractionResultHolder.success(stack);
     }
 
     @Override
