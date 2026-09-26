@@ -35,7 +35,7 @@ public final class ToolDismantles {
     }
 
     /** A dismantle ready to run; blocks go into {@code sink}. */
-    public record Prepared(BlockPos controllerPos, List<BlockPos> positions, ItemSink sink, int perBlockFe, ItemStack tool) {
+    public record Prepared(BlockPos controllerPos, List<DismantlePlanner.Target> positions, ItemSink sink, int perBlockFe, ItemStack tool) {
         public DismantleJob job(ServerLevel level) {
             return DismantleJob.create(level, controllerPos, positions, perBlockFe, tool);
         }
@@ -61,7 +61,7 @@ public final class ToolDismantles {
         if (!player.mayBuild() || !level.mayInteract(player, controller.getBlockPos())) {
             return Result.error(Component.translatable("message.mm.tool.dismantle.protected"));
         }
-        List<BlockPos> positions = DismantlePlanner.positions(level, controller);
+        List<DismantlePlanner.Target> positions = DismantlePlanner.positions(level, controller);
         int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
         ItemSink sink = ToolBuildPlan.source(player, tool);
         if (!sink.free() && perBlockFe > 0

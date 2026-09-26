@@ -34,6 +34,10 @@ public final class DismantlePlanner {
     private DismantlePlanner() {
     }
 
+    /** A block to dismantle and what stood there when the dismantle was planned. */
+    public record Target(BlockPos pos, Block block) {
+    }
+
     /**
      * The controller the aimed-at block belongs to: the block itself when it is a controller, else a controller
      * within {@link #SEARCH_RADIUS} whose formed structure contains it. Only loaded chunks are searched.
@@ -75,19 +79,21 @@ public final class DismantlePlanner {
 
     /**
      * What dismantling this controller breaks: its formed structure's blocks (ports included), then the controller
-     * last. An unformed controller is only itself. Air is left out.
+     * last. An unformed controller is only itself. Air is left out. Each target keeps the block standing there now,
+     * so a block swapped in later is not broken.
      */
-    public static List<BlockPos> positions(Level level, MachineControllerBlockEntity controller) {
+    public static List<Target> positions(Level level, MachineControllerBlockEntity controller) {
         BlockPos controllerPos = controller.getBlockPos();
         Set<BlockPos> positions = new LinkedHashSet<>(structurePositions(level, controller));
         positions.remove(controllerPos);
-        List<BlockPos> result = new ArrayList<>();
+        List<Target> result = new ArrayList<>();
         for (BlockPos pos : positions) {
-            if (!level.getBlockState(pos).isAir()) {
-                result.add(pos.immutable());
+            BlockState state = level.getBlockState(pos);
+            if (!state.isAir()) {
+                result.add(new Target(pos.immutable(), state.getBlock()));
             }
         }
-        result.add(controllerPos);
+        result.add(new Target(controllerPos, level.getBlockState(controllerPos).getBlock()));
         return result;
     }
 

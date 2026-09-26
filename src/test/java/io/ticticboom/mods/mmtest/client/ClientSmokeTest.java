@@ -422,7 +422,7 @@ public final class ClientSmokeTest {
                     || be.getStructure() == null || !be.getStructure().id().equals(STRUCTURE)) {
                 return null;
             }
-            List<BlockPos> positions = DismantlePlanner.positions(level, be);
+            List<BlockPos> positions = DismantlePlanner.positions(level, be).stream().map(DismantlePlanner.Target::pos).toList();
             int stored = storeTotal(player.getInventory().getItem(0));
             if (stored != 0) {
                 throw new IllegalStateException("every block should come out of the store, " + stored + " left");

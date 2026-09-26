@@ -35,6 +35,7 @@ import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
@@ -64,7 +65,7 @@ public class DismantleGameTests {
             // aiming at the glass finds the machine it belongs to
             ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller.offset(GLASS));
             check(helper, prepared.controllerPos().equals(controller), "the glass should resolve to the controller");
-            List<BlockPos> positions = prepared.positions();
+            List<BlockPos> positions = positions(prepared);
             check(helper, positions.size() == 4, "expected 4 positions, got " + positions);
             check(helper, positions.get(positions.size() - 1).equals(controller), "the controller must come last: " + positions);
 
@@ -185,6 +186,64 @@ public class DismantleGameTests {
         }).thenSucceed();
     }
 
+    /** Energy is paid before the break event, so running out never posts an event for a block that then stays. */
+    @GameTest(template = TEMPLATE)
+    public static void dismantleOutOfEnergyPostsNoBreakEvent(GameTestHelper helper) {
+        BlockPos controller = buildMachine(helper);
+        helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
+            Player player = helper.makeMockPlayer();
+            ItemStack tool = tool(player);
+            int fe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
+            new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).extractEnergy(START_FE - 2 * fe, false);
+            ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
+            List<BlockPos> events = new ArrayList<>();
+            Consumer<BlockEvent.BreakEvent> listener = event -> {
+                if (event.getPlayer() == player) {
+                    events.add(event.getPos());
+                }
+            };
+            MinecraftForge.EVENT_BUS.addListener(listener);
+            DismantleJob job;
+            try {
+                job = run(helper, player, prepared);
+            } finally {
+                MinecraftForge.EVENT_BUS.unregister(listener);
+            }
+
+            check(helper, job.outOfEnergy() && job.removed() == 2, "expected 2 removed, then out of energy; got " + job.removed());
+            check(helper, events.size() == 2, "only the 2 broken blocks may post a break event, got " + events);
+        }).thenSucceed();
+    }
+
+    /** A block swapped in after planning is not part of the machine any more and must survive the dismantle. */
+    @GameTest(template = TEMPLATE)
+    public static void dismantleSkipsBlockSwappedMidJob(GameTestHelper helper) {
+        BlockPos controller = buildMachine(helper);
+        helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
+            Player player = helper.makeMockPlayer();
+            ItemStack tool = tool(player);
+            ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
+            DismantleJob job = prepared.job(helper.getLevel());
+            // the first block goes, then someone replaces the next planned one (not the controller, which is last)
+            AssemblyJobs.tickDismantle(player, job, prepared.sink(), 1);
+            check(helper, job.removed() == 1, "expected 1 removed after the first tick, got " + job.removed());
+            BlockPos swapped = positions(prepared).get(1);
+            helper.getLevel().setBlockAndUpdate(swapped, Blocks.STONE.defaultBlockState());
+            int ticks = 0;
+            while (!AssemblyJobs.tickDismantle(player, job, prepared.sink(), 1)) {
+                if (++ticks > 100) {
+                    helper.fail("dismantle did not finish");
+                }
+            }
+
+            int fe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
+            check(helper, helper.getLevel().getBlockState(swapped).is(Blocks.STONE), "the swapped-in stone must survive");
+            check(helper, job.removed() == 3 && job.blocked() == 1, "expected 3 removed / 1 blocked, got " + job.removed() + " / " + job.blocked());
+            check(helper, storeCount(tool, Items.STONE) == 0 && storeCount(tool, Items.COBBLESTONE) == 0, "the stone must not be collected");
+            check(helper, energy(tool) == START_FE - 3 * fe, "the skipped block must cost nothing, have " + energy(tool));
+        }).thenSucceed();
+    }
+
     @GameTest(template = TEMPLATE)
     public static void unformedOnlyDismantlesTargetedController(GameTestHelper helper) {
         BlockPos controller = helper.absolutePos(CONTROLLER);
@@ -195,7 +254,7 @@ public class DismantleGameTests {
 
         expectError(helper, ToolDismantles.prepare(helper.getLevel(), player, tool, controller.offset(GLASS)), "message.mm.tool.dismantle.no_machine");
         ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
-        check(helper, prepared.positions().equals(List.of(controller)), "only the controller should be dismantled, got " + prepared.positions());
+        check(helper, positions(prepared).equals(List.of(controller)), "only the controller should be dismantled, got " + positions(prepared));
         helper.succeed();
     }
 
@@ -214,7 +273,7 @@ public class DismantleGameTests {
             for (BlockPos target : List.of(controller, controller.offset(GLASS), controller.offset(FLEX), controller.offset(STRICT))) {
                 MachineControllerBlockEntity resolved = DismantlePlanner.resolve(level, target);
                 check(helper, resolved != null, "the server should resolve " + target);
-                List<BlockPos> server = DismantlePlanner.positions(level, resolved);
+                List<BlockPos> server = positions(DismantlePlanner.positions(level, resolved));
                 List<BlockPos> preview = DismantlePlanner.previewPositions(level, target);
                 check(helper, new HashSet<>(preview).equals(new HashSet<>(server)) && preview.size() == server.size(),
                         "preview " + preview + " differs from server " + server + " for " + target);
@@ -249,7 +308,7 @@ public class DismantleGameTests {
             for (BlockPos target : List.of(controller, controller.offset(FLEX), controller.offset(GLASS), controller.offset(STRICT))) {
                 MachineControllerBlockEntity resolved = DismantlePlanner.resolve(level, target);
                 check(helper, resolved != null, "the server should resolve " + target);
-                List<BlockPos> server = DismantlePlanner.positions(level, resolved);
+                List<BlockPos> server = positions(DismantlePlanner.positions(level, resolved));
                 List<BlockPos> preview = DismantlePlanner.previewPositions(level, target);
                 check(helper, server.size() == 4, "the server should dismantle 4 blocks, got " + server);
                 check(helper, new HashSet<>(preview).equals(new HashSet<>(server)) && preview.size() == server.size(),
@@ -311,6 +370,14 @@ public class DismantleGameTests {
             helper.fail("dismantle refused: " + (result.error() == null ? "?" : result.error().getString()));
         }
         return result.prepared();
+    }
+
+    private static List<BlockPos> positions(ToolDismantles.Prepared prepared) {
+        return positions(prepared.positions());
+    }
+
+    private static List<BlockPos> positions(List<DismantlePlanner.Target> targets) {
+        return targets.stream().map(DismantlePlanner.Target::pos).toList();
     }
 
     private static DismantleJob run(GameTestHelper helper, Player player, ToolDismantles.Prepared prepared) {

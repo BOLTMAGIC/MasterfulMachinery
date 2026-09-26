@@ -23,7 +23,7 @@ import java.util.List;
 public final class DismantleJob {
     final ServerLevel level;
     final BlockPos controllerPos;
-    private final Deque<BlockPos> queue;
+    private final Deque<DismantlePlanner.Target> queue;
     private final int total;
     private final int perBlockFe;
     /** Loot tables see this: the tool with Silk Touch, so blocks like glass come back as themselves. */
@@ -33,7 +33,7 @@ public final class DismantleJob {
     private boolean outOfEnergy;
     private boolean sinkGone;
 
-    private DismantleJob(ServerLevel level, BlockPos controllerPos, List<BlockPos> positions, int perBlockFe, ItemStack tool) {
+    private DismantleJob(ServerLevel level, BlockPos controllerPos, List<DismantlePlanner.Target> positions, int perBlockFe, ItemStack tool) {
         this.level = level;
         this.controllerPos = controllerPos;
         this.queue = new ArrayDeque<>(positions);
@@ -43,8 +43,8 @@ public final class DismantleJob {
         this.lootTool.enchant(Enchantments.SILK_TOUCH, 1);
     }
 
-    /** @param positions what to break, in order (the controller last) */
-    public static DismantleJob create(ServerLevel level, BlockPos controllerPos, List<BlockPos> positions, int perBlockFe, ItemStack tool) {
+    /** @param positions what to break, in order (the controller last); a position holding another block is skipped */
+    public static DismantleJob create(ServerLevel level, BlockPos controllerPos, List<DismantlePlanner.Target> positions, int perBlockFe, ItemStack tool) {
         return new DismantleJob(level, controllerPos, positions, perBlockFe, tool);
     }
 
@@ -78,26 +78,33 @@ public final class DismantleJob {
                 queue.clear();
                 break;
             }
-            BlockPos pos = queue.poll();
+            DismantlePlanner.Target target = queue.poll();
+            BlockPos pos = target.pos();
             BlockState state = level.getBlockState(pos);
             if (state.isAir()) {
                 continue; // already gone, costs nothing
+            }
+            if (!state.is(target.block())) {
+                blocked++;
+                continue; // replaced since planning: not part of the machine any more
             }
             if (!player.mayBuild() || !level.mayInteract(player, pos) || state.getDestroySpeed(level, pos) < 0) {
                 blocked++;
                 continue; // adventure mode, spawn protection, unbreakable blocks
             }
             budget--;
-            // broken like a player would: claim and protection mods (and linked machines) may cancel it
-            var event = new BlockEvent.BreakEvent(level, pos, state, player);
-            if (MinecraftForge.EVENT_BUS.post(event)) {
-                blocked++;
-                continue;
-            }
+            // paid first, so no break event is posted for a block that is then not broken for lack of energy
             if (!sink.payEnergy(perBlockFe)) {
                 outOfEnergy = true;
                 queue.clear();
                 break; // remaining blocks stay
+            }
+            // broken like a player would: claim and protection mods (and linked machines) may cancel it
+            var event = new BlockEvent.BreakEvent(level, pos, state, player);
+            if (MinecraftForge.EVENT_BUS.post(event)) {
+                sink.refundEnergy(perBlockFe);
+                blocked++;
+                continue;
             }
             BlockEntity be = level.getBlockEntity(pos);
             List<ItemStack> drops = Block.getDrops(state, level, pos, be, player, lootTool);
