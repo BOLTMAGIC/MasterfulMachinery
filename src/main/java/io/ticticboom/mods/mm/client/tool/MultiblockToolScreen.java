@@ -10,6 +10,7 @@ import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -522,12 +523,19 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     private void drawMeStatus(GuiGraphics gfx) {
+        // ME networks only exist with AE2
+        if (!NetworkLink.AVAILABLE) {
+            return;
+        }
         int x = this.leftPos + inventoryX;
         int y = this.topPos + meStatusTop() + 1;
         drawClipped(gfx, meStatus(), x, y, GRID_WIDTH, LABEL);
     }
 
     private boolean isOnMeStatus(double mouseX, double mouseY) {
+        if (!NetworkLink.AVAILABLE) {
+            return false;
+        }
         int x = this.leftPos + inventoryX;
         int y = this.topPos + meStatusTop();
         return mouseX >= x && mouseX < x + GRID_WIDTH && mouseY >= y && mouseY < y + ME_HEIGHT;

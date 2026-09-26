@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.TierResolver;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
@@ -24,8 +25,8 @@ import java.util.function.ObjIntConsumer;
 
 /**
  * The tool screen's Settings tab: the preferred tier per registered port type and direction (types that come in
- * more than one tier), cycled with {@code <} / {@code >}, then the ME network toggles (with a "Forget ME network"
- * button while bound), a note on how a structure may overrule the tier choice, and the dismantle hint.
+ * more than one tier), cycled with {@code <} / {@code >}, then (with AE2 only) the ME network toggles (with a "Forget
+ * ME network" button while bound), a note on how a structure may overrule the tier choice, and the dismantle hint.
  */
 public class ToolSettingsTab {
     private static final int ROW = 14;
@@ -98,13 +99,24 @@ public class ToolSettingsTab {
         return y + 14;
     }
 
-    /** Rows end where the ME section begins, which itself ends where the note and the key hint begin. */
+    /**
+     * Rows end where the ME section begins, which itself ends where the note and the key hint begin (without AE2 there
+     * is no ME section and the rows end right above the note).
+     */
     private int rowsBottom() {
-        return y + height - footer.size() * 9 - 6 - meSectionHeight() - 8;
+        return y + height - footer.size() * 9 - 6 - meSectionHeight() - (hasMeSection() ? 8 : 4);
     }
 
-    /** Two toggle rows, plus a third for the forget button while the tool is bound. */
+    /** ME networks only exist with AE2. */
+    private static boolean hasMeSection() {
+        return NetworkLink.AVAILABLE;
+    }
+
+    /** Two toggle rows, plus a third for the forget button while the tool is bound; none without AE2. */
     private int meRowCount() {
+        if (!hasMeSection()) {
+            return 0;
+        }
         return bound.getAsBoolean() ? 3 : 2;
     }
 
@@ -168,10 +180,13 @@ public class ToolSettingsTab {
         gfx.disableScissor();
         drawScrollBar(gfx, top, bottom);
         gfx.fill(x + 4, bottom + 1, x + width - 4, bottom + 2, DIVIDER);
-        drawMeSection(gfx, mouseX, mouseY);
-        int meBottom = meSectionBottom();
-        gfx.fill(x + 4, meBottom + 1, x + width - 4, meBottom + 2, DIVIDER);
-        int footerY = meBottom + 4;
+        int footerY = bottom + 4;
+        if (hasMeSection()) {
+            drawMeSection(gfx, mouseX, mouseY);
+            int meBottom = meSectionBottom();
+            gfx.fill(x + 4, meBottom + 1, x + width - 4, meBottom + 2, DIVIDER);
+            footerY = meBottom + 4;
+        }
         for (FormattedCharSequence line : footer) {
             gfx.drawString(font, line, x + 4, footerY, LABEL, false);
             footerY += 9;
@@ -284,7 +299,7 @@ public class ToolSettingsTab {
         if (button != 0) {
             return false;
         }
-        if (mouseX >= x && mouseX < x + width) {
+        if (hasMeSection() && mouseX >= x && mouseX < x + width) {
             int meTop = meSectionTop();
             if (isOnMeRow(mouseX, mouseY, meTop)) {
                 useMe = !useMe;
