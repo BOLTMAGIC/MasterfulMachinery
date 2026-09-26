@@ -151,7 +151,11 @@ public class BuilderStructureGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void syncSplitsSmallBudgetsAndDropsStaleBatches(GameTestHelper helper) {
-        List<BuildableStructure> structures = BuildableStructureRegistry.SERVER.all();
+        // only the small test files: bigger ones (e.g. the bundled Multi Builder Tool structures) don't fit 800 bytes
+        List<BuildableStructure> structures = BuildableStructureRegistry.SERVER.all().stream()
+                .filter(s -> s.id().getNamespace().equals("mmtest") && s.blockCount() <= 20)
+                .toList();
+        check(helper, structures.size() >= 3, "expected the small mmtest structures, got " + structures.size());
         List<BuildableStructureSyncPkt> small = BuildableStructureSync.split(structures, 2, 800);
         check(helper, small.size() > 1, "an 800 byte budget should need several packets, got " + small.size());
 
