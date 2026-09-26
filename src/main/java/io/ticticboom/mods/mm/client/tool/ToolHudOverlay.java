@@ -22,9 +22,10 @@ import java.util.List;
 
 /**
  * The Multiblock Tool's craft progress above the hotbar, fed by {@code ToolHudPkt}: "Crafting ▓▓▓░░ 5/8 items" with the
- * items still in progress below it, "Waiting for the ME network…" while the network can't be reached, a yellow failure
- * line for {@value #SHOW_MS} ms when a craft fails, and the green "Ready" for {@value #SHOW_MS} ms once all are done.
- * It sits above the action bar and the health/food rows, however high those are stacked.
+ * items still in progress below it, "Waiting for the ME network…" (with the items that wait) while the network can't be
+ * reached, a yellow failure line for {@value #SHOW_MS} ms when a craft fails, and the green "Ready — right-click to
+ * build" for {@value #SHOW_MS} ms once all are done (the only place that says so). It sits above the action bar and the
+ * health/food rows, however high those are stacked.
  */
 @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class ToolHudOverlay {
@@ -96,7 +97,9 @@ public final class ToolHudOverlay {
     }
 
     private static List<Item> icons() {
-        return state.phase() == HudState.Phase.CRAFTING ? state.inProgress() : List.of();
+        // while waiting too: what is stuck
+        boolean onItsWay = state.phase() == HudState.Phase.CRAFTING || state.phase() == HudState.Phase.WAITING;
+        return onItsWay ? state.inProgress() : List.of();
     }
 
     private static String bar(int done, int total) {

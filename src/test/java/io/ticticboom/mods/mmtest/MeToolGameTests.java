@@ -20,6 +20,7 @@ import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.me.CraftHandle;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
+import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.compat.ae2.NetworkAccess;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
@@ -327,7 +328,8 @@ public class MeToolGameTests {
                     check(helper, order.done() == 1, "the planks are still being crafted");
                 })
                 .thenExecute(() -> {
-                    check(helper, player.lastKey().equals("message.mm.tool.craft.ready"), "the player should be told to right-click, got " + player.messages);
+                    check(helper, CraftTracker.hud(player).phase() == HudState.Phase.READY && player.messages.stream().noneMatch(m -> hasKey(m, "message.mm.tool.craft.ready")),
+                            "the HUD (only) should tell the player to right-click, got " + CraftTracker.hud(player) + " / " + player.messages);
                     ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
                     check(helper, result.prepared() != null, "the crafted planks are in ME, the build should start: "
                             + (result.error() == null ? "?" : result.error().getString()));

@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
 import com.mojang.authlib.GameProfile;
+import io.netty.buffer.Unpooled;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
@@ -10,6 +11,7 @@ import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.builder.me.MeAccess;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
@@ -22,6 +24,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
@@ -29,6 +32,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.common.util.FakePlayer;
@@ -182,7 +186,8 @@ public class ToolCraftGameTests {
             me.stock.merge(craft.item(), (long) craft.amount(), Long::sum);
         }
         CraftTracker.update(player);
-        check(helper, player.lastKey().equals("message.mm.tool.craft.ready"), "the player should be told to right-click, got " + player.messages);
+        check(helper, CraftTracker.hud(player).phase() == HudState.Phase.READY && player.messages.isEmpty(),
+                "the HUD, not the action bar, should tell the player to right-click, got " + CraftTracker.hud(player) + " / " + player.messages);
         check(helper, helper.getLevel().getBlockState(helper.absolutePos(ANCHOR)).isAir(), "the build must not start on its own");
 
         ToolBuilds.Result result = prepare(helper, player, tool, me);
@@ -302,8 +307,8 @@ public class ToolCraftGameTests {
         check(helper, CraftTracker.active(respawned, port("s").asItem()) == 1, "the craft should still be followed after a respawn");
         me.requests.get(0).state = CraftHandle.State.DONE;
         CraftTracker.update(respawned);
-        check(helper, respawned.lastKey().equals("message.mm.tool.craft.ready") && player.messages.isEmpty(),
-                "the ready message should reach the new player object: " + respawned.messages + " / " + player.messages);
+        check(helper, CraftTracker.hud(respawned).phase() == HudState.Phase.READY && CraftTracker.hud(player).phase() == HudState.Phase.READY,
+                "the new player object should see the crafts ready: " + CraftTracker.hud(respawned));
         CraftTracker.clear(respawned);
         helper.succeed();
     }
@@ -484,6 +489,56 @@ public class ToolCraftGameTests {
         check(helper, CraftTracker.orders(player).isEmpty() && CraftTracker.hud(player).phase() == HudState.Phase.NONE,
                 "turning auto-craft off should forget the crafts and hide the HUD");
         helper.succeed();
+    }
+
+    /**
+     * Four blocks crafting: the HUD names the first three (request order), and the packet carries exactly those through
+     * encode/decode; a state with more icons than that is cut to three on the wire.
+     */
+    @GameTest(template = TEMPLATE)
+    public static void hudIconsCappedAtThree(GameTestHelper helper) {
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        FakeMe me = new FakeMe();
+        List<Item> all = List.of(controllerBlock().asItem(), port("s").asItem(), Blocks.GLASS.asItem(), port("l").asItem());
+        me.craftable.addAll(all);
+        prepare(helper, player, tool, me);
+        check(helper, me.requests.size() == 4, "all four blocks should be requested, got " + me.requests);
+
+        HudState hud = CraftTracker.hud(player);
+        check(helper, hud.phase() == HudState.Phase.CRAFTING && hud.total() == 4 && hud.inProgress().size() == HudState.ICONS
+                && new HashSet<>(all).containsAll(hud.inProgress()) && new HashSet<>(hud.inProgress()).size() == HudState.ICONS,
+                "expected 3 distinct icons of 4 items crafting, got " + hud);
+        HudState decoded = roundTrip(hud);
+        check(helper, decoded.equals(hud), "the packet should carry the state unchanged: " + hud + " -> " + decoded);
+
+        me.requests.forEach(craft -> craft.waiting = true);
+        CraftTracker.update(player);
+        HudState waiting = roundTrip(CraftTracker.hud(player));
+        check(helper, waiting.phase() == HudState.Phase.WAITING && waiting.inProgress().equals(hud.inProgress()),
+                "waiting keeps the icons of what is stuck: " + waiting);
+
+        HudState five = new HudState(HudState.Phase.CRAFTING, 1, 5, List.of(all.get(0), all.get(1), all.get(2), all.get(3), Items.OAK_PLANKS),
+                Component.literal("failed"));
+        HudState cut = roundTrip(five);
+        check(helper, cut.inProgress().equals(all.subList(0, 3)) && cut.done() == 1 && cut.total() == 5
+                && cut.failure() != null && cut.failure().getString().equals("failed"), "five icons should be cut to the first three: " + cut);
+        CraftTracker.clear(player);
+        helper.succeed();
+    }
+
+    private static HudState roundTrip(HudState state) {
+        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        try {
+            ToolHudPkt.encode(new ToolHudPkt(state), buf);
+            HudState decoded = ToolHudPkt.decode(buf).state();
+            if (buf.readableBytes() != 0) {
+                throw new IllegalStateException(buf.readableBytes() + " bytes left after decoding");
+            }
+            return decoded;
+        } finally {
+            buf.release();
+        }
     }
 
     // --- helpers ---

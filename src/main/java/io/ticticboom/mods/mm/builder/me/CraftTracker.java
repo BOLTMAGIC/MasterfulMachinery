@@ -97,7 +97,6 @@ public final class CraftTracker {
         /** The player's current object: a respawn (death, leaving the End) replaces it, the UUID stays. */
         Player player;
         final Map<Item, Order> byItem = new LinkedHashMap<>();
-        boolean readyTold;
         /** Polls since nothing was left to follow. */
         int finishedPolls;
         /** The HUD state last sent to the player, and polls since. */
@@ -151,7 +150,6 @@ public final class CraftTracker {
         if (handle.state() == CraftHandle.State.FAILED) {
             order.reported.add(handle);
         }
-        orders.readyTold = false;
         orders.finishedPolls = 0;
     }
 
@@ -232,8 +230,8 @@ public final class CraftTracker {
     }
 
     /**
-     * Advances player's crafts once: a newly failed one is told in the action bar (once), and when all have finished
-     * without failing the player is told to right-click again. The build itself never starts on its own.
+     * Advances player's crafts once: a newly failed one is told in the action bar (once), and the HUD is updated (it says
+     * when all are done and the player can right-click again). The build itself never starts on its own.
      */
     public static void update(Player player) {
         Orders orders = ORDERS.get(player.getUUID());
@@ -242,7 +240,6 @@ public final class CraftTracker {
         }
         orders.player = player;
         boolean active = false;
-        boolean failed = false;
         for (Order order : orders.byItem.values()) {
             for (CraftHandle handle : order.handles) {
                 handle.update();
@@ -253,17 +250,10 @@ public final class CraftTracker {
                 } else if (state == CraftHandle.State.DONE) {
                     order.unseen.computeIfPresent(handle, (h, polls) -> polls + 1);
                 }
-                if (state == CraftHandle.State.FAILED) {
-                    failed = true;
-                    if (order.reported.add(handle)) {
-                        player.displayClientMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW), true);
-                    }
+                if (state == CraftHandle.State.FAILED && order.reported.add(handle)) {
+                    player.displayClientMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW), true);
                 }
             }
-        }
-        if (!active && !failed && !orders.readyTold) {
-            orders.readyTold = true;
-            player.displayClientMessage(Component.translatable("message.mm.tool.craft.ready").withStyle(ChatFormatting.GREEN), true);
         }
         orders.finishedPolls = active ? 0 : orders.finishedPolls + 1;
         sendHud(player, orders);
