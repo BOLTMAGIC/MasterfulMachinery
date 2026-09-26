@@ -14,6 +14,7 @@ import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.client.FluidRenderer;
+import io.ticticboom.mods.mm.client.builder.AssemblyScreen;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
 import io.ticticboom.mods.mm.port.PortContent;
@@ -276,7 +277,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.pose().pushPose();
         gfx.pose().translate(bx + 1, by + 1, 0);
         gfx.pose().scale(0.625f, 0.625f, 1f);
-        gfx.renderItem(new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.BRICKS), 0, 0);
+        gfx.renderItem(new ItemStack(Items.BRICKS), 0, 0);
         gfx.pose().popPose();
     }
 
@@ -856,7 +857,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         if (isOnAssembleButton(mouseX, mouseY)) {
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
-            Minecraft.getInstance().setScreen(new io.ticticboom.mods.mm.builder.AssemblyScreen(this, be));
+            Minecraft.getInstance().setScreen(new AssemblyScreen(this, be));
             return true;
         }
         if (isOnSizeButton(mouseX, mouseY)) {

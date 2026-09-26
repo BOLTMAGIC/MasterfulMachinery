@@ -1,9 +1,11 @@
-package io.ticticboom.mods.mm.builder;
+package io.ticticboom.mods.mm.client.builder;
 
+import io.ticticboom.mods.mm.builder.TierPrefs;
+import io.ticticboom.mods.mm.builder.TierResolver;
+import io.ticticboom.mods.mm.builder.TieredPortPiece;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.AssemblyPkt;
-import io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
@@ -31,6 +33,8 @@ public class AssemblyScreen extends Screen {
     private StructureModel structure;
     /** port type key -> tier -> block, over every port_type position of the structure */
     private final Map<String, TreeMap<Integer, Block>> rows = new LinkedHashMap<>();
+    /** port type key -> its positions, each with its own tier range */
+    private final Map<String, List<TieredPortPiece>> positions = new LinkedHashMap<>();
     private int left;
     private int top;
 
@@ -67,19 +71,32 @@ public class AssemblyScreen extends Screen {
 
     private void collectRows() {
         rows.clear();
+        positions.clear();
         if (structure == null) {
             return;
         }
         for (var positioned : structure.layout().getPositionedPieces()) {
-            if (positioned.piece().piece() instanceof PortTypeStructurePiece portType) {
-                String key = PortTiers.key(portType.getPortTypeId(), portType.getInput().orElse(true));
+            if (positioned.piece().piece() instanceof TieredPortPiece tiered) {
+                String key = tiered.tierKey();
                 var tiers = rows.computeIfAbsent(key, k -> new TreeMap<>());
-                portType.getBlocksByRank()
-                        .subMap(portType.getMinTier(), true, portType.getMaxTier(), true)
-                        .forEach(tiers::putIfAbsent);
+                tiered.tierOptions().forEach(tiers::putIfAbsent);
+                positions.computeIfAbsent(key, k -> new ArrayList<>()).add(tiered);
             }
         }
         rows.values().removeIf(Map::isEmpty);
+    }
+
+    /** True when some position of this port type cannot take the preferred tier and gets another one. */
+    private boolean adjusted(String key, int preferred) {
+        if (preferred == TierResolver.LOWEST) {
+            return false;
+        }
+        for (TieredPortPiece piece : positions.getOrDefault(key, List.of())) {
+            if (piece.resolveTier(preferred) != preferred) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void cycleStructure(int step) {
@@ -102,7 +119,8 @@ public class AssemblyScreen extends Screen {
     }
 
     private void start() {
-        MMNetwork.INSTANCE.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.START, "", 0));
+        String shown = structure == null ? "" : structure.id().toString();
+        MMNetwork.INSTANCE.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.START, shown, 0));
         onClose();
     }
 
@@ -126,7 +144,7 @@ public class AssemblyScreen extends Screen {
             if (preferred == TierResolver.LOWEST) {
                 label = Component.translatable("gui.mm.assemble.lowest", label);
             }
-            boolean adjusted = preferred != TierResolver.LOWEST && chosen != preferred;
+            boolean adjusted = adjusted(entry.getKey(), preferred);
             anyAdjusted |= adjusted;
             gfx.drawString(font, font.plainSubstrByWidth(label.getString(), WIDTH - 60) + (adjusted ? " *" : ""),
                     left + 8, y + 1, adjusted ? 0xFFD84D : 0xE0E0E0, false);
