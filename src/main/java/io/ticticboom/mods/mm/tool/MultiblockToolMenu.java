@@ -55,15 +55,17 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
             }
         }
         for (int col = 0; col < PLAYER_INV_COLS; col++) {
-            addSlot(new Slot(inv, col, 8 + col * 18, 198));
-            if (hand == InteractionHand.MAIN_HAND && col == inv.selected) {
+            boolean isHeldSlot = hand == InteractionHand.MAIN_HAND && col == inv.selected;
+            int x = 8 + col * 18;
+            addSlot(isHeldSlot ? new LockedSlot(inv, col, x, 198) : new Slot(inv, col, x, 198));
+            if (isHeldSlot) {
                 locked = STORE_SLOTS + PLAYER_INV_ROWS * PLAYER_INV_COLS + col;
             }
         }
         if (hand == InteractionHand.OFF_HAND) {
             // vanilla's own inventory index for the offhand slot
             locked = slots.size();
-            addSlot(new Slot(inv, 40, 8 + PLAYER_INV_COLS * 18 + 12, 198));
+            addSlot(new LockedSlot(inv, 40, 8 + PLAYER_INV_COLS * 18 + 12, 198));
         }
         this.lockedSlotIndex = locked;
     }
@@ -118,5 +120,25 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
         }
         sourceSlot.onTake(mover, after);
         return original;
+    }
+
+    /**
+     * A player-inventory slot that refuses direct pickup/place. Used for the held tool's own slot so
+     * it can't be taken, swapped in a number-key hotbar swap, or dragged over, while the menu is open.
+     */
+    private static final class LockedSlot extends Slot {
+        LockedSlot(Inventory inv, int index, int x, int y) {
+            super(inv, index, x, y);
+        }
+
+        @Override
+        public boolean mayPickup(@NotNull Player player) {
+            return false;
+        }
+
+        @Override
+        public boolean mayPlace(@NotNull ItemStack stack) {
+            return false;
+        }
     }
 }
