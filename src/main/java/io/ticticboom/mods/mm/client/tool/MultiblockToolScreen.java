@@ -2,6 +2,8 @@ package io.ticticboom.mods.mm.client.tool;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.TierPrefs;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.client.builder.StructureTierRows;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
@@ -25,9 +27,11 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
+import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -98,6 +102,11 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private final ToolSettingsTab settings;
     @Nullable
     private StructureModel selected;
+    // or another mod's structure (at most one of the two is set), with its own preview renderer
+    @Nullable
+    private BuildableStructure selectedBuilder;
+    @Nullable
+    private GuiStructureRenderer builderRenderer;
     private StructureTierRows tierRows;
     // -1: all layers, else a layer from the bottom
     private int layer = -1;
@@ -122,15 +131,37 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         this.prefs = ToolData.tiers(tool);
         var id = ToolData.structure(tool);
         this.selected = id == null ? null : StructureManager.STRUCTURES.get(id);
+        var builderId = ToolData.builderStructure(tool);
+        this.selectedBuilder = builderId == null ? null : BuildableStructureRegistry.CLIENT.get(builderId);
+        this.builderRenderer = selectedBuilder == null ? null : GuiStructureRenderer.ofBlocks(selectedBuilder.blocks());
         this.tierRows = new StructureTierRows(selected);
         // the screen's own font is only set in init()
         var font = Minecraft.getInstance().font;
-        this.gallery = new GalleryList(font, StructureManager.STRUCTURES.values(), selected == null ? null : selected.id(), this::select);
+        var entries = new ArrayList<GalleryList.Entry>();
+        for (StructureModel model : StructureManager.STRUCTURES.values()) {
+            entries.add(GalleryList.Entry.of(model));
+        }
+        for (BuildableStructure structure : BuildableStructureRegistry.CLIENT.all()) {
+            entries.add(GalleryList.Entry.of(structure));
+        }
+        ResourceLocation selectedId = selected != null ? selected.id() : selectedBuilder != null ? selectedBuilder.id() : null;
+        this.gallery = new GalleryList(font, entries, selectedId, selectedBuilder != null, this::select);
         this.settings = new ToolSettingsTab(font, prefs, this::setTier, ToolData.useMe(tool), ToolData.autoCraft(tool),
                 () -> ToolData.network(tool()) != null, this::toggleUseMe, this::toggleAutoCraft, this::forgetNetwork);
-        if (selected != null) {
-            selected.getGuiRenderer().resetTransforms();
+        GuiStructureRenderer renderer = renderer();
+        if (renderer != null) {
+            renderer.resetTransforms();
         }
+    }
+
+    /** The selected structure's 3D preview, MM or another mod's; null when nothing is selected. */
+    @Nullable
+    private GuiStructureRenderer renderer() {
+        return selected != null ? selected.getGuiRenderer() : builderRenderer;
+    }
+
+    private boolean hasSelection() {
+        return selected != null || selectedBuilder != null;
     }
 
     private ItemStack tool() {
@@ -201,16 +232,31 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
 
     // ---- selection and settings ----
 
-    private void select(StructureModel structure) {
-        if (selected != null && selected.id().equals(structure.id())) {
-            return;
+    private void select(GalleryList.Entry entry) {
+        if (entry.structure() instanceof BuildableStructure builder) {
+            if (selectedBuilder != null && selectedBuilder.id().equals(builder.id())) {
+                return;
+            }
+            selected = null;
+            selectedBuilder = builder;
+            builderRenderer = GuiStructureRenderer.ofBlocks(builder.blocks());
+            tierRows = new StructureTierRows(null);
+        } else {
+            StructureModel structure = (StructureModel) entry.structure();
+            if (selected != null && selected.id().equals(structure.id())) {
+                return;
+            }
+            selected = structure;
+            selectedBuilder = null;
+            builderRenderer = null;
+            tierRows = new StructureTierRows(structure);
         }
-        selected = structure;
-        tierRows = new StructureTierRows(structure);
         layer = -1;
-        structure.getGuiRenderer().resetTransforms();
+        //noinspection DataFlowIssue - a structure was just selected
+        renderer().resetTransforms();
         playClick();
-        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SELECT_STRUCTURE, structure.id().toString(), 0));
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SELECT_STRUCTURE, entry.id().toString(),
+                entry.builder() ? ToolSettingsPkt.BUILDER_STRUCTURE : 0));
     }
 
     private void setTier(String key, int tier) {
@@ -342,10 +388,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     private int layerCount() {
-        if (selected == null) {
+        GuiStructureRenderer renderer = renderer();
+        if (renderer == null) {
             return 0;
         }
-        GuiStructureRenderer renderer = selected.getGuiRenderer();
         renderer.init();
         return renderer.getStructureSize().y + 1;
     }
@@ -367,13 +413,13 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     /** The structure the same way as the blueprint screen and JEI draw it; this view's layer is applied every frame. */
     private void drawPreview(GuiGraphics gfx, int mouseX, int mouseY) {
         GuiPos view = viewport();
-        if (selected == null) {
+        GuiStructureRenderer renderer = renderer();
+        if (renderer == null) {
             Component hint = Component.translatable("gui.mm.tool.preview.none");
             int width = this.font.width(hint);
             gfx.drawString(this.font, hint, view.x() + (view.w() - width) / 2, view.y() + view.h() / 2 - 4, LABEL, false);
             return;
         }
-        GuiStructureRenderer renderer = selected.getGuiRenderer();
         gfx.pose().pushPose();
         gfx.pose().setIdentity();
         renderer.setViewport(view);
@@ -418,14 +464,33 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         int x = this.leftPos + previewX + 4;
         int y = this.topPos + infoY + 3;
         int width = previewWidth - 8;
-        if (selected == null) {
+        if (!hasSelection()) {
             drawClipped(gfx, Component.translatable("tooltip.mm.multiblock_tool.no_structure"), x, y, width, LABEL);
+            return;
+        }
+        if (selectedBuilder != null) {
+            drawClipped(gfx, builderInfoLine(), x, y, width, TEXT);
             return;
         }
         MutableComponent line = infoLine().copy().withStyle(Style.EMPTY.withColor(TEXT))
                 .append(Component.literal(" · ").withStyle(Style.EMPTY.withColor(LABEL)))
                 .append(portsLine());
         drawClipped(gfx, line, x, y, width, TEXT);
+    }
+
+    /** Another mod's structure: name, size and block count, and why it can't be built when it can't. */
+    private Component builderInfoLine() {
+        //noinspection DataFlowIssue - only called with a builder structure selected
+        Vec3i size = selectedBuilder.size();
+        MutableComponent line = Component.translatable("gui.mm.tool.info", selectedBuilder.displayName(), size.getX(), size.getY(), size.getZ(),
+                selectedBuilder.blockCount()).withStyle(Style.EMPTY.withColor(TEXT));
+        if (!selectedBuilder.buildable()) {
+            //noinspection DataFlowIssue - not buildable means there is an unbuildable block
+            line.append(Component.literal(" · ").withStyle(Style.EMPTY.withColor(LABEL)))
+                    .append(Component.translatable("gui.mm.tool.unbuildable", selectedBuilder.unbuildableBlock().getName())
+                            .withStyle(Style.EMPTY.withColor(ADJUSTED)));
+        }
+        return line;
     }
 
     private Component infoLine() {
@@ -466,6 +531,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private boolean isOnPortsLine(double mouseX, double mouseY) {
         int x = this.leftPos + previewX;
         int y = this.topPos + infoY;
+        // only MM structures have the ports tooltip
         return tab == Tab.STRUCTURES && selected != null && mouseX >= x && mouseX < x + previewWidth && mouseY >= y && mouseY < y + INFO_HEIGHT;
     }
 
@@ -648,8 +714,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 stepLayer(delta > 0 ? 1 : -1);
                 return true;
             }
-            if (selected != null && isOnView(mouseX, mouseY)) {
-                selected.getGuiRenderer().zoom(delta);
+            if (renderer() != null && isOnView(mouseX, mouseY)) {
+                renderer().zoom(delta);
                 return true;
             }
             if (gallery.mouseScrolled(mouseX, mouseY, delta)) {

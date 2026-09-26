@@ -152,7 +152,11 @@ public final class StructurePasteUtil {
         return bounds;
     }
 
-    private static BlockPos offsetBottomMiddleFrontToAnchor(BlockPos anchorPos, Direction frontDirection, AABB bounds) {
+    /**
+     * The shift that moves a structure occupying {@code bounds} so the anchor becomes its bottom-middle-front block;
+     * shared with the multiblock tool's non-MM structures.
+     */
+    public static BlockPos offsetBottomMiddleFrontToAnchor(BlockPos anchorPos, Direction frontDirection, AABB bounds) {
         Direction.Axis frontAxis = frontDirection.getAxis();
         Direction.Axis sideAxis = frontAxis == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
 

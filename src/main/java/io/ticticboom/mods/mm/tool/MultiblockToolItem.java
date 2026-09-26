@@ -152,7 +152,8 @@ public class MultiblockToolItem extends Item {
         Level level = context.getLevel();
         Player player = context.getPlayer();
         ItemStack stack = context.getItemInHand();
-        if (ToolBuilds.selectedStructure(stack) == null) {
+        // an MM structure or another mod's; the server checks it still exists
+        if (ToolData.structure(stack) == null && ToolData.builderStructure(stack) == null) {
             if (!level.isClientSide()) {
                 player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
             }
@@ -177,7 +178,7 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Prepared build = result.prepared();
-        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe())) {
+        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(), build.requiresController())) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
             return InteractionResult.FAIL;
         }
@@ -215,6 +216,9 @@ public class MultiblockToolItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         ResourceLocation structure = ToolData.structure(stack);
+        if (structure == null) {
+            structure = ToolData.builderStructure(stack);
+        }
         if (structure != null) {
             tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.structure", structure.toString()).withStyle(ChatFormatting.GRAY));
         } else {

@@ -40,6 +40,11 @@ public class AutoTransform {
     private boolean wasRight;
     private boolean wasMiddle;
 
+    /** For a preview that isn't an MM structure; the renderer sets the rotation center from its blocks. */
+    public AutoTransform() {
+        reset();
+    }
+
     public AutoTransform(StructureModel model) {
         for (PositionedLayoutPiece piece : model.layout().getPositionedPieces()) {
             BlockPos pos = piece.pos();

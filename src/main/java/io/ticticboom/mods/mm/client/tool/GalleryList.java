@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.TextMatch;
@@ -25,9 +26,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * The tool screen's structure list: structures grouped by the mod (namespace) they come from, groups collapsible.
- * A search text hides the structures whose name and id do not contain it, and groups left empty, and underlines
- * the match in the name.
+ * The tool screen's structure list: MM structures and other mods' structures, grouped by the mod (namespace) they come
+ * from, groups collapsible. A search text hides the structures whose name and id do not contain it, and groups left
+ * empty, and underlines the match in the name.
  */
 public class GalleryList {
     private static final int ROW = 10;
@@ -40,16 +41,34 @@ public class GalleryList {
     // collapsed groups by namespace; remembered while the game runs
     private static final Set<String> COLLAPSED = new HashSet<>();
 
-    private record Group(String namespace, Component name, List<StructureModel> structures) {
+    /**
+     * One structure in the list: an MM {@link StructureModel} ({@code builder} false) or another mod's
+     * {@link BuildableStructure} ({@code builder} true).
+     */
+    public record Entry(ResourceLocation id, String name, String namespace, boolean builder, Object structure) {
+        public static Entry of(StructureModel model) {
+            return new Entry(model.id(), model.name(), model.id().getNamespace(), false, model);
+        }
+
+        public static Entry of(BuildableStructure structure) {
+            return new Entry(structure.id(), structure.displayName().getString(), structure.group(), true, structure);
+        }
+
+        public boolean is(@Nullable ResourceLocation otherId, boolean otherBuilder) {
+            return id.equals(otherId) && builder == otherBuilder;
+        }
+    }
+
+    private record Group(String namespace, Component name, List<Entry> structures) {
     }
 
     /** One shown line: a group header, or a structure with where the search text is in its name (-1 when not). */
-    private record Line(Group group, @Nullable StructureModel structure, int shownCount, int matchStart) {
+    private record Line(Group group, @Nullable Entry structure, int shownCount, int matchStart) {
     }
 
     private final Font font;
     private final List<Group> groups;
-    private final Consumer<StructureModel> onSelect;
+    private final Consumer<Entry> onSelect;
     private List<Line> lines = List.of();
     private String query = "";
     private int scroll;
@@ -59,23 +78,26 @@ public class GalleryList {
     private int height;
     @Nullable
     private ResourceLocation selected;
+    private boolean selectedBuilder;
 
-    public GalleryList(Font font, Collection<StructureModel> structures, @Nullable ResourceLocation selected, Consumer<StructureModel> onSelect) {
+    public GalleryList(Font font, Collection<Entry> structures, @Nullable ResourceLocation selected, boolean selectedBuilder,
+                       Consumer<Entry> onSelect) {
         this.font = font;
         this.onSelect = onSelect;
         this.selected = selected;
+        this.selectedBuilder = selectedBuilder;
         this.groups = group(structures);
         refresh();
     }
 
-    private static List<Group> group(Collection<StructureModel> structures) {
-        Map<String, List<StructureModel>> byNamespace = new LinkedHashMap<>();
-        for (StructureModel structure : structures) {
-            byNamespace.computeIfAbsent(structure.id().getNamespace(), k -> new ArrayList<>()).add(structure);
+    private static List<Group> group(Collection<Entry> structures) {
+        Map<String, List<Entry>> byNamespace = new LinkedHashMap<>();
+        for (Entry structure : structures) {
+            byNamespace.computeIfAbsent(structure.namespace(), k -> new ArrayList<>()).add(structure);
         }
         var result = new ArrayList<Group>();
         byNamespace.forEach((namespace, list) -> {
-            list.sort(Comparator.comparing((StructureModel s) -> s.name().toLowerCase(Locale.ROOT)).thenComparing(s -> s.id().toString()));
+            list.sort(Comparator.comparing((Entry s) -> s.name().toLowerCase(Locale.ROOT)).thenComparing(s -> s.id().toString()));
             result.add(new Group(namespace, Component.literal(modName(namespace)), list));
         });
         result.sort(Comparator.comparing(g -> g.name().getString().toLowerCase(Locale.ROOT)));
@@ -110,8 +132,8 @@ public class GalleryList {
     /** Scrolls so the selected structure is in view. */
     public void showSelected() {
         for (int i = 0; i < lines.size(); i++) {
-            StructureModel structure = lines.get(i).structure();
-            if (structure != null && structure.id().equals(selected)) {
+            Entry structure = lines.get(i).structure();
+            if (structure != null && structure.is(selected, selectedBuilder)) {
                 int top = i * ROW;
                 if (top < scroll || top + ROW > scroll + height) {
                     scroll = top - height / 2;
@@ -127,7 +149,7 @@ public class GalleryList {
         boolean searching = !query.isEmpty();
         for (Group group : groups) {
             var matches = new ArrayList<Line>();
-            for (StructureModel structure : group.structures()) {
+            for (Entry structure : group.structures()) {
                 int start = searching ? TextMatch.indexOfIgnoreCase(structure.name(), query) : -1;
                 if (searching && start < 0 && !TextMatch.containsIgnoreCase(structure.id().toString(), query)) {
                     continue;
@@ -173,8 +195,8 @@ public class GalleryList {
                 continue;
             }
             Line line = lines.get(i);
-            StructureModel structure = line.structure();
-            if (structure != null && structure.id().equals(selected)) {
+            Entry structure = line.structure();
+            if (structure != null && structure.is(selected, selectedBuilder)) {
                 gfx.fill(x, top, x + textWidth, top + ROW, SELECTED);
             } else if (line == hovered) {
                 gfx.fill(x, top, x + textWidth, top + ROW, HOVER);
@@ -229,7 +251,7 @@ public class GalleryList {
         if (line == null || line.structure() == null) {
             return null;
         }
-        StructureModel structure = line.structure();
+        Entry structure = line.structure();
         return List.of(Component.literal(structure.name()), Component.literal(structure.id().toString()).withStyle(ChatFormatting.DARK_GRAY));
     }
 
@@ -249,6 +271,7 @@ public class GalleryList {
             return true;
         }
         selected = line.structure().id();
+        selectedBuilder = line.structure().builder();
         onSelect.accept(line.structure());
         return true;
     }

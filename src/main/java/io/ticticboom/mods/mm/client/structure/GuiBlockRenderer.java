@@ -38,14 +38,26 @@ public class GuiBlockRenderer {
     private static Minecraft mc = Minecraft.getInstance();
     private BlockPos pos;
 
+    // set when the block is drawn in a given state (another mod's structure) instead of its default state
+    @Nullable
+    private final BlockState fixedState;
+
     public GuiBlockRenderer(Block block, List<StructurePieceModifier> modifiers) {
         this.block = block;
         this.modifiers = modifiers;
+        this.fixedState = null;
+    }
+
+    /** A block drawn exactly in this state, with no modifiers. */
+    public GuiBlockRenderer(BlockState state) {
+        this.block = state.getBlock();
+        this.modifiers = List.of();
+        this.fixedState = state;
     }
 
     public void setupAt(BlockPos pos) {
         this.pos = pos;
-        state = block.defaultBlockState();
+        state = fixedState != null ? fixedState : block.defaultBlockState();
         if (block instanceof EntityBlock eb) {
             be = eb.newBlockEntity(pos, state);
             ber = Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(be);

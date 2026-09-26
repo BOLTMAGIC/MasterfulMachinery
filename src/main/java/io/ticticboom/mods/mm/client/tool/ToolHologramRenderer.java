@@ -4,8 +4,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.tool.FixedBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
 import io.ticticboom.mods.mm.tool.ToolData;
@@ -18,6 +21,7 @@ import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -57,7 +61,8 @@ public final class ToolHologramRenderer {
     private static Direction keyFace;
     private static Direction keyFacing;
     private static int keyTurns;
-    private static StructureModel keyStructure;
+    /** The selected structure: a {@link StructureModel} or another mod's {@link BuildableStructure}. */
+    private static Object keyStructure;
     private static long keyBucket;
     // the cached plan: ghosts to draw, obstructed positions, the whole outline (null = nothing to show)
     private static List<AssemblyPlanner.Planned> ghosts = List.of();
@@ -80,7 +85,11 @@ public final class ToolHologramRenderer {
             return;
         }
         ItemStack tool = ToolKeys.heldTool(player);
-        StructureModel structure = tool.isEmpty() ? null : ToolBuilds.selectedStructure(tool);
+        Object structure = tool.isEmpty() ? null : ToolBuilds.selectedStructure(tool);
+        if (structure == null && !tool.isEmpty()) {
+            ResourceLocation builderId = ToolData.builderStructure(tool);
+            structure = builderId == null ? null : BuildableStructureRegistry.CLIENT.get(builderId);
+        }
         if (structure == null || !(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK
                 || (player.isShiftKeyDown() && !ToolKeys.recentlyRotated(level))
                 || !ToolKeys.dismantleHighlight(level).isEmpty()
@@ -107,16 +116,31 @@ public final class ToolHologramRenderer {
         rebuild(level, player, tool, structure);
     }
 
-    private static void rebuild(Level level, Player player, ItemStack tool, StructureModel structure) {
-        ToolBuildPlan plan = ToolBuildPlan.create(level, structure, keyPos, keyFace, keyFacing, keyTurns, ToolData.tiers(tool), ToolBuildPlan.availableSnapshot(player, tool));
-        if (plan == null || plan.plan().steps().isEmpty()) {
+    private static void rebuild(Level level, Player player, ItemStack tool, Object structure) {
+        AssemblyPlanner.Plan steps;
+        List<BlockPos> planObstructed;
+        if (structure instanceof BuildableStructure builder) {
+            FixedBuildPlan plan = FixedBuildPlan.create(level, builder, keyPos, keyFace, keyFacing, keyTurns);
+            steps = plan.plan();
+            planObstructed = plan.obstructed();
+        } else {
+            ToolBuildPlan plan = ToolBuildPlan.create(level, (StructureModel) structure, keyPos, keyFace, keyFacing, keyTurns,
+                    ToolData.tiers(tool), ToolBuildPlan.availableSnapshot(player, tool));
+            if (plan == null) {
+                clear();
+                return;
+            }
+            steps = plan.plan();
+            planObstructed = plan.obstructed();
+        }
+        if (steps.steps().isEmpty()) {
             clear();
             return;
         }
-        Set<BlockPos> blocked = new HashSet<>(plan.obstructed());
+        Set<BlockPos> blocked = new HashSet<>(planObstructed);
         var toDraw = new ArrayList<AssemblyPlanner.Planned>();
         AABB box = null;
-        for (AssemblyPlanner.Planned step : plan.plan().steps()) {
+        for (AssemblyPlanner.Planned step : steps.steps()) {
             AABB cell = new AABB(step.pos());
             box = box == null ? cell : box.minmax(cell);
             BlockState existing = level.getBlockState(step.pos());
@@ -126,7 +150,7 @@ public final class ToolHologramRenderer {
             }
         }
         ghosts = toDraw;
-        obstructed = plan.obstructed();
+        obstructed = planObstructed;
         bounds = box;
     }
 

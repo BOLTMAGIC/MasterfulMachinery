@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.net.packet;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
@@ -25,6 +26,9 @@ import java.util.function.Supplier;
  */
 public record ToolSettingsPkt(Action action, String key, int value) {
     public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK }
+
+    /** {@link Action#SELECT_STRUCTURE} value for another mod's structure; 0 selects an MM structure. */
+    public static final int BUILDER_STRUCTURE = 1;
 
     public static void encode(ToolSettingsPkt pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
@@ -56,7 +60,8 @@ public record ToolSettingsPkt(Action action, String key, int value) {
      * the HUD): the way out of a craft stuck on a network that is gone for good.
      */
     public static boolean apply(ServerPlayer player, @Nullable ItemStack tool, Action action, String key, int value) {
-        if (!apply(tool, action, key, value, StructureManager.STRUCTURES::containsKey, PortTiers.registeredMaxTiers())) {
+        if (!apply(tool, action, key, value, StructureManager.STRUCTURES::containsKey,
+                id -> BuildableStructureRegistry.SERVER.get(id) != null, PortTiers.registeredMaxTiers())) {
             return false;
         }
         if (action == Action.FORGET_NETWORK || (action == Action.SET_AUTOCRAFT && value == 0)) {
@@ -74,13 +79,33 @@ public record ToolSettingsPkt(Action action, String key, int value) {
      */
     public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
                                 Predicate<ResourceLocation> structureExists, Map<String, Integer> maxTierByKey) {
+        return apply(tool, action, key, value, structureExists, id -> false, maxTierByKey);
+    }
+
+    /**
+     * As above; for {@link Action#SELECT_STRUCTURE} a {@code value} of {@link #BUILDER_STRUCTURE} selects another mod's
+     * structure (checked with {@code builderStructureExists}) instead of an MM one.
+     */
+    public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
+                                Predicate<ResourceLocation> structureExists, Predicate<ResourceLocation> builderStructureExists,
+                                Map<String, Integer> maxTierByKey) {
         if (tool == null || !(tool.getItem() instanceof MultiblockToolItem)) {
             return false;
         }
         switch (action) {
             case SELECT_STRUCTURE -> {
                 ResourceLocation id = ResourceLocation.tryParse(key);
-                if (id == null || !structureExists.test(id)) {
+                if (id == null) {
+                    return false;
+                }
+                if (value == BUILDER_STRUCTURE) {
+                    if (!builderStructureExists.test(id)) {
+                        return false;
+                    }
+                    ToolData.setBuilderStructure(tool, id);
+                    return true;
+                }
+                if (!structureExists.test(id)) {
                     return false;
                 }
                 ToolData.setStructure(tool, id);
