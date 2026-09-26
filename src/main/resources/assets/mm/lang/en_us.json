@@ -233,7 +233,7 @@
   "tooltip.mm.multiblock_tool.structure": "Structure: %s",
   "tooltip.mm.multiblock_tool.no_structure": "No structure selected",
   "tooltip.mm.multiblock_tool.energy": "%s / %s FE",
-  "tooltip.mm.multiblock_tool.usage": "Shift+Use: choose a structure. Right-click: build. Shift+right-click / hold V: dismantle.",
+  "tooltip.mm.multiblock_tool.usage": "Shift+Use: choose a structure. Right-click: build. Shift+right-click / hold %s: dismantle.",
   "message.mm.tool.no_structure": "Shift+use to choose a structure",
   "message.mm.tool.no_controller": "This structure has no controller block to build",
   "message.mm.tool.obstructed": "Nothing built: %s position(s) are in the way: %s",

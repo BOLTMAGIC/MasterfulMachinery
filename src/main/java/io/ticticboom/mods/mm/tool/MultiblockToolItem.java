@@ -31,6 +31,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Supplier;
 
 /**
  * Carries a chosen Masterful Machinery structure, a 54-slot block store and FE; right-click builds it
@@ -39,9 +40,16 @@ import java.util.List;
  */
 public class MultiblockToolItem extends Item {
     private static final int BAR_COLOR = 0x3399FF;
+    /** The dismantle key's name for the tooltip; the client points this at the bound key (common code cannot). */
+    private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
 
     public MultiblockToolItem() {
         super(new Item.Properties().stacksTo(1));
+    }
+
+    /** Client setup: names the key actually bound to dismantling in the tooltip. */
+    public static void setDismantleKeyName(Supplier<Component> name) {
+        dismantleKeyName = name;
     }
 
     @Override
@@ -187,6 +195,6 @@ public class MultiblockToolItem extends Item {
         int capacity = MMConfigSetup.COMMON.toolEnergyCapacity.get();
         int energy = new ToolEnergy(stack, capacity).getEnergyStored();
         tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.energy", energy, capacity).withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.usage").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
     }
 }

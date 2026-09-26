@@ -233,7 +233,7 @@
   "tooltip.mm.multiblock_tool.structure": "Yapı: %s",
   "tooltip.mm.multiblock_tool.no_structure": "Seçili yapı yok",
   "tooltip.mm.multiblock_tool.energy": "%s / %s FE",
-  "tooltip.mm.multiblock_tool.usage": "Shift+Kullan: yapı seç. Sağ tık: kur. Shift+sağ tık / V basılı tut: sök.",
+  "tooltip.mm.multiblock_tool.usage": "Shift+Kullan: yapı seç. Sağ tık: kur. Shift+sağ tık / %s basılı tut: sök.",
   "message.mm.tool.no_structure": "Yapı seçmek için Shift+kullan",
   "message.mm.tool.no_controller": "Bu yapının kurulacak bir controller bloğu yok",
   "message.mm.tool.obstructed": "Kurulmadı: %s konum dolu: %s",
