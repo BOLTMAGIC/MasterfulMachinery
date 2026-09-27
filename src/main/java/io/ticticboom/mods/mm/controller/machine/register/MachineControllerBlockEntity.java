@@ -4,6 +4,8 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.builder.PortTiers;
+import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.IControllerBlockEntity;
 import io.ticticboom.mods.mm.controller.IControllerPart;
@@ -61,6 +63,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 import static io.ticticboom.mods.mm.config.MMConfigSetup.COMMON;
 
@@ -93,6 +96,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // recipe order picked on the screen; null = the controller type's default
     @Nullable
     private RecipeSelectionMode recipeModeOverride = null;
+    /** Assemble: preferred port tier per port type, and which structure to build (null = first). */
+    private final TierPrefs assemblyTiers = new TierPrefs();
+    @Nullable
+    private ResourceLocation assemblyStructureId = null;
     // set from the controller screen: this machine plays no working sound (its particles stay)
     private boolean soundMuted = false;
     // name given by a player (screen, or a named controller item); null = the machine's name
@@ -1082,6 +1089,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (soundMuted) {
             tag.putBoolean("SoundMuted", true);
         }
+        if (!assemblyTiers.asMap().isEmpty()) tag.put("AssemblyTiers", assemblyTiers.save());
+        if (assemblyStructureId != null) tag.putString("AssemblyStructure", assemblyStructureId.toString());
         super.saveAdditional(tag);
     }
 
@@ -1148,6 +1157,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 redstoneMode = RedstoneMode.IGNORED;
             }
         } catch (Throwable ignored) { redstoneMode = RedstoneMode.IGNORED; }
+        assemblyTiers.copyFrom(TierPrefs.load(tag.getCompound("AssemblyTiers")));
+        assemblyStructureId = tag.contains("AssemblyStructure") ? ResourceLocation.tryParse(tag.getString("AssemblyStructure")) : null;
     }
 
     @Override
@@ -1373,5 +1384,76 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }, "mm-controller-validate-delayed");
         t.setDaemon(true);
         return t;
+    }
+
+    public ResourceLocation getControllerId() {
+        return controllerId;
+    }
+
+    public TierPrefs getAssemblyTiers() {
+        return assemblyTiers;
+    }
+
+    /** Stores a tier a client chose; ignores keys this machine does not have and clamps the tier to what exists. */
+    public void setAssemblyTier(String key, int rank) {
+        int valid = TierPrefs.validate(PortTiers.maxTiers(getAssemblyCandidates()), key, rank);
+        if (valid != TierPrefs.REJECTED && assemblyTiers.set(key, valid)) {
+            syncAssemblySettings();
+        }
+    }
+
+    public @Nullable ResourceLocation getAssemblyStructureId() {
+        return assemblyStructureId;
+    }
+
+    /** Ignores ids that are not one of {@link #getAssemblyCandidates()}. */
+    public void setAssemblyStructureId(ResourceLocation id) {
+        if (findAssemblyCandidate(id) == null || id.equals(assemblyStructureId)) {
+            return;
+        }
+        assemblyStructureId = id;
+        syncAssemblySettings();
+    }
+
+    /** Structures this controller can assemble, one per id (the latest definition), sorted by id so client and server agree. */
+    public List<StructureModel> getAssemblyCandidates() {
+        var byId = new TreeMap<ResourceLocation, StructureModel>();
+        for (StructureModel structure : StructureManager.getStructuresForController(controllerId)) {
+            byId.put(structure.id(), structure); // last wins, like StructureManager.STRUCTURES
+        }
+        return List.copyOf(byId.values());
+    }
+
+    /** The chosen structure, else the one this controller has (formed or last found), else the first candidate. */
+    public @Nullable StructureModel getAssemblyStructure() {
+        StructureModel chosen = findAssemblyCandidate(assemblyStructureId);
+        if (chosen != null) {
+            return chosen;
+        }
+        StructureModel current = structure == null ? null : findAssemblyCandidate(structure.id());
+        if (current != null) {
+            return current;
+        }
+        List<StructureModel> candidates = getAssemblyCandidates();
+        return candidates.isEmpty() ? null : candidates.get(0);
+    }
+
+    public @Nullable StructureModel findAssemblyCandidate(@Nullable ResourceLocation id) {
+        if (id == null) {
+            return null;
+        }
+        for (StructureModel candidate : getAssemblyCandidates()) {
+            if (candidate.id().equals(id)) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
+    private void syncAssemblySettings() {
+        setChanged();
+        if (level != null) {
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        }
     }
 }

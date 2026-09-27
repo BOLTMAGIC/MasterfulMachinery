@@ -7,6 +7,7 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue splitRecipesJei;
     public final ForgeConfigSpec.BooleanValue portsAutoExtractByDefault;
     public final ForgeConfigSpec.IntValue portAutoIOInterval;
+    public final ForgeConfigSpec.IntValue assemblyBlocksPerTick;
     public final ForgeConfigSpec.IntValue networkLinkOutputInterval;
     public final ForgeConfigSpec.BooleanValue networkLinkOpBypass;
     public final ForgeConfigSpec.BooleanValue networkLinkSendOnRemove;
@@ -32,6 +33,8 @@ public class MMCommonConfig {
                 .define("portsAutoExtractByDefault", false);
         portAutoIOInterval = builder.comment("How often ports with enabled auto push/pull sides transfer, in ticks. Default: 10")
                 .defineInRange("portAutoIOInterval", 10, 1, 200);
+        assemblyBlocksPerTick = builder.comment("How many blocks the controller's Assemble places per tick. Default: 2")
+                .defineInRange("assemblyBlocksPerTick", 2, 1, 64);
         parallelProcessingDefault = builder.comment("The default value of 'parallelProcessing' (when not set) on structures that support parallel processing. Default: false")
                 .define("parallelProcessingDefault", false);
         maxParallelRecipes = builder.comment("The max Parallel Recipes per controller. Default: 5")

@@ -33,5 +33,9 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::encode,
                 io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::decode,
                 io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.AssemblyPkt.class,
+                io.ticticboom.mods.mm.net.packet.AssemblyPkt::encode,
+                io.ticticboom.mods.mm.net.packet.AssemblyPkt::decode,
+                io.ticticboom.mods.mm.net.packet.AssemblyPkt::handle);
     }
 }
