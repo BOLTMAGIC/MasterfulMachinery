@@ -151,17 +151,18 @@ public class BuilderStructureGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void syncSplitsSmallBudgetsAndDropsStaleBatches(GameTestHelper helper) {
-        // only the small test files: bigger ones (e.g. the bundled Multi Builder Tool structures) don't fit 800 bytes
-        List<BuildableStructure> structures = BuildableStructureRegistry.SERVER.all().stream()
-                .filter(s -> s.id().getNamespace().equals("mmtest") && s.blockCount() <= 20)
-                .toList();
-        check(helper, structures.size() >= 3, "expected the small mmtest structures, got " + structures.size());
-        List<BuildableStructureSyncPkt> small = BuildableStructureSync.split(structures, 2, 800);
-        check(helper, small.size() > 1, "an 800 byte budget should need several packets, got " + small.size());
+        // small cubes of a known size (the loaded files vary with the installed mods): about 60 bytes each,
+        // so a 300 byte budget holds a few per packet and six need several packets
+        List<BuildableStructure> structures = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            structures.add(big(id("small_" + i), 2));
+        }
+        List<BuildableStructureSyncPkt> small = BuildableStructureSync.split(structures, 2, 300);
+        check(helper, small.size() > 1, "a 300 byte budget should need several packets, got " + small.size());
 
         var assembler = new BuildableStructureSync.Assembler();
         // the first chunk of an older batch is abandoned when a newer batch starts
-        List<BuildableStructureSyncPkt> older = BuildableStructureSync.split(structures, 1, 800);
+        List<BuildableStructureSyncPkt> older = BuildableStructureSync.split(structures, 1, 300);
         check(helper, assembler.accept(roundTrip(older.get(0))) == null, "one chunk of several is not complete");
         List<BuildableStructure> result = null;
         for (BuildableStructureSyncPkt pkt : small) {
