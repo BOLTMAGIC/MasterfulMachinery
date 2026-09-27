@@ -12,7 +12,6 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraftforge.network.NetworkEvent;
 import org.jetbrains.annotations.Nullable;
 
@@ -81,13 +80,11 @@ public record AssemblyPkt(BlockPos pos, Action action, String key, int value) {
             return;
         }
         BlockPos pos = controller.getBlockPos();
-        if (structure.formed(player.level(), pos)) {
+        var plan = AssemblyPlanner.planCompletion(player.level(), structure, pos, controller.getAssemblyTiers(), b -> PlayerMaterials.has(player, b));
+        if (plan == null) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.already"), true);
             return;
         }
-        var facing = controller.getBlockState().getValue(HorizontalDirectionalBlock.FACING);
-        var rotation = AssemblyPlanner.bestRotation(player.level(), structure, pos, facing);
-        var plan = AssemblyPlanner.plan(structure, pos, rotation, controller.getAssemblyTiers(), b -> PlayerMaterials.has(player, b));
         if (!AssemblyJobs.start(player, pos, plan)) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
         }

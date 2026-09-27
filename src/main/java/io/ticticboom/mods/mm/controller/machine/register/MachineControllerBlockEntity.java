@@ -86,6 +86,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
     private int comparatorSignal = 0;
     private RecipeStorages portStorages = null;
+    // synced to clients in the update tag
     private boolean isFormed = false;
     @Getter
     private RecipeModel currentRecipe;
@@ -1159,6 +1160,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } catch (Throwable ignored) { redstoneMode = RedstoneMode.IGNORED; }
         assemblyTiers.copyFrom(TierPrefs.load(tag.getCompound("AssemblyTiers")));
         assemblyStructureId = tag.contains("AssemblyStructure") ? ResourceLocation.tryParse(tag.getString("AssemblyStructure")) : null;
+    }
+
+    /** Whether the structure was formed at the last validation; also known on the client. */
+    public boolean isFormed() {
+        return isFormed;
     }
 
     @Override

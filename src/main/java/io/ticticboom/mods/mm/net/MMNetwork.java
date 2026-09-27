@@ -10,7 +10,7 @@ import net.minecraftforge.network.simple.SimpleChannel;
 
 public class MMNetwork {
 
-    private static final String PROTOCOL_VERSION = "2";
+    private static final String PROTOCOL_VERSION = "3";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -37,5 +37,17 @@ public class MMNetwork {
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::encode,
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::decode,
                 io.ticticboom.mods.mm.net.packet.AssemblyPkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolRotatePkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolRotatePkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolDismantlePkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolDismantlePkt::handle);
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolSettingsPkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::encode,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolSettingsPkt::handle);
     }
 }

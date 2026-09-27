@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -73,6 +74,21 @@ public final class AssemblyPlanner {
         return count;
     }
 
+    /**
+     * Finishing the structure around an existing controller (controller Assemble and the multiblock tool): the
+     * rotation that already matches best, else the controller's facing.
+     *
+     * @return null when the structure is already formed there
+     */
+    public static @Nullable Plan planCompletion(Level level, StructureModel model, BlockPos controllerPos, TierPrefs prefs, Predicate<Block> available) {
+        if (model.formed(level, controllerPos)) {
+            return null;
+        }
+        Direction facing = level.getBlockState(controllerPos).getValue(HorizontalDirectionalBlock.FACING);
+        Rotation rotation = bestRotation(level, model, controllerPos, facing);
+        return plan(model, controllerPos, rotation, prefs, available);
+    }
+
     public static Plan plan(StructureModel model, BlockPos controllerPos, Rotation rotation, TierPrefs prefs, Predicate<Block> available) {
         var steps = new ArrayList<Planned>();
         int unavailable = 0;
@@ -118,7 +134,8 @@ public final class AssemblyPlanner {
         return nonNull.stream().filter(available).findFirst().orElse(nonNull.get(0));
     }
 
-    private static List<PositionedLayoutPiece> pieces(StructureModel model, Rotation rotation) {
+    /** The structure's pieces turned by rotation. */
+    static List<PositionedLayoutPiece> pieces(StructureModel model, Rotation rotation) {
         return model.layout().getRotatedPositionedPieces().getOrDefault(rotation, model.layout().getPositionedPieces());
     }
 }

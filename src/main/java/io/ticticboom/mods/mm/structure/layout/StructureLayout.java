@@ -118,7 +118,8 @@ public class StructureLayout {
         return missing;
     }
 
-    private boolean isAnywhere(Object underlying) {
+    /** Whether the piece is a port matched against any port position of the structure, not only its own. */
+    public boolean isAnywhere(Object underlying) {
         return underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece
                 || (portsAnywhereGlobal && (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
                 || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece));

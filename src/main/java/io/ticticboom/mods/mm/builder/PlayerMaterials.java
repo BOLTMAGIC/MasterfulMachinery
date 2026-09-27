@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.builder;
 
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -21,7 +22,7 @@ public final class PlayerMaterials {
             return false;
         }
         for (ItemStack stack : player.getInventory().items) {
-            if (stack.is(item)) {
+            if (buildable(stack, item)) {
                 return true;
             }
         }
@@ -29,7 +30,16 @@ public final class PlayerMaterials {
     }
 
     /**
-     * Takes one block's item, preferring plain stacks so renamed or otherwise tagged items are used last.
+     * True when stack can be placed as item's block. Stacks carrying block entity data (a filled chest, a configured
+     * machine) are skipped: the block is placed in its default state, so that data would be lost.
+     */
+    public static boolean buildable(ItemStack stack, Item item) {
+        return stack.is(item) && stack.getTagElement(BlockItem.BLOCK_ENTITY_TAG) == null;
+    }
+
+    /**
+     * Takes one block's item, preferring plain stacks so renamed or otherwise tagged items are used last; never one
+     * carrying block entity data (see {@link #buildable}).
      *
      * @return the taken item (empty in creative, where nothing is taken), or null when the player has none
      */
@@ -45,7 +55,7 @@ public final class PlayerMaterials {
         int tagged = -1;
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
-            if (stack.is(item)) {
+            if (buildable(stack, item)) {
                 if (!stack.hasTag()) {
                     return takeOne(player, stack);
                 }

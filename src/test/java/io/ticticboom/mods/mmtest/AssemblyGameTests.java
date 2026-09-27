@@ -3,7 +3,9 @@ package io.ticticboom.mods.mmtest;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
+import io.ticticboom.mods.mm.builder.MaterialSource;
 import io.ticticboom.mods.mm.builder.PlayerMaterials;
+import io.ticticboom.mods.mm.builder.PlayerMaterialSource;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -271,6 +273,75 @@ public class AssemblyGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void outOfEnergyStops(GameTestHelper helper) {
+        BlockPos controller = placeController(helper, Direction.NORTH);
+        StructureModel structure = structure(helper);
+        Player player = helper.makeMockPlayer();
+        player.getAbilities().instabuild = true;
+
+        Rotation rotation = AssemblyPlanner.bestRotation(helper.getLevel(), structure, controller, Direction.NORTH);
+        var plan = AssemblyPlanner.plan(structure, controller, rotation, new TierPrefs(), b -> true);
+        check(helper, plan.unavailable() == 0, "every position should have a part, " + plan.unavailable() + " have none");
+        AssemblyJob job = AssemblyJob.create(helper.getLevel(), controller, plan, 10);
+        MaterialSource source = new LimitedEnergySource(new PlayerMaterialSource(player), 1);
+
+        int ticks = 0;
+        while (!job.tick(player, source, 1)) {
+            if (++ticks > 100) {
+                helper.fail("assembly job did not finish");
+            }
+        }
+
+        check(helper, job.placed() == 1, "expected 1 placed, got " + job.placed());
+        check(helper, job.outOfEnergy(), "expected the job to report out of energy");
+        check(helper, job.missing().isEmpty(), "nothing should be counted missing, got " + job.missing());
+        expectBlock(helper, controller.offset(FLEX), port("s"));
+        expectBlock(helper, controller.offset(GLASS), Blocks.AIR);
+        expectBlock(helper, controller.offset(STRICT), Blocks.AIR);
+        helper.succeed();
+    }
+
+    /** Wraps a source but allows only a fixed number of successful energy payments; the rest are refused. */
+    private static final class LimitedEnergySource implements MaterialSource {
+        private final MaterialSource delegate;
+        private int allowed;
+
+        LimitedEnergySource(MaterialSource delegate, int allowed) {
+            this.delegate = delegate;
+            this.allowed = allowed;
+        }
+
+        @Override
+        public boolean has(Block block) {
+            return delegate.has(block);
+        }
+
+        @Override
+        public ItemStack take(Block block) {
+            return delegate.take(block);
+        }
+
+        @Override
+        public void refund(ItemStack stack) {
+            delegate.refund(stack);
+        }
+
+        @Override
+        public boolean payEnergy(int fe) {
+            if (allowed <= 0) {
+                return false;
+            }
+            allowed--;
+            return true;
+        }
+
+        @Override
+        public boolean free() {
+            return delegate.free();
+        }
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void assembleDefaultsToFormedStructure(GameTestHelper helper) {
         BlockPos pos = placeController(helper, Direction.NORTH);
         var controller = (MachineControllerBlockEntity) helper.getLevel().getBlockEntity(pos);
@@ -297,9 +368,10 @@ public class AssemblyGameTests {
         var plan = AssemblyPlanner.plan(structure, controller, rotation, prefs, b -> PlayerMaterials.has(player, b));
         check(helper, plan.unavailable() == 0, "every position should have a part, " + plan.unavailable() + " have none");
         AssemblyJob job = AssemblyJob.create(helper.getLevel(), controller, plan);
+        MaterialSource source = new PlayerMaterialSource(player);
         int ticks = 0;
         // a small budget so the job really runs over several ticks
-        while (!job.tick(player, 1)) {
+        while (!job.tick(player, source, 1)) {
             if (++ticks > 100) {
                 helper.fail("assembly job did not finish");
             }

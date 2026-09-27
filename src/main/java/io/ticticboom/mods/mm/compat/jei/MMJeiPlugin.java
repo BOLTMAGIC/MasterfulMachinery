@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.compat.jei;
 
 import com.google.common.collect.ImmutableList;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
 import io.ticticboom.mods.mm.compat.jei.category.MMRecipeCategory;
 import io.ticticboom.mods.mm.compat.jei.category.MMStructureCategory;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
@@ -21,8 +22,10 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
+import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.registration.*;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -128,5 +131,16 @@ public class MMJeiPlugin implements IModPlugin {
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
         registration.useNbtForSubtypes(MMRegisters.BLUEPRINT.get());
+    }
+
+    @Override
+    public void registerGuiHandlers(@NotNull IGuiHandlerRegistration registration) {
+        // the multiblock tool screen's tabs hang outside its window; keep JEI's item list off them
+        registration.addGuiContainerHandler(MultiblockToolScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public @NotNull List<Rect2i> getGuiExtraAreas(@NotNull MultiblockToolScreen screen) {
+                return screen.getTabAreas();
+            }
+        });
     }
 }
