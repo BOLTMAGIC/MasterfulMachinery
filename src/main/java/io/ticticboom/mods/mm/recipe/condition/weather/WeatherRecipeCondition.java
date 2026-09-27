@@ -5,6 +5,8 @@ import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 
+import java.util.Locale;
+
 public class WeatherRecipeCondition implements IRecipeCondition {
 
     private final RecipeWeatherType type;
@@ -15,7 +17,7 @@ public class WeatherRecipeCondition implements IRecipeCondition {
 
     @Override
     public Component describe() {
-        return Component.translatable("jei.mm.condition.weather." + type.name().toLowerCase());
+        return Component.translatable("jei.mm.condition.weather." + type.name().toLowerCase(Locale.ROOT));
     }
 
     @Override

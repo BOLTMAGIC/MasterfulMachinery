@@ -49,6 +49,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -117,7 +118,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
 
         String key() {
-            return "gui.mm.controller.status." + name().toLowerCase();
+            return "gui.mm.controller.status." + name().toLowerCase(Locale.ROOT);
         }
     }
 
@@ -548,7 +549,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
 
         for (Row row : rows()) {
-            drawClipped(gfx, Component.translatable("gui.mm.controller.row." + row.name().toLowerCase()),
+            drawClipped(gfx, Component.translatable("gui.mm.controller.row." + row.name().toLowerCase(Locale.ROOT)),
                     LEFT, rowY(row), VALUE_X - LEFT - 4, LABEL);
         }
         var structure = be.getStructure();
@@ -668,7 +669,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     private String redstoneMode() {
-        return be.getRedstoneModeName().toLowerCase();
+        return be.getRedstoneModeName().toLowerCase(Locale.ROOT);
     }
 
     private String recipeMode() {
@@ -747,7 +748,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         for (Row row : rows()) {
             if (!isOnRow(row, mouseX, mouseY)) continue;
-            String key = "gui.mm.controller.row." + row.name().toLowerCase();
+            String key = "gui.mm.controller.row." + row.name().toLowerCase(Locale.ROOT);
             var lines = new ArrayList<Component>();
             lines.add(Component.translatable(key));
             switch (row) {
