@@ -150,10 +150,21 @@ public final class AssemblyJobs {
     }
 
     public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
+        return start(player, controllerPos, plan, source, perBlockFe, true);
+    }
+
+    /**
+     * @param requiresController false for another mod's multiblock (no MM controller): controllerPos is then only the
+     *                           center used for the distance check
+     */
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
+                                boolean requiresController) {
         if (JOBS.containsKey(player.getUUID())) {
             return false;
         }
-        AssemblyJob job = AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe);
+        AssemblyJob job = requiresController
+                ? AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe)
+                : AssemblyJob.createWithoutController(player.serverLevel(), controllerPos, plan, perBlockFe);
         JOBS.put(player.getUUID(), new Build(job, source));
         return true;
     }

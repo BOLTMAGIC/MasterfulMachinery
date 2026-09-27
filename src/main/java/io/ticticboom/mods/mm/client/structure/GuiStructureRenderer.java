@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.structure;
 
+import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.client.RenderUtil;
 import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
@@ -17,14 +18,15 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
 
 public class GuiStructureRenderer {
     public static boolean shouldEnsureValidated = false;
-    private final StructureModel model;
+    // builds the parts on first use (an MM structure's pieces, or another mod's fixed blocks)
+    private final Supplier<List<PositionedCyclingBlockRenderer>> partsFactory;
     private List<PositionedCyclingBlockRenderer> parts;
     // parts fully enclosed by opaque cubes; they can't be seen in the full (unsliced) view
     private Set<PositionedCyclingBlockRenderer> enclosedParts = Set.of();
-    private final GuiStructureLayout guiLayout;
     private final AutoTransform viewTransform;
     private final GuiRenderEnvSetup renderSetup = new GuiRenderEnvSetup();
     private final StructureRenderYSliceProcessor ySliceProcessor = new StructureRenderYSliceProcessor();
@@ -45,17 +47,36 @@ public class GuiStructureRenderer {
 
 
     public GuiStructureRenderer(StructureModel model) {
-        this.model = model;
-        viewTransform = new AutoTransform(model);
-        guiLayout = new GuiStructureLayout(model.layout());
+        this(new AutoTransform(model), () -> {
+            model.layout().setup(model);
+            List<PositionedCyclingBlockRenderer> list = new ArrayList<>(new GuiStructureLayout(model.layout()).createBlockRenderers());
+            list.add(model.controllerUiRenderer());
+            return list;
+        });
+    }
+
+    private GuiStructureRenderer(AutoTransform viewTransform, Supplier<List<PositionedCyclingBlockRenderer>> partsFactory) {
+        this.viewTransform = viewTransform;
+        this.partsFactory = partsFactory;
         parts = new ArrayList<>();
+    }
+
+    /** A preview of fixed blocks, e.g. another mod's multiblock for the multiblock tool. */
+    public static GuiStructureRenderer ofBlocks(List<BuildableStructure.Placement> blocks) {
+        return new GuiStructureRenderer(new AutoTransform(), () -> {
+            List<PositionedCyclingBlockRenderer> list = new ArrayList<>(blocks.size());
+            for (BuildableStructure.Placement placement : blocks) {
+                GuiBlockRenderer renderer = new GuiBlockRenderer(placement.state());
+                renderer.setupAt(placement.pos());
+                list.add(new PositionedCyclingBlockRenderer(List.of(renderer), placement.pos()));
+            }
+            return list;
+        });
     }
 
     public void init() {
         if (!isInitialized) {
-            model.layout().setup(model);
-            parts = guiLayout.createBlockRenderers();
-            parts.add(model.controllerUiRenderer());
+            parts = partsFactory.get();
             for (PositionedCyclingBlockRenderer part : parts) {
                 part.part.setInterval(20);
             }

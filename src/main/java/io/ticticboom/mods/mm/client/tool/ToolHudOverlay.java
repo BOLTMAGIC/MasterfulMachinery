@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.client.tool;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructureSync;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -67,6 +68,8 @@ public final class ToolHudOverlay {
     @SubscribeEvent
     public static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         state = HudState.NONE;
+        // the synced builder structures belong to the server we leave
+        BuildableStructureSync.resetClient();
     }
 
     /** The lines shown now, top to bottom (the icons row is separate); empty when the HUD is hidden. */

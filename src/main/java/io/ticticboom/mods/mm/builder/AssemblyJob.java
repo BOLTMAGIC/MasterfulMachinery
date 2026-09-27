@@ -32,14 +32,21 @@ public final class AssemblyJob {
     private boolean outOfEnergy;
     private boolean sourceGone;
     private boolean controllerNotPlaced;
+    /** False for structures without an MM controller (other mods' multiblocks); controllerPos is then only the center. */
+    private final boolean requiresController;
 
     AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
+        this(level, controllerPos, plan, perBlockFe, true);
+    }
+
+    AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe, boolean requiresController) {
         this.level = level;
         this.controllerPos = controllerPos;
         this.queue = new ArrayDeque<>(plan.steps());
         this.total = plan.steps().size();
         this.unavailable = plan.unavailable();
         this.perBlockFe = perBlockFe;
+        this.requiresController = requiresController;
     }
 
     /** For game tests; players start jobs through {@link AssemblyJobs#start}. Controller path: 0 FE per block. */
@@ -49,6 +56,11 @@ public final class AssemblyJob {
 
     public static AssemblyJob create(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
         return new AssemblyJob(level, controllerPos, plan, perBlockFe);
+    }
+
+    /** A job for a structure without an MM controller: center is only used for the distance check. */
+    public static AssemblyJob createWithoutController(ServerLevel level, BlockPos center, AssemblyPlanner.Plan plan, int perBlockFe) {
+        return new AssemblyJob(level, center, plan, perBlockFe, false);
     }
 
     public int placed() {
@@ -92,6 +104,9 @@ public final class AssemblyJob {
      * itself (multiblock tool) does not need it before that step.
      */
     public boolean controllerPresent() {
+        if (!requiresController) {
+            return true;
+        }
         AssemblyPlanner.Planned next = queue.peek();
         if (next != null && next.pos().equals(controllerPos)) {
             return true;
@@ -120,7 +135,7 @@ public final class AssemblyJob {
                 budget--;
             }
             // a job placing its own controller (multiblock tool) builds nothing more once that fails
-            if (next.pos().equals(controllerPos) && outcome != Outcome.PLACED && outcome != Outcome.ALREADY) {
+            if (requiresController && next.pos().equals(controllerPos) && outcome != Outcome.PLACED && outcome != Outcome.ALREADY) {
                 controllerNotPlaced = true;
                 queue.clear();
                 break;

@@ -15,6 +15,8 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class ToolData {
     private static final String STRUCTURE_KEY = "Structure";
+    /** Set when the selected structure is another mod's (a BuildableStructure), not an MM one. */
+    private static final String BUILDER_KEY = "BuilderStructure";
     private static final String TURNS_KEY = "ExtraTurns";
     private static final String TIERS_KEY = "Tiers";
     private static final String NETWORK_KEY = "Network";
@@ -24,23 +26,42 @@ public final class ToolData {
     private ToolData() {
     }
 
+    /** The selected MM structure, or null when none is selected or the selection is another mod's structure. */
     public static @Nullable ResourceLocation structure(ItemStack stack) {
         CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(STRUCTURE_KEY, Tag.TAG_STRING)) {
+        if (tag == null || !tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || tag.getBoolean(BUILDER_KEY)) {
             return null;
         }
         return ResourceLocation.tryParse(tag.getString(STRUCTURE_KEY));
     }
 
+    /** The selected non-MM structure (a {@code BuildableStructure} id), or null. */
+    public static @Nullable ResourceLocation builderStructure(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || !tag.getBoolean(BUILDER_KEY)) {
+            return null;
+        }
+        return ResourceLocation.tryParse(tag.getString(STRUCTURE_KEY));
+    }
+
+    /** Selects an MM structure (null clears the selection). */
     public static void setStructure(ItemStack stack, @Nullable ResourceLocation id) {
         if (id == null) {
             if (stack.hasTag()) {
                 //noinspection DataFlowIssue - hasTag() just confirmed the tag exists
                 stack.getTag().remove(STRUCTURE_KEY);
+                stack.getTag().remove(BUILDER_KEY);
             }
             return;
         }
         stack.getOrCreateTag().putString(STRUCTURE_KEY, id.toString());
+        stack.getOrCreateTag().remove(BUILDER_KEY);
+    }
+
+    /** Selects another mod's structure (loaded from a datapack {@code .nbt}). */
+    public static void setBuilderStructure(ItemStack stack, ResourceLocation id) {
+        stack.getOrCreateTag().putString(STRUCTURE_KEY, id.toString());
+        stack.getOrCreateTag().putBoolean(BUILDER_KEY, true);
     }
 
     /** @return 0-3, the number of extra quarter turns applied on top of the player's facing. */

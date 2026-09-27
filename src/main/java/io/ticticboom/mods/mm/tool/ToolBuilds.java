@@ -5,6 +5,8 @@ import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.MaterialSource;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
+import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.networklink.Permissions;
@@ -33,8 +35,16 @@ public final class ToolBuilds {
     private ToolBuilds() {
     }
 
-    /** A build ready to hand to {@link io.ticticboom.mods.mm.builder.AssemblyJobs#start}. */
-    public record Prepared(BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
+    /**
+     * A build ready to hand to {@link io.ticticboom.mods.mm.builder.AssemblyJobs#start}.
+     *
+     * @param requiresController false for another mod's structure: controllerPos is then only its center
+     */
+    public record Prepared(BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
+                           boolean requiresController) {
+        public Prepared(BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
+            this(controllerPos, plan, source, perBlockFe, true);
+        }
     }
 
     /**
@@ -66,22 +76,43 @@ public final class ToolBuilds {
         return null;
     }
 
+    /** The selected non-MM structure, from the server's registry, or null. */
+    public static @Nullable BuildableStructure selectedBuilderStructure(ItemStack tool) {
+        ResourceLocation id = ToolData.builderStructure(tool);
+        return id == null ? null : BuildableStructureRegistry.SERVER.get(id);
+    }
+
     public static Result prepare(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace) {
-        StructureModel structure = selectedStructure(tool);
-        if (structure == null) {
-            return Result.error(Component.translatable("message.mm.tool.no_structure"));
-        }
         ChainedMaterialSource source = ToolBuildPlan.source(player, tool);
-        return prepare(level, player, tool, clickedPos, clickedFace, structure, source).withNotice(meNotice(player, tool, source));
+        return prepare(level, player, tool, clickedPos, clickedFace, source).withNotice(meNotice(player, tool, source));
     }
 
     /** As above, drawing from the given source (its network, if any, is the one crafts are requested from). */
     public static Result prepare(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace, ChainedMaterialSource source) {
+        BuildableStructure builder = selectedBuilderStructure(tool);
+        if (builder != null) {
+            return prepareFixed(level, player, tool, clickedPos, clickedFace, builder, source);
+        }
         StructureModel structure = selectedStructure(tool);
         if (structure == null) {
             return Result.error(Component.translatable("message.mm.tool.no_structure"));
         }
         return prepare(level, player, tool, clickedPos, clickedFace, structure, source);
+    }
+
+    /** Another mod's structure: fixed blocks, no controller; refused when anything is in the way or it can't be built. */
+    private static Result prepareFixed(Level level, Player player, ItemStack tool, BlockPos clickedPos, Direction clickedFace,
+                                       BuildableStructure structure, ChainedMaterialSource source) {
+        if (!structure.buildable()) {
+            //noinspection DataFlowIssue - not buildable means there is an unbuildable block
+            return Result.error(Component.translatable("message.mm.tool.unbuildable", structure.unbuildableBlock().getName()));
+        }
+        FixedBuildPlan build = FixedBuildPlan.create(level, structure, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool));
+        if (!build.obstructed().isEmpty()) {
+            return Result.error(StructurePasteUtil.obstructionMessage("message.mm.tool.obstructed", build.obstructed()));
+        }
+        int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
+        return startable(level, player, tool, source, new Prepared(build.center(), build.plan(), source, perBlockFe, false));
     }
 
     /**
