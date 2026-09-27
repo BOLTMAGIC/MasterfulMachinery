@@ -72,7 +72,7 @@ public final class AssemblyJobs {
         }
 
         public Component summary() {
-            return AssemblyJobs.summary(job);
+            return AssemblyJobs.summary(job, source);
         }
 
         public Component tooFar() {
@@ -219,7 +219,8 @@ public final class AssemblyJobs {
         return text;
     }
 
-    private static Component summary(AssemblyJob job) {
+    /** What the player is told when a build ends: placed, missing, blocked, ... and anything about the source. */
+    public static Component summary(AssemblyJob job, MaterialSource source) {
         MutableComponent text = Component.translatable("message.mm.assemble.done", job.placed);
         if (!job.missing.isEmpty()) {
             MutableComponent list = Component.empty();
@@ -249,6 +250,10 @@ public final class AssemblyJobs {
         }
         if (job.outOfEnergy()) {
             text.append(Component.literal(" · ")).append(Component.translatable("message.mm.assemble.out_of_energy", job.placed(), job.total()));
+        }
+        Component note = source.summaryNote();
+        if (note != null) {
+            text.append(Component.literal(" · ")).append(note);
         }
         return text;
     }

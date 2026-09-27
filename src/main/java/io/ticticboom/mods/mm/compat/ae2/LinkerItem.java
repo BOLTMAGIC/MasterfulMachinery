@@ -117,12 +117,12 @@ public class LinkerItem extends Item {
     }
 
     private static void rememberNetwork(Level level, Player player, UseOnContext context, IInWorldGridNodeHost host) {
-        var face = context.getClickedFace();
-        if (NetworkAccess.nodeOf(host, face) == null) {
+        var network = NetworkAccess.clicked(level, context.getClickedPos(), context.getClickedFace(), host);
+        if (network == null) {
             player.displayClientMessage(Component.translatable("message.mm.network_linker.not_a_network").withStyle(ChatFormatting.RED), true);
             return;
         }
-        setNetwork(context.getItemInHand(), new LinkData.NetworkPos(level.dimension(), context.getClickedPos(), face));
+        setNetwork(context.getItemInHand(), network);
         player.displayClientMessage(Component.translatable("message.mm.network_linker.network_saved", context.getClickedPos().toShortString()), true);
     }
 

@@ -3,13 +3,16 @@ package io.ticticboom.mods.mmtest.client;
 import com.mojang.logging.LogUtils;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
+import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.client.builder.AssemblyScreen;
 import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
 import io.ticticboom.mods.mm.client.tool.ToolHologramRenderer;
+import io.ticticboom.mods.mm.client.tool.ToolHudOverlay;
 import io.ticticboom.mods.mm.client.tool.ToolKeys;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerScreen;
+import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.ToolData;
@@ -25,6 +28,7 @@ import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSetCarriedItemPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -52,6 +56,7 @@ import net.minecraftforge.client.event.InputEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
@@ -80,7 +85,8 @@ import java.util.stream.Stream;
  * Real-client smoke test of the multiblock tool, active only with {@code -Dmmtest.clientSmoke=true} (Gradle run
  * {@code runClientSmoke}). From the title screen it creates a superflat world, then drives the tool's client code the
  * way a player would: hologram, tool screen (tabs, search), build by right-click, the controller's Assemble screen,
- * V-hold dismantle and Shift+scroll. Every step logs {@code [MM-SMOKE] step <name> OK|FAIL}, the run ends with
+ * V-hold dismantle and Shift+scroll; then, with AE2, the craft HUD while a real ME network crafts a missing block, and
+ * the build from it. Every step logs {@code [MM-SMOKE] step <name> OK|FAIL}, the run ends with
  * {@code [MM-SMOKE] RESULT PASS|FAIL} and the client stops itself. Screenshots go to {@code <run dir>/screenshots}.
  * <p>
  * The mod's client state it asserts on (hologram plan, dismantle outline, screen internals) is private, so it is read
@@ -93,8 +99,10 @@ public final class ClientSmokeTest {
     private static final String TAG = "[MM-SMOKE] ";
     private static final String WORLD = "mm_client_smoke";
     private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
-    /** Whole test, counted in client ticks from world creation on: 4 minutes. */
-    private static final int TOTAL_TICKS = 4 * 60 * 20;
+    /** Built by the tool from a real AE2 network after crafting its planks: its controller and one oak planks block. */
+    private static final ResourceLocation CRAFT_STRUCTURE = ResourceLocation.tryBuild("mmtest", "craft_test");
+    /** Whole test, counted in client ticks from world creation on: 7 minutes. */
+    private static final int TOTAL_TICKS = 7 * 60 * 20;
     /** Wall-clock safety net (loading screens do not tick): the JVM is halted after this. */
     private static final long WATCHDOG_MS = 15 * 60 * 1000L;
     private static final int HOLD_TICKS = 25;
@@ -127,7 +135,12 @@ public final class ClientSmokeTest {
             new Step("aim_machine", 20 * 5, ClientSmokeTest::aimMachine),
             new Step("dismantle_hold", 20 * 5, ClientSmokeTest::dismantleHold),
             new Step("dismantle_server", 20 * 20, ClientSmokeTest::dismantleServer),
-            new Step("shift_scroll", 20 * 5, ClientSmokeTest::shiftScroll));
+            new Step("shift_scroll", 20 * 5, ClientSmokeTest::shiftScroll),
+            new Step("hud_network", 20 * 30, ClientSmokeTest::hudNetwork),
+            new Step("hud_bind", 20 * 10, ClientSmokeTest::hudBind),
+            new Step("hud_crafting", 20 * 30, ClientSmokeTest::hudCrafting),
+            new Step("hud_ready", 20 * 60, ClientSmokeTest::hudReady),
+            new Step("hud_build", 20 * 20, ClientSmokeTest::hudBuild));
 
     private static int stepIndex;
     private static int stepTick;
@@ -144,6 +157,8 @@ public final class ClientSmokeTest {
     private static int turnsBefore;
     // tick a step's condition was first met (-1: not yet)
     private static int aimedTick = -1;
+    private static BlockPos drive;
+    private static boolean hudSkipped;
 
     private ClientSmokeTest() {
     }
@@ -592,6 +607,189 @@ public final class ClientSmokeTest {
         mc.options.keyShift.setDown(false);
         LOGGER.info(TAG + "extra turns {} -> {}", turnsBefore, expected);
         return true;
+    }
+
+    /**
+     * A small real AE2 crafting network behind the player (without its molecular assembler yet), and the tool switched
+     * to craft_test, whose oak planks nothing holds: they have to be crafted from the network's oak log.
+     */
+    private static boolean hudNetwork(int tick) {
+        if (!ModList.get().isLoaded("ae2")) {
+            LOGGER.warn(TAG + "AE2 is not loaded: HUD steps skipped");
+            hudSkipped = true;
+            return true;
+        }
+        BlockPos base = new BlockPos(-2, floor.getY() + 1, 3);
+        Optional<BlockPos> built = server("ae2_network", player -> {
+            ItemStack tool = player.getInventory().getItem(0);
+            ToolData.setStructure(tool, CRAFT_STRUCTURE);
+            player.inventoryMenu.broadcastChanges();
+            return SmokeAe2.build(player.serverLevel(), base, registered("craft_test"));
+        });
+        if (built.isEmpty()) {
+            return false;
+        }
+        drive = built.get();
+        return poll("ae2_ready", player -> SmokeAe2.ready(player.serverLevel(), drive) ? Boolean.TRUE : null).isPresent()
+                && CRAFT_STRUCTURE.equals(ToolData.structure(Minecraft.getInstance().player.getMainHandItem()));
+    }
+
+    /** Shift+right-click on the drive binds the tool to its network. */
+    private static boolean hudBind(int tick) throws Exception {
+        if (hudSkipped) {
+            return true;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (tick <= 3) {
+            lookAt(Vec3.atCenterOf(drive));
+        }
+        if (tick == 0) {
+            mc.options.keyShift.setDown(true);
+        } else if (tick == 3) {
+            check(mc.player.isShiftKeyDown(), "the player should sneak");
+            check(hitting(drive, null), "the drive should be aimed at");
+            mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, (BlockHitResult) mc.hitResult);
+            mc.options.keyShift.setDown(false);
+        }
+        if (tick <= 3) {
+            return false;
+        }
+        return poll("bound", player -> {
+            LinkData.NetworkPos bound = ToolData.network(player.getInventory().getItem(0));
+            return bound != null && bound.pos().equals(drive) ? Boolean.TRUE : null;
+        }).isPresent();
+    }
+
+    /**
+     * Right-click on the floor: the planks are missing, so the build is refused and the network asked to craft them.
+     * The HUD shows the progress (the job can't finish without the assembler).
+     */
+    private static boolean hudCrafting(int tick) throws Exception {
+        if (hudSkipped) {
+            return true;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (tick == 0) {
+            lookAt(new Vec3(floor.getX() + 0.5, floor.getY() + 0.99, floor.getZ() + 0.5));
+            return false;
+        }
+        if (tick == 2) {
+            check(hitting(floor, Direction.UP), "the floor should be aimed at");
+            check(!mc.player.isShiftKeyDown(), "the player should not sneak");
+            mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, (BlockHitResult) mc.hitResult);
+            return false;
+        }
+        if (tick < 2) {
+            return false;
+        }
+        HudState hud = hudState();
+        if (aimedTick < 0) {
+            if (hud.phase() == HudState.Phase.CRAFTING && !hudLines().isEmpty()) {
+                check(hud.inProgress().contains(Items.OAK_PLANKS), "the planks should be in progress: " + hud);
+                check(hud.done() == 0 && hud.total() == 1, "expected 0/1 items, got " + hud.done() + "/" + hud.total());
+                check(mc.level.getBlockState(floor.above()).isAir(), "nothing may be built while crafting");
+                aimedTick = tick;
+                LOGGER.info(TAG + "HUD crafting: {}", hudLines().stream().map(line -> ((Component) line).getString()).toList());
+            }
+            return false;
+        }
+        if (tick == aimedTick + 5) {
+            check(hudState().phase() == HudState.Phase.CRAFTING, "the HUD should still show crafting, shows " + hudState());
+            screenshot("smoke_hud_crafting.png");
+        }
+        if (tick >= aimedTick + 8) {
+            aimedTick = -1;
+            return true;
+        }
+        return false;
+    }
+
+    /** The assembler arrives, AE2 crafts the planks, and the HUD turns to the green "Ready". */
+    private static boolean hudReady(int tick) throws Exception {
+        if (hudSkipped) {
+            return true;
+        }
+        Optional<Boolean> placed = server("assembler", player -> {
+            check(SmokeAe2.crafting(player.serverLevel(), drive), "the craft should be waiting on a crafting CPU");
+            SmokeAe2.addAssembler(player.serverLevel(), new BlockPos(-2, floor.getY() + 1, 3));
+            return true;
+        });
+        if (placed.isEmpty()) {
+            return false;
+        }
+        HudState hud = hudState();
+        if (aimedTick < 0) {
+            check(hud.phase() == HudState.Phase.CRAFTING || hud.phase() == HudState.Phase.READY, "the craft must not fail: " + hud);
+            if (hud.phase() == HudState.Phase.READY && !hudLines().isEmpty()) {
+                check(hud.done() == 1 && hud.total() == 1, "expected 1/1 items, got " + hud.done() + "/" + hud.total());
+                aimedTick = tick;
+                LOGGER.info(TAG + "HUD ready after {} ticks", tick);
+            }
+            return false;
+        }
+        if (tick == aimedTick + 5) {
+            check(!hudLines().isEmpty(), "the ready line should still show");
+            screenshot("smoke_hud_ready.png");
+        }
+        if (tick >= aimedTick + 8) {
+            aimedTick = -1;
+            return true;
+        }
+        return false;
+    }
+
+    /** Right-click again: craft_test is built from the network (controller and crafted planks), and the HUD hides. */
+    private static boolean hudBuild(int tick) throws Exception {
+        if (hudSkipped) {
+            return true;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (tick == 0) {
+            lookAt(new Vec3(floor.getX() + 0.5, floor.getY() + 0.99, floor.getZ() + 0.5));
+            return false;
+        }
+        if (tick == 2) {
+            check(hitting(floor, Direction.UP), "the floor should be aimed at");
+            mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, (BlockHitResult) mc.hitResult);
+            return false;
+        }
+        if (tick < 2) {
+            return false;
+        }
+        // the build is turned a quarter by shift_scroll: look for its controller next to the clicked spot
+        BlockPos anchor = floor.above();
+        Optional<BlockPos> formed = poll("craft_formed", player -> {
+            for (BlockPos pos : BlockPos.betweenClosed(anchor.offset(-1, 0, -1), anchor.offset(1, 0, 1))) {
+                if (player.serverLevel().getBlockEntity(pos) instanceof MachineControllerBlockEntity be && be.isFormed()
+                        && be.getStructure() != null && be.getStructure().id().equals(CRAFT_STRUCTURE)) {
+                    long planks = SmokeAe2.stock(player.serverLevel(), drive, Items.OAK_PLANKS);
+                    long logs = SmokeAe2.stock(player.serverLevel(), drive, Items.OAK_LOG);
+                    check(planks == 3 && logs == 0, "the log should be crafted into four planks and one built, ME holds " + planks + " planks, " + logs + " logs");
+                    return pos.immutable();
+                }
+            }
+            return null;
+        });
+        if (formed.isEmpty()) {
+            return false;
+        }
+        if (hudState().phase() != HudState.Phase.NONE) {
+            // the tracker's clear reaches the client a moment later
+            return false;
+        }
+        LOGGER.info(TAG + "craft_test built at {} from the crafted planks", formed.get());
+        return true;
+    }
+
+    private static HudState hudState() throws Exception {
+        return (HudState) staticField(ToolHudOverlay.class, "state");
+    }
+
+    /** What the HUD draws now (empty while hidden). */
+    private static List<?> hudLines() throws Exception {
+        Method lines = ToolHudOverlay.class.getDeclaredMethod("lines");
+        lines.setAccessible(true);
+        return (List<?>) lines.invoke(null);
     }
 
     // ---- helpers ----

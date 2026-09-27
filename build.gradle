@@ -372,6 +372,14 @@ dependencies {
     // SPARK PROFILER
     runtimeOnly fg.deobf("curse.maven:spark-361579:4738952");
 
+    // AE2 (+ GuideME, which it requires) for dev runs: the tool's ME features and their GameTests; still optional in
+    // the built jar. -PnoAe2 leaves both out to run the game, GameTests and client smoke test without AE2.
+    if (!project.hasProperty('noAe2')) {
+        runtimeOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
+        runtimeOnly fg.deobf("curse.maven:guideme-1173950:8204776")
+    }
+    testCompileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
+
     // UNIT TESTS (plain logic, no Minecraft)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'

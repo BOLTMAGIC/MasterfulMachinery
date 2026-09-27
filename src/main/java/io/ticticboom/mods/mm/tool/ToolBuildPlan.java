@@ -3,11 +3,14 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.ChainedMaterialSource;
 import io.ticticboom.mods.mm.builder.TierPrefs;
+import io.ticticboom.mods.mm.builder.me.MeAccess;
+import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -23,7 +26,9 @@ import java.util.function.Predicate;
 
 /**
  * What the multiblock tool builds when used on a block face: the controller first, then every piece. Common code
- * (server build and client hologram share it), so both always agree for the same inputs.
+ * (server build and client hologram share it), so both plan the same for the same inputs; the inputs differ, though,
+ * where the ME network comes in: the client knows nothing of its stock ({@link #availableSnapshot}), so the hologram
+ * may show a tier or block the server then takes from the network differently.
  *
  * @param controllerPos where the controller goes
  * @param rotation      the structure's rotation; the controller faces the way {@link AssemblyPlanner#rotationFor} maps
@@ -79,19 +84,43 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
 
     /** The plan for this player using this tool: its extra turns and tier preferences, and what it and the player carry. */
     public static @Nullable ToolBuildPlan create(Level level, Player player, ItemStack tool, StructureModel model, BlockPos clickedPos, Direction clickedFace) {
-        return create(level, model, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool), ToolData.tiers(tool), availableSnapshot(player, tool));
+        return create(level, player, tool, model, clickedPos, clickedFace, availableSnapshot(player, tool));
+    }
+
+    /** As above, with what is available already read (e.g. {@link ChainedMaterialSource#snapshot} of the build's source). */
+    public static @Nullable ToolBuildPlan create(Level level, Player player, ItemStack tool, StructureModel model, BlockPos clickedPos, Direction clickedFace,
+                                                 Predicate<Block> available) {
+        return create(level, model, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool), ToolData.tiers(tool), available);
     }
 
     /**
-     * Blocks the tool's store or the player's inventory can supply (everything in creative), read once: the store is
-     * deserialized a single time however many blocks are asked about.
+     * Blocks the tool's store, the player's inventory or (server side) the tool's ME network can supply (everything in
+     * creative), read once: the store is deserialized a single time however many blocks are asked about.
      */
     public static Predicate<Block> availableSnapshot(Player player, ItemStack tool) {
         return source(player, tool).snapshot();
     }
 
-    /** Where a build with this tool draws blocks and energy from. */
+    /**
+     * Where a build with this tool draws blocks and energy from: store, inventory, then the bound ME network when it can
+     * be reached (server only; the client knows nothing about the network's contents).
+     */
     public static ChainedMaterialSource source(Player player, ItemStack tool) {
-        return new ChainedMaterialSource(new ToolStore(tool), player, new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()));
+        MeAccess me = player instanceof ServerPlayer serverPlayer ? MeAccessFactory.forTool(serverPlayer, tool) : null;
+        return source(player, tool, me);
+    }
+
+    /** As above, with the network given (or none). */
+    public static ChainedMaterialSource source(Player player, ItemStack tool, @Nullable MeAccess me) {
+        return new ChainedMaterialSource(new ToolStore(tool), player, energy(tool), me);
+    }
+
+    /** Where dismantled blocks go: store, then inventory (never the ME network). */
+    public static ChainedMaterialSource sink(Player player, ItemStack tool) {
+        return new ChainedMaterialSource(new ToolStore(tool), player, energy(tool));
+    }
+
+    private static ToolEnergy energy(ItemStack tool) {
+        return new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get());
     }
 }

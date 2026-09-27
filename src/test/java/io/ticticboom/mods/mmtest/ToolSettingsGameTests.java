@@ -5,14 +5,18 @@ import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierResolver;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt.Action;
+import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.ToolData;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.Level;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
@@ -61,6 +65,63 @@ public class ToolSettingsGameTests {
         check(helper, !apply(tool, Action.SET_TIER, "mm:no_such_port/input", 2, tiers), "an unknown port type should be refused");
         check(helper, !apply(tool, Action.SET_TIER, PortTiers.key(Ref.Ports.FLUID, true), 2, tiers), "a port type without tiers should be refused");
         check(helper, ToolData.tiers(tool).asMap().isEmpty(), "refused keys must not be stored, got " + ToolData.tiers(tool).asMap());
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void meTogglesAndForgetAreValidated(GameTestHelper helper) {
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        Map<String, Integer> tiers = PortTiers.registeredMaxTiers();
+        check(helper, ToolData.useMe(tool), "useMe should default to true");
+        check(helper, ToolData.autoCraft(tool), "autoCraft should default to true");
+
+        check(helper, apply(tool, Action.SET_USE_ME, "", 0, tiers), "turning useMe off should be accepted");
+        check(helper, !ToolData.useMe(tool), "useMe should now be false");
+        check(helper, apply(tool, Action.SET_USE_ME, "", 1, tiers), "turning useMe on should be accepted");
+        check(helper, ToolData.useMe(tool), "useMe should now be true");
+
+        check(helper, apply(tool, Action.SET_AUTOCRAFT, "", 0, tiers), "turning autoCraft off should be accepted");
+        check(helper, !ToolData.autoCraft(tool), "autoCraft should now be false");
+        check(helper, apply(tool, Action.SET_AUTOCRAFT, "", 1, tiers), "turning autoCraft on should be accepted");
+        check(helper, ToolData.autoCraft(tool), "autoCraft should now be true");
+
+        LinkData.NetworkPos network = new LinkData.NetworkPos(helper.getLevel().dimension(), BlockPos.ZERO, Direction.NORTH);
+        ToolData.setNetwork(tool, network);
+        check(helper, ToolData.network(tool) != null, "network should be bound before forgetting it");
+        check(helper, apply(tool, Action.FORGET_NETWORK, "", 0, tiers), "forgetting the network should be accepted");
+        check(helper, ToolData.network(tool) == null, "network should be cleared after FORGET_NETWORK");
+
+        ItemStack other = new ItemStack(Items.STICK);
+        check(helper, !apply(other, Action.SET_USE_ME, "", 1, tiers), "another item: refused");
+        check(helper, !apply(other, Action.FORGET_NETWORK, "", 0, tiers), "another item: refused");
+        check(helper, !other.hasTag(), "another item must stay untouched, got " + other.getTag());
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void toolDataNetworkAndTogglesRoundTrip(GameTestHelper helper) {
+        ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        check(helper, ToolData.network(tool) == null, "a fresh tool should not be bound");
+        check(helper, ToolData.useMe(tool), "a fresh tool should default useMe to true");
+        check(helper, ToolData.autoCraft(tool), "a fresh tool should default autoCraft to true");
+
+        Level level = helper.getLevel();
+        LinkData.NetworkPos network = new LinkData.NetworkPos(level.dimension(), helper.absolutePos(new BlockPos(1, 2, 3)), Direction.EAST);
+        ToolData.setNetwork(tool, network);
+        ToolData.setUseMe(tool, false);
+        ToolData.setAutoCraft(tool, false);
+
+        LinkData.NetworkPos loaded = ToolData.network(tool);
+        check(helper, network.equals(loaded), "network should round-trip through the tool's NBT, got " + loaded);
+        check(helper, !ToolData.useMe(tool), "useMe should round-trip as false");
+        check(helper, !ToolData.autoCraft(tool), "autoCraft should round-trip as false");
+
+        ToolData.setNetwork(tool, null);
+        ToolData.setUseMe(tool, true);
+        ToolData.setAutoCraft(tool, true);
+        check(helper, ToolData.network(tool) == null, "network should be clearable again");
+        check(helper, ToolData.useMe(tool), "useMe should round-trip back to true");
+        check(helper, ToolData.autoCraft(tool), "autoCraft should round-trip back to true");
         helper.succeed();
     }
 

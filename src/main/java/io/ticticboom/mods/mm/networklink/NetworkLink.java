@@ -1,11 +1,14 @@
 package io.ticticboom.mods.mm.networklink;
 
 import io.ticticboom.mods.mm.compat.ae2.Ae2NetworkLink;
+import io.ticticboom.mods.mm.compat.ae2.Ae2ToolBinding;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -40,6 +43,15 @@ public final class NetworkLink {
 
     public static boolean isLinker(net.minecraft.world.item.ItemStack stack) {
         return LINKER != null && stack.is(LINKER.get());
+    }
+
+    /**
+     * Shift+right-click with the Multiblock Tool: binds it to the clicked AE2 block's network.
+     *
+     * @return true when the click was on an AE2 network block and has been handled
+     */
+    public static boolean bindTool(ServerPlayer player, UseOnContext context) {
+        return AVAILABLE && Ae2ToolBinding.tryBind(player, context);
     }
 
     /** Controller tick: periodically sends the outputs of a linked machine to its network. */

@@ -37,6 +37,7 @@ import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -208,7 +209,40 @@ public class ToolBuildGameTests {
 
         ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
 
+        // all or nothing: the up-front check lists what is short, here only the controller, and the tool has no network
         expectError(helper, result, "message.mm.assemble.missing");
+        String message = result.error().getString();
+        check(helper, message.contains(controllerBlock().getName().getString()) && !message.contains(port("s").getName().getString())
+                && !message.contains(port("l").getName().getString()), "only the controller should be named: " + message);
+        boolean noMe = result.error().getSiblings().stream().anyMatch(part -> part.getContents() instanceof TranslatableContents c
+                && c.getKey().equals("message.mm.tool.no_me"));
+        if (ModList.get().isLoaded("ae2")) {
+            check(helper, noMe, "an unbound tool should say it has no ME network: " + message);
+        } else {
+            // without AE2 there is no network to bind, so nothing to point out
+            check(helper, !noMe, "without AE2 the tool must not mention ME networks: " + message);
+        }
+        expectNothingBuilt(helper, tool, 3);
+        helper.succeed();
+    }
+
+    /**
+     * All or nothing: with the controller at hand but one port missing, nothing is placed (before, the controller and
+     * the other blocks were built and the port reported missing afterwards).
+     */
+    @GameTest(template = TEMPLATE)
+    public static void toolBuildRefusedWhenAnyBlockMissing(GameTestHelper helper) {
+        Player player = player(helper, 180);
+        ItemStack tool = tool(player);
+        var store = new ToolStore(tool);
+        store.insertItem(0, new ItemStack(controllerBlock()), false);
+        store.insertItem(1, new ItemStack(port("s")), false);
+        store.insertItem(2, new ItemStack(Blocks.GLASS), false);
+
+        ToolBuilds.Result result = ToolBuilds.prepare(helper.getLevel(), player, tool, helper.absolutePos(CLICKED), Direction.UP);
+
+        expectError(helper, result, "message.mm.assemble.missing");
+        check(helper, result.error().getString().contains(port("l").getName().getString()), "the large port should be named: " + result.error().getString());
         expectNothingBuilt(helper, tool, 3);
         helper.succeed();
     }

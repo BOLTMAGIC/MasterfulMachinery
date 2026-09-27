@@ -10,6 +10,7 @@ import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -80,6 +81,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private static final int GALLERY_MAX = 140;
     private static final int SEARCH_HEIGHT = 12;
     private static final int INFO_HEIGHT = 13;
+    private static final int ME_HEIGHT = 11;
+    private static final int ME_GAP = 2;
     private static final int LAYER_HEIGHT = 11;
     private static final int LAYER_ARROW = 9;
     private static final int TAB = 22;
@@ -123,7 +126,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         // the screen's own font is only set in init()
         var font = Minecraft.getInstance().font;
         this.gallery = new GalleryList(font, StructureManager.STRUCTURES.values(), selected == null ? null : selected.id(), this::select);
-        this.settings = new ToolSettingsTab(font, prefs, this::setTier);
+        this.settings = new ToolSettingsTab(font, prefs, this::setTier, ToolData.useMe(tool), ToolData.autoCraft(tool),
+                () -> ToolData.network(tool()) != null, this::toggleUseMe, this::toggleAutoCraft, this::forgetNetwork);
         if (selected != null) {
             selected.getGuiRenderer().resetTransforms();
         }
@@ -214,6 +218,21 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_TIER, key, tier));
     }
 
+    private void toggleUseMe(boolean value) {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_USE_ME, "", value ? 1 : 0));
+    }
+
+    private void toggleAutoCraft(boolean value) {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_AUTOCRAFT, "", value ? 1 : 0));
+    }
+
+    private void forgetNetwork() {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.FORGET_NETWORK, "", 0));
+    }
+
     private void playClick() {
         this.minecraft.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
     }
@@ -260,6 +279,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
             settings.render(gfx, mouseX, mouseY);
         }
+        drawMeStatus(gfx);
 
         // store slots, then the FE bar beside them
         for (int i = 0; i < MultiblockToolMenu.STORE_SLOTS; i++) {
@@ -486,6 +506,41 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return mouseX >= x && mouseX < x + FE_WIDTH && mouseY >= y && mouseY < y + STORE_HEIGHT;
     }
 
+    /** The tool's bound ME network, or that it isn't bound. */
+    private Component meStatus() {
+        var network = ToolData.network(tool());
+        return network == null ? Component.translatable("gui.mm.tool.me.not_bound")
+                : Component.translatable("gui.mm.tool.me.bound", network.pos().toShortString(), network.dimension().location().getPath());
+    }
+
+    /**
+     * The store has more rows than the player inventory, so the inventory's own column has empty space above it
+     * (between the tab panel and the inventory grid); the ME status line lives there, clipped to that width, with
+     * the full text in a tooltip. This never touches {@link #bandBottom} / the 3D preview height.
+     */
+    private int meStatusTop() {
+        return inventoryY - ME_GAP - ME_HEIGHT;
+    }
+
+    private void drawMeStatus(GuiGraphics gfx) {
+        // ME networks only exist with AE2
+        if (!NetworkLink.AVAILABLE) {
+            return;
+        }
+        int x = this.leftPos + inventoryX;
+        int y = this.topPos + meStatusTop() + 1;
+        drawClipped(gfx, meStatus(), x, y, GRID_WIDTH, LABEL);
+    }
+
+    private boolean isOnMeStatus(double mouseX, double mouseY) {
+        if (!NetworkLink.AVAILABLE) {
+            return false;
+        }
+        int x = this.leftPos + inventoryX;
+        int y = this.topPos + meStatusTop();
+        return mouseX >= x && mouseX < x + GRID_WIDTH && mouseY >= y && mouseY < y + ME_HEIGHT;
+    }
+
     private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, this.font, text, x, y, maxWidth, color);
     }
@@ -526,6 +581,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         } else if (isOnEnergy(mouseX, mouseY)) {
             tooltip = List.of(Component.translatable("tooltip.mm.multiblock_tool.energy",
                     CountFormat.grouped(energyStored()), CountFormat.grouped(MMConfigSetup.COMMON.toolEnergyCapacity.get())));
+        } else if (isOnMeStatus(mouseX, mouseY)) {
+            tooltip = List.of(meStatus());
         } else if (tab == Tab.SETTINGS) {
             tooltip = settings.tooltip(mouseX, mouseY);
         } else if (isOnLayerBar(mouseX, mouseY)) {

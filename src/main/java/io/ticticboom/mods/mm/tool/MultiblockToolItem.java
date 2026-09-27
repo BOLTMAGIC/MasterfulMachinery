@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -30,7 +31,10 @@ import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Supplier;
 
 /**
@@ -40,6 +44,10 @@ import java.util.function.Supplier;
  */
 public class MultiblockToolItem extends Item {
     private static final int BAR_COLOR = 0x3399FF;
+    /** The "ME network not used" chat notice is repeated at most this often per player (10 s). */
+    private static final int NOTICE_TICKS = 200;
+    /** Server tick each player was last told the notice (server thread only). */
+    private static final Map<UUID, Integer> LAST_NOTICE = new HashMap<>();
     /** The dismantle key's name for the tooltip; the client points this at the bound key (common code cannot). */
     private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
 
@@ -113,7 +121,8 @@ public class MultiblockToolItem extends Item {
 
     /**
      * Right-click on any other block face builds the selected structure in front of it, controller included.
-     * Shift+right-click on a machine dismantles it after a second click; on any other block it opens the store.
+     * Shift+right-click on an AE2 network block binds the tool to that network; on a machine it dismantles it after a
+     * second click; on any other block it opens the store.
      */
     @Override
     public @NotNull InteractionResult useOn(UseOnContext context) {
@@ -126,6 +135,10 @@ public class MultiblockToolItem extends Item {
         }
         // the server decides machine or not; the client only must not also fire use()
         if (player instanceof ServerPlayer serverPlayer) {
+            if (NetworkLink.bindTool(serverPlayer, context)) {
+                // an AE2 network block: bound to its network, never dismantled or opened through
+                return InteractionResult.SUCCESS;
+            }
             if (DismantlePlanner.resolve(context.getLevel(), context.getClickedPos()) != null) {
                 ToolDismantles.shiftClick(serverPlayer, context.getItemInHand(), context.getClickedPos());
             } else {
@@ -155,6 +168,10 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
+        if (result.notice() != null && noticeDue(serverPlayer)) {
+            // in chat: the action bar is soon taken by the result or the job's summary
+            player.displayClientMessage(result.notice(), false);
+        }
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);
             return InteractionResult.FAIL;
@@ -165,6 +182,17 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         return InteractionResult.CONSUME;
+    }
+
+    /** Whether player may be told the ME notice again: once per {@value #NOTICE_TICKS} ticks, not on every right-click. */
+    private static boolean noticeDue(ServerPlayer player) {
+        int now = player.server.getTickCount();
+        Integer last = LAST_NOTICE.get(player.getUUID());
+        if (last != null && now - last >= 0 && now - last < NOTICE_TICKS) {
+            return false;
+        }
+        LAST_NOTICE.put(player.getUUID(), now);
+        return true;
     }
 
     @Override
@@ -195,6 +223,14 @@ public class MultiblockToolItem extends Item {
         int capacity = MMConfigSetup.COMMON.toolEnergyCapacity.get();
         int energy = new ToolEnergy(stack, capacity).getEnergyStored();
         tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.energy", energy, capacity).withStyle(ChatFormatting.GRAY));
+        // ME networks only exist with AE2
+        var network = NetworkLink.AVAILABLE ? ToolData.network(stack) : null;
+        if (network != null) {
+            tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.network",
+                    network.pos().toShortString(), network.dimension().location().getPath()).withStyle(ChatFormatting.AQUA));
+        } else if (NetworkLink.AVAILABLE) {
+            tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.no_network").withStyle(ChatFormatting.DARK_GRAY));
+        }
         tooltip.add(Component.translatable("tooltip.mm.multiblock_tool.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
     }
 }

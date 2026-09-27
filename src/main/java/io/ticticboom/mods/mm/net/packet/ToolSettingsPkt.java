@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.net.packet;
 
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
+import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
@@ -18,11 +19,12 @@ import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * Multiblock tool screen -> server: select a structure ({@code key} = its id) or set a preferred port tier
- * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier) on the held tool.
+ * Multiblock tool screen -> server: select a structure ({@code key} = its id), set a preferred port tier
+ * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier), toggle the ME network options
+ * ({@code value} nonzero = on) or forget the bound network, on the held tool.
  */
 public record ToolSettingsPkt(Action action, String key, int value) {
-    public enum Action { SELECT_STRUCTURE, SET_TIER }
+    public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK }
 
     public static void encode(ToolSettingsPkt pkt, FriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
@@ -43,9 +45,24 @@ public record ToolSettingsPkt(Action action, String key, int value) {
             // the tool whose screen is open, else whichever tool is held
             ItemStack tool = sender.containerMenu instanceof MultiblockToolMenu menu
                     ? sender.getItemInHand(menu.getHand()) : ToolRotatePkt.heldTool(sender);
-            apply(tool, pkt.action, pkt.key, pkt.value, StructureManager.STRUCTURES::containsKey, PortTiers.registeredMaxTiers());
+            apply(sender, tool, pkt.action, pkt.key, pkt.value);
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    /**
+     * {@link #apply(ItemStack, Action, String, int, Predicate, Map)} for player's tool, against the loaded structures and
+     * registered tiers. Forgetting the network or turning auto-craft off also forgets player's tracked crafts (and hides
+     * the HUD): the way out of a craft stuck on a network that is gone for good.
+     */
+    public static boolean apply(ServerPlayer player, @Nullable ItemStack tool, Action action, String key, int value) {
+        if (!apply(tool, action, key, value, StructureManager.STRUCTURES::containsKey, PortTiers.registeredMaxTiers())) {
+            return false;
+        }
+        if (action == Action.FORGET_NETWORK || (action == Action.SET_AUTOCRAFT && value == 0)) {
+            CraftTracker.clear(player);
+        }
+        return true;
     }
 
     /**
@@ -77,6 +94,18 @@ public record ToolSettingsPkt(Action action, String key, int value) {
                 TierPrefs prefs = ToolData.tiers(tool);
                 prefs.set(key, tier);
                 ToolData.setTiers(tool, prefs);
+                return true;
+            }
+            case SET_USE_ME -> {
+                ToolData.setUseMe(tool, value != 0);
+                return true;
+            }
+            case SET_AUTOCRAFT -> {
+                ToolData.setAutoCraft(tool, value != 0);
+                return true;
+            }
+            case FORGET_NETWORK -> {
+                ToolData.setNetwork(tool, null);
                 return true;
             }
         }

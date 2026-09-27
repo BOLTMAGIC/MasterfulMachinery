@@ -1,0 +1,14 @@
+{
+  "name": "Craft Test",
+  "controllerIds": "mm:craft_test",
+  "layout": [
+    [
+      "CP"
+    ]
+  ],
+  "key": {
+    "P": {
+      "block": "minecraft:oak_planks"
+    }
+  }
+}
