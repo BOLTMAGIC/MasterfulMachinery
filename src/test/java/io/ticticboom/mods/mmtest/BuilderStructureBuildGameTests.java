@@ -3,12 +3,15 @@ package io.ticticboom.mods.mmtest;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
+import io.ticticboom.mods.mm.builder.DismantleJob;
+import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
 import io.ticticboom.mods.mm.tool.ToolData;
+import io.ticticboom.mods.mm.tool.ToolDismantles;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
@@ -67,6 +70,59 @@ public class BuilderStructureBuildGameTests {
         int fe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
         check(helper, storeCount(tool) == 0, "every block should come out of the store, " + storeCount(tool) + " left");
         check(helper, energy(tool) == START_FE - 10 * fe, "expected " + (START_FE - 10 * fe) + " FE left, got " + energy(tool));
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void controllerFreeStructureCanBeDismantled(GameTestHelper helper) {
+        Player player = player(helper);
+        player.setYRot(90); // the matcher must recover the build's rotation without a controller
+        ItemStack tool = tool(player, TOWER);
+        stockStore(tool, 9, 1);
+        ToolBuilds.Prepared build = prepare(helper, player, tool);
+        AssemblyJob assembly = AssemblyJob.createWithoutController(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
+        int ticks = 0;
+        while (!AssemblyJobs.tickBuild(player, assembly, build.source(), 2)) {
+            if (++ticks > 100) helper.fail("builder assembly did not finish");
+        }
+        BlockPos clicked = build.plan().steps().get(0).pos();
+        DismantlePlanner.BuilderMatch match = DismantlePlanner.matchBuilder(helper.getLevel(), clicked, tool);
+        check(helper, match != null && match.positions().size() == 10,
+                "a complete controller-free structure should match from one of its blocks");
+        ToolDismantles.Result result = ToolDismantles.prepare(helper.getLevel(), player, tool, clicked);
+        check(helper, result.prepared() != null, "the selected builder structure should be dismantleable");
+        ToolDismantles.Prepared prepared = result.prepared();
+        DismantleJob job = prepared.job(helper.getLevel());
+        ticks = 0;
+        while (!AssemblyJobs.tickDismantle(player, job, prepared.sink(), 2)) {
+            if (++ticks > 100) helper.fail("builder dismantle did not finish");
+        }
+        check(helper, job.removed() == 10, "expected all 10 blocks to be removed, got " + job.removed());
+        for (AssemblyPlanner.Planned step : build.plan().steps()) {
+            check(helper, helper.getLevel().getBlockState(step.pos()).isAir(), "left a block at " + step.pos());
+        }
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void incompleteControllerFreeStructureIsNotDismantled(GameTestHelper helper) {
+        Player player = player(helper);
+        ItemStack tool = tool(player, TOWER);
+        stockStore(tool, 9, 1);
+        ToolBuilds.Prepared build = prepare(helper, player, tool);
+        AssemblyJob assembly = AssemblyJob.createWithoutController(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
+        int ticks = 0;
+        while (!AssemblyJobs.tickBuild(player, assembly, build.source(), 2)) {
+            if (++ticks > 100) helper.fail("builder assembly did not finish");
+        }
+        BlockPos missing = build.plan().steps().stream().filter(step -> step.state().is(Blocks.OAK_STAIRS))
+                .findFirst().orElseThrow().pos();
+        helper.getLevel().removeBlock(missing, false);
+        BlockPos clicked = build.plan().steps().get(0).pos();
+        check(helper, DismantlePlanner.matchBuilder(helper.getLevel(), clicked, tool) == null,
+                "an incomplete structure must not match");
+        ToolDismantles.Result result = ToolDismantles.prepare(helper.getLevel(), player, tool, clicked);
+        check(helper, result.prepared() == null, "an incomplete structure must not be dismantled");
         helper.succeed();
     }
 
