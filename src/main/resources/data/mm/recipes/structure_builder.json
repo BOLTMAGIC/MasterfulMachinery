@@ -8,7 +8,7 @@
   ],
   "key": {
     "D": { "item": "minecraft:diamond" },
-    "B": { "item": "mm:blueprint" },
+    "B": { "item": "minecraft:paper" },
     "I": { "item": "minecraft:iron_ingot" },
     "R": { "item": "minecraft:redstone_block" }
   },
