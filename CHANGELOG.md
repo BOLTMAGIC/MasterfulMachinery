@@ -4,10 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.35.2] - 2026-09-28
+## [0.1.35.2 + 3] - 2026-09-28
 
 ### INFO:
-**Version 0.1.35.2** represents a major update focused on the Structure Builder tool and internationalization support.
+**Version 0.1.35.2 + 3** represents a major update focused on the Structure Builder tool and internationalization support.
 
 **Special Thanks:**
 - **Knozyy** – Lead developer of the Structure Builder tool suite, Locale fixes, and controller enhancements.
@@ -78,6 +78,11 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - **Controller-free dismantling**: extended DismantlePlanner & ToolDismantles to dismantle non-MM builder structures (datapack .nbt files matching tool template).
 - **Void Miner relocations**: corrected .nbt structures to `data/mbtool/mm_builder_structures/voidminer/` (overrides broken legacy palette entries).
 - **UI polish**: JEI ingredient hovering in ControllerPortList; fixed 3D layer preview for connected textures (GuiStructureRenderer); formatted multi-line tooltips for Machine Wrench, Network Linker, Input Gateway.
+
+#### #72 – Item Port Capacity & Rendering Optimization
+- **Per-slot capacity limit**: raised to 16,384 (from 64) while preserving configured rows/columns in JSON or KubeJS.
+- **Client update batching**: item port block-entity updates batched to once per tick when contents change (reduced sync overhead).
+- **Window background rendering**: large port windows now render with at most nine textured patches instead of thousands of tiled GUI blits per frame (major performance improvement for large item ports).
 
 ### Fixed
 
