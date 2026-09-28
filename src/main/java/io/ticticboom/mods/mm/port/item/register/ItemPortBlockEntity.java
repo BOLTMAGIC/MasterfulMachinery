@@ -1,6 +1,8 @@
 package io.ticticboom.mods.mm.port.item.register;
 
 import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.compat.ae2.Ae2ItemPortStorage;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
@@ -29,6 +31,7 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     private final PortModel model;
 
     private final ItemPortStorage storage;
+    private final LazyOptional<?> meStorage;
 
     @Getter
     private final boolean input;
@@ -39,6 +42,9 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
         this.groupHolder = groupHolder;
         this.model = model;
         storage = (ItemPortStorage) model.config().createPortStorage(this::notifyMenuChanged);
+        meStorage = NetworkLink.AVAILABLE
+                ? LazyOptional.of(() -> new Ae2ItemPortStorage(storage, Component.translatable("container.mm.port.item")))
+                : LazyOptional.empty();
         this.input = input;
         var enabledByDefault = !input && ((ItemPortStorageModel) storage.getStorageModel()).autoPush().get();
         autoIO = new PortAutoIO(this, input, enabledByDefault, PortTransfers.items(storage::getHandler));
@@ -46,7 +52,16 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
 
     @Override
     public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
+        if (NetworkLink.AVAILABLE && Ae2ItemPortStorage.isStorageCapability(cap)) {
+            return meStorage.cast();
+        }
         return storage.getCapability(cap);
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        meStorage.invalidate();
     }
 
     @Override
