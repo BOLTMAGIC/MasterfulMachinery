@@ -191,7 +191,10 @@ public class LinkerItem extends Item {
                     network.pos().toShortString(), network.dimension().location().toString()).withStyle(ChatFormatting.AQUA));
         }
         var mode = LinkerMode.get(stack);
-        tooltip.add(Component.translatable("tooltip.mm.network_linker.usage." + mode.name().toLowerCase(Locale.ROOT)).withStyle(ChatFormatting.DARK_GRAY));
+        String usageKey = "tooltip.mm.network_linker.usage." + mode.name().toLowerCase(Locale.ROOT);
+        for (int line = 1; line <= (mode == LinkerMode.INFO ? 3 : 2); line++) {
+            tooltip.add(Component.translatable(usageKey + "." + line).withStyle(ChatFormatting.DARK_GRAY));
+        }
         tooltip.add(Component.translatable("tooltip.mm.network_linker.mode_hint").withStyle(ChatFormatting.DARK_GRAY));
     }
 

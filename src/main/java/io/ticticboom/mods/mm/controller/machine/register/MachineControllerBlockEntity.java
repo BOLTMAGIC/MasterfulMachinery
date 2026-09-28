@@ -121,7 +121,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private static final int EXTERNAL_CHANGE_CHECK_TICKS = 5;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
-    private long lastResourceScanTime = -1;
     private final Map<ResourceLocation, Long> recipeNextCheckTime = new HashMap<>();
     // signature of the last observed storage contents; used to detect external changes
     private long lastStorageSignature = 0L;
@@ -394,7 +393,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          }
          detectExternalStorageChanges();
          long gameTime = (level == null) ? 0L : level.getGameTime();
-         if (!storageCache.isValid) rebuildStorageCacheIfNeeded(gameTime);
+         if (!storageCache.isValid) rebuildStorageCache();
          boolean allowed = isAllowedByRedstone();
         if (allowed) processActiveRecipeOutputs();
         if (structure != null && allowed) scanAndStartRecipes(gameTime);
@@ -495,24 +494,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         } catch (Throwable ignored) { }
     }
 
-     private void rebuildStorageCacheIfNeeded(long gameTime) {
-         // throttle rebuilds when controller is only searching (no active recipes)
-         boolean doRebuild = false;
-         if (!activeRecipes.isEmpty()) {
-             doRebuild = true; // running recipes -> keep cache up-to-date
-         } else {
-             // throttling / cooldowns for expensive scans when controller is only searching
-             // when no active recipes, only scan storages every N ticks
-             int resourceScanIntervalTicks = 5;
-             if (lastResourceScanTime < 0 || gameTime - lastResourceScanTime >= resourceScanIntervalTicks) {
-                 doRebuild = true;
-                 lastResourceScanTime = gameTime;
-             }
-         }
-
-         if (doRebuild) rebuildStorageCache();
-     }
-
      private void rebuildStorageCache() {
          // Delegate to StorageCacheManager to rebuild all cache fields
          StorageCacheManager.rebuildStorageCache(portStorages, storageCache);
@@ -531,8 +512,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                  recipe.outputs().process(level, portStorages, state);
                  toRemove.add(recipeId);
                  MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
-                 // outputs changed storages; mark cache invalid so we rebuild before next decisions
-                 storageCache.isValid = false;
              }
          }
         for (ResourceLocation id : toRemove) {
@@ -823,7 +802,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          }
          RecipeStateModel newState = new RecipeStateModel();
          recipe.inputs().process(level, portStorages, newState);
-         storageCache.isValid = false;
+         // Candidate contents are checked by canProcess before use. The periodic input
+         // signature refreshes this index when consuming inputs changes availability.
          newState.setCanProcess(true);
         activeRecipes.put(recipe.id(), newState);
         activeRecipeLastUpdate.put(recipe.id(), gameTime);
@@ -957,7 +937,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                                          for (EnergyPortStorage storage : inputStorages) {
                                              var extracted = storage.internalExtract(remaining, false);
                                              remaining -= extracted;
-                                             if (extracted > 0) storageCache.isValid = false;
                                              if (remaining <= 0) break;
                                          }
                                      }
@@ -968,14 +947,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                              inputEntry.processTick(level, portStorages, state);
                          } catch (Throwable ignoredInner) { }
                      }
-                     // input tick processing may have modified storages; invalidate cached view so next tick rebuilds
-                     storageCache.isValid = false;
                  } catch (Throwable ignored) { }
 
                  // Then process per-tick outputs
                  recipe.outputs().processTick(level, portStorages, state);
-                 // outputs tick may have modified storages; invalidate cached view so next tick rebuilds
-                 storageCache.isValid = false;
                 if (!state.isCanFinish()) state.proceedTick();
                 state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
                 boolean progressed = state.getTickProgress() != prevProgress;
@@ -986,8 +961,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                          recipe.outputs().process(level, portStorages, state);
                          toRemove.add(recipeId);
                          MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
-                         // outputs processed - storages changed
-                         storageCache.isValid = false;
                          progressed = true;
                     } else {
                         int recipeSkipCooldownTicks = 100;

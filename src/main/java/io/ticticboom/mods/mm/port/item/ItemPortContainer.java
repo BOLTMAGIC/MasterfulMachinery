@@ -81,6 +81,6 @@ public class ItemPortContainer implements Container {
 
     @Override
     public void clearContent() {
-        handler.getStacks().clear();
+        handler.clearAll();
     }
 }

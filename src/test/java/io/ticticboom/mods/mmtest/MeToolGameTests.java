@@ -2,6 +2,7 @@ package io.ticticboom.mods.mmtest;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.features.GridLinkables;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.networking.security.IActionSource;
@@ -35,6 +36,7 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
@@ -91,6 +93,23 @@ public class MeToolGameTests {
     private static final int CRAFT_TIMEOUT = 900;
     /** Its controller and one oak planks block. */
     private static final ResourceLocation CRAFT_STRUCTURE = ResourceLocation.tryBuild("mmtest", "craft_test");
+
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE)
+    public static void wirelessAccessPointLinksStructureBuilder(GameTestHelper helper) {
+        ItemStack builder = new ItemStack(MMRegisters.MULTIBLOCK_TOOL.get());
+        var handler = GridLinkables.get(MMRegisters.MULTIBLOCK_TOOL.get());
+        check(helper, handler != null && handler.canLink(builder),
+                "AE2 should accept Structure Builder in the Wireless Access Point");
+        BlockPos accessPoint = helper.absolutePos(new BlockPos(1, 1, 1));
+        handler.link(builder, GlobalPos.of(helper.getLevel().dimension(), accessPoint));
+        LinkData.NetworkPos bound = ToolData.network(builder);
+        check(helper, bound != null && bound.pos().equals(accessPoint)
+                        && bound.dimension().equals(helper.getLevel().dimension()),
+                "Wireless Access Point should save its network on Structure Builder");
+        handler.unlink(builder);
+        check(helper, ToolData.network(builder) == null, "Removing the builder should clear the network");
+        helper.succeed();
+    }
 
     @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = BOOT_TIMEOUT)
     public static void toolBindsAndBuildsFromMeNetwork(GameTestHelper helper) {

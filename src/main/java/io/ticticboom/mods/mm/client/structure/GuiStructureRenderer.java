@@ -33,6 +33,7 @@ public class GuiStructureRenderer {
     // the preview's blocks as a small world for connected-texture models; rebuilt when a cycling piece changes
     private final GuiStructureLevel previewWorld = new GuiStructureLevel();
     private int worldGeneration = 0;
+    private boolean previewWorldDirty = true;
 
     // radius of the structure's bounding sphere, in blocks
     private float boundingRadius = 1;
@@ -172,10 +173,11 @@ public class GuiStructureRenderer {
     }
     /**
      * Advances the cycling pieces and, when any of them changed, rebuilds the preview world the block models look at.
-     * Every piece is ticked, shown or not, so a layer view sees the same neighbours as the full view.
+     * Every piece is ticked, shown or not. A layer view only exposes neighbours
+     * in that layer so connected textures show the cut top and bottom faces.
      */
     private void updatePreviewWorld() {
-        boolean changed = worldGeneration == 0;
+        boolean changed = previewWorldDirty;
         for (PositionedCyclingBlockRenderer part : parts) {
             int before = part.part.getIndex();
             part.part.tick();
@@ -184,8 +186,10 @@ public class GuiStructureRenderer {
         if (!changed) {
             return;
         }
+        previewWorldDirty = false;
         previewWorld.clear();
         for (PositionedCyclingBlockRenderer part : parts) {
+            if (!ySliceProcessor.canProcess(part)) continue;
             GuiBlockRenderer block = part.part.next();
             previewWorld.put(part.pos, block.getState(), block.getBlockEntity());
         }
@@ -197,6 +201,11 @@ public class GuiStructureRenderer {
     }
 
     public void setYSlice(boolean shouldSlice, int ySlice) {
+        if (ySliceProcessor.isShouldSlice() != shouldSlice ||
+                (shouldSlice && ySliceProcessor.getYSlice() != ySlice)) {
+            // Force model data to be rebuilt with the visible layer's neighbours.
+            previewWorldDirty = true;
+        }
         ySliceProcessor.setShouldSlice(shouldSlice);
         ySliceProcessor.setYSlice(ySlice);
     }

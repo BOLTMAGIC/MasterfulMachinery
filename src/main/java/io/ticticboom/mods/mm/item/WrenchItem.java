@@ -101,6 +101,7 @@ public class WrenchItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("tooltip.mm.wrench.usage").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.mm.wrench.usage.1").withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.mm.wrench.usage.2").withStyle(ChatFormatting.GRAY));
     }
 }

@@ -51,24 +51,33 @@ public final class ToolDismantles {
     /** What dismantling the machine aimed at (any of its blocks, or an unformed controller itself) would do. */
     public static Result prepare(Level level, Player player, ItemStack tool, BlockPos target) {
         MachineControllerBlockEntity controller = DismantlePlanner.resolve(level, target);
-        if (controller == null) {
-            return Result.error(Component.translatable("message.mm.tool.dismantle.no_machine"));
+        BlockPos center;
+        List<DismantlePlanner.Target> positions;
+        if (controller != null) {
+            var link = controller.getNetworkLink();
+            if (link != null && !Permissions.canAccess(player, link.owner())) {
+                return Result.error(Component.translatable("message.mm.tool.no_access"));
+            }
+            center = controller.getBlockPos();
+            positions = DismantlePlanner.positions(level, controller);
+        } else {
+            DismantlePlanner.BuilderMatch builder = DismantlePlanner.matchBuilder(level, target, tool);
+            if (builder == null) {
+                return Result.error(Component.translatable("message.mm.tool.dismantle.no_machine"));
+            }
+            center = builder.center();
+            positions = builder.positions();
         }
-        var link = controller.getNetworkLink();
-        if (link != null && !Permissions.canAccess(player, link.owner())) {
-            return Result.error(Component.translatable("message.mm.tool.no_access"));
-        }
-        if (!player.mayBuild() || !level.mayInteract(player, controller.getBlockPos())) {
+        if (!player.mayBuild() || !level.mayInteract(player, center)) {
             return Result.error(Component.translatable("message.mm.tool.dismantle.protected"));
         }
-        List<DismantlePlanner.Target> positions = DismantlePlanner.positions(level, controller);
         int perBlockFe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
         ItemSink sink = ToolBuildPlan.sink(player, tool);
         if (!sink.free() && perBlockFe > 0
                 && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < perBlockFe) {
             return Result.error(Component.translatable("message.mm.assemble.out_of_energy", 0, positions.size()));
         }
-        return new Result(new Prepared(controller.getBlockPos(), positions, sink, perBlockFe, tool), null);
+        return new Result(new Prepared(center, positions, sink, perBlockFe, tool), null);
     }
 
     /**

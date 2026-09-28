@@ -22,6 +22,7 @@ public final class MeGameTests {
     public static void register(RegisterGameTestsEvent event) {
         if (ModList.get().isLoaded("ae2")) {
             event.register(MeToolGameTests.class);
+            event.register(MeItemPortGameTests.class);
         } else {
             LOGGER.info("AE2 is not installed: skipping the ME GameTests");
         }

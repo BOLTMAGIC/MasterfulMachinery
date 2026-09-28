@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.compat.jei;
 import com.google.common.collect.ImmutableList;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerScreen;
 import io.ticticboom.mods.mm.compat.jei.category.MMRecipeCategory;
 import io.ticticboom.mods.mm.compat.jei.category.MMStructureCategory;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
@@ -23,6 +24,9 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import mezz.jei.api.IModPlugin;
 import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
+import mezz.jei.api.gui.builder.IClickableIngredientFactory;
+import mezz.jei.api.runtime.IClickableIngredient;
+import mezz.jei.api.forge.ForgeTypes;
 import mezz.jei.api.runtime.IJeiRuntime;
 import mezz.jei.api.registration.*;
 import net.minecraft.client.renderer.Rect2i;
@@ -34,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("unused")
@@ -140,6 +145,29 @@ public class MMJeiPlugin implements IModPlugin {
             @Override
             public @NotNull List<Rect2i> getGuiExtraAreas(@NotNull MultiblockToolScreen screen) {
                 return screen.getTabAreas();
+            }
+
+            @Override
+            public Optional<? extends IClickableIngredient<?>> getClickableIngredientUnderMouse(
+                    IClickableIngredientFactory factory, MultiblockToolScreen screen, double mouseX, double mouseY) {
+                ItemStack stack = screen.getJeiMaterialAt(mouseX, mouseY);
+                Rect2i area = screen.getJeiMaterialAreaAt(mouseX, mouseY);
+                if (stack == null || stack.isEmpty() || area == null) return Optional.empty();
+                return factory.createBuilder(stack).buildWithArea(area);
+            }
+        });
+        registration.addGuiContainerHandler(MachineControllerScreen.class, new IGuiContainerHandler<>() {
+            @Override
+            public Optional<? extends IClickableIngredient<?>> getClickableIngredientUnderMouse(
+                    IClickableIngredientFactory factory, MachineControllerScreen screen, double mouseX, double mouseY) {
+                var hovered = screen.getJeiIngredientAt(mouseX, mouseY);
+                if (hovered == null) return Optional.empty();
+                var content = hovered.content();
+                return switch (content.kind()) {
+                    case ITEM -> factory.createBuilder(content.item().copyWithCount(1)).buildWithArea(hovered.area());
+                    case FLUID -> factory.createBuilder(ForgeTypes.FLUID_STACK, content.fluid().copy()).buildWithArea(hovered.area());
+                    default -> Optional.empty();
+                };
             }
         });
     }

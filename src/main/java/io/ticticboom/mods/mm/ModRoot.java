@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm;
 
 import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.client.config.MMConfigClientSetup;
 import io.ticticboom.mods.mm.extra.MMExtraBlockRegistry;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.datagen.DataGenManager;
@@ -37,6 +38,7 @@ public class ModRoot {
     private void registerClientPack() {
         try {
             if (FMLEnvironment.dist == Dist.CLIENT) {
+                MMConfigClientSetup.register();
                 Minecraft.getInstance().getResourcePackRepository()
                         .addPackFinder(new MMRepositorySource(MMRepoType.RESOURCES));
             }

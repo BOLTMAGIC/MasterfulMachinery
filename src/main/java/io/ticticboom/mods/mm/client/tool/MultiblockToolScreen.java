@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.client.builder.StructureTierRows;
+import io.ticticboom.mods.mm.client.config.MMConfigScreen;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.structure.GuiStructureRenderer;
 import io.ticticboom.mods.mm.client.util.CountFormat;
@@ -12,14 +13,15 @@ import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
+import io.ticticboom.mods.mm.net.packet.StructureCategoryEditPkt;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
-import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolData;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolSlot;
+import io.ticticboom.mods.mm.tool.StructureCategories;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -37,7 +39,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -92,13 +93,23 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private static final int TAB = 22;
     private static final int TAB_STEP = 24;
 
-    private enum Tab { STRUCTURES, SETTINGS }
+    private enum Tab {
+        STRUCTURES("structures"), MATERIALS("materials"), SETTINGS("settings"), CONFIG("config"), ADMIN("admin");
+
+        final ResourceLocation icon;
+
+        Tab(String iconName) {
+            this.icon = Ref.id("textures/gui/tool_tabs/" + iconName + ".png");
+        }
+    }
 
     // remembered while the game runs, like the controller's page
     private static Tab tab = Tab.STRUCTURES;
 
     private final TierPrefs prefs;
     private final GalleryList gallery;
+    private final ToolMaterialsTab materials;
+    private final ToolMaterialsTab compactMaterials;
     private final ToolSettingsTab settings;
     @Nullable
     private StructureModel selected;
@@ -111,7 +122,17 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     // -1: all layers, else a layer from the bottom
     private int layer = -1;
     private EditBox search;
+    private EditBox categoryNameBox;
     private String query = "";
+    private String adminSelectedCategory = StructureCategories.DEFAULT;
+    private int adminScroll;
+    @Nullable
+    private GalleryList.Entry categoryPopupTarget;
+    private int categoryPopupX;
+    private int categoryPopupY;
+    private int categoryPopupScroll;
+    private int lastClickX;
+    private int lastClickY;
 
     // set by init() from the screen size, GUI-relative
     private int storeTop;
@@ -119,6 +140,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private int inventoryX;
     private int inventoryY;
     private int feX;
+    private int compactMaterialsX;
+    private int compactMaterialsWidth;
     private int galleryWidth;
     private int previewX;
     private int previewWidth;
@@ -145,7 +168,9 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             entries.add(GalleryList.Entry.of(structure));
         }
         ResourceLocation selectedId = selected != null ? selected.id() : selectedBuilder != null ? selectedBuilder.id() : null;
-        this.gallery = new GalleryList(font, entries, selectedId, selectedBuilder != null, this::select);
+        this.gallery = new GalleryList(font, entries, selectedId, selectedBuilder != null, this::select, this::openCategoryPopup);
+        this.materials = new ToolMaterialsTab(font, menu, prefs, false);
+        this.compactMaterials = new ToolMaterialsTab(font, menu, prefs, true);
         this.settings = new ToolSettingsTab(font, prefs, this::setTier, ToolData.useMe(tool), ToolData.autoCraft(tool),
                 () -> ToolData.network(tool()) != null, this::toggleUseMe, this::toggleAutoCraft, this::forgetNetwork);
         GuiStructureRenderer renderer = renderer();
@@ -180,6 +205,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         inventoryX = imageWidth - INSET - GRID_WIDTH;
         inventoryY = imageHeight - FRAME_BOTTOM - INVENTORY_HEIGHT;
         feX = INSET + GRID_WIDTH + GAP;
+        compactMaterialsX = feX + FE_WIDTH + GAP;
+        compactMaterialsWidth = inventoryX - GAP - compactMaterialsX;
         // no store / inventory labels (hover an empty store slot for its name): the band ends just above the slots
         bandBottom = storeTop - 3;
         galleryWidth = Mth.clamp((imageWidth - 2 * INSET) * 3 / 10, GALLERY_MIN, GALLERY_MAX);
@@ -201,9 +228,22 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         search.visible = tab == Tab.STRUCTURES;
         addRenderableWidget(search);
 
+        int adminX = this.leftPos + INSET + 4;
+        int adminY = this.topPos + TOP + 27;
+        int adminWidth = imageWidth - 2 * INSET - 8;
+        categoryNameBox = new EditBox(this.font, adminX, adminY, Math.max(60, adminWidth - 152), 12,
+                Component.translatable("gui.mm.tool.admin.name"));
+        categoryNameBox.setHint(Component.translatable("gui.mm.tool.admin.name").withStyle(ChatFormatting.DARK_GRAY));
+        categoryNameBox.setMaxLength(32);
+        categoryNameBox.visible = tab == Tab.ADMIN && canManageCategories();
+        addRenderableWidget(categoryNameBox);
+
         int listTop = TOP + 3 + SEARCH_HEIGHT + 3;
         gallery.setBounds(this.leftPos + INSET + 2, this.topPos + listTop, galleryWidth - 4, bandBottom - 2 - listTop);
         gallery.showSelected();
+        materials.setBounds(this.leftPos + INSET + 2, this.topPos + TOP + 2, imageWidth - 2 * INSET - 4, bandBottom - TOP - 4);
+        compactMaterials.setBounds(this.leftPos + compactMaterialsX + 2, this.topPos + storeTop + 2,
+                compactMaterialsWidth - 4, STORE_HEIGHT - 4);
         settings.setBounds(this.leftPos + INSET + 2, this.topPos + TOP + 2, imageWidth - 2 * INSET - 4, bandBottom - TOP - 4);
     }
 
@@ -284,11 +324,19 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     private void switchTab(Tab next) {
+        if (next == Tab.ADMIN && !canManageCategories()) return;
+        if (next == Tab.CONFIG) {
+            this.minecraft.setScreen(new MMConfigScreen(null));
+            return;
+        }
         if (tab == next) {
             return;
         }
+        categoryPopupTarget = null;
         tab = next;
         search.visible = tab == Tab.STRUCTURES;
+        categoryNameBox.visible = tab == Tab.ADMIN;
+        if (tab != Tab.ADMIN) unfocusCategoryName();
         if (tab != Tab.STRUCTURES) {
             unfocusSearch();
         }
@@ -302,10 +350,18 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         }
     }
 
+    private void unfocusCategoryName() {
+        categoryNameBox.setFocused(false);
+        if (getFocused() == categoryNameBox) {
+            setFocused(null);
+        }
+    }
+
     // ---- drawing ----
 
     @Override
     protected void renderBg(@NotNull GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+        if (tab == Tab.ADMIN && !canManageCategories()) switchTab(Tab.STRUCTURES);
         int x = this.leftPos;
         int y = this.topPos;
         var texture = Ref.UiTextures.GUI_LARGE;
@@ -321,6 +377,16 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             drawPreview(gfx, mouseX, mouseY);
             drawPanel(gfx, x + previewX, y + infoY, previewWidth, INFO_HEIGHT);
             drawInfo(gfx);
+            if (compactMaterialsVisible()) {
+                drawPanel(gfx, x + compactMaterialsX, y + storeTop, compactMaterialsWidth, STORE_HEIGHT);
+                compactMaterials.render(gfx, selected, selectedBuilder);
+            }
+        } else if (tab == Tab.MATERIALS) {
+            drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
+            materials.render(gfx, selected, selectedBuilder);
+        } else if (tab == Tab.ADMIN) {
+            drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
+            drawCategoryAdmin(gfx, mouseX, mouseY);
         } else {
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
             settings.render(gfx, mouseX, mouseY);
@@ -337,6 +403,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         if (menu.slots.size() > MultiblockToolMenu.STORE_SLOTS + 36) {
             gfx.blit(Ref.UiTextures.SLOT_PARTS, x + offhandX(), y + inventoryY + 58, 0, 26, SLOT, SLOT);
         }
+        if (tab == Tab.STRUCTURES && categoryPopupTarget != null) drawCategoryPopup(gfx, mouseX, mouseY);
     }
 
     /** A dark screen panel: its edges from MM's texture, a plain middle. */
@@ -345,14 +412,168 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         gfx.fill(x + 2, y + 2, x + width - 2, y + height - 2, PANEL);
     }
 
+    private boolean canManageCategories() {
+        return this.minecraft != null && this.minecraft.player != null && this.minecraft.player.hasPermissions(2);
+    }
+
+    @Nullable
+    private String selectedStructureKey() {
+        if (selected != null) return StructureCategories.key(selected.id(), false);
+        if (selectedBuilder != null) return StructureCategories.key(selectedBuilder.id(), true);
+        return null;
+    }
+
+    private int adminX() { return leftPos + INSET + 4; }
+    private int adminWidth() { return imageWidth - 2 * INSET - 8; }
+    private int adminButtonY() { return topPos + TOP + 27; }
+    private int adminListTop() { return topPos + TOP + 46; }
+    private int adminListBottom() { return topPos + bandBottom - 4; }
+
+    private void drawCategoryAdmin(GuiGraphics gfx, int mouseX, int mouseY) {
+        int x = adminX();
+        int width = adminWidth();
+        var snapshot = StructureCategories.clientSnapshot();
+        if (!adminSelectedCategory.equals(StructureCategories.DEFAULT) &&
+                !snapshot.categories().contains(adminSelectedCategory)) adminSelectedCategory = StructureCategories.DEFAULT;
+        drawClipped(gfx, Component.translatable("gui.mm.tool.admin.title"), x, topPos + TOP + 4, width, TEXT);
+        String key = selectedStructureKey();
+        Component selection = key == null ? Component.translatable("gui.mm.tool.admin.select_structure")
+                : Component.translatable("gui.mm.tool.admin.current", snapshot.assignments().getOrDefault(key, StructureCategories.DEFAULT));
+        drawClipped(gfx, selection, x, topPos + TOP + 15, width, LABEL);
+        drawAdminButton(gfx, x + width - 146, adminButtonY(), 42, "gui.mm.tool.admin.add", mouseX, mouseY);
+        drawAdminButton(gfx, x + width - 100, adminButtonY(), 54, "gui.mm.tool.admin.rename", mouseX, mouseY);
+        drawAdminButton(gfx, x + width - 42, adminButtonY(), 42, "gui.mm.tool.admin.delete", mouseX, mouseY);
+
+        List<String> categories = adminCategories();
+        int listTop = adminListTop();
+        int listBottom = adminListBottom();
+        int maxScroll = Math.max(0, categories.size() * 12 - (listBottom - listTop));
+        adminScroll = Mth.clamp(adminScroll, 0, maxScroll);
+        gfx.enableScissor(x, listTop, x + width, listBottom);
+        for (int i = 0; i < categories.size(); i++) {
+            int rowY = listTop + i * 12 - adminScroll;
+            if (rowY + 12 <= listTop || rowY >= listBottom) continue;
+            String category = categories.get(i);
+            if (category.equals(adminSelectedCategory)) gfx.fill(x, rowY, x + width, rowY + 11, 0xFF3A4A6A);
+            boolean assigned = key != null && snapshot.assignments().getOrDefault(key, StructureCategories.DEFAULT).equals(category);
+            drawClipped(gfx, Component.literal((assigned ? "✓ " : "  ") + category), x + 3, rowY + 2, width - 6,
+                    assigned ? 0xFF55D76A : TEXT);
+        }
+        gfx.disableScissor();
+    }
+
+    private List<String> adminCategories() {
+        List<String> result = new ArrayList<>();
+        result.add(StructureCategories.DEFAULT);
+        result.addAll(StructureCategories.clientSnapshot().categories());
+        return result;
+    }
+
+    private void openCategoryPopup(GalleryList.Entry entry) {
+        if (!canManageCategories()) return;
+        categoryPopupTarget = entry;
+        categoryPopupScroll = 0;
+        int popupWidth = 140;
+        int popupHeight = Math.min(8, adminCategories().size()) * 12 + 6;
+        categoryPopupX = Mth.clamp(lastClickX + 5, leftPos + INSET, leftPos + imageWidth - INSET - popupWidth);
+        categoryPopupY = Mth.clamp(lastClickY, topPos + TOP, topPos + bandBottom - popupHeight);
+        playClick();
+    }
+
+    private int popupHeight() { return Math.min(8, adminCategories().size()) * 12 + 6; }
+
+    private boolean isOnCategoryPopup(double mouseX, double mouseY) {
+        return categoryPopupTarget != null && mouseX >= categoryPopupX && mouseX < categoryPopupX + 140
+                && mouseY >= categoryPopupY && mouseY < categoryPopupY + popupHeight();
+    }
+
+    private void drawCategoryPopup(GuiGraphics gfx, int mouseX, int mouseY) {
+        List<String> categories = adminCategories();
+        int visible = Math.min(8, categories.size());
+        int x = categoryPopupX;
+        int y = categoryPopupY;
+        drawPanel(gfx, x, y, 140, visible * 12 + 6);
+        gfx.enableScissor(x + 3, y + 3, x + 137, y + 3 + visible * 12);
+        for (int row = 0; row < visible; row++) {
+            int index = row + categoryPopupScroll;
+            if (index >= categories.size()) break;
+            int rowY = y + 3 + row * 12;
+            if (mouseX >= x + 3 && mouseX < x + 137 && mouseY >= rowY && mouseY < rowY + 12) {
+                gfx.fill(x + 3, rowY, x + 137, rowY + 12, 0xFF3A4A6A);
+            }
+            drawClipped(gfx, Component.literal(categories.get(index)), x + 6, rowY + 2, 126, TEXT);
+        }
+        gfx.disableScissor();
+        if (categories.size() > visible) {
+            int trackHeight = visible * 12;
+            int thumb = Math.max(8, trackHeight * visible / categories.size());
+            int thumbY = y + 3 + (trackHeight - thumb) * categoryPopupScroll / (categories.size() - visible);
+            gfx.fill(x + 135, y + 3, x + 137, y + 3 + trackHeight, 0xFF383838);
+            gfx.fill(x + 135, thumbY, x + 137, thumbY + thumb, 0xFFB0B0B0);
+        }
+    }
+
+    private void drawAdminButton(GuiGraphics gfx, int x, int y, int width, String key, int mouseX, int mouseY) {
+        boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 12;
+        gfx.blitNineSlicedSized(hovered ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE,
+                x, y, width, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        drawClipped(gfx, Component.translatable(key), x + 3, y + 2, width - 6, TEXT);
+    }
+
+    private boolean adminMouseClicked(double mouseX, double mouseY, int button) {
+        if (button != 0 || !canManageCategories()) return false;
+        int x = adminX();
+        int width = adminWidth();
+        if (mouseY >= adminButtonY() && mouseY < adminButtonY() + 12) {
+            String name = categoryNameBox.getValue().strip();
+            if (mouseX >= x + width - 146 && mouseX < x + width - 104) {
+                MMNetwork.INSTANCE.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.CREATE, "", name));
+                return true;
+            }
+            if (mouseX >= x + width - 100 && mouseX < x + width - 46) {
+                if (!adminSelectedCategory.equals(StructureCategories.DEFAULT)) {
+                    MMNetwork.INSTANCE.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.RENAME, adminSelectedCategory, name));
+                }
+                return true;
+            }
+            if (mouseX >= x + width - 42 && mouseX < x + width) {
+                if (!adminSelectedCategory.equals(StructureCategories.DEFAULT)) {
+                    MMNetwork.INSTANCE.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.DELETE, adminSelectedCategory, ""));
+                }
+                return true;
+            }
+        }
+        if (mouseX >= x && mouseX < x + width && mouseY >= adminListTop() && mouseY < adminListBottom()) {
+            int index = ((int) mouseY - adminListTop() + adminScroll) / 12;
+            List<String> categories = adminCategories();
+            if (index < 0 || index >= categories.size()) return true;
+            adminSelectedCategory = categories.get(index);
+            categoryNameBox.setValue(adminSelectedCategory.equals(StructureCategories.DEFAULT) ? "" : adminSelectedCategory);
+            String key = selectedStructureKey();
+            if (key != null) MMNetwork.INSTANCE.sendToServer(new StructureCategoryEditPkt(
+                    StructureCategories.Action.ASSIGN, key, adminSelectedCategory));
+            return true;
+        }
+        return false;
+    }
+
+    private boolean adminMouseScrolled(double mouseX, double mouseY, double delta) {
+        if (mouseX < adminX() || mouseX >= adminX() + adminWidth() ||
+                mouseY < adminListTop() || mouseY >= adminListBottom()) return false;
+        int max = Math.max(0, adminCategories().size() * 12 - (adminListBottom() - adminListTop()));
+        adminScroll = Mth.clamp(adminScroll - (int) Math.signum(delta) * 24, 0, max);
+        return true;
+    }
+
     private void drawTabs(GuiGraphics gfx, int mouseX, int mouseY) {
         for (Tab each : Tab.values()) {
+            if (each == Tab.ADMIN && !canManageCategories()) continue;
             Rect2i area = tabArea(each);
             boolean active = each == tab;
             var texture = active || area.contains(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
             gfx.blitNineSlicedSized(texture, area.getX(), area.getY(), area.getWidth(), area.getHeight(), 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-            ItemStack icon = each == Tab.STRUCTURES ? new ItemStack(MMRegisters.BLUEPRINT.get()) : new ItemStack(Items.COMPARATOR);
-            gfx.renderItem(icon, area.getX() + area.getWidth() - TAB + 3, area.getY() + 3);
+            gfx.blit(each.icon, area.getX() + area.getWidth() - TAB + 3, area.getY() + 3,
+                    0, 0, 16, 16, 16, 16);
         }
     }
 
@@ -367,14 +588,37 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     public List<Rect2i> getTabAreas() {
         var areas = new ArrayList<Rect2i>();
         for (Tab each : Tab.values()) {
+            if (each == Tab.ADMIN && !canManageCategories()) continue;
             areas.add(tabArea(each));
         }
         return areas;
     }
 
+    /** The drawn material row under the pointer, for JEI recipe lookup and bookmarks. */
+    @Nullable
+    public ItemStack getJeiMaterialAt(double mouseX, double mouseY) {
+        ToolMaterialsTab list = activeMaterialsAt(mouseX, mouseY);
+        return list == null ? null : list.ingredientAt(mouseX, mouseY);
+    }
+
+    @Nullable
+    public Rect2i getJeiMaterialAreaAt(double mouseX, double mouseY) {
+        ToolMaterialsTab list = activeMaterialsAt(mouseX, mouseY);
+        return list == null ? null : list.ingredientAreaAt(mouseX, mouseY);
+    }
+
+    @Nullable
+    private ToolMaterialsTab activeMaterialsAt(double mouseX, double mouseY) {
+        if (categoryPopupTarget != null && isOnCategoryPopup(mouseX, mouseY)) return null;
+        if (tab == Tab.MATERIALS) return materials;
+        if (tab == Tab.STRUCTURES && compactMaterialsVisible()) return compactMaterials;
+        return null;
+    }
+
     @Nullable
     private Tab tabAt(double mouseX, double mouseY) {
         for (Tab each : Tab.values()) {
+            if (each == Tab.ADMIN && !canManageCategories()) continue;
             if (tabArea(each).contains((int) mouseX, (int) mouseY)) {
                 return each;
             }
@@ -465,7 +709,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         int y = this.topPos + infoY + 3;
         int width = previewWidth - 8;
         if (!hasSelection()) {
-            drawClipped(gfx, Component.translatable("tooltip.mm.multiblock_tool.no_structure"), x, y, width, LABEL);
+            drawClipped(gfx, Component.translatable("tooltip.mm.structure_builder.no_structure"), x, y, width, LABEL);
             return;
         }
         if (selectedBuilder != null) {
@@ -572,6 +816,10 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return mouseX >= x && mouseX < x + FE_WIDTH && mouseY >= y && mouseY < y + STORE_HEIGHT;
     }
 
+    private boolean compactMaterialsVisible() {
+        return compactMaterialsWidth >= 90;
+    }
+
     /** The tool's bound ME network, or that it isn't bound. */
     private Component meStatus() {
         var network = ToolData.network(tool());
@@ -639,24 +887,42 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         }
         List<Component> tooltip = null;
         Tab hoveredTab = tabAt(mouseX, mouseY);
+        if (categoryPopupTarget != null && isOnCategoryPopup(mouseX, mouseY)) return;
         if (this.hoveredSlot instanceof ToolSlot && this.menu.getCarried().isEmpty()) {
             // the store has no label on screen
             tooltip = List.of(Component.translatable("gui.mm.tool.store"));
         } else if (hoveredTab != null) {
-            tooltip = List.of(Component.translatable(hoveredTab == Tab.STRUCTURES ? "gui.mm.tool.tab.structures" : "gui.mm.tool.tab.settings"));
+            tooltip = List.of(Component.translatable(switch (hoveredTab) {
+                case STRUCTURES -> "gui.mm.tool.tab.structures";
+                case MATERIALS -> "gui.mm.tool.tab.materials";
+                case SETTINGS -> "gui.mm.tool.tab.settings";
+                case CONFIG -> "config.mm.title";
+                case ADMIN -> "gui.mm.tool.tab.admin";
+            }));
         } else if (isOnEnergy(mouseX, mouseY)) {
-            tooltip = List.of(Component.translatable("tooltip.mm.multiblock_tool.energy",
+            tooltip = List.of(Component.translatable("tooltip.mm.structure_builder.energy",
                     CountFormat.grouped(energyStored()), CountFormat.grouped(MMConfigSetup.COMMON.toolEnergyCapacity.get())));
         } else if (isOnMeStatus(mouseX, mouseY)) {
             tooltip = List.of(meStatus());
         } else if (tab == Tab.SETTINGS) {
             tooltip = settings.tooltip(mouseX, mouseY);
+        } else if (tab == Tab.MATERIALS) {
+            tooltip = materials.tooltip(mouseX, mouseY);
+        } else if (tab == Tab.STRUCTURES && compactMaterialsVisible() &&
+                (tooltip = compactMaterials.tooltip(mouseX, mouseY)) != null) {
+            // Show the full material name and exact counts in the compact list.
+        } else if (tab == Tab.ADMIN) {
+            tooltip = null;
         } else if (isOnLayerBar(mouseX, mouseY)) {
             tooltip = List.of(Component.translatable("jei.mm.structure.layer.hint"));
         } else if (isOnPortsLine(mouseX, mouseY)) {
             tooltip = portsTooltip();
-        } else if (!search.isMouseOver(mouseX, mouseY)) {
+        } else if (tab == Tab.STRUCTURES && !search.isMouseOver(mouseX, mouseY)) {
             tooltip = gallery.tooltip(mouseX, mouseY);
+            if (tooltip != null && canManageCategories()) {
+                tooltip = new ArrayList<>(tooltip);
+                tooltip.add(Component.translatable("gui.mm.tool.admin.right_click").withStyle(ChatFormatting.GRAY));
+            }
         }
         if (tooltip != null) {
             gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
@@ -667,6 +933,20 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (categoryPopupTarget != null) {
+            if (button == 0 && isOnCategoryPopup(mouseX, mouseY)
+                    && mouseY >= categoryPopupY + 3 && mouseY < categoryPopupY + popupHeight() - 3) {
+                int index = categoryPopupScroll + ((int) mouseY - categoryPopupY - 3) / 12;
+                List<String> categories = adminCategories();
+                if (index >= 0 && index < categories.size()) {
+                    MMNetwork.INSTANCE.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.ASSIGN,
+                            StructureCategories.key(categoryPopupTarget.id(), categoryPopupTarget.builder()), categories.get(index)));
+                    playClick();
+                }
+            }
+            categoryPopupTarget = null;
+            return true;
+        }
         if (!search.isMouseOver(mouseX, mouseY)) {
             unfocusSearch();
         }
@@ -679,7 +959,11 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             if (settings.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
-        } else {
+        } else if (tab == Tab.ADMIN) {
+            if (categoryNameBox.isMouseOver(mouseX, mouseY)) return super.mouseClicked(mouseX, mouseY, button);
+            unfocusCategoryName();
+            if (adminMouseClicked(mouseX, mouseY, button)) return true;
+        } else if (tab == Tab.STRUCTURES) {
             if (button == 0 && isOnLayerBar(mouseX, mouseY)) {
                 GuiPos view = viewport();
                 if (mouseX < view.x() + LAYER_ARROW) {
@@ -689,6 +973,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 }
                 return true;
             }
+            lastClickX = (int) mouseX;
+            lastClickY = (int) mouseY;
             if (gallery.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
@@ -704,11 +990,25 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (isOnCategoryPopup(mouseX, mouseY)) {
+            int max = Math.max(0, adminCategories().size() - 8);
+            categoryPopupScroll = Mth.clamp(categoryPopupScroll - (int) Math.signum(delta), 0, max);
+            return true;
+        }
         if (tab == Tab.SETTINGS) {
             if (settings.mouseScrolled(mouseX, mouseY, delta)) {
                 return true;
             }
+        } else if (tab == Tab.ADMIN) {
+            if (adminMouseScrolled(mouseX, mouseY, delta)) return true;
+        } else if (tab == Tab.MATERIALS) {
+            if (materials.mouseScrolled(mouseX, mouseY, delta)) {
+                return true;
+            }
         } else {
+            if (compactMaterialsVisible() && compactMaterials.mouseScrolled(mouseX, mouseY, delta)) {
+                return true;
+            }
             if (isOnLayerBar(mouseX, mouseY)) {
                 // scrolling up moves up the structure
                 stepLayer(delta > 0 ? 1 : -1);
@@ -726,7 +1026,28 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (tab == Tab.STRUCTURES && gallery.mouseDragged(mouseX, mouseY, button)) return true;
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    @Override
+    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (gallery.mouseReleased(button)) return true;
+        return super.mouseReleased(mouseX, mouseY, button);
+    }
+
+    @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        // The inventory key (normally E) must type into the category name instead of closing the menu.
+        if (categoryNameBox.visible && categoryNameBox.isFocused()) {
+            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+                unfocusCategoryName();
+                return true;
+            }
+            categoryNameBox.keyPressed(keyCode, scanCode, modifiers);
+            return true;
+        }
         // while typing a search, keys go to the search box (so E or number keys don't act on the inventory)
         if (search.visible && search.isFocused()) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {

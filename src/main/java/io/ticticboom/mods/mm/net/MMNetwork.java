@@ -6,7 +6,12 @@ import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
 import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
+import io.ticticboom.mods.mm.net.packet.StructureCategoryEditPkt;
+import io.ticticboom.mods.mm.net.packet.StructureCategoriesSyncPkt;
 import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
+import io.ticticboom.mods.mm.net.packet.MMConfigRequestPkt;
+import io.ticticboom.mods.mm.net.packet.MMConfigEditPkt;
+import io.ticticboom.mods.mm.net.packet.MMConfigSyncPkt;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.simple.SimpleChannel;
@@ -15,8 +20,8 @@ import java.util.Optional;
 
 public class MMNetwork {
 
-    // 4: tool ME settings actions and the tool HUD packet; 5: builder structure sync
-    private static final String PROTOCOL_VERSION = "5";
+    // 7: in-game MM config request, edit and sync
+    private static final String PROTOCOL_VERSION = "7";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -59,5 +64,15 @@ public class MMNetwork {
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         INSTANCE.registerMessage(index++, BuildableStructureSyncPkt.class, BuildableStructureSyncPkt::encode,
                 BuildableStructureSyncPkt::decode, BuildableStructureSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, StructureCategoriesSyncPkt.class, StructureCategoriesSyncPkt::encode,
+                StructureCategoriesSyncPkt::decode, StructureCategoriesSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, StructureCategoryEditPkt.class, StructureCategoryEditPkt::encode,
+                StructureCategoryEditPkt::decode, StructureCategoryEditPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, MMConfigRequestPkt.class, MMConfigRequestPkt::encode,
+                MMConfigRequestPkt::decode, MMConfigRequestPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, MMConfigEditPkt.class, MMConfigEditPkt::encode,
+                MMConfigEditPkt::decode, MMConfigEditPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, MMConfigSyncPkt.class, MMConfigSyncPkt::encode,
+                MMConfigSyncPkt::decode, MMConfigSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 }

@@ -14,6 +14,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Blocks;
@@ -26,6 +28,9 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.io.IOException;
 
 /**
  * Non-MM structures for the Multiblock Tool: loading the test {@code .nbt} files from mm_builder_structures,
@@ -38,6 +43,34 @@ public class BuilderStructureGameTests {
 
     private static ResourceLocation id(String path) {
         return ResourceLocation.tryBuild("mmtest", path);
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void voidMinerTiersHaveValidPalettes(GameTestHelper helper) {
+        Map<Integer, String> names = Map.of(1, "rubetine", 2, "aurantium", 3, "citrinetine",
+                4, "verdium", 5, "azurine", 6, "caerium", 7, "amethystine",
+                8, "rosarium", 9, "ultimate");
+        Set<Integer> corrected = Set.of(3, 6, 7, 8);
+        for (var tier : names.entrySet()) {
+            String folder = corrected.contains(tier.getKey()) ? "mm_builder_structures" : "mbtool_structures";
+            ResourceLocation file = ResourceLocation.tryBuild("mbtool", folder + "/voidminer/voidminer_tier"
+                    + tier.getKey() + "_" + tier.getValue() + ".nbt");
+            var resource = helper.getLevel().getServer().getResourceManager().getResource(file);
+            check(helper, resource.isPresent(), "missing Void Miner tier " + tier.getKey());
+            try (var in = resource.orElseThrow().open()) {
+                CompoundTag nbt = NbtIo.readCompressed(in);
+                int paletteSize = nbt.getList("palette", Tag.TAG_COMPOUND).size();
+                check(helper, paletteSize > 0, "empty Void Miner palette in " + file);
+                for (Tag entry : nbt.getList("blocks", Tag.TAG_COMPOUND)) {
+                    int state = ((CompoundTag) entry).getInt("state");
+                    check(helper, state >= 0 && state < paletteSize,
+                            "invalid Void Miner state " + state + " in " + file);
+                }
+            } catch (IOException e) {
+                helper.fail("could not read Void Miner tier " + tier.getKey() + ": " + e);
+            }
+        }
+        helper.succeed();
     }
 
     @GameTest(template = TEMPLATE)
