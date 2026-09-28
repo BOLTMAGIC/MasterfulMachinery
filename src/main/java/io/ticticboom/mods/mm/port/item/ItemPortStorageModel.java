@@ -8,7 +8,7 @@ public record ItemPortStorageModel(
         int rows,
         int columns,
         Supplier<Boolean> autoPush,
-        int slotCapacity, // 0 = use default per-item max stack size, >0 = override (capped at 1024)
+        int slotCapacity, // 0 = item default, >0 = per-slot limit (up to 16,384)
         int tierRank
 ) implements ISlottedPortStorageModel {
     @Override

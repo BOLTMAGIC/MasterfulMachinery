@@ -13,7 +13,7 @@ import net.minecraft.nbt.CompoundTag;
 import java.util.function.Supplier;
 
 public class ItemPortParser implements IPortParser {
-    private static final int HARD_MAX = 1024;
+    private static final int HARD_MAX = 16_384;
 
     @Override
     public IPortStorageFactory parseStorage(JsonObject json) {

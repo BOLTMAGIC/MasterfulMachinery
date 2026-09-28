@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.client.gui.widgets;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.texture.GuiTextures;
+import io.ticticboom.mods.mm.client.util.PortBackgroundRenderer;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.PortConfigPkt;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -124,7 +125,7 @@ public class PortConfigPanel {
         if (!open) return;
 
         int h = panelHeight();
-        gfx.blitNineSlicedSized(Ref.UiTextures.TILING_GUI, panelX(), panelY(), PANEL_W, h, 4, 4, 4, 4, 12, 12, 0, 0, 12, 12);
+        PortBackgroundRenderer.draw(gfx, panelX(), panelY(), PANEL_W, h);
         // hide the seam so the panel reads as part of the window
         gfx.fill(panelX() - 2, panelY() + 4, panelX() + 4, panelY() + h - 4, WINDOW_BG);
         gfx.drawString(font, Component.translatable("gui.mm.port.panel.title"), panelX() + 6, panelY() + 6, TEXT, false);

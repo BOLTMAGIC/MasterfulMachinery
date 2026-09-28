@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.port.common;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.widgets.PortConfigPanel;
+import io.ticticboom.mods.mm.client.util.PortBackgroundRenderer;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortMenu;
 import net.minecraft.client.gui.GuiGraphics;
@@ -76,8 +77,7 @@ public class SlottedContainerScreen<T extends AbstractContainerMenu & IPortMenu>
         } else {
             // grid larger than 9x6: stretch the window, then copy the player inventory from the standard
             // background, shifted like the menu's inventory slots
-            gfx.blitNineSlicedSized(Ref.UiTextures.TILING_GUI, this.leftPos, this.topPos, this.imageWidth, this.imageHeight,
-                    4, 4, 4, 4, 12, 12, 0, 0, 12, 12);
+            PortBackgroundRenderer.draw(gfx, this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
             int invX = this.leftPos + (this.imageWidth - PortGuiLayout.WIDTH) / 2;
             int invY = this.topPos + this.imageHeight - PortGuiLayout.HEIGHT;
             gfx.blit(Ref.UiTextures.PORT_GUI, invX + 7, invY + 139, 7, 139, 162, 78);
