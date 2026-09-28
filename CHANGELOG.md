@@ -4,6 +4,87 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.2] - 2026-09-28
+
+### INFO:
+**Version 0.1.35.2** represents a major update focused on the Structure Builder tool and internationalization support.
+
+**Special Thanks:**
+- **Knozyy** – Lead developer of the Structure Builder tool suite, Locale fixes, and controller enhancements.
+
+### Added
+
+#### #66 – Locale.ROOT Enum Casing
+- Fixed Turkish/Azerbaijani locale issues where `toLowerCase()` transforms `I` → `ı` and `toUpperCase()` transforms `i` → `İ`.
+- All enum-name casing for lang keys and parsing now uses `Locale.ROOT` (linker item/mode, Jade controller provider, controller screen, port sides, weather recipe condition, ParserUtils).
+- Output unchanged on all other locales (enum names are plain ASCII); affects: Network Linker, controller screen, port configuration.
+
+#### #67 – Controller Assemble Button
+- **Assemble button** on controller screen (brick icon) opens structure assembly interface.
+- **Structure selector** (when controller has multiple structures).
+- **Tier picker** (one row per port type with < > controls; "Lowest" by default).
+- **Assembly process**: builds structure from player inventory (nothing needed in creative), with configurable block placement rate (`assemblyBlocksPerTick`, default 2).
+- **Tier clamping**: preference clamped to each position's [minTier, maxTier], nearest registered tier used (supports non-linear tier gaps like T1, T2, T5).
+- **Safety**: respects `mayBuild`, spawn protection, `BlockEvent.EntityPlaceEvent`; existing blocks not replaced; assembly reports placed/missing/blocked summary.
+- **Persistence**: tier choice + structure stored on controller; packets validated server-side.
+- **Blueprint compatibility**: blueprint paste now uses lowest fitting port tier (not first registered).
+
+#### #68 – Structure Builder Tool
+- **New Structure Builder item** (replaces concept of external multiblock builders) with dedicated texture and model.
+- **Structures tab**: searchable gallery grouped by mod, big 3D preview (drag/rotate, wheel/zoom, layer slider), size/block count display, port tier info.
+- **Settings tab**: preferred port size per port type (clamped per position).
+- **Tool store**: 54 slots, up to 512 per stackable slot, plus FE bar.
+- **Build & preview**: Shift+use opens tool screen; right-click block shows hologram preview (green outline, red obstacles), builds if clear; Shift+scroll rotates.
+- **Complete structure**: right-click controller to finish incomplete machine (same as controller's Assemble, but from tool).
+- **Dismantle**: hold V (rebindable) or Shift+right-click twice; breaks like normal breaking (contents drop), returns blocks to tool store → inventory → ground with Silk Touch loot rolling.
+- **Energy**: 50 FE/block placed, 25/block dismantled; common config: capacity 1M, receive 10K/tick; creative: free.
+- **Safety**: oversized stacks capped in store, inventory/tool binding checks, store refreshes per tick, refunds on failure/cancel, respects claim mods & place/break events.
+- **Server validation**: held tool, distance, loaded chunk, known structure, registered tier keys, clamped values.
+
+#### #69 – Structure Builder: ME Network & Auto-Craft
+- **Bind**: Shift+right-click any AE2 network block (WAP, cable, drive, etc.) to bind tool to network (stores position like Network Linker).
+- **Settings**: "Use ME network", "Auto-craft missing", "Forget ME network" toggles.
+- **Materials flow**: tool store → player inventory → ME network.
+- **All-or-nothing builds**: tool build starts only when all blocks available; network auto-crafts what has patterns, names missing items (e.g., "Titanium Plate ×3: not in ME and no pattern").
+- **Craft HUD**: above hotbar with progress bar (Crafting ▓▓▓░░ 5/8), network status ("Waiting…", "Ready — right-click to build"), failures shown once in yellow.
+- **Smart tracking**: item being crafted never reported missing, never requested twice; tracks via CPU and `getRequestedAmount`.
+- **AE2 access control**: enforces network ownership (player/FTB team/operator; checked at bind, use, craft submit).
+- **Refunds**: never go back to ME; return to player inventory.
+
+#### #70 – Structure Builder: Other Mods' Multiblocks
+- **Gallery integration**: now lists multiblocks from other mods (Mekanism, NuclearCraft, Blood Magic, etc.) defined as vanilla structure .nbt files in datapacks (Multi Builder Tool format).
+- **Paths**: loads `data/<ns>/mm_builder_structures/**.nbt`; legacy support for `mbtool_structures/**` and `spatial_structures/**`.
+- **Compatibility**: skips structures with unregistered blocks (mod not installed).
+- **Multi Builder Tool bundles**: MIT licensed .nbt files included under `data/mbtool/mbtool_structures/` (same paths → no duplicates in packs still using MBT).
+- **Naming**: from lang key `structure.<ns>.<path>` or title-cased file name; grouped by owning mod.
+- **Sync**: synced to clients on login & `/reload` (palette-compressed, split <512KB packets).
+- **Building**: gallery, 3D preview, hologram, building work like MM structures; rotation from facing + Shift+scroll; all-or-nothing materials from store → inventory → ME with auto-craft.
+- **Limitations**: no controller, no tier choice, block entity data ignored; structures with no-item blocks (fire, fluids) listed but can't build.
+- **KubeJS API**: `MMEvents.builderStructures(event => { event.remove(id); event.removeNamespace(ns); event.add(id, 'ns:path/file.nbt') })`.
+- **Dismantling**: MM-machines-only (no controller to locate others).
+
+#### #71 – Structure Builder: Polish, Materials Tab & AE2 ME Storage
+- **Renamed**: "Multiblock Tool" → **"Structure Builder"** (item, recipes, models, lang entries, registry).
+- **New item texture & model**.
+- **Bind via WAP**: now supports binding directly to AE2 Wireless Access Points.
+- **Materials tab**: displays every required block with real item icons; compares counts across Player Inventory + Tool Storage + connected ME network; tooltips show breakdown (Available: X / Required: Y).
+- **Compact materials strip**: in Structures tab for quick reference during selection.
+- **Admin Categories tab** (server operators/admins): create, rename, delete custom gallery categories; assign structures via right-click context menu.
+- **Sync**: `StructureCategoriesSyncPkt` & `StructureCategoryEditPkt` between server/client; persists across restarts and datapack reloads.
+- **In-game config GUI** (`MMConfigScreen`): accessible from tool's Config tab or client commands; live editing of server settings, visual/client options, per-machine working effects.
+- **Server config editing**: operators modify server config with immediate sync & validation (`MMConfigEditPkt`, `MMConfigSyncPkt`, `MMConfigRequestPkt`).
+- **AE2 ME Storage Bus on Item Ports**: `Ae2ItemPortStorage` allows AE2 Storage Buses to attach directly to MM Item Ports; exposes inventory to ME network with accurate channel & capacity handling.
+- **Item port improvements**: improved stack insertion to prevent loss on oversized stacks; respect slot limits.
+- **Controller-free dismantling**: extended DismantlePlanner & ToolDismantles to dismantle non-MM builder structures (datapack .nbt files matching tool template).
+- **Void Miner relocations**: corrected .nbt structures to `data/mbtool/mm_builder_structures/voidminer/` (overrides broken legacy palette entries).
+- **UI polish**: JEI ingredient hovering in ControllerPortList; fixed 3D layer preview for connected textures (GuiStructureRenderer); formatted multi-line tooltips for Machine Wrench, Network Linker, Input Gateway.
+
+### Fixed
+
+#### #66 – Locale Fixes
+- Enum names no longer transform incorrectly in Turkish/Azerbaijani locales; all comparisons now use Locale.ROOT.
+
+
 ## [0.1.35.1] - 2026-09-26
 
 ### INFO:
