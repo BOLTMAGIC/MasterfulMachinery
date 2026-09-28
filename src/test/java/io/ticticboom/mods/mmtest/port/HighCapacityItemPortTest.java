@@ -16,23 +16,23 @@ class HighCapacityItemPortTest {
     }
 
     @Test
-    void fiveHundredTwelveItemPortsUseAtMostFortyEightSlots() {
+    void fiveHundredTwelveItemPortsKeepTheirConfiguredGrid() {
         var model = new ItemPortStorageModel(6, 9, () -> false, 512, 2);
         assertEquals(6, model.rows());
-        assertEquals(8, model.columns());
+        assertEquals(9, model.columns());
         assertEquals(512, model.slotCapacity());
     }
 
     @Test
-    void sixteenKItemPortsUseTheSameGridLimitAsFiveHundredTwelve() {
+    void sixteenKItemPortsKeepTheirConfiguredGrid() {
         var model = new ItemPortStorageModel(6, 9, () -> false, 16_384, 3);
         assertEquals(6, model.rows());
-        assertEquals(8, model.columns());
+        assertEquals(9, model.columns());
         assertEquals(16_384, model.slotCapacity());
     }
 
     @Test
-    void jsonPortsKeepSixteenKCapacity() {
+    void jsonPortsKeepSixteenKCapacityAndConfiguredGrid() {
         var json = new JsonObject();
         json.addProperty("rows", 6);
         json.addProperty("columns", 9);
@@ -40,7 +40,7 @@ class HighCapacityItemPortTest {
         var model = (ItemPortStorageModel) new ItemPortParser().parseStorage(json).getModel();
         assertEquals(16_384, model.slotCapacity());
         assertEquals(6, model.rows());
-        assertEquals(8, model.columns());
+        assertEquals(9, model.columns());
     }
 
     @Test
@@ -51,9 +51,9 @@ class HighCapacityItemPortTest {
     }
 
     @Test
-    void highCapacityPortsShrinkToColossalGridWithoutGrowingSmallerPorts() {
+    void highCapacityPortsKeepLargerConfiguredGrids() {
         var model = new ItemPortStorageModel(8, 12, () -> false, 16_384, 10);
-        assertEquals(6, model.rows());
-        assertEquals(8, model.columns());
+        assertEquals(8, model.rows());
+        assertEquals(12, model.columns());
     }
 }
