@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.client.tool;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.tool.StructureCategories;
 import io.ticticboom.mods.mm.util.TextMatch;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
@@ -11,7 +12,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -26,9 +26,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 /**
- * The tool screen's structure list: MM structures and other mods' structures, grouped by the mod (namespace) they come
- * from, groups collapsible. A search text hides the structures whose name and id do not contain it, and groups left
- * empty, and underlines the match in the name.
+ * The tool screen's structure list, grouped by the world's category settings. Groups can be collapsed and searched.
  */
 public class GalleryList {
     private static final int ROW = 10;
@@ -38,7 +36,7 @@ public class GalleryList {
     private static final int MATCH = 0xFFD84D;
     private static final int SELECTED = 0xFF3A4A6A;
     private static final int HOVER = 0x30FFFFFF;
-    // collapsed groups by namespace; remembered while the game runs
+    // collapsed categories; remembered while the game runs
     private static final Set<String> COLLAPSED = new HashSet<>();
 
     /**
@@ -59,7 +57,7 @@ public class GalleryList {
         }
     }
 
-    private record Group(String namespace, Component name, List<Entry> structures) {
+    private record Group(String category, Component name, List<Entry> structures) {
     }
 
     /** One shown line: a group header, or a structure with where the search text is in its name (-1 when not). */
@@ -67,8 +65,11 @@ public class GalleryList {
     }
 
     private final Font font;
-    private final List<Group> groups;
+    private final List<Entry> allEntries;
+    private List<Group> groups;
+    private long categoryRevision;
     private final Consumer<Entry> onSelect;
+    private final Consumer<Entry> onCategorize;
     private List<Line> lines = List.of();
     private String query = "";
     private int scroll;
@@ -76,39 +77,82 @@ public class GalleryList {
     private int y;
     private int width;
     private int height;
+    private boolean draggingScrollbar;
     @Nullable
     private ResourceLocation selected;
     private boolean selectedBuilder;
 
     public GalleryList(Font font, Collection<Entry> structures, @Nullable ResourceLocation selected, boolean selectedBuilder,
-                       Consumer<Entry> onSelect) {
+                       Consumer<Entry> onSelect, Consumer<Entry> onCategorize) {
         this.font = font;
         this.onSelect = onSelect;
+        this.onCategorize = onCategorize;
         this.selected = selected;
         this.selectedBuilder = selectedBuilder;
-        this.groups = group(structures);
+        // The pack also ships old Multi Builder Tool NBT copies of its MM machines. Prefer the live MM
+        // structure, whose ports and tier choices stay in sync with the machine definition.
+        Set<String> mmMachines = new HashSet<>();
+        for (Entry entry : structures) {
+            if (!entry.builder()) mmMachines.add(machineKey(entry.id()));
+        }
+        this.allEntries = structures.stream().filter(entry -> !entry.builder()
+                || !entry.id().getNamespace().equals("mbtool")
+                || !entry.id().getPath().startsWith("custom_multiblocks/")
+                || !mmMachines.contains(machineKey(entry.id()))).toList();
+        this.categoryRevision = StructureCategories.clientSnapshot().revision();
+        this.groups = group(allEntries);
         refresh();
     }
 
     private static List<Group> group(Collection<Entry> structures) {
-        Map<String, List<Entry>> byNamespace = new LinkedHashMap<>();
+        Map<String, List<Entry>> byCategory = new LinkedHashMap<>();
+        var config = StructureCategories.clientSnapshot();
         for (Entry structure : structures) {
-            byNamespace.computeIfAbsent(structure.namespace(), k -> new ArrayList<>()).add(structure);
+            String category = config.category(structure.id(), structure.builder());
+            byCategory.computeIfAbsent(category, k -> new ArrayList<>()).add(structure);
         }
         var result = new ArrayList<Group>();
-        byNamespace.forEach((namespace, list) -> {
+        byCategory.forEach((category, list) -> {
             list.sort(Comparator.comparing((Entry s) -> s.name().toLowerCase(Locale.ROOT)).thenComparing(s -> s.id().toString()));
-            result.add(new Group(namespace, Component.literal(modName(namespace)), list));
+            result.add(new Group(category, Component.literal(category), list));
         });
-        result.sort(Comparator.comparing(g -> g.name().getString().toLowerCase(Locale.ROOT)));
+        result.sort(Comparator.comparing((Group g) -> g.category().equals(StructureCategories.DEFAULT))
+                .thenComparing(g -> g.name().getString().toLowerCase(Locale.ROOT)));
         return result;
     }
 
-    /** The mod's display name, or the namespace itself for datapacks and scripts. */
-    private static String modName(String namespace) {
-        return ModList.get().getModContainerById(namespace)
-                .map(container -> container.getModInfo().getDisplayName())
-                .orElse(namespace);
+    private void refreshCategoriesIfNeeded() {
+        long revision = StructureCategories.clientSnapshot().revision();
+        if (revision == categoryRevision) return;
+        categoryRevision = revision;
+        groups = group(allEntries);
+        refresh();
+    }
+
+    private static String machineKey(ResourceLocation id) {
+        String path = id.getPath();
+        String name = path.substring(path.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
+        String version = "";
+        var structure = java.util.regex.Pattern.compile("(.+?)_structure([0-9._]*)$").matcher(name);
+        var tier = java.util.regex.Pattern.compile("(.+?)_tier_?([0-9._]+)$").matcher(name);
+        var numbered = java.util.regex.Pattern.compile("(.+?)_([0-9]+)$").matcher(name);
+        if (structure.matches()) {
+            name = structure.group(1);
+            version = structure.group(2);
+        } else if (tier.matches()) {
+            name = tier.group(1);
+            version = tier.group(2);
+        } else if (numbered.matches()) {
+            name = numbered.group(1);
+            version = numbered.group(2);
+        }
+        var tierBeforeStructure = java.util.regex.Pattern.compile("(.+?)_tier_?([0-9._]+)$").matcher(name);
+        if (tierBeforeStructure.matches()) {
+            name = tierBeforeStructure.group(1);
+            version = tierBeforeStructure.group(2);
+        }
+        String normalizedVersion = version.replaceAll("[^0-9]", ".").replaceAll("^\\.+|\\.+$", "");
+        return name.replaceAll("[^a-z0-9]", "") + ":" + (normalizedVersion.isEmpty() ? "1" : normalizedVersion);
     }
 
     public void setBounds(int x, int y, int width, int height) {
@@ -162,7 +206,7 @@ public class GalleryList {
             }
             result.add(new Line(group, null, matches.size(), -1));
             // a search shows its matches even in collapsed groups
-            if (searching || !COLLAPSED.contains(group.namespace())) {
+            if (searching || !COLLAPSED.contains(group.category())) {
                 result.addAll(matches);
             }
         }
@@ -171,8 +215,17 @@ public class GalleryList {
     }
 
     private void clampScroll() {
-        int max = Math.max(0, lines.size() * ROW - height);
-        scroll = Math.max(0, Math.min(max, scroll));
+        scroll = Math.max(0, Math.min(maxScroll(), scroll));
+    }
+
+    private int maxScroll() { return Math.max(0, lines.size() * ROW - height); }
+    private boolean hasScrollbar() { return maxScroll() > 0; }
+    private int thumbHeight() { return Math.max(8, height * height / (lines.size() * ROW)); }
+
+    private void scrollToThumb(double mouseY) {
+        int range = height - thumbHeight();
+        scroll = range <= 0 ? 0 : (int) Math.round((mouseY - y - thumbHeight() / 2.0) * maxScroll() / range);
+        clampScroll();
     }
 
     public boolean isMouseOver(double mouseX, double mouseY) {
@@ -180,12 +233,13 @@ public class GalleryList {
     }
 
     public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+        refreshCategoriesIfNeeded();
         if (lines.isEmpty()) {
             String key = groups.isEmpty() ? "gui.mm.tool.gallery.empty" : "gui.mm.tool.gallery.no_match";
             drawClipped(gfx, Component.translatable(key), x + 2, y + 2, width - 4, GROUP);
             return;
         }
-        boolean scrollbar = lines.size() * ROW > height;
+        boolean scrollbar = hasScrollbar();
         int textWidth = width - 2 - (scrollbar ? 4 : 0);
         gfx.enableScissor(x, y, x + width, y + height);
         Line hovered = lineAt(mouseX, mouseY);
@@ -202,7 +256,7 @@ public class GalleryList {
                 gfx.fill(x, top, x + textWidth, top + ROW, HOVER);
             }
             if (structure == null) {
-                boolean open = !query.isEmpty() || !COLLAPSED.contains(line.group().namespace());
+                boolean open = !query.isEmpty() || !COLLAPSED.contains(line.group().category());
                 MutableComponent header = Component.literal(open ? "▾ " : "▸ ")
                         .append(line.group().name()).append(" (" + line.shownCount() + ")");
                 drawClipped(gfx, header, x + 2, top + 1, textWidth - 2, GROUP);
@@ -213,7 +267,7 @@ public class GalleryList {
         gfx.disableScissor();
         if (scrollbar) {
             int total = lines.size() * ROW;
-            int barHeight = Math.max(8, height * height / total);
+            int barHeight = thumbHeight();
             int barY = y + (height - barHeight) * scroll / (total - height);
             gfx.fill(x + width - 3, y, x + width - 1, y + height, 0xFF2A2A2A);
             gfx.fill(x + width - 3, barY, x + width - 1, barY + barHeight, 0xFF8A8A8A);
@@ -256,15 +310,25 @@ public class GalleryList {
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && hasScrollbar() && isMouseOver(mouseX, mouseY) && mouseX >= x + width - 5) {
+            draggingScrollbar = true;
+            scrollToThumb(mouseY);
+            return true;
+        }
         Line line = lineAt(mouseX, mouseY);
-        if (line == null || button != 0) {
+        if (line == null) {
             return false;
         }
+        if (button == 1 && line.structure() != null) {
+            onCategorize.accept(line.structure());
+            return true;
+        }
+        if (button != 0) return false;
         if (line.structure() == null) {
             if (query.isEmpty()) {
-                String namespace = line.group().namespace();
-                if (!COLLAPSED.remove(namespace)) {
-                    COLLAPSED.add(namespace);
+                String category = line.group().category();
+                if (!COLLAPSED.remove(category)) {
+                    COLLAPSED.add(category);
                 }
                 refresh();
             }
@@ -282,6 +346,18 @@ public class GalleryList {
         }
         scroll -= (int) Math.round(delta * ROW * 2);
         clampScroll();
+        return true;
+    }
+
+    public boolean mouseDragged(double mouseX, double mouseY, int button) {
+        if (!draggingScrollbar || button != 0) return false;
+        scrollToThumb(mouseY);
+        return true;
+    }
+
+    public boolean mouseReleased(int button) {
+        if (!draggingScrollbar || button != 0) return false;
+        draggingScrollbar = false;
         return true;
     }
 }

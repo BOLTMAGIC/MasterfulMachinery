@@ -2,7 +2,10 @@ package io.ticticboom.mods.mm.event;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureSync;
+import io.ticticboom.mods.mm.net.MMNetwork;
+import io.ticticboom.mods.mm.net.packet.StructureCategoriesSyncPkt;
 import io.ticticboom.mods.mm.structure.StructureManager;
+import io.ticticboom.mods.mm.tool.StructureCategories;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -23,6 +26,11 @@ public class DatapackSyncHandler {
             BuildableStructureSync.send(event.getPlayer() != null
                     ? PacketDistributor.PLAYER.with(event::getPlayer)
                     : PacketDistributor.ALL.noArg());
+            MMNetwork.INSTANCE.send(event.getPlayer() != null
+                    ? PacketDistributor.PLAYER.with(event::getPlayer)
+                    : PacketDistributor.ALL.noArg(),
+                    new StructureCategoriesSyncPkt(StructureCategories.get(event.getPlayer() != null
+                            ? event.getPlayer().getServer() : event.getPlayerList().getServer()).snapshot()));
         } catch (Throwable t) {
             Ref.LOG.error("Error syncing builder structures on datapack sync", t);
         }

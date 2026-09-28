@@ -12,5 +12,5 @@
     "I": { "item": "minecraft:iron_ingot" },
     "R": { "item": "minecraft:redstone_block" }
   },
-  "result": { "item": "mm:multiblock_tool" }
+  "result": { "item": "mm:structure_builder" }
 }

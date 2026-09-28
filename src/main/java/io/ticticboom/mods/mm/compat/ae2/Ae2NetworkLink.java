@@ -30,8 +30,12 @@ public final class Ae2NetworkLink {
     public static RegistryObject<Item> init() {
         RegistryObject<Item> linker = MMRegisters.ITEMS.register("network_linker", () -> new LinkerItem(new Item.Properties().stacksTo(1)));
         @SuppressWarnings("removal") var modBus = FMLJavaModLoadingContext.get().getModEventBus();
-        // like AE2's wireless terminals, the linker can be linked in a Wireless Access Point's slot
-        modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(() -> GridLinkables.register(linker.get(), new LinkerGridLinkable())));
+        // AE2 calls the handler when either item is inserted into a Wireless Access Point.
+        modBus.addListener((FMLCommonSetupEvent event) -> event.enqueueWork(() -> {
+            var handler = new LinkerGridLinkable();
+            GridLinkables.register(linker.get(), handler);
+            GridLinkables.register(MMRegisters.MULTIBLOCK_TOOL.get(), handler);
+        }));
         MinecraftForge.EVENT_BUS.register(new NetworkLinkProtection());
         // the Multiblock Tool pulls blocks from the network it is bound to
         MeAccessFactory.setLookup(Ae2MeAccess::forTool, Ae2MeAccess::problem);

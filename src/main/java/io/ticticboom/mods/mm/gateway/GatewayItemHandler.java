@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.gateway;
 
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.port.item.ItemPortHandler;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
@@ -61,7 +62,10 @@ public class GatewayItemHandler implements IItemHandler {
             }
             var handler = storage.getCapability(MMCapabilities.ITEM).resolve();
             if (handler.isPresent()) {
-                remaining = ItemHandlerHelper.insertItemStacked(handler.get(), remaining, simulate);
+                IItemHandler itemHandler = handler.get();
+                remaining = itemHandler instanceof ItemPortHandler port
+                        ? port.insertStackFast(remaining, simulate)
+                        : ItemHandlerHelper.insertItemStacked(itemHandler, remaining, simulate);
             }
         }
         return remaining;

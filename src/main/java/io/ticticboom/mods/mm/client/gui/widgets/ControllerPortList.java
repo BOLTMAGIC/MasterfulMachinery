@@ -9,6 +9,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.locale.Language;
@@ -53,6 +54,9 @@ public class ControllerPortList {
     private boolean inputs = true;
 
     private record Row(@Nullable Component header, @Nullable IPortBlockEntity port, List<PortContent> contents, int top, int h) {
+    }
+
+    public record HoveredContent(PortContent content, Rect2i area) {
     }
 
     public ControllerPortList(List<BlockPos> positions) {
@@ -270,6 +274,41 @@ public class ControllerPortList {
     private static TextureAtlasSprite atlas(@Nullable net.minecraft.resources.ResourceLocation id) {
         if (id == null) return null;
         return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(id);
+    }
+
+    /** Only visible, real item slots and filled fluid bars are JEI ingredients. The +N overflow is a label. */
+    @Nullable
+    public HoveredContent ingredientAt(@Nullable Level level, double mouseX, double mouseY) {
+        if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) return null;
+        for (Row row : rows(level)) {
+            if (row.port() == null || row.contents().isEmpty()) continue;
+            int top = y + row.top() - (int) scroll;
+            int cy = top + NAME_H;
+            if (mouseY < cy || mouseY >= Math.min(y + height, top + row.h())) continue;
+            List<PortContent> contents = row.contents();
+            if (contents.get(0).isTank()) {
+                PortContent tank = contents.get(0);
+                if (tank.kind() != PortContent.Kind.FLUID || tank.fluid().isEmpty()
+                        || mouseX >= x + listWidth() || mouseY >= cy + BAR_H) return null;
+                int visibleTop = Math.max(cy, y);
+                return new HoveredContent(tank, new Rect2i(x, visibleTop, listWidth(),
+                        Math.min(cy + BAR_H, y + height) - visibleTop));
+            }
+            int col = ((int) mouseX - x) / SLOT;
+            int line = ((int) mouseY - cy) / SLOT;
+            int index = line * slotsPerLine() + col;
+            int shown = shownSlots(contents.size());
+            if (col >= slotsPerLine() || line < 0 || index >= shown
+                    || (shown < contents.size() && index == shown - 1)) return null;
+            PortContent item = contents.get(index);
+            if (item.item().isEmpty()) return null;
+            int sx = x + col * SLOT;
+            int sy = cy + line * SLOT;
+            int visibleTop = Math.max(sy, y);
+            return new HoveredContent(item, new Rect2i(sx, visibleTop, SLOT,
+                    Math.min(sy + SLOT, y + height) - visibleTop));
+        }
+        return null;
     }
 
     /**
