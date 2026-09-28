@@ -108,7 +108,23 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (level == null || level.isClientSide()){
             return;
         }
+        markChangedWithoutSync();
+        syncBlockEntityToClients();
+    }
+
+    /** Mark persisted state dirty without immediately serializing and sending the full block entity. */
+    protected void markChangedWithoutSync() {
+        if (level == null || level.isClientSide()) {
+            return;
+        }
         super.setChanged();
+    }
+
+    /** Send the current block-entity data to clients tracking this position. */
+    protected void syncBlockEntityToClients() {
+        if (level == null || level.isClientSide()) {
+            return;
+        }
         level.sendBlockUpdated(getBlockPos(), this.getBlockState(), this.getBlockState(), Block.UPDATE_CLIENTS);
     }
 }
