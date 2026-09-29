@@ -22,10 +22,10 @@ import java.util.function.Supplier;
 /**
  * Multiblock tool screen -> server: select a structure ({@code key} = its id), set a preferred port tier
  * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier), toggle the ME network options
- * ({@code value} nonzero = on) or forget the bound network, on the held tool.
+ * and instant-build options ({@code value} nonzero = on), or forget the bound network, on the held tool.
  */
 public record ToolSettingsPkt(Action action, String key, int value) {
-    public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK }
+    public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK, SET_INSTANT_BUILD }
 
     /** {@link Action#SELECT_STRUCTURE} value for another mod's structure; 0 selects an MM structure. */
     public static final int BUILDER_STRUCTURE = 1;
@@ -127,6 +127,10 @@ public record ToolSettingsPkt(Action action, String key, int value) {
             }
             case SET_AUTOCRAFT -> {
                 ToolData.setAutoCraft(tool, value != 0);
+                return true;
+            }
+            case SET_INSTANT_BUILD -> {
+                ToolData.setInstantBuild(tool, value != 0);
                 return true;
             }
             case FORGET_NETWORK -> {

@@ -172,7 +172,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         this.materials = new ToolMaterialsTab(font, menu, prefs, false);
         this.compactMaterials = new ToolMaterialsTab(font, menu, prefs, true);
         this.settings = new ToolSettingsTab(font, prefs, this::setTier, ToolData.useMe(tool), ToolData.autoCraft(tool),
-                () -> ToolData.network(tool()) != null, this::toggleUseMe, this::toggleAutoCraft, this::forgetNetwork);
+                ToolData.instantBuild(tool), () -> ToolData.network(tool()) != null, this::toggleUseMe,
+                this::toggleAutoCraft, this::toggleInstantBuild, this::forgetNetwork);
         GuiStructureRenderer renderer = renderer();
         if (renderer != null) {
             renderer.resetTransforms();
@@ -312,6 +313,11 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private void toggleAutoCraft(boolean value) {
         playClick();
         MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_AUTOCRAFT, "", value ? 1 : 0));
+    }
+
+    private void toggleInstantBuild(boolean value) {
+        playClick();
+        MMNetwork.INSTANCE.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_INSTANT_BUILD, "", value ? 1 : 0));
     }
 
     private void forgetNetwork() {
