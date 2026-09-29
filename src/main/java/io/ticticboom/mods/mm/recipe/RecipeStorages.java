@@ -3,14 +3,31 @@ package io.ticticboom.mods.mm.recipe;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.port.item.ItemPortStorage;
+import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public record RecipeStorages(
         List<IPortStorage> inputStorages,
-        List<IPortStorage> outputStorages
+        List<IPortStorage> outputStorages,
+        ItemPortIndex inputItemPortIndex,
+        ItemPortIndex outputItemPortIndex
 ) {
+    public RecipeStorages(List<IPortStorage> inputStorages, List<IPortStorage> outputStorages) {
+        this(inputStorages, outputStorages, new ItemPortIndex(inputStorages), new ItemPortIndex(outputStorages));
+    }
+
+    public List<ItemPortStorage> getInputItemStorages(Item item) {
+        return inputItemPortIndex.forItem(item);
+    }
+
+    public List<ItemPortStorage> getOutputItemStorages(Item item) {
+        var candidates = new java.util.LinkedHashSet<>(outputItemPortIndex.forItem(item));
+        candidates.addAll(outputItemPortIndex.withEmptySlots());
+        return new ArrayList<>(candidates);
+    }
     public <T extends IPortStorage> List<T> getInputStorages(Class<T> clz) {
         return getStorages(clz, inputStorages);
     }
