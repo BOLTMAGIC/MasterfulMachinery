@@ -10,12 +10,21 @@ import io.ticticboom.mods.mm.util.NbtMatchUtils;
 import lombok.Getter;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 
 import java.util.List;
 import java.util.function.Predicate;
 
 public abstract class BaseItemPortIngredient implements IPortIngredient {
+
+    /** Specific items can use the controller and slot indexes; tag ingredients keep predicate scans. */
+    protected Item indexedItem() { return null; }
+
+    private List<ItemPortStorage> inputItemStorages(RecipeStorages storages) {
+        Item item = indexedItem();
+        return item == null ? storages.getInputStorages(ItemPortStorage.class) : storages.getInputItemStorages(item);
+    }
 
     @Getter
     protected final int count;
@@ -56,26 +65,28 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if(storages == null) return false;
-        List<ItemPortStorage> itemStorages = storages.getInputStorages(ItemPortStorage.class);
+        List<ItemPortStorage> itemStorages = inputItemStorages(storages);
         int remaining = count;
         for (ItemPortStorage storage : itemStorages) {
-            remaining = storage.canExtract(filter, remaining);
+            remaining = indexedItem() == null ? storage.canExtract(filter, remaining)
+                    : storage.canExtract(indexedItem(), filter, remaining);
         }
         return remaining <= 0;
     }
 
     @Override
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
-        List<ItemPortStorage> itemStorages = storages.getInputStorages(ItemPortStorage.class);
+        List<ItemPortStorage> itemStorages = inputItemStorages(storages);
         int remaining = count;
         for (ItemPortStorage storage : itemStorages) {
-            remaining = storage.extract(filter, remaining);
+            remaining = indexedItem() == null ? storage.extract(filter, remaining)
+                    : storage.extract(indexedItem(), filter, remaining);
         }
     }
 
     @Override
     public JsonObject debugInput(Level level, RecipeStorages storages, JsonObject json) {
-        List<ItemPortStorage> itemStorages = storages.getInputStorages(ItemPortStorage.class);
+        List<ItemPortStorage> itemStorages = inputItemStorages(storages);
         var searchedStorages = new JsonArray();
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ITEM.toString());
@@ -90,7 +101,8 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         for (ItemPortStorage storage : itemStorages) {
             var iterJson = new JsonObject();
 
-            remaining = storage.canExtract(this.filter, remaining);
+            remaining = indexedItem() == null ? storage.canExtract(this.filter, remaining)
+                    : storage.canExtract(indexedItem(), this.filter, remaining);
 
             iterJson.addProperty("remaining", remaining);
             iterJson.addProperty("storageUid", storage.getStorageUid().toString());

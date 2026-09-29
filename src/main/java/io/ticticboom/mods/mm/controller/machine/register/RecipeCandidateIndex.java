@@ -5,7 +5,7 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -13,13 +13,13 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * A structure's recipes, indexed by one item each consumes, so a controller only looks at recipes whose
+ * A structure's recipes, indexed by every exact item they consume, so a controller only looks at recipes whose
  * inputs could be in its ports instead of scanning every recipe of the structure.
  */
 public class RecipeCandidateIndex {
     private final List<RecipeModel> recipes;
     private final RecipeRequirements[] requirements;
-    // position of every recipe that consumes a specific item, under the first such item
+    // Every exact item input points to the recipes that consume it.
     private final Map<ResourceLocation, int[]> positionsByItem = new HashMap<>();
     // recipes with no specific item input (tags, fluids, energy...), always candidates
     private final int[] unindexedPositions;
@@ -35,7 +35,9 @@ public class RecipeCandidateIndex {
             if (req.itemIds().isEmpty()) {
                 unindexed.add(i);
             } else {
-                byItem.computeIfAbsent(req.itemIds().iterator().next(), k -> new ArrayList<>()).add(i);
+                for (ResourceLocation item : req.itemIds()) {
+                    byItem.computeIfAbsent(item, k -> new ArrayList<>()).add(i);
+                }
             }
         }
         byItem.forEach((item, positions) -> positionsByItem.put(item, toArray(positions)));
@@ -58,22 +60,28 @@ public class RecipeCandidateIndex {
      * @return positions, ascending, of the recipes the ports might be able to run
      */
     public int[] candidates(StorageCacheManager.StorageCache cache, @Nullable Set<ResourceLocation> portTypes) {
-        List<Integer> found = new ArrayList<>();
-        addMatching(unindexedPositions, cache, portTypes, found);
+        BitSet found = new BitSet(recipes.size());
+        BitSet tested = new BitSet(recipes.size());
+        addMatching(unindexedPositions, cache, portTypes, tested, found);
         for (ResourceLocation item : cache.availableItemIds) {
             int[] positions = positionsByItem.get(item);
-            if (positions != null) addMatching(positions, cache, portTypes, found);
+            if (positions != null) addMatching(positions, cache, portTypes, tested, found);
         }
-        int[] result = toArray(found);
-        Arrays.sort(result);
+        int[] result = new int[found.cardinality()];
+        int index = 0;
+        for (int position = found.nextSetBit(0); position >= 0; position = found.nextSetBit(position + 1)) {
+            result[index++] = position;
+        }
         return result;
     }
 
     private void addMatching(int[] positions, StorageCacheManager.StorageCache cache,
-                             @Nullable Set<ResourceLocation> portTypes, List<Integer> out) {
+                             @Nullable Set<ResourceLocation> portTypes, BitSet tested, BitSet out) {
         for (int position : positions) {
+            if (tested.get(position)) continue;
+            tested.set(position);
             var req = requirements[position];
-            if (req.hasPortTypes(portTypes) && req.isMetBy(cache)) out.add(position);
+            if (req.hasPortTypes(portTypes) && req.isMetBy(cache)) out.set(position);
         }
     }
 

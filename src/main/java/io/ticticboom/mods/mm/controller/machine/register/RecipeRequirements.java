@@ -15,6 +15,8 @@ import net.minecraft.resources.ResourceLocation;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -24,6 +26,7 @@ import java.util.Set;
 public record RecipeRequirements(
         Set<ResourceLocation> portTypes,
         Set<ResourceLocation> itemIds,
+        Map<ResourceLocation, Long> itemCounts,
         Set<ResourceLocation> fluidIds,
         Set<ResourceLocation> mekanismIds,
         boolean needsEnergy,
@@ -35,6 +38,7 @@ public record RecipeRequirements(
     public static RecipeRequirements of(RecipeModel recipe) {
         Set<ResourceLocation> portTypes = new HashSet<>();
         Set<ResourceLocation> itemIds = new HashSet<>();
+        Map<ResourceLocation, Long> itemCounts = new HashMap<>();
         Set<ResourceLocation> fluidIds = new HashSet<>();
         Set<ResourceLocation> mekanismIds = new HashSet<>();
         boolean needsEnergy = false;
@@ -48,7 +52,13 @@ public record RecipeRequirements(
             if (ingr instanceof BaseItemPortIngredient) {
                 portTypes.add(Ref.Ports.ITEM);
                 if (ingr instanceof SingleItemPortIngredient single) {
-                    try { var id = single.getItemId(); if (id != null) itemIds.add(id); } catch (Throwable ignored) { }
+                    try {
+                        var id = single.getItemId();
+                        if (id != null) {
+                            itemIds.add(id);
+                            itemCounts.merge(id, (long) single.getCount(), Long::sum);
+                        }
+                    } catch (Throwable ignored) { }
                 }
             } else if (ingr instanceof FluidPortIngredient fp) {
                 portTypes.add(Ref.Ports.FLUID);
@@ -75,7 +85,7 @@ public record RecipeRequirements(
                 } catch (Throwable ignored) { }
             }
         }
-        return new RecipeRequirements(portTypes, itemIds, fluidIds, mekanismIds,
+        return new RecipeRequirements(portTypes, itemIds, itemCounts, fluidIds, mekanismIds,
                 needsEnergy, needsMana, needsPneumatic, needsKinetic, needsMekanismChemical);
     }
 
@@ -91,6 +101,9 @@ public record RecipeRequirements(
      */
     public boolean isMetBy(StorageCacheManager.StorageCache cache) {
         if (!itemIds.isEmpty() && !cache.availableItemIds.containsAll(itemIds)) return false;
+        for (var entry : itemCounts.entrySet()) {
+            if (cache.availableItemCounts.getOrDefault(entry.getKey(), 0L) < entry.getValue()) return false;
+        }
         if (!fluidIds.isEmpty() && !cache.availableFluidIds.containsAll(fluidIds)) return false;
         if (needsEnergy && !cache.hasEnergyAvailable) return false;
         if (needsMana && !cache.hasManaAvailable) return false;

@@ -168,6 +168,14 @@ public class ItemPortStorage implements IPortStorage {
         return handlerExtract(item, count, false); // returns remaining after extraction
     }
 
+    public int canExtract(Item item, Predicate<ItemStack> filter, int count) {
+        return handler.extractMatching(item, filter, count, true);
+    }
+
+    public int extract(Item item, Predicate<ItemStack> filter, int count) {
+        return handler.extractMatching(item, filter, count, false);
+    }
+
     private int handlerExtract(Predicate<ItemStack> item, int count, boolean simulate) {
         int remaining = count;
         for (int slot = 0; slot < handler.getSlots(); slot++) {

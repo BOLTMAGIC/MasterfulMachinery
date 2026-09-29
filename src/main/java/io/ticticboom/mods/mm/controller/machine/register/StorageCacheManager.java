@@ -33,6 +33,7 @@ public class StorageCacheManager {
      */
     public static class StorageCache {
         public Set<ResourceLocation> availableItemIds;
+        public Map<ResourceLocation, Long> availableItemCounts;
         public Set<ResourceLocation> availableFluidIds;
         public Set<ResourceLocation> availableMekanismIds;
         public Map<ResourceLocation, List<ResourceLocation>> availableItemStackKeys;
@@ -45,6 +46,7 @@ public class StorageCacheManager {
 
         public StorageCache() {
             this.availableItemIds = new HashSet<>();
+            this.availableItemCounts = new HashMap<>();
             this.availableFluidIds = new HashSet<>();
             this.availableMekanismIds = new HashSet<>();
             this.availableItemStackKeys = new HashMap<>();
@@ -53,6 +55,7 @@ public class StorageCacheManager {
 
         public void clear() {
             availableItemIds.clear();
+            availableItemCounts.clear();
             availableFluidIds.clear();
             availableMekanismIds.clear();
             availableItemStackKeys.clear();
@@ -68,7 +71,7 @@ public class StorageCacheManager {
     /**
      * Rebuild the storage cache from current port storages
      */
-    public static void rebuildStorageCache(RecipeStorages portStorages, StorageCache cache) {
+    public static void rebuildStorageCache(RecipeStorages portStorages, StorageCache cache, boolean includeStackKeys) {
         cache.clear();
 
         if (portStorages == null) {
@@ -81,13 +84,20 @@ public class StorageCacheManager {
         for (ItemPortStorage s : itemStorages) {
             var handler = s.getHandler();
             if (handler == null) continue;
+            handler.itemTotals().forEach((item, count) -> {
+                var key = ForgeRegistries.ITEMS.getKey(item);
+                if (key != null) {
+                    cache.availableItemIds.add(key);
+                    cache.availableItemCounts.merge(key, count, Long::sum);
+                }
+            });
+            if (!includeStackKeys) continue;
             for (int i = 0; i < handler.getSlots(); i++) {
                 var stack = handler.getStackInSlot(i);
                 int actual = handler.getActualCount(i);
                 if (!stack.isEmpty() && actual > 0) {
                     var key = ForgeRegistries.ITEMS.getKey(stack.getItem());
                     if (key != null) {
-                        cache.availableItemIds.add(key);
                         // Compute NBT fingerprint for this exact stack
                         ResourceLocation composed = key;
                         if (stack.hasTag()) {

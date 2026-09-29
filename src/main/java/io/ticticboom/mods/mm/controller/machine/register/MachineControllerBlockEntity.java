@@ -117,12 +117,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private boolean wasActive = false;
     private int lastClientSignature = 0;
     private static final int SAVE_FALLBACK_TICKS = 20;
-    // how often input ports are checked for changes made from outside (pipes, players)
+    // how often non-item input ports are checked for changes made from outside
     private static final int EXTERNAL_CHANGE_CHECK_TICKS = 5;
     // cached view of storage contents to avoid rebuilding every tick when recipes are running
     private final StorageCacheManager.StorageCache storageCache = new StorageCacheManager.StorageCache();
     private final Map<ResourceLocation, Long> recipeNextCheckTime = new HashMap<>();
-    // signature of the last observed storage contents; used to detect external changes
+    // signature of the last observed non-item storage contents
     private long lastStorageSignature = 0L;
     // debounce flag for validation thread creation
     private volatile boolean validationScheduled = false;
@@ -391,6 +391,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          if (portStorages == null) {
              portStorages = (structure == null) ? null : structure.getStorages(level, getBlockPos());
          }
+         if (portStorages != null && portStorages.inputItemPortIndex().changedSinceLastPoll()) {
+             storageCache.isValid = false;
+             recipeNextCheckTime.clear();
+         }
          detectExternalStorageChanges();
          long gameTime = (level == null) ? 0L : level.getGameTime();
          if (!storageCache.isValid) rebuildStorageCache();
@@ -402,30 +406,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     // Helper split to reduce runRecipe complexity
     private void detectExternalStorageChanges() {
-        // this walks every input slot and tank, so not every tick; a change is noticed within a quarter second
+        // Item handlers have revision counters; other port types are polled every five ticks.
         if (level == null || level.getGameTime() % EXTERNAL_CHANGE_CHECK_TICKS != 0) {
             return;
         }
         try {
             if (portStorages != null) {
                 long sig = 1469598103934665603L; // FNV offset basis
-                var itemStorages = portStorages.getInputStorages(ItemPortStorage.class);
-                for (ItemPortStorage s : itemStorages) {
-                    var handler = s.getHandler();
-                    if (handler == null) continue;
-                    for (int i = 0; i < handler.getSlots(); i++) {
-                        var stack = handler.getStackInSlot(i);
-                        int actual = handler.getActualCount(i);
-                        int idHash = 0;
-                        try {
-                            var key = stack.isEmpty() ? null : ForgeRegistries.ITEMS.getKey(stack.getItem());
-                            if (key != null) idHash = key.hashCode();
-                        } catch (Throwable ignored) { }
-                        sig ^= idHash + actual;
-                        sig *= 1099511628211L; // FNV prime
-                    }
-                }
-
                 var fluidStorages = portStorages.getInputStorages(FluidPortStorage.class);
                 for (FluidPortStorage s : fluidStorages) {
                     var handler = s.getHandler();
@@ -496,7 +483,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
      private void rebuildStorageCache() {
          // Delegate to StorageCacheManager to rebuild all cache fields
-         StorageCacheManager.rebuildStorageCache(portStorages, storageCache);
+         StorageCacheManager.rebuildStorageCache(portStorages, storageCache,
+                 getRecipeSelectionMode() == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM);
          // after a rebuild allow recipes to be rechecked immediately
          recipeNextCheckTime.clear();
          candidatePositions = null;
@@ -1222,6 +1210,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     public void setRecipeSelectionMode(RecipeSelectionMode mode) {
         recipeModeOverride = mode == controllerModel.recipeSelectionMode() ? null : mode;
+        storageCache.isValid = false;
         setChanged();
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
