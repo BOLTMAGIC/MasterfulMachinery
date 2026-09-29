@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.recipe.input.consume;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
+import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
@@ -89,6 +90,9 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
             slot.setBadgeNotUsed();
             // Add a translated tooltip line to indicate the slot/item won't be used
             rSlot.addTooltipCallback((v, list) -> list.add(Component.translatable("jei.mm.not_used").withStyle(ChatFormatting.DARK_AQUA)));
+        }
+        if (slot.getBadgeCount() > 1 || slot.hasBadgeNotUsed()) {
+            rSlot.setOverlay(new SlotBadgeDrawable(slot.getBadgeCount(), slot.hasBadgeNotUsed()), 0, 0);
         }
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
         var fmtChance = String.format("%.2f", chance * 100) + "% Chance of Consumption";

@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.recipe.output.simple;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
+import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
@@ -99,6 +100,7 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
                 int cnt = bif.getCount();
                 slot.setBadgeCount(cnt);
                 if (cnt > 1) {
+                    rSlot.setOverlay(new SlotBadgeDrawable(cnt, false), 0, 0);
                     rSlot.addRichTooltipCallback((v, list) ->
                         list.add(Component.literal("x " + cnt).withStyle(ChatFormatting.GRAY)));
                 }
