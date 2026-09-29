@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.4] - 2026-09-29
+### INFO:
+**Version 0.1.35.4** represents a minor update focused on bug fixes and performance improvements.
+
+**Special Thanks:**
+- **Knozyy**
+
+### Added
+
+#### #73 – Structure Builder: Instant Build Toggle
+- **Instant build toggle** in Settings tab (off by default, saved per tool).
+- When enabled: prepared structure builds in one server tick through existing block, energy, and placement-protection checks.
+- **Motivation**: prevents crashes when controller ticks during structure placement (e.g., NuclearCraft fission reactors); opt-in mitigation mode.
+- **English & Turkish labels** + GameTests for per-tool persistence and one-tick resource consumption.
+
+#### #74 – JEI Process Recipe Views: Scrollable Input/Output Lists
+- **Capped visible rows**: process recipe views limited to 6 visible rows.
+- **Independent JEI scroll grids**: separate scrollable grids for long input and output lists (keep all ingredients available to JEI lookup).
+- **Count & badges**: unused badges follow slots when scrolling.
+- **Category sizing**: uses displayed outputs including weighted choices; accounts for recipes shared by multiple structures.
+
+#### #75 – Item Port Indexing & Exact-Item Extraction
+- **Slot indexing**: index empty, partially filled, and full item-port slots; track per-item totals and content revision.
+- **Content updates**: normal inventory changes update controller without periodic item-slot scan.
+- **Exact-item routing**: recipe extraction routed through item-to-port index, keeping NBT predicates.
+- **Output strategy**: for outputs, try compatible partial ports before empty ports within same configured priority.
+- **Candidate filtering**: filter recipe candidates by available exact-item quantities; keep existing final ingredient, condition, output-capacity, and round-robin checks.
+
+#### #76 – Output Capacity Pre-Check & Pending Recipe State
+- **Pre-start check**: verify output capacity before starting recipe (prevent full output port consuming inputs).
+- **Pending state**: completed recipes remain pending while output blocked (no repeated per-tick consumption or discard after stall timeout).
+- **State preservation**: recipe waits for output space without losing progress.
+
+
 ## [0.1.35.2 + 3] - 2026-09-28
 
 ### INFO:
