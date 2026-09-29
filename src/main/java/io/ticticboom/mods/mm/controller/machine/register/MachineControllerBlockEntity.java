@@ -553,6 +553,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
                 continue;
             }
+            if (!recipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                // Do not consume inputs when the output ports are already full.
+                recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
+                continue;
+            }
 
              if (canStartRecipeGivenParallelRules(recipe)) {
                  ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
@@ -882,6 +887,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
             // a recipe whose conditions stop holding (night ended...) waits; it isn't stalled
             if (recipe != null && !recipe.conditions().canRun(conditionContext())) {
+                activeRecipeLastUpdate.put(recipeId, gameTime);
+                continue;
+            }
+            if (state.isCanFinish() && recipe != null) {
+                // A completed recipe owns its consumed inputs until its outputs fit.
+                // processActiveRecipeOutputs retries the output on the next tick.
                 activeRecipeLastUpdate.put(recipeId, gameTime);
                 continue;
             }
