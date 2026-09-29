@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
@@ -19,8 +18,10 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableAnimated;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
+import mezz.jei.api.gui.widgets.IRecipeExtrasBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
+import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
@@ -32,6 +33,8 @@ import org.jetbrains.annotations.NotNull;
 public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     public static final RecipeType<RecipeModel> RECIPE_TYPE = RecipeType.create(Ref.ID, "recipes", RecipeModel.class);
+    public static final int VISIBLE_ROWS = 6;
+    private static final int COLUMNS = 3;
     private final IJeiHelpers helpers;
     private final IDrawable bgProgressBar;
     @Getter
@@ -86,10 +89,11 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     @Override
     public void setRecipe(@NotNull IRecipeLayoutBuilder builder, RecipeModel recipe, @NotNull IFocusGroup focuses) {
-        int inputRows = (int) Math.ceil(recipe.inputs().inputs().size() / 3.0);
-        int outputRows = (int) Math.ceil(recipe.outputs().outputs().size() / 3.0);
-        var inGrid = new SlotGrid(20, 20, 3, inputRows, 0, 0);
-        var outGrid = new SlotGrid(20, 20, 3, outputRows, 100, 0);
+        int inputRows = rowsFor(recipe.inputs().inputs().size());
+        int outputCount = recipe.outputs().outputs().stream().mapToInt(o -> o.displayedOutputs().size()).sum();
+        int outputRows = rowsFor(outputCount);
+        var inGrid = new SlotGrid(20, 20, COLUMNS, inputRows, 0, 0);
+        var outGrid = new SlotGrid(20, 20, COLUMNS, outputRows, 100, 0);
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
             input.setRecipe(builder, recipe, focuses, helpers, inGrid);
         }
@@ -97,8 +101,25 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
         }
 
+        recipe.inputSlots().clear();
         recipe.inputSlots().addAll(inGrid.getSlots());
         recipe.inputSlots().addAll(outGrid.getSlots());
+    }
+
+    public static int rowsFor(int slotCount) {
+        return (slotCount + COLUMNS - 1) / COLUMNS;
+    }
+
+    @Override
+    public void createRecipeExtras(IRecipeExtrasBuilder builder, RecipeModel recipe, IFocusGroup focuses) {
+        var inputSlots = builder.getRecipeSlots().getSlots(RecipeIngredientRole.INPUT);
+        var outputSlots = builder.getRecipeSlots().getSlots(RecipeIngredientRole.OUTPUT);
+        if (inputSlots.size() > COLUMNS * VISIBLE_ROWS) {
+            builder.addScrollGridWidget(inputSlots, COLUMNS, VISIBLE_ROWS).setPosition(0, 0);
+        }
+        if (outputSlots.size() > COLUMNS * VISIBLE_ROWS) {
+            builder.addScrollGridWidget(outputSlots, COLUMNS, VISIBLE_ROWS).setPosition(92, 0);
+        }
     }
 
     @Override
@@ -136,21 +157,13 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             }
         }
 
+        boolean scrollInputs = recipe.inputs().inputs().size() > COLUMNS * VISIBLE_ROWS;
+        boolean scrollOutputs = recipe.outputs().outputs().stream()
+                .mapToInt(o -> o.displayedOutputs().size()).sum() > COLUMNS * VISIBLE_ROWS;
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
-            if (inputSlot.used()) {
+            boolean scrollSide = inputSlot.x < 100 ? scrollInputs : scrollOutputs;
+            if (inputSlot.used() && !scrollSide) {
                 gfx.blit(Ref.UiTextures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18);
-                // draw small 'x' badge bottom-right if slot is marked not used
-                if (inputSlot.hasBadgeNotUsed()) {
-                    String badge = "x";
-                    int badgeX = inputSlot.x + 12;
-                    int badgeY = inputSlot.y + 12;
-                    gfx.drawString(Minecraft.getInstance().font, badge, badgeX, badgeY, 0xFF5555, true);
-                }
-                // draw AE2-style count badge (K/M) in the slot
-                int count = inputSlot.getBadgeCount();
-                if (count > 1) {
-                    CountFormat.drawSlotCount(gfx, inputSlot.x, inputSlot.y, count);
-                }
             }
         }
     }
