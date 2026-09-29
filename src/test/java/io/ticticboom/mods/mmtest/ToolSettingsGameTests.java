@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.ToolData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
@@ -122,6 +123,23 @@ public class ToolSettingsGameTests {
         check(helper, ToolData.network(tool) == null, "network should be clearable again");
         check(helper, ToolData.useMe(tool), "useMe should round-trip back to true");
         check(helper, ToolData.autoCraft(tool), "autoCraft should round-trip back to true");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void instantBuildIsOffByDefaultAndStoredPerTool(GameTestHelper helper) {
+        ItemStack first = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        ItemStack second = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
+        Map<String, Integer> tiers = PortTiers.registeredMaxTiers();
+        check(helper, !ToolData.instantBuild(first) && !ToolData.instantBuild(second), "instant build should default off");
+
+        check(helper, apply(first, Action.SET_INSTANT_BUILD, "", 1, tiers), "enabling instant build should be accepted");
+        check(helper, ToolData.instantBuild(first) && !ToolData.instantBuild(second), "only the selected tool should change");
+        ItemStack reloaded = ItemStack.of(first.save(new CompoundTag()));
+        check(helper, ToolData.instantBuild(reloaded), "instant build should survive an item NBT round trip");
+
+        check(helper, apply(first, Action.SET_INSTANT_BUILD, "", 0, tiers), "disabling instant build should be accepted");
+        check(helper, !ToolData.instantBuild(first), "instant build should switch off again");
         helper.succeed();
     }
 

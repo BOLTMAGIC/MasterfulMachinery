@@ -74,6 +74,21 @@ public class BuilderStructureBuildGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void instantBuilderBuildCompletesInOneTickWithNormalCosts(GameTestHelper helper) {
+        Player player = player(helper);
+        ItemStack tool = tool(player, TOWER);
+        stockStore(tool, 9, 1);
+        ToolBuilds.Prepared build = prepare(helper, player, tool);
+        AssemblyJob job = AssemblyJob.createWithoutController(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
+
+        check(helper, AssemblyJobs.tickBuild(player, job, build.source(), Integer.MAX_VALUE), "instant build should finish in one tick");
+        check(helper, job.placed() == 10 && job.blocked() == 0, "instant build should place every planned block");
+        check(helper, storeCount(tool) == 0, "instant build should consume the blocks");
+        check(helper, energy(tool) == START_FE - 10 * build.perBlockFe(), "instant build should charge normal FE per block");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void controllerFreeStructureCanBeDismantled(GameTestHelper helper) {
         Player player = player(helper);
         player.setYRot(90); // the matcher must recover the build's rotation without a controller

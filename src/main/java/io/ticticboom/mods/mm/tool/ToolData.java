@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 /**
  * NBT accessors for the Multiblock Tool's own settings: the selected structure, the extra rotation
- * the player dialed in with Shift+scroll, the tool's remembered port tier preferences, and its ME
- * network binding with the two toggles that control it.
+ * the player dialed in with Shift+scroll, the tool's remembered port tier preferences, instant-build choice,
+ * and its ME network binding with the two toggles that control it.
  */
 public final class ToolData {
     private static final String STRUCTURE_KEY = "Structure";
@@ -22,6 +22,7 @@ public final class ToolData {
     private static final String NETWORK_KEY = "Network";
     private static final String USE_ME_KEY = "UseMe";
     private static final String AUTOCRAFT_KEY = "AutoCraft";
+    private static final String INSTANT_BUILD_KEY = "InstantBuild";
 
     private ToolData() {
     }
@@ -128,5 +129,15 @@ public final class ToolData {
 
     public static void setAutoCraft(ItemStack stack, boolean value) {
         stack.getOrCreateTag().putBoolean(AUTOCRAFT_KEY, value);
+    }
+
+    /** Whether this tool places its entire prepared build in one server tick. Default false. */
+    public static boolean instantBuild(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+        return tag != null && tag.getBoolean(INSTANT_BUILD_KEY);
+    }
+
+    public static void setInstantBuild(ItemStack stack, boolean value) {
+        stack.getOrCreateTag().putBoolean(INSTANT_BUILD_KEY, value);
     }
 }

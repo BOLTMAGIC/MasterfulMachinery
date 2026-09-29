@@ -354,6 +354,8 @@
   "gui.mm.tool.settings.note": "* Yapı seçilen tier'ı kabul etmiyorsa izin verdiği en yakın tier kullanılır (Yapılar sekmesinde sarı ve * ile).",
   "gui.mm.tool.settings.use_me": "ME ağını kullan",
   "gui.mm.tool.settings.autocraft": "Eksikleri otomatik üret",
+  "gui.mm.tool.settings.instant_build": "Anında kur",
+  "gui.mm.tool.settings.instant_build_hint": "Tek sunucu tikinde kurar; blok ve enerji harcar, yerleştirme korumalarına uyar.",
   "gui.mm.tool.settings.forget_network": "ME ağını unut",
   "gui.mm.tool.me.bound": "ME: %s (%s)",
   "gui.mm.tool.me.not_bound": "ME: bağlı değil",

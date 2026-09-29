@@ -354,6 +354,8 @@
   "gui.mm.tool.settings.note": "* Where a structure does not take the chosen tier, the nearest tier it allows is used (yellow with * on the Structures tab).",
   "gui.mm.tool.settings.use_me": "Use ME network",
   "gui.mm.tool.settings.autocraft": "Auto-craft missing",
+  "gui.mm.tool.settings.instant_build": "Instant build",
+  "gui.mm.tool.settings.instant_build_hint": "Builds in one server tick; still uses blocks and energy, and respects placement protection.",
   "gui.mm.tool.settings.forget_network": "Forget ME network",
   "gui.mm.tool.me.bound": "ME: %s (%s)",
   "gui.mm.tool.me.not_bound": "ME: not bound",

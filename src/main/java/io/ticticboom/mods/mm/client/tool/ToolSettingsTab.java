@@ -25,8 +25,9 @@ import java.util.function.ObjIntConsumer;
 
 /**
  * The tool screen's Settings tab: the preferred tier per registered port type and direction (types that come in
- * more than one tier), cycled with {@code <} / {@code >}, then (with AE2 only) the ME network toggles (with a "Forget
- * ME network" button while bound), a note on how a structure may overrule the tier choice, and the dismantle hint.
+ * more than one tier), cycled with {@code <} / {@code >}, an instant-build toggle, then (with AE2 only) the ME network
+ * toggles (with a "Forget ME network" button while bound), a note on how a structure may overrule the tier choice,
+ * and the dismantle hint.
  */
 public class ToolSettingsTab {
     private static final int ROW = 14;
@@ -50,13 +51,15 @@ public class ToolSettingsTab {
     private int height;
     private int scroll;
 
-    // ---- ME network section ----
+    // ---- tool build and ME network options ----
     private boolean useMe;
     private boolean autoCraft;
-    /** Read fresh every frame from the tool's (server-synced) NBT: never flipped optimistically. */
+    private boolean instantBuild;
+    /** Read fresh every frame from the tool's (server-synced) NBT. */
     private final BooleanSupplier bound;
     private final Consumer<Boolean> onToggleUseMe;
     private final Consumer<Boolean> onToggleAutoCraft;
+    private final Consumer<Boolean> onToggleInstantBuild;
     private final Runnable onForgetNetwork;
 
     /**
@@ -64,22 +67,27 @@ public class ToolSettingsTab {
      * @param onChange          called with the key and the new tier after a change
      * @param useMe             the tool's current "use ME network" setting
      * @param autoCraft         the tool's current "auto-craft missing" setting
+     * @param instantBuild      the tool's current instant-build setting
      * @param bound             whether the tool is currently bound to a network (shows the forget button); polled
      *                          from the tool's own data so the row only reacts once the server confirms a change
      * @param onToggleUseMe     called with the new value after the "use ME network" row is clicked
      * @param onToggleAutoCraft called with the new value after the "auto-craft missing" row is clicked
+     * @param onToggleInstantBuild called with the new value after the instant-build row is clicked
      * @param onForgetNetwork   called after the "Forget ME network" button is clicked
      */
     public ToolSettingsTab(Font font, TierPrefs prefs, ObjIntConsumer<String> onChange, boolean useMe, boolean autoCraft,
-                            BooleanSupplier bound, Consumer<Boolean> onToggleUseMe, Consumer<Boolean> onToggleAutoCraft, Runnable onForgetNetwork) {
+                            boolean instantBuild, BooleanSupplier bound, Consumer<Boolean> onToggleUseMe,
+                            Consumer<Boolean> onToggleAutoCraft, Consumer<Boolean> onToggleInstantBuild, Runnable onForgetNetwork) {
         this.font = font;
         this.prefs = prefs;
         this.onChange = onChange;
         this.useMe = useMe;
         this.autoCraft = autoCraft;
+        this.instantBuild = instantBuild;
         this.bound = bound;
         this.onToggleUseMe = onToggleUseMe;
         this.onToggleAutoCraft = onToggleAutoCraft;
+        this.onToggleInstantBuild = onToggleInstantBuild;
         this.onForgetNetwork = onForgetNetwork;
     }
 
@@ -92,6 +100,13 @@ public class ToolSettingsTab {
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.note"), width - 8));
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8));
         footer = lines;
+        // Keep the build toggle and at least one tier row visible in the smallest tool screen.
+        if (rowsBottom() - rowsTop() < ROW) {
+            footer = font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8);
+        }
+        if (rowsBottom() - rowsTop() < ROW) {
+            footer = List.of();
+        }
         clampScroll();
     }
 
@@ -100,11 +115,10 @@ public class ToolSettingsTab {
     }
 
     /**
-     * Rows end where the ME section begins, which itself ends where the note and the key hint begin (without AE2 there
-     * is no ME section and the rows end right above the note).
+     * Tier rows end above the instant-build row, followed by optional ME controls and the footer.
      */
     private int rowsBottom() {
-        return y + height - footer.size() * 9 - 6 - meSectionHeight() - (hasMeSection() ? 8 : 4);
+        return y + height - footer.size() * 9 - 6 - meSectionHeight() - (hasMeSection() ? 8 : 4) - ROW - 4;
     }
 
     /** ME networks only exist with AE2. */
@@ -125,6 +139,10 @@ public class ToolSettingsTab {
     }
 
     private int meSectionTop() {
+        return instantRowTop() + ROW + 4;
+    }
+
+    private int instantRowTop() {
         return rowsBottom() + 4;
     }
 
@@ -180,8 +198,11 @@ public class ToolSettingsTab {
         gfx.disableScissor();
         drawScrollBar(gfx, top, bottom);
         gfx.fill(x + 4, bottom + 1, x + width - 4, bottom + 2, DIVIDER);
-        int footerY = bottom + 4;
+        int instantY = instantRowTop();
+        drawToggleRow(gfx, Component.translatable("gui.mm.tool.settings.instant_build"), instantBuild, instantY, mouseX, mouseY);
+        int footerY = instantY + ROW + 4;
         if (hasMeSection()) {
+            gfx.fill(x + 4, instantY + ROW + 1, x + width - 4, instantY + ROW + 2, DIVIDER);
             drawMeSection(gfx, mouseX, mouseY);
             int meBottom = meSectionBottom();
             gfx.fill(x + 4, meBottom + 1, x + width - 4, meBottom + 2, DIVIDER);
@@ -206,19 +227,19 @@ public class ToolSettingsTab {
     }
 
     private void drawToggleRow(GuiGraphics gfx, Component label, boolean value, int rowY, int mouseX, int mouseY) {
-        boolean hovered = isOnMeRow(mouseX, mouseY, rowY);
+        boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         drawClipped(gfx, label, x + 4, rowY + 3, labelWidth() - 4, hovered ? TEXT : LABEL);
         Component state = Component.translatable(value ? "options.on" : "options.off");
         drawClipped(gfx, state, valueX(), rowY + 3, valueWidth(), value ? VALUE : LABEL);
     }
 
     private void drawForgetButton(GuiGraphics gfx, int rowY, int mouseX, int mouseY) {
-        boolean hovered = isOnMeRow(mouseX, mouseY, rowY);
+        boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         Component label = Component.translatable("gui.mm.tool.settings.forget_network");
         drawClipped(gfx, label, x + 4, rowY + 3, width - 8, hovered ? VALUE : TEXT);
     }
 
-    private boolean isOnMeRow(double mouseX, double mouseY, int rowY) {
+    private boolean isOnOptionRow(double mouseX, double mouseY, int rowY) {
         return mouseX >= x + 2 && mouseX < x + width - 2 && mouseY >= rowY && mouseY < rowY + ROW;
     }
 
@@ -299,19 +320,24 @@ public class ToolSettingsTab {
         if (button != 0) {
             return false;
         }
+        if (isOnOptionRow(mouseX, mouseY, instantRowTop())) {
+            instantBuild = !instantBuild;
+            onToggleInstantBuild.accept(instantBuild);
+            return true;
+        }
         if (hasMeSection() && mouseX >= x && mouseX < x + width) {
             int meTop = meSectionTop();
-            if (isOnMeRow(mouseX, mouseY, meTop)) {
+            if (isOnOptionRow(mouseX, mouseY, meTop)) {
                 useMe = !useMe;
                 onToggleUseMe.accept(useMe);
                 return true;
             }
-            if (isOnMeRow(mouseX, mouseY, meTop + ROW)) {
+            if (isOnOptionRow(mouseX, mouseY, meTop + ROW)) {
                 autoCraft = !autoCraft;
                 onToggleAutoCraft.accept(autoCraft);
                 return true;
             }
-            if (bound.getAsBoolean() && isOnMeRow(mouseX, mouseY, meTop + 2 * ROW)) {
+            if (bound.getAsBoolean() && isOnOptionRow(mouseX, mouseY, meTop + 2 * ROW)) {
                 // no local flip: the row disappears once the server-confirmed tool data says "not bound"
                 onForgetNetwork.run();
                 return true;
@@ -348,6 +374,12 @@ public class ToolSettingsTab {
     /** Full row label and value, for rows cut short. */
     @Nullable
     public List<Component> tooltip(double mouseX, double mouseY) {
+        if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < rowsTop()) {
+            return List.of(Component.translatable("gui.mm.tool.settings.note"));
+        }
+        if (isOnOptionRow(mouseX, mouseY, instantRowTop())) {
+            return List.of(Component.translatable("gui.mm.tool.settings.instant_build_hint"));
+        }
         boolean onArrow = (mouseX >= leftArrowX() && mouseX < leftArrowX() + BUTTON) || mouseX >= rightArrowX();
         if (mouseX < x || mouseX >= x + width || onArrow) {
             return null;

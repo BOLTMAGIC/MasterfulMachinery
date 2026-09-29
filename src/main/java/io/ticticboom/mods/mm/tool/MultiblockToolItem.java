@@ -179,7 +179,8 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Prepared build = result.prepared();
-        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(), build.requiresController())) {
+        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(),
+                build.requiresController(), ToolData.instantBuild(stack))) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
             return InteractionResult.FAIL;
         }
