@@ -4,10 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.35.5] - 2026-10-04
+## [0.1.35.5 + 6] - 2026-10-04
 
 ### INFO:
-**Version 0.1.35.5** represents a feature expansion with remote structure placement and extended reach capabilities.
+**Version 0.1.35.5 + 6** represents a feature expansion with remote structure placement and extended reach capabilities.
 
 **Special Thanks:**
 - **Knozyy** – Remote placement system, extended targeting reach, and layer-by-layer building modes.
@@ -27,6 +27,14 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - **Server-side resolution**: placement & anchor targets resolved on server; targeting stops at unloaded terrain; material, FE, obstruction, Forge place-protection checks in all modes.
 - **Persistence & sync**: anchors stored on tool, cleared on structure selection; range synced on login & config edits; English/Turkish labels & usage guide.
 - **Protocol & version**: network protocol bumped to 8; build version to 0.1.35.7; client and server versions must match.
+
+### Fixed
+
+#### #78 – Structure Builder: Anchor & Preview Management
+- **Anchor persistence fix**: anchor cleared once server accepts build job; preserved when build is rejected.
+- **Preview outline**: hidden when every planned block is already present and no obstructions exist.
+- **Post-build preview**: completed structures retain their preview outline; dismantled structures show saved anchor bringing back old preview on re-anchor.
+- **Refresh interval**: existing preview refresh maintained even when nothing to draw.
 
 
 ## [0.1.35.4] - 2026-09-29
