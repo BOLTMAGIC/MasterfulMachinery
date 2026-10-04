@@ -372,5 +372,17 @@
   "config.mm.effect.particle": "Particle",
   "config.mm.loading": "Loading server settings…",
   "config.mm.hint": "Click a value to change it. Server settings require operator access.",
-  "config.mm.invalid": "Invalid value for %s"
+  "config.mm.invalid": "Invalid value for %s",
+  "key.mm.anchor": "Anchor / release structure preview",
+  "gui.mm.tool.settings.anchor": "Anchor / release preview: [%s]. Right-click builds at the anchor.",
+  "tooltip.mm.structure_builder.anchor_key": "%s: anchor / release preview",
+  "message.mm.tool.anchor.set": "Preview anchored at %s",
+  "message.mm.tool.anchor.released": "Preview anchor released",
+  "message.mm.tool.target_missing": "Look at a loaded block within build range, or move closer to your anchor.",
+  "config.mm.option.tool.buildRange": "Structure Builder distance (blocks)",
+  "config.mm.option.tool.buildBlocksPerTick": "Structure Builder blocks per tick",
+  "config.mm.option.tool.buildMode": "Structure Builder placement mode",
+  "config.mm.build_mode.SEQUENTIAL": "Sequential",
+  "config.mm.build_mode.LAYER_BY_LAYER": "Layer by layer",
+  "config.mm.build_mode.INSTANT": "Instant"
 }

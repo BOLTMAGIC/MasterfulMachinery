@@ -34,12 +34,17 @@ public final class AssemblyJob {
     private boolean controllerNotPlaced;
     /** False for structures without an MM controller (other mods' multiblocks); controllerPos is then only the center. */
     private final boolean requiresController;
+    private final boolean layerByLayer;
 
     AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe) {
         this(level, controllerPos, plan, perBlockFe, true);
     }
 
     AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe, boolean requiresController) {
+        this(level, controllerPos, plan, perBlockFe, requiresController, false);
+    }
+
+    AssemblyJob(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe, boolean requiresController, boolean layerByLayer) {
         this.level = level;
         this.controllerPos = controllerPos;
         this.queue = new ArrayDeque<>(plan.steps());
@@ -47,6 +52,7 @@ public final class AssemblyJob {
         this.unavailable = plan.unavailable();
         this.perBlockFe = perBlockFe;
         this.requiresController = requiresController;
+        this.layerByLayer = layerByLayer;
     }
 
     /** For game tests; players start jobs through {@link AssemblyJobs#start}. Controller path: 0 FE per block. */
@@ -61,6 +67,12 @@ public final class AssemblyJob {
     /** A job for a structure without an MM controller: center is only used for the distance check. */
     public static AssemblyJob createWithoutController(ServerLevel level, BlockPos center, AssemblyPlanner.Plan plan, int perBlockFe) {
         return new AssemblyJob(level, center, plan, perBlockFe, false);
+    }
+
+    public static AssemblyJob createTool(ServerLevel level, BlockPos controllerPos, AssemblyPlanner.Plan plan, int perBlockFe,
+                                         boolean requiresController, io.ticticboom.mods.mm.tool.ToolBuildMode mode) {
+        return new AssemblyJob(level, controllerPos, mode.order(plan, controllerPos, requiresController), perBlockFe,
+                requiresController, mode == io.ticticboom.mods.mm.tool.ToolBuildMode.LAYER_BY_LAYER);
     }
 
     public int placed() {
@@ -119,7 +131,14 @@ public final class AssemblyJob {
 
     /** @return true when every planned block has been handled (or the job stopped early, e.g. out of energy) */
     public boolean tick(Player player, MaterialSource source, int budget) {
+        Integer layer = null;
         while (budget > 0 && !queue.isEmpty()) {
+            AssemblyPlanner.Planned peek = queue.peek();
+            boolean controllerStep = requiresController && peek.pos().equals(controllerPos);
+            if (layerByLayer && !controllerStep) {
+                if (layer != null && peek.pos().getY() != layer) break;
+                layer = peek.pos().getY();
+            }
             if (source.gone()) {
                 sourceGone = true;
                 queue.clear();
@@ -146,6 +165,10 @@ public final class AssemblyJob {
 
     private Outcome handle(Player player, MaterialSource source, AssemblyPlanner.Planned next) {
         BlockPos pos = next.pos();
+        if (!io.ticticboom.mods.mm.tool.ToolTarget.usablePosition(level, pos)) {
+            blocked++;
+            return Outcome.BLOCKED;
+        }
         BlockState existing = level.getBlockState(pos);
         Block wanted = next.state().getBlock();
         if (existing.is(wanted) || next.accepted().contains(existing.getBlock())) {

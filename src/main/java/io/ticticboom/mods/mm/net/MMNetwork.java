@@ -20,8 +20,8 @@ import java.util.Optional;
 
 public class MMNetwork {
 
-    // 7: in-game MM config request, edit and sync
-    private static final String PROTOCOL_VERSION = "7";
+    // 8: extended-range building and persistent placement anchors
+    private static final String PROTOCOL_VERSION = "8";
     public static final SimpleChannel INSTANCE = NetworkRegistry.newSimpleChannel(
             Ref.id("main"),
             () -> PROTOCOL_VERSION,
@@ -74,5 +74,11 @@ public class MMNetwork {
                 MMConfigEditPkt::decode, MMConfigEditPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         INSTANCE.registerMessage(index++, MMConfigSyncPkt.class, MMConfigSyncPkt::encode,
                 MMConfigSyncPkt::decode, MMConfigSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolBuildPkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolBuildPkt::encode, io.ticticboom.mods.mm.net.packet.ToolBuildPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolBuildPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolAnchorPkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::encode, io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }

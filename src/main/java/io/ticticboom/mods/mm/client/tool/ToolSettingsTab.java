@@ -99,6 +99,7 @@ public class ToolSettingsTab {
         var lines = new ArrayList<FormattedCharSequence>();
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.note"), width - 8));
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8));
+        lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.anchor", ToolKeys.ANCHOR.getTranslatedKeyMessage()), width - 8));
         footer = lines;
         // Keep the build toggle and at least one tier row visible in the smallest tool screen.
         if (rowsBottom() - rowsTop() < ROW) {

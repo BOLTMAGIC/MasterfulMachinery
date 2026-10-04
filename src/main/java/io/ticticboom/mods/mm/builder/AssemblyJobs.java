@@ -54,13 +54,14 @@ public final class AssemblyJobs {
     }
 
     /** An assembly paired with the source it draws blocks from. */
-    private record Build(AssemblyJob job, MaterialSource source, boolean instant) implements Running {
+    private record Build(AssemblyJob job, MaterialSource source, boolean instant, boolean tool, BlockPos distancePos,
+                         io.ticticboom.mods.mm.tool.ToolBuildMode mode) implements Running {
         public ServerLevel level() {
             return job.level;
         }
 
         public BlockPos center() {
-            return job.controllerPos;
+            return distancePos;
         }
 
         public @Nullable Component stopReason() {
@@ -68,6 +69,7 @@ public final class AssemblyJobs {
         }
 
         public boolean tick(ServerPlayer player, int budget) {
+            if (tool) budget = mode.budget(MMConfigSetup.COMMON.toolBuildBlocksPerTick.get());
             return tickBuild(player, job, source, budget);
         }
 
@@ -171,7 +173,17 @@ public final class AssemblyJobs {
         AssemblyJob job = requiresController
                 ? AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe)
                 : AssemblyJob.createWithoutController(player.serverLevel(), controllerPos, plan, perBlockFe);
-        JOBS.put(player.getUUID(), new Build(job, source, instant));
+        JOBS.put(player.getUUID(), new Build(job, source, instant, false, controllerPos,
+                io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL));
+        return true;
+    }
+
+    public static boolean startTool(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source,
+                                    int perBlockFe, boolean requiresController, BlockPos targetPos, boolean instantPreference) {
+        if (JOBS.containsKey(player.getUUID())) return false;
+        var mode = MMConfigSetup.COMMON.toolBuildMode.get().forTool(instantPreference);
+        AssemblyJob job = AssemblyJob.createTool(player.serverLevel(), controllerPos, plan, perBlockFe, requiresController, mode);
+        JOBS.put(player.getUUID(), new Build(job, source, false, true, targetPos.immutable(), mode));
         return true;
     }
 
@@ -195,8 +207,12 @@ public final class AssemblyJobs {
             var entry = it.next();
             Running job = entry.getValue();
             ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
+            double distanceSqr = job instanceof Build build && build.tool()
+                    ? Math.pow(MMConfigSetup.COMMON.toolBuildRange.get() + 1.0D, 2) : MAX_DISTANCE_SQR;
             if (player == null || player.level() != job.level()
-                    || player.distanceToSqr(job.center().getCenter()) > MAX_DISTANCE_SQR) {
+                    || (job instanceof Build build && build.tool()
+                        ? player.getEyePosition().distanceToSqr(job.center().getCenter())
+                        : player.distanceToSqr(job.center().getCenter())) > distanceSqr) {
                 if (player != null) {
                     player.displayClientMessage(job.tooFar(), true);
                 }

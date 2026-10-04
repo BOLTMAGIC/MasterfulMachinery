@@ -72,6 +72,10 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
 
         var obstructed = new ArrayList<BlockPos>();
         for (AssemblyPlanner.Planned step : steps) {
+            if (!ToolTarget.usablePosition(level, step.pos())) {
+                obstructed.add(step.pos());
+                continue;
+            }
             BlockState existing = level.getBlockState(step.pos());
             boolean free = existing.isAir() || existing.canBeReplaced()
                     || existing.is(step.state().getBlock()) || step.accepted().contains(existing.getBlock());
@@ -90,7 +94,7 @@ public record ToolBuildPlan(BlockPos controllerPos, Rotation rotation, AssemblyP
     /** As above, with what is available already read (e.g. {@link ChainedMaterialSource#snapshot} of the build's source). */
     public static @Nullable ToolBuildPlan create(Level level, Player player, ItemStack tool, StructureModel model, BlockPos clickedPos, Direction clickedFace,
                                                  Predicate<Block> available) {
-        return create(level, model, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool), ToolData.tiers(tool), available);
+        return create(level, model, clickedPos, clickedFace, ToolData.placementFacing(tool, player), ToolData.extraTurns(tool), ToolData.tiers(tool), available);
     }
 
     /**

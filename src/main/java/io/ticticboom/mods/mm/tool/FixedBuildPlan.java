@@ -44,6 +44,10 @@ public record FixedBuildPlan(BlockPos center, AssemblyPlanner.Plan plan, List<Bl
             BlockPos pos = rotated.get(i).offset(offset);
             BlockState state = structure.blocks().get(i).state().rotate(rotation);
             steps.add(new AssemblyPlanner.Planned(pos, state, List.of(state.getBlock())));
+            if (!ToolTarget.usablePosition(level, pos)) {
+                obstructed.add(pos);
+                continue;
+            }
             BlockState existing = level.getBlockState(pos);
             if (!existing.isAir() && !existing.canBeReplaced() && !existing.is(state.getBlock())) {
                 obstructed.add(pos);

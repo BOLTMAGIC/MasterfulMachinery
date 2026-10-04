@@ -6,6 +6,9 @@ import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToolDismantlePkt;
 import io.ticticboom.mods.mm.net.packet.ToolRotatePkt;
+import io.ticticboom.mods.mm.net.packet.ToolAnchorPkt;
+import io.ticticboom.mods.mm.net.packet.ToolBuildPkt;
+import io.ticticboom.mods.mm.tool.ToolTarget;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
 import net.minecraft.Util;
@@ -40,11 +43,11 @@ import java.util.Objects;
 public class ToolKeys {
     public static final KeyMapping DISMANTLE = new KeyMapping("key.mm.dismantle", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.mm");
+    public static final KeyMapping ANCHOR = new KeyMapping("key.mm.anchor", KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.mm");
     /** How long V must be held: 1 s. */
     public static final int HOLD_TICKS = 20;
     private static final int BAR_SEGMENTS = 10;
-    /** How long the hologram stays visible while sneaking after a Shift+scroll: 2 s. */
-    private static final int ROTATE_PREVIEW_TICKS = 40;
 
     // V hold: the aimed-at block, the machine's controller and positions, ticks held on that machine
     private static BlockPos holdAim;
@@ -59,7 +62,6 @@ public class ToolKeys {
     private static BlockPos pendingController;
     private static List<BlockPos> pendingPositions = List.of();
     private static long pendingUntil;
-    private static long lastRotateTime = -ROTATE_PREVIEW_TICKS - 1;
     // part of a notch scrolled so far (touchpads send fractions); forgotten after SCROLL_RESET_MS
     private static double scrollAccum;
     private static long lastScrollMs;
@@ -68,6 +70,7 @@ public class ToolKeys {
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
         event.register(DISMANTLE);
+        event.register(ANCHOR);
     }
 
     /** The tool in the main hand, else the off hand; empty when the player holds none. */
@@ -90,12 +93,6 @@ public class ToolKeys {
             return pendingPositions;
         }
         return List.of();
-    }
-
-    /** True shortly after a Shift+scroll, so the hologram can show the new rotation while sneaking. */
-    static boolean recentlyRotated(Level level) {
-        long since = level.getGameTime() - lastRotateTime;
-        return since >= 0 && since <= ROTATE_PREVIEW_TICKS;
     }
 
     /** Forgets the aimed-at machine and clears the progress bar if it was showing. */
@@ -138,6 +135,13 @@ public class ToolKeys {
             }
             if (!player.isShiftKeyDown() || heldTool(player).isEmpty()) {
                 scrollAccum = 0;
+            }
+            while (ANCHOR.consumeClick()) {
+                if (mc.screen == null && !heldTool(player).isEmpty()) {
+                    InteractionHand hand = player.getMainHandItem().getItem() instanceof MultiblockToolItem
+                            ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+                    MMNetwork.INSTANCE.sendToServer(new ToolAnchorPkt(hand));
+                }
             }
             if (heldTool(player).isEmpty() || mc.screen != null || !DISMANTLE.isDown()) {
                 // released (early or not): the next press starts over
@@ -198,6 +202,22 @@ public class ToolKeys {
             return "▓".repeat(filled) + "░".repeat(BAR_SEGMENTS - filled);
         }
 
+        @SubscribeEvent
+        public static void onUseItem(InputEvent.InteractionKeyMappingTriggered event) {
+            Minecraft mc = Minecraft.getInstance();
+            Player player = mc.player;
+            if (!event.isUseItem() || player == null || mc.screen != null || player.isShiftKeyDown()) return;
+            ItemStack tool = heldTool(player);
+            if (tool.isEmpty() || !ToolTarget.hasSelection(tool)) return;
+            InteractionHand hand = player.getMainHandItem().getItem() instanceof MultiblockToolItem
+                    ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+            event.setCanceled(true);
+            event.setSwingHand(false);
+            if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool.getItem())) {
+                MMNetwork.INSTANCE.sendToServer(new ToolBuildPkt(hand));
+            }
+        }
+
         /** Mirrors the server's Shift+right-click confirmation so the machine is outlined while it waits. */
         @SubscribeEvent
         public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
@@ -252,7 +272,6 @@ public class ToolKeys {
                 MMNetwork.INSTANCE.sendToServer(new ToolRotatePkt(step));
                 scrollAccum -= step;
             }
-            lastRotateTime = mc.level.getGameTime();
         }
     }
 }

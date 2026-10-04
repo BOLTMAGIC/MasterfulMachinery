@@ -12,6 +12,9 @@ public final class MMConfigClientSetup {
         @SuppressWarnings("removal") var context = ModLoadingContext.get();
         context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory(MMConfigScreen::new));
-        MMConfigSyncPkt.setClientHandler(MMConfigScreen::receive);
+        MMConfigSyncPkt.setClientHandler(values -> {
+            io.ticticboom.mods.mm.client.tool.ToolPlacementSettings.receive(values);
+            MMConfigScreen.receive(values);
+        });
     }
 }
