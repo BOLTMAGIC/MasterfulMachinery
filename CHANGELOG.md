@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.5] - 2026-10-04
+
+### INFO:
+**Version 0.1.35.5** represents a feature expansion with remote structure placement and extended reach capabilities.
+
+**Special Thanks:**
+- **Knozyy** – Remote placement system, extended targeting reach, and layer-by-layer building modes.
+
+### Added
+
+#### #77 – Structure Builder: Remote Placement & Extended Reach
+- **Extended reach**: preview and place multiblocks up to **64 blocks** away (configurable 5–128 blocks via server config).
+- **Anchor & place workflow**: press **G** to anchor preview's target and facing, walk around, right-click to build at saved target; **G** releases anchor; **Shift+scroll** still rotates.
+- **Server Config options** (operator-only):
+  - `targetingRange` (5–128 blocks)
+  - `placementSpeed` (1–1024 blocks/tick)
+  - Sequential, layer-by-layer (bottom-up, MM controller first), or instant placement modes
+- **Mode precedence**: per-tool instant preference effective in sequential; explicit server layer/instant take precedence; Controller Assemble & dismantling retain existing speeds.
+- **Gallery categories**: imported from first structure folder (matching MultiBuilderTool grouping); existing assignments, renames, deletions, Uncategorized choices survive reloads.
+- **Hologram improvements**: removed Shift rotation timeout hiding; fixed NBT previews allowed beside MM controllers; render stage, transforms, layers, buffers unchanged.
+- **Server-side resolution**: placement & anchor targets resolved on server; targeting stops at unloaded terrain; material, FE, obstruction, Forge place-protection checks in all modes.
+- **Persistence & sync**: anchors stored on tool, cleared on structure selection; range synced on login & config edits; English/Turkish labels & usage guide.
+- **Protocol & version**: network protocol bumped to 8; build version to 0.1.35.7; client and server versions must match.
+
+
 ## [0.1.35.4] - 2026-09-29
 ### INFO:
 **Version 0.1.35.4** represents a minor update focused on bug fixes and performance improvements.
