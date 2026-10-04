@@ -196,6 +196,8 @@ public class MultiblockToolItem extends Item {
             player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
             return InteractionResult.FAIL;
         }
+        // The job owns its placement plan now; do not keep previewing it after building or dismantling.
+        ToolData.setAnchor(stack, null);
         return InteractionResult.CONSUME;
     }
 
