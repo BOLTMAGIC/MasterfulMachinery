@@ -9,7 +9,7 @@ import java.util.Map;
 /** The existing Forge settings exposed by the in-game MM config screen. */
 public final class MMConfigOptions {
     public enum Scope { SERVER, CLIENT }
-    public enum Kind { BOOLEAN, INTEGER, COLOR }
+    public enum Kind { BOOLEAN, INTEGER, COLOR, BUILD_MODE }
 
     public record Option(String key, String label, Scope scope, Kind kind, int min, int max,
                          ForgeConfigSpec.ConfigValue<?> value) {
@@ -24,6 +24,12 @@ public final class MMConfigOptions {
                         yield parsed >= min && parsed <= max;
                     }
                     case COLOR -> MMClientConfig.parseColor(text) != null;
+                    case BUILD_MODE -> {
+                        try {
+                            io.ticticboom.mods.mm.tool.ToolBuildMode.valueOf(text);
+                            yield true;
+                        } catch (IllegalArgumentException e) { yield false; }
+                    }
                 };
             } catch (NumberFormatException e) {
                 return false;
@@ -45,6 +51,11 @@ public final class MMConfigOptions {
                         @SuppressWarnings("unchecked") ForgeConfigSpec.ConfigValue<String> color =
                                 (ForgeConfigSpec.ConfigValue<String>) value;
                         color.set(text.startsWith("#") ? text : "#" + text);
+                    }
+                    case BUILD_MODE -> {
+                        @SuppressWarnings("unchecked") ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> mode =
+                                (ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode>) value;
+                        mode.set(io.ticticboom.mods.mm.tool.ToolBuildMode.valueOf(text));
                     }
                 }
                 value.save();
@@ -77,6 +88,9 @@ public final class MMConfigOptions {
             integer("tool.energyPerPlacedBlock", "FE per placed block", Scope.SERVER, S.toolEnergyPerPlacedBlock, 0, Integer.MAX_VALUE),
             integer("tool.energyPerDismantledBlock", "FE per dismantled block", Scope.SERVER, S.toolEnergyPerDismantledBlock, 0, Integer.MAX_VALUE),
             integer("tool.energyReceiveRate", "FE receive rate", Scope.SERVER, S.toolEnergyReceiveRate, 1, Integer.MAX_VALUE),
+            integer("tool.buildRange", "Structure Builder distance (blocks)", Scope.SERVER, S.toolBuildRange, 5, 128),
+            integer("tool.buildBlocksPerTick", "Structure Builder blocks per tick", Scope.SERVER, S.toolBuildBlocksPerTick, 1, 1024),
+            new Option("tool.buildMode", "Structure Builder placement mode", Scope.SERVER, Kind.BUILD_MODE, 0, 0, S.toolBuildMode),
             bool("preview_features.previewBlueprintScreen", "Preview blueprint screen", Scope.SERVER, S.previewBlueprintScreen)
     );
 

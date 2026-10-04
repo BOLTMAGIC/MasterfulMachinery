@@ -23,6 +23,7 @@ public class MultiblockToolClientSetup {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> MenuScreens.register(MMRegisters.MULTIBLOCK_TOOL_MENU.get(), MultiblockToolScreen::new));
         MultiblockToolItem.setDismantleKeyName(ToolKeys.DISMANTLE::getTranslatedKeyMessage);
+        MultiblockToolItem.setAnchorKeyName(ToolKeys.ANCHOR::getTranslatedKeyMessage);
         ToolHudPkt.setClientHandler(ToolHudOverlay::receive);
     }
 

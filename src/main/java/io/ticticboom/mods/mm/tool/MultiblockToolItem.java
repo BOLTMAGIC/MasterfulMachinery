@@ -50,6 +50,7 @@ public class MultiblockToolItem extends Item {
     private static final Map<UUID, Integer> LAST_NOTICE = new HashMap<>();
     /** The dismantle key's name for the tooltip; the client points this at the bound key (common code cannot). */
     private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
+    private static Supplier<Component> anchorKeyName = () -> Component.literal("G");
 
     public MultiblockToolItem() {
         super(new Item.Properties().stacksTo(1));
@@ -59,6 +60,8 @@ public class MultiblockToolItem extends Item {
     public static void setDismantleKeyName(Supplier<Component> name) {
         dismantleKeyName = name;
     }
+
+    public static void setAnchorKeyName(Supplier<Component> name) { anchorKeyName = name; }
 
     @Override
     public ICapabilityProvider initCapabilities(ItemStack stack, @Nullable CompoundTag nbt) {
@@ -153,24 +156,33 @@ public class MultiblockToolItem extends Item {
         Level level = context.getLevel();
         Player player = context.getPlayer();
         ItemStack stack = context.getItemInHand();
+        if (player instanceof ServerPlayer serverPlayer) return buildTarget(serverPlayer, stack);
+        return InteractionResult.sidedSuccess(level.isClientSide());
+    }
+
+    public static InteractionResult buildTarget(ServerPlayer player, ItemStack stack) {
+        Level level = player.level();
+        if (!player.isAlive() || player.isSpectator() || !(stack.getItem() instanceof MultiblockToolItem)) return InteractionResult.FAIL;
+        if (player.getCooldowns().isOnCooldown(stack.getItem())) return InteractionResult.FAIL;
+        player.getCooldowns().addCooldown(stack.getItem(), 4);
         // an MM structure or another mod's; the server checks it still exists
         if (ToolData.structure(stack) == null && ToolData.builderStructure(stack) == null) {
-            if (!level.isClientSide()) {
-                player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
-            }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
+            return InteractionResult.FAIL;
         }
-        if (level.isClientSide() || !(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResult.sidedSuccess(level.isClientSide());
+        ToolTarget target = ToolTarget.resolve(player, stack, MMConfigSetup.COMMON.toolBuildRange.get());
+        if (target == null) {
+            player.displayClientMessage(Component.translatable("message.mm.tool.target_missing"), true);
+            return InteractionResult.FAIL;
         }
         // before any planning: a player runs one job at a time
-        Component busy = AssemblyJobs.busyMessage(serverPlayer);
+        Component busy = AssemblyJobs.busyMessage(player);
         if (busy != null) {
             player.displayClientMessage(busy, true);
             return InteractionResult.FAIL;
         }
-        ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, context.getClickedPos(), context.getClickedFace());
-        if (result.notice() != null && noticeDue(serverPlayer)) {
+        ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, target.pos(), target.face());
+        if (result.notice() != null && noticeDue(player)) {
             // in chat: the action bar is soon taken by the result or the job's summary
             player.displayClientMessage(result.notice(), false);
         }
@@ -179,8 +191,8 @@ public class MultiblockToolItem extends Item {
             return InteractionResult.FAIL;
         }
         ToolBuilds.Prepared build = result.prepared();
-        if (!AssemblyJobs.start(serverPlayer, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(),
-                build.requiresController(), ToolData.instantBuild(stack))) {
+        if (!AssemblyJobs.startTool(player, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(),
+                build.requiresController(), target.pos(), ToolData.instantBuild(stack))) {
             player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
             return InteractionResult.FAIL;
         }
@@ -238,5 +250,10 @@ public class MultiblockToolItem extends Item {
             tooltip.add(Component.translatable("tooltip.mm.structure_builder.no_network").withStyle(ChatFormatting.DARK_GRAY));
         }
         tooltip.add(Component.translatable("tooltip.mm.structure_builder.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
+        ToolData.Anchor anchor = ToolData.anchor(stack);
+        tooltip.add(Component.translatable("tooltip.mm.structure_builder.anchor_key", anchorKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
+        if (anchor != null) {
+            tooltip.add(Component.translatable("message.mm.tool.anchor.set", anchor.pos().toShortString()).withStyle(ChatFormatting.AQUA));
+        }
     }
 }

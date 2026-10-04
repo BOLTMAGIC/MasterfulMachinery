@@ -36,6 +36,8 @@ public class ForgeEventsListener {
         
         var processPacket  = new ProcessesSyncPkt(MachineRecipeManager.RECIPES);
         MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())), processPacket);
+        MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())),
+                new io.ticticboom.mods.mm.net.packet.MMConfigSyncPkt(io.ticticboom.mods.mm.config.MMConfigOptions.serverSnapshot()));
     }
 
     @SubscribeEvent

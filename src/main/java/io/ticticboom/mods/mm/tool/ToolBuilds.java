@@ -69,9 +69,15 @@ public final class ToolBuilds {
     /** The controller at pos when it can assemble the structure the tool has selected; else null. */
     public static @Nullable MachineControllerBlockEntity acceptingController(Level level, BlockPos pos, ItemStack tool) {
         ResourceLocation id = ToolData.structure(tool);
-        if (id != null && level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller
-                && controller.findAssemblyCandidate(id) != null) {
-            return controller;
+        if (id != null && level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller) {
+            StructureModel model = selectedStructure(tool);
+            if (model == null) return null;
+            for (var pieces : model.layout().getRotatedPositionedPieces().values()) {
+                for (var piece : pieces) {
+                    if (!ToolTarget.usablePosition(level, piece.findAbsolutePos(pos))) return null;
+                }
+            }
+            if (controller.findAssemblyCandidate(id) != null) return controller;
         }
         return null;
     }
@@ -107,7 +113,7 @@ public final class ToolBuilds {
             //noinspection DataFlowIssue - not buildable means there is an unbuildable block
             return Result.error(Component.translatable("message.mm.tool.unbuildable", structure.unbuildableBlock().getName()));
         }
-        FixedBuildPlan build = FixedBuildPlan.create(level, structure, clickedPos, clickedFace, player.getDirection(), ToolData.extraTurns(tool));
+        FixedBuildPlan build = FixedBuildPlan.create(level, structure, clickedPos, clickedFace, ToolData.placementFacing(tool, player), ToolData.extraTurns(tool));
         if (!build.obstructed().isEmpty()) {
             return Result.error(StructurePasteUtil.obstructionMessage("message.mm.tool.obstructed", build.obstructed()));
         }
@@ -168,6 +174,9 @@ public final class ToolBuilds {
      * block, so it never starts only to stop at once. A build that starts forgets the player's tracked crafts.
      */
     private static Result startable(Level level, Player player, ItemStack tool, ChainedMaterialSource source, Prepared prepared) {
+        if (prepared.plan().steps().stream().anyMatch(step -> !ToolTarget.usablePosition(level, step.pos()))) {
+            return Result.error(Component.translatable("message.mm.tool.target_missing"));
+        }
         // energy first: no crafts are requested for a build that could not start anyway
         if (!source.free() && prepared.perBlockFe() > 0
                 && new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).getEnergyStored() < prepared.perBlockFe()) {

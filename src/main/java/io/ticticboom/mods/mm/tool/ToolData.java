@@ -2,6 +2,8 @@ package io.ticticboom.mods.mm.tool;
 
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.networklink.LinkData;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
@@ -23,6 +25,47 @@ public final class ToolData {
     private static final String USE_ME_KEY = "UseMe";
     private static final String AUTOCRAFT_KEY = "AutoCraft";
     private static final String INSTANT_BUILD_KEY = "InstantBuild";
+
+    private static final String ANCHOR_KEY = "PlacementAnchor";
+
+    public record Anchor(ResourceLocation dimension, BlockPos pos, Direction face, Direction facing) {
+        public Anchor {
+            pos = pos.immutable();
+            if (facing.getAxis().isVertical()) throw new IllegalArgumentException("Anchor facing must be horizontal");
+        }
+    }
+
+    @Nullable
+    public static Anchor anchor(ItemStack stack) {
+        CompoundTag root = stack.getTag();
+        if (root == null || !root.contains(ANCHOR_KEY, Tag.TAG_COMPOUND)) return null;
+        CompoundTag tag = root.getCompound(ANCHOR_KEY);
+        ResourceLocation dimension = ResourceLocation.tryParse(tag.getString("Dimension"));
+        Direction face = Direction.byName(tag.getString("Face"));
+        Direction facing = Direction.byName(tag.getString("Facing"));
+        if (dimension == null || face == null || facing == null || facing.getAxis().isVertical()
+                || !tag.contains("Pos", Tag.TAG_LONG)) return null;
+        return new Anchor(dimension, BlockPos.of(tag.getLong("Pos")), face, facing);
+    }
+
+    public static void setAnchor(ItemStack stack, @Nullable Anchor anchor) {
+        if (anchor == null) {
+            if (stack.hasTag()) stack.getTag().remove(ANCHOR_KEY);
+            return;
+        }
+        CompoundTag tag = new CompoundTag();
+        tag.putString("Dimension", anchor.dimension().toString());
+        tag.putLong("Pos", anchor.pos().asLong());
+        tag.putString("Face", anchor.face().getName());
+        tag.putString("Facing", anchor.facing().getName());
+        stack.getOrCreateTag().put(ANCHOR_KEY, tag);
+    }
+
+    public static Direction placementFacing(ItemStack stack, net.minecraft.world.entity.player.Player player) {
+        Anchor anchor = anchor(stack);
+        return anchor != null && anchor.dimension().equals(player.level().dimension().location())
+                ? anchor.facing() : player.getDirection();
+    }
 
     private ToolData() {
     }
@@ -47,6 +90,7 @@ public final class ToolData {
 
     /** Selects an MM structure (null clears the selection). */
     public static void setStructure(ItemStack stack, @Nullable ResourceLocation id) {
+        setAnchor(stack, null);
         if (id == null) {
             if (stack.hasTag()) {
                 //noinspection DataFlowIssue - hasTag() just confirmed the tag exists
@@ -61,6 +105,7 @@ public final class ToolData {
 
     /** Selects another mod's structure (loaded from a datapack {@code .nbt}). */
     public static void setBuilderStructure(ItemStack stack, ResourceLocation id) {
+        setAnchor(stack, null);
         stack.getOrCreateTag().putString(STRUCTURE_KEY, id.toString());
         stack.getOrCreateTag().putBoolean(BUILDER_KEY, true);
     }

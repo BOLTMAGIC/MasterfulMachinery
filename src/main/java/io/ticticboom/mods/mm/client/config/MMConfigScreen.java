@@ -151,7 +151,9 @@ public final class MMConfigScreen extends Screen {
             if (editing != option) {
                 String value = page == Page.SERVER ? serverValues.getOrDefault(option.key(), "?") : option.current();
                 gfx.fill(valueX(), rowY + 1, x + panelWidth - 12, rowY + ROW - 1, 0xFF484B54);
-                TextRenderUtil.drawClipped(gfx, font, Component.literal(value), valueX() + 4, rowY + 4, 112,
+                Component valueLabel = option.kind() == MMConfigOptions.Kind.BUILD_MODE
+                        ? Component.translatable("config.mm.build_mode." + value) : Component.literal(value);
+                TextRenderUtil.drawClipped(gfx, font, valueLabel, valueX() + 4, rowY + 4, 112,
                         option.kind() == MMConfigOptions.Kind.BOOLEAN && value.equals("true") ? 0xFF79D889 : TEXT);
             }
         }
@@ -298,6 +300,11 @@ public final class MMConfigScreen extends Screen {
         if (option.kind() == MMConfigOptions.Kind.BOOLEAN) {
             String current = page == Page.SERVER ? serverValues.get(option.key()) : option.current();
             update(option, String.valueOf(!Boolean.parseBoolean(current)));
+        } else if (option.kind() == MMConfigOptions.Kind.BUILD_MODE) {
+            String current = serverValues.get(option.key());
+            var modes = io.ticticboom.mods.mm.tool.ToolBuildMode.values();
+            var mode = io.ticticboom.mods.mm.tool.ToolBuildMode.valueOf(current);
+            update(option, modes[(mode.ordinal() + 1) % modes.length].name());
         } else {
             editing = option;
             int row = options().indexOf(option);

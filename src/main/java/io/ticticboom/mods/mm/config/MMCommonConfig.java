@@ -22,6 +22,9 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.IntValue toolEnergyPerPlacedBlock;
     public final ForgeConfigSpec.IntValue toolEnergyPerDismantledBlock;
     public final ForgeConfigSpec.IntValue toolEnergyReceiveRate;
+    public final ForgeConfigSpec.IntValue toolBuildRange;
+    public final ForgeConfigSpec.IntValue toolBuildBlocksPerTick;
+    public final ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> toolBuildMode;
 
     public MMCommonConfig(ForgeConfigSpec.Builder builder) {
         asyncStructureValidation = builder.comment("Enables async structure validation to improve TPS. Disable in case of issues. Default: true")
@@ -68,6 +71,12 @@ public class MMCommonConfig {
                 .defineInRange("energyPerDismantledBlock", 25, 0, Integer.MAX_VALUE);
         toolEnergyReceiveRate = builder.comment("Max FE/t the Multiblock Tool accepts from an external charger. Default: 10,000")
                 .defineInRange("energyReceiveRate", 10_000, 1, Integer.MAX_VALUE);
+        toolBuildRange = builder.comment("Structure Builder targeting, anchor and placement distance in blocks. Loaded chunks only. Default: 64")
+                .defineInRange("buildRange", 64, 5, 128);
+        toolBuildBlocksPerTick = builder.comment("Structure Builder blocks placed per tick in sequential/layer mode. Default: 2")
+                .defineInRange("buildBlocksPerTick", 2, 1, 1024);
+        toolBuildMode = builder.comment("Structure Builder placement: SEQUENTIAL, LAYER_BY_LAYER (bottom up), INSTANT (one tick).")
+                .defineEnum("buildMode", io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL);
         builder.pop();
 
         builder.comment("Preview features that are not yet stable or ready for use.")
