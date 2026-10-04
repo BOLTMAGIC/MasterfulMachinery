@@ -63,6 +63,7 @@ public final class ToolHologramRenderer {
     /** The selected structure: a {@link StructureModel} or another mod's {@link BuildableStructure}. */
     private static Object keyStructure;
     private static long keyBucket;
+    private static boolean planCached;
     // the cached plan: ghosts to draw, obstructed positions, the whole outline (null = nothing to show)
     private static List<AssemblyPlanner.Planned> ghosts = List.of();
     private static List<BlockPos> obstructed = List.of();
@@ -103,7 +104,7 @@ public final class ToolHologramRenderer {
         Direction facing = target.facing();
         int turns = ToolData.extraTurns(tool);
         long bucket = level.getGameTime() / REFRESH_TICKS;
-        if (bounds != null && pos.equals(keyPos) && face == keyFace && facing == keyFacing && turns == keyTurns
+        if (planCached && pos.equals(keyPos) && face == keyFace && facing == keyFacing && turns == keyTurns
                 && structure == keyStructure && bucket == keyBucket) {
             return;
         }
@@ -152,13 +153,15 @@ public final class ToolHologramRenderer {
         }
         ghosts = toDraw;
         obstructed = planObstructed;
-        bounds = box;
+        bounds = toDraw.isEmpty() && planObstructed.isEmpty() ? null : box;
+        planCached = true;
     }
 
     private static void clear() {
         ghosts = List.of();
         obstructed = List.of();
         bounds = null;
+        planCached = false;
     }
 
     @SubscribeEvent
