@@ -51,6 +51,7 @@ public class Ref {
         public static final ResourceLocation FLEX_INPUT = id("input/flex");
         public static final ResourceLocation FLEX_OUTPUT = id("output/flex");
         public static final ResourceLocation COUNT_INPUT = id("input/count");
+        public static final ResourceLocation FLEX_MATCH_INPUT = id("input/flex_match");
     }
 
     public static class RecipeConditions {

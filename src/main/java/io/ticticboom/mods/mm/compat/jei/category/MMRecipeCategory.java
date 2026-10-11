@@ -9,6 +9,8 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -99,6 +101,12 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
+        }
+        // flex recipes: the input, its matching items and its outputs list one item per kind in the same order
+        for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex && flex.getJeiGroup().size() > 1) {
+                builder.createFocusLink(flex.getJeiGroup().toArray(new IRecipeSlotBuilder[0]));
+            }
         }
 
         recipe.inputSlots().clear();

@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.recipe.output.flex;
 
 import com.google.gson.JsonObject;
+import io.ticticboom.mods.mm.recipe.flex.FlexItems;
 import io.ticticboom.mods.mm.recipe.flex.FlexTemplate;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntryParser;
@@ -15,6 +16,7 @@ public class FlexRecipeOutputEntryParser implements IRecipeOutputEntryParser {
         String match = json.has("match") ? json.get("match").getAsString() : null;
         String item = json.has("item") ? json.get("item").getAsString() : null;
         var template = FlexTemplate.parse(match, item);
+        FlexItems.validate(item);
         int count = json.has("count") ? json.get("count").getAsInt() : 1;
         boolean copyNbt = json.has("copy_nbt") && json.get("copy_nbt").getAsBoolean();
         double chance = json.has("chance") ? json.get("chance").getAsDouble() : 1.0;

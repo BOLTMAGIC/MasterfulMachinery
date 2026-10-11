@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.recipe.input.flex;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.NoCountItemRenderer;
+import io.ticticboom.mods.mm.compat.mysticalagriculture.MACrops;
 import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
@@ -25,12 +26,15 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Predicate;
 
 /**
@@ -41,6 +45,9 @@ import java.util.function.Predicate;
  * "chance" (default 1) is the chance each kind is consumed; 0 keeps the items in the port (like a catalyst).
  * The number of kinds is stored under the "as" name (usable by "scale_by") and sets the run's cost multiplier for
  * the recipe's other consumed inputs (see FlexCost).
+ * "exclude" lists items that are never taken: ids, "#tags" and "modid:*". With Mystical Agriculture loaded, seeds
+ * of disabled crops are never taken, and "min_tier" / "max_tier" keep only MA seeds of those crop tiers.
+ * "mm:input/flex_match" entries add a matching item each kind needs (e.g. its crux).
  */
 public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
@@ -50,21 +57,44 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final BaseItemPortIngredient ingredient;
     private final int maxTypes;
     private final double chance;
+    private final List<Predicate<ItemStack>> exclude;
+    @Nullable
+    private final Integer minTier;
+    @Nullable
+    private final Integer maxTier;
     /** The recipe's "flex_cost", or null for the config default. */
     @Nullable
     private FlexCost cost;
     private final List<FlexRecipeOutputEntry> outputs = new ArrayList<>();
+    private final List<FlexMatchIngredientEntry> matches = new ArrayList<>();
 
     private volatile List<ItemStack> accepted;
-    /** The JEI slot made by the last setRecipe call, for flex outputs to link to. */
-    @Getter
-    private IRecipeSlotBuilder lastJeiSlot;
+    /** The JEI slots of the last setRecipe call that list one item per kind, in the same order (linked together). */
+    private final List<IRecipeSlotBuilder> jeiGroup = new ArrayList<>();
 
-    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes, double chance) {
+    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes, double chance,
+                                     List<Predicate<ItemStack>> exclude, @Nullable Integer minTier, @Nullable Integer maxTier) {
         this.name = name;
         this.ingredient = ingredient;
         this.maxTypes = maxTypes;
         this.chance = chance;
+        this.exclude = exclude;
+        this.minTier = minTier;
+        this.maxTier = maxTier;
+    }
+
+    public void bindMatch(FlexMatchIngredientEntry match) {
+        matches.add(match);
+    }
+
+    /** Adds a JEI slot that lists one item per accepted kind, so it turns together with this entry's slot. */
+    public void addToJeiGroup(IRecipeSlotBuilder slot) {
+        jeiGroup.add(slot);
+    }
+
+    /** The JEI slots to link, see {@link #addToJeiGroup}. */
+    public List<IRecipeSlotBuilder> getJeiGroup() {
+        return jeiGroup;
     }
 
     public void bindCost(@Nullable FlexCost cost) {
@@ -96,10 +126,32 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         outputs.add(output);
     }
 
-    /** Whether the item matches this entry and every flex output made from it exists. */
+    /**
+     * Whether the item matches this entry (and isn't excluded or filtered out), and every flex output and matching
+     * item made from it exists.
+     */
     public boolean accepts(@Nullable Level level, ItemStack stack) {
         if (!ingredient.matches(stack)) {
             return false;
+        }
+        for (Predicate<ItemStack> excluded : exclude) {
+            if (excluded.test(stack)) {
+                return false;
+            }
+        }
+        MACrops.Info crop = MACrops.forSeeds(stack.getItem());
+        if (crop != null && !crop.enabled()) {
+            return false;
+        }
+        if (minTier != null || maxTier != null) {
+            if (crop == null || (minTier != null && crop.tier() < minTier) || (maxTier != null && crop.tier() > maxTier)) {
+                return false;
+            }
+        }
+        for (FlexMatchIngredientEntry match : matches) {
+            if (match.requiredFor(stack).isEmpty()) {
+                return false;
+            }
         }
         for (FlexRecipeOutputEntry output : outputs) {
             if (output.resolve(level, stack).isEmpty()) {
@@ -120,6 +172,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         }
         var itemStorages = storages.getInputStorages(ItemPortStorage.class);
         var tried = new ArrayList<ItemStack>();
+        // matching items (e.g. cruxes) already counted for kinds picked before
+        var reserved = new HashMap<Item, Integer>();
         OutputSimulation simulation = null;
         for (ItemPortStorage storage : itemStorages) {
             var handler = storage.getHandler();
@@ -129,7 +183,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                     continue;
                 }
                 tried.add(stack);
-                if (!accepts(level, stack) || !enoughOf(itemStorages, stack)) {
+                if (!accepts(level, stack) || !enoughOf(itemStorages, stack) || !matchesAvailable(itemStorages, stack, reserved)) {
                     continue;
                 }
                 var kindOutputs = new ArrayList<SingleItemPortIngredient>();
@@ -145,6 +199,9 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                 // a kind whose output doesn't fit next to the others waits for a later run
                 if (simulation.tryAdd(level, kindOutputs)) {
                     picked.add(stack.copyWithCount(1));
+                    for (FlexMatchIngredientEntry match : matches) {
+                        reserved.merge(match.requiredFor(stack).getItem(), match.getCount(), Integer::sum);
+                    }
                 }
             }
         }
@@ -161,6 +218,28 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
             }
         }
         return false;
+    }
+
+    /** Whether the matching items this kind needs are in the ports, next to those reserved for other kinds. */
+    private boolean matchesAvailable(List<ItemPortStorage> itemStorages, ItemStack kind, Map<Item, Integer> reserved) {
+        var needed = new HashMap<Item, Integer>();
+        for (FlexMatchIngredientEntry match : matches) {
+            needed.merge(match.requiredFor(kind).getItem(), match.getCount(), Integer::sum);
+        }
+        for (var entry : needed.entrySet()) {
+            Item item = entry.getKey();
+            int remaining = entry.getValue() + reserved.getOrDefault(item, 0);
+            for (ItemPortStorage s : itemStorages) {
+                remaining = s.canExtract(st -> st.is(item), remaining);
+                if (remaining <= 0) {
+                    break;
+                }
+            }
+            if (remaining > 0) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Predicate<ItemStack> exactly(ItemStack stack) {
@@ -232,6 +311,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
             rSlot.setOverlay(new SlotBadgeDrawable(count, false), 0, 0);
         }
         rSlot.addItemStacks(acceptedExamples());
+        jeiGroup.clear();
+        jeiGroup.add(rSlot);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
         rSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
         if (chance <= 0) {
@@ -246,7 +327,6 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                 list.add(Component.literal(String.format("%.2f", chance * 100) + "% Chance of Consumption").withStyle(ChatFormatting.DARK_AQUA));
             }
         });
-        lastJeiSlot = rSlot;
     }
 
     @Override
@@ -254,6 +334,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         json.addProperty("as", name);
         json.addProperty("maxTypes", maxTypes);
         json.addProperty("chance", chance);
+        if (minTier != null) json.addProperty("minTier", minTier);
+        if (maxTier != null) json.addProperty("maxTier", maxTier);
         json.addProperty("captured", String.valueOf(state.getCaptured(name)));
         json.add("ingredient", ingredient.debugInput(level, storages, new JsonObject()));
         return json;

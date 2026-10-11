@@ -15,6 +15,7 @@
   "jei.mm.recipe.output_per_tick": "Output Per Tick",
   "jei.mm.recipe.flex_input": "Any of these, mixed: each kind in the port is processed in the same run",
   "jei.mm.recipe.flex_output": "One per input kind, made from that item",
+  "jei.mm.recipe.flex_match": "Needed for each input kind: the item that matches it",
   "jei.mm.recipe.count_input": "Not consumed: counted as \"%s\"",
   "jei.mm.recipe.count_input_max": "Counts up to %s",
   "jei.mm.recipe.scaled_by": "x the number of \"%s\"",

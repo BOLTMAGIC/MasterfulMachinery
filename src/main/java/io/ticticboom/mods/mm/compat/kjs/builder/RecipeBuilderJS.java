@@ -72,6 +72,20 @@ public class RecipeBuilderJS {
         return input(entry);
     }
 
+    /**
+     * Flex recipes: each kind flexInput {@code from} takes also needs {@code count} of the item {@code item} names
+     * (a template like flexOutput's, or '{ma:crux}' for a Mystical Agriculture seed's crux). {@code chance} 0 keeps it.
+     */
+    public RecipeBuilderJS flexMatch(String from, String item, int count, double chance) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:input/flex_match");
+        entry.addProperty("from", from);
+        entry.addProperty("item", item);
+        entry.addProperty("count", count);
+        entry.addProperty("chance", chance);
+        return input(entry);
+    }
+
     /** Flex recipes: how the other consumed inputs grow with the kinds per run: 'linear', 'once' or 'table'. */
     public RecipeBuilderJS flexCost(String mode) {
         this.flexCost = new JsonPrimitive(mode);

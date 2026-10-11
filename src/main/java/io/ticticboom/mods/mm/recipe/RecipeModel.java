@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.recipe.flex.FlexCost;
 import io.ticticboom.mods.mm.recipe.flex.RecipeMode;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexMatchIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
@@ -78,6 +79,18 @@ public record RecipeModel(
                 if (!counted.add(count.getName()) || flexInputs.containsKey(count.getName())) {
                     throw new RuntimeException("two inputs are named '" + count.getName() + "'");
                 }
+            }
+        }
+        for (var input : inputs.inputs()) {
+            if (input instanceof FlexMatchIngredientEntry match) {
+                if (mode != RecipeMode.FLEX) {
+                    throw new RuntimeException("mm:input/flex_match needs \"mode\": \"flex\" on the recipe");
+                }
+                var flex = flexInputs.get(match.getFrom());
+                if (flex == null) {
+                    throw new RuntimeException("flex match input 'from' is '" + match.getFrom() + "' but no mm:input/flex has that 'as' name");
+                }
+                flex.bindMatch(match);
             }
         }
         if (cost != null && mode != RecipeMode.FLEX) {

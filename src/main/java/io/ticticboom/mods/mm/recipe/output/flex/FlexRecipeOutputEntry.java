@@ -12,6 +12,7 @@ import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.flex.FlexItems;
 import io.ticticboom.mods.mm.recipe.flex.FlexTemplate;
 import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
@@ -112,16 +113,10 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     private ItemStack fromTemplate(ItemStack inputStack) {
-        ResourceLocation inputId = ForgeRegistries.ITEMS.getKey(inputStack.getItem());
-        if (inputId == null) {
+        ItemStack result = FlexItems.resolve(template, inputStack);
+        if (result.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        String outputText = template.apply(inputId.getNamespace(), inputId.getPath());
-        ResourceLocation outputId = outputText == null ? null : ResourceLocation.tryParse(outputText);
-        if (outputId == null || !ForgeRegistries.ITEMS.containsKey(outputId)) {
-            return ItemStack.EMPTY;
-        }
-        ItemStack result = new ItemStack(ForgeRegistries.ITEMS.getValue(outputId));
         if (copyNbt && inputStack.getTag() != null) {
             result.setTag(inputStack.getTag().copy());
         }
@@ -243,9 +238,9 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         rSlot.addItemStacks(outputs);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
         rSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
-        if (input != null && input.getLastJeiSlot() != null) {
-            // both slots list their items in the same order, so they turn together and focus on a matching pair
-            builder.createFocusLink(input.getLastJeiSlot(), rSlot);
+        if (input != null) {
+            // listed in the same order as the input's slot: linked by MMRecipeCategory so they turn together
+            input.addToJeiGroup(rSlot);
         }
         double percent = chance * 100.0;
         String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();

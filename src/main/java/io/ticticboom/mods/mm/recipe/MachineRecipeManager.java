@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.recipe;
 
 import io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntryParser;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexMatchIngredientEntryParser;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntryParser;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntryParser;
 import com.google.gson.JsonElement;
@@ -54,6 +55,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.CONSUME_INPUT, new ConsumeRecipeIngredientEntryParser());
         ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.FLEX_INPUT, new FlexRecipeIngredientEntryParser());
         ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.COUNT_INPUT, new CountRecipeIngredientEntryParser());
+        ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.FLEX_MATCH_INPUT, new FlexMatchIngredientEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.SIMPLE_OUTPUT, new SimpleRecipeOutputEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.WEIGHTED_OUTPUT, new WeightedRecipeOutputEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.FLEX_OUTPUT, new FlexRecipeOutputEntryParser());
