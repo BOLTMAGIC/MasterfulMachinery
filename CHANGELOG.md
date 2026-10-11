@@ -11,7 +11,6 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 
 **Special Thanks:**
 - **Knozyy** – Flex recipes, GeckoLib models, output port priority and the fixes below.
-- **BOLTMAGIC** – Ideas, in-game testing and bug reports.
 
 ### Added
 
