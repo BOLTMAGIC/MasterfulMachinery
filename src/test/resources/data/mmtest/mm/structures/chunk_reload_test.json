@@ -1,0 +1,23 @@
+{
+  "name": "Chunk Reload Test",
+  "controllerIds": "mm:chunk_reload_test",
+  "layout": [
+    [
+      "ICO"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    }
+  }
+}

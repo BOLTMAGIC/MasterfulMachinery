@@ -1,0 +1,11 @@
+{
+  "id": "test_reload_item",
+  "name": "Test Reload Item",
+  "controllerIds": "mm:chunk_reload_test",
+  "type": "mm:item",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "tierRank": 1
+  }
+}
