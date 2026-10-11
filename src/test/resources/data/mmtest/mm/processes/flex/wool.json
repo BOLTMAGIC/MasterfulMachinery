@@ -1,0 +1,26 @@
+{
+  "ticks": 10,
+  "structureId": "mmtest:flex_test",
+  "mode": "flex",
+  "inputs": [
+    {
+      "type": "mm:input/flex",
+      "as": "wool",
+      "chance": 0,
+      "ingredient": {
+        "type": "mm:item",
+        "tag": "minecraft:wool",
+        "count": 1
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "mm:output/flex",
+      "from": "wool",
+      "match": "(.+)_wool",
+      "item": "minecraft:$1_carpet",
+      "count": 1
+    }
+  ]
+}

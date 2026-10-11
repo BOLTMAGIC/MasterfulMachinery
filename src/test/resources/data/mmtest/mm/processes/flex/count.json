@@ -1,0 +1,27 @@
+{
+  "ticks": 10,
+  "structureId": "mmtest:flex_test",
+  "inputs": [
+    {
+      "type": "mm:input/count",
+      "as": "cobble",
+      "max": 10,
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:cobblestone",
+        "count": 1
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "mm:output/simple",
+      "scale_by": "cobble",
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:stone",
+        "count": 1
+      }
+    }
+  ]
+}
