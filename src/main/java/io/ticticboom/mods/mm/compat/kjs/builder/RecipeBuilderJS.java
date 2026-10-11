@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import lombok.Getter;
@@ -86,14 +85,12 @@ public class RecipeBuilderJS {
         return input(entry);
     }
 
-    /** Flex recipes: how the other consumed inputs grow with the kinds per run: 'linear', 'once' or 'table'. */
-    public RecipeBuilderJS flexCost(String mode) {
-        this.flexCost = new JsonPrimitive(mode);
-        return this;
-    }
-
-    /** Flex recipes: e.g. {mode: 'table', table: {'1': 1, '4': 2, '7': 3.5}}. */
-    public RecipeBuilderJS flexCost(JsonObject cost) {
+    /**
+     * Flex recipes: how the other consumed inputs grow with the kinds per run: 'linear', 'once', or
+     * e.g. {mode: 'table', table: {'1': 1, '4': 2, '7': 3.5}}.
+     * One JsonElement parameter on purpose: with String + JsonObject overloads Rhino can't pick for a JS object.
+     */
+    public RecipeBuilderJS flexCost(JsonElement cost) {
         this.flexCost = cost;
         return this;
     }
