@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.port.energy;
 
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraftforge.energy.EnergyStorage;
 
 public class EnergyPortHandler extends EnergyStorage {
@@ -13,8 +14,8 @@ public class EnergyPortHandler extends EnergyStorage {
     }
 
     public int unboundedReceiveEnergy(int maxReceive, boolean simulate) {
-        int canReceive = Math.min(this.energy + maxReceive, this.capacity) - this.energy;
-        canReceive = Math.min(canReceive, maxReceive);
+        // room left, not energy + maxReceive: that sum overflows int near an Integer.MAX_VALUE capacity
+        int canReceive = Math.max(0, Math.min(this.capacity - this.energy, maxReceive));
         if (!simulate) {
             this.energy += canReceive;
             changed.call();
@@ -29,6 +30,13 @@ public class EnergyPortHandler extends EnergyStorage {
             changed.call();
         }
         return canExtract;
+    }
+
+    @Override
+    public void deserializeNBT(Tag nbt) {
+        super.deserializeNBT(nbt);
+        // ports saved while the overflow above was hit hold a negative amount
+        this.energy = Math.max(0, Math.min(this.energy, this.capacity));
     }
 
     @Override
