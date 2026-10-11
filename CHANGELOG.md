@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.7] - 2026-10-11
+
+### INFO:
+**Version 0.1.35.7** adds flex recipes, count-scaled outputs and optional GeckoLib machine models, and fixes energy port overflow and machines spread over two chunks.
+
+**Special Thanks:**
+- **Knozyy** – Flex recipes, GeckoLib models, output port priority and the fixes below.
+- **BOLTMAGIC** – Ideas, in-game testing and bug reports.
+
+### Added
+
+#### #79 – Flex Recipes & Count-Scaled Outputs
+- **Flex recipes** (`"mode": "flex"`): one recipe takes every kind of matching item (e.g. any seed) and makes an output named after each one (`seed -> its essence`), without one recipe per item. Mixed kinds run together.
+- **New entries**: `mm:input/flex` (`as`, `max_types`, `chance`, `exclude`), `mm:output/flex` (regex `match`, `{ns}` / `{path}` / `$1` templates, `copy_nbt`), `mm:input/flex_match` (an extra item per kind, e.g. its crux), `mm:input/count`.
+- **`scale_by`** on outputs: multiply the output by a counted amount, e.g. 10 solar panels in the port = 10M FE (works in fixed recipes too).
+- **Cost per kind**: the other inputs scale with the kinds per run (`LINEAR` / `ONCE` / `TABLE`, `[flex]` in `mm-common.toml`, or `flex_cost` per recipe); a run takes fewer kinds when it can't pay for all.
+- **Mystical Agriculture support** (optional): `{ma:essence}` / `{ma:crux}` templates, `min_tier` / `max_tier`, disabled crops skipped.
+- **`MMEvents.flexOutput`**: scripts can change or reject the output for single items.
+- **JEI**: flex recipes are split into pages (per MA tier, parts of 100) with linked input/output cycling.
+- **KubeJS**: `.mode()`, `.flexInput()`, `.flexOutput()`, `.flexMatch()`, `.flexCost()`, `.countInput()`.
+- Docs: `temp_docs/notes/FlexRecipes.md`, examples in `temp_docs/examples/flex/` and `temp_docs/examples/solar_array/`.
+
+#### #80 – Optional GeckoLib Models for Machines
+- **`geoModel`** on controllers and structures: a GeckoLib model drawn while the multiblock is formed, with an `idle` and a `working` animation.
+- **Options**: `offset`, `scale`, `rotate` (with the controller's facing), `glow`; a structure's `geoModel` replaces the controller's, `"none"` turns it off.
+- **GeckoLib is optional**: compile-only; without it nothing is drawn. Wrong file paths hide the model with one warning, no crash.
+- Docs: `temp_docs/notes/GeckoLibModels.md`, example in `temp_docs/examples/geckolib/`.
+
+#### #82 – Output Port Priority for All Types
+- **Fluid, energy and Mekanism chemical outputs** now follow port priority like item outputs: highest priority port first.
+
+### Fixed
+
+#### #81 – Machines Spread Over Two Chunks
+- **Lost outputs / stuck machines**: when a chunk holding some of a machine's ports reloaded, the controller kept using the old port storages, so outputs were voided and recipes stalled. Storages are now gathered again from the live ports (running recipes kept).
+- **No forced chunk loading**: while a chunk of the structure isn't loaded, the machine waits instead of loading it.
+
+#### #83 – Energy Port Overflow
+- **Overflow at ~2.1B FE**: a Gigantic Energy Port (2,147,483,647 FE) wrapped to a negative amount when a recipe output pushed it past the limit, and a full port didn't stop the machine. Outputs now stop at the capacity.
+- **Negative saves**: ports already saved with negative energy load as empty.
+
+#### #84 – Missing Blocks Tooltip
+- **Port tiers listed**: a missing `portType` position lists every port that fits (e.g. Tiny to Gigantic Energy Port) instead of only `Port Type: mm:energy` with a blank icon.
+
+
 ## [0.1.35.5 + 6] - 2026-10-04
 
 ### INFO:
