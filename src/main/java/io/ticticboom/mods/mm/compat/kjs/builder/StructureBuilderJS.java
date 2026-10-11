@@ -1,6 +1,10 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import dev.latvian.mods.rhino.util.HideFromJS;
+import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.model.IdList;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachments;
@@ -20,6 +24,7 @@ public class StructureBuilderJS {
     private String name;
     private Consumer<StructureLayoutBuilderJS> layoutConsumer;
     private int maxParallelRecipes = -1;
+    private JsonElement geoModel;
 
     public StructureBuilderJS(String id) {
         this.id = ResourceLocation.tryParse(id);
@@ -46,6 +51,18 @@ public class StructureBuilderJS {
         return this;
     }
 
+    /** GeckoLib model for this structure; replaces the controller's. See ControllerBuilderJS#geoModel. */
+    public StructureBuilderJS geoModel(JsonObject geoModel) {
+        this.geoModel = geoModel;
+        return this;
+    }
+
+    /** 'none': no GeckoLib model while this structure is formed, even if the controller has one. */
+    public StructureBuilderJS geoModel(String none) {
+        this.geoModel = new JsonPrimitive(none);
+        return this;
+    }
+
     @HideFromJS
     public StructureModel build() {
         var event = new StructureLayoutBuilderJS(this);
@@ -53,6 +70,8 @@ public class StructureBuilderJS {
         IdList controllerIds = new IdList(controllers);
         StructureLayout layout = event.build();
         // TODO: create real structure attachment js builders
-        return new StructureModel(id, name, controllerIds, layout, new StructureAttachments(List.of()), StructureModel.paramsToJson(id, name, controllerIds, layout, maxParallelRecipes));
+        var json = StructureModel.paramsToJson(id, name, controllerIds, layout, maxParallelRecipes);
+        if (geoModel != null) json.add(GeoModelConfig.KEY, geoModel);
+        return new StructureModel(id, name, controllerIds, layout, new StructureAttachments(List.of()), json);
     }
 }

@@ -1,6 +1,9 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import dev.latvian.mods.rhino.util.HideFromJS;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.config.MMClientConfig;
 import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
@@ -21,6 +24,7 @@ public class ControllerBuilderJS {
     private String workingSound;
     private String workingParticle;
     private Integer workingSoundInterval;
+    private JsonElement geoModel;
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -102,6 +106,18 @@ public class ControllerBuilderJS {
         return this;
     }
 
+    /**
+     * GeckoLib model drawn while the machine is formed (needs GeckoLib), e.g.
+     * {model: 'mm:geo/core.geo.json', texture: 'mm:textures/block/core.png', animations: 'mm:animations/core.animation.json',
+     *  idle: 'animation.core.idle', working: 'animation.core.working', offset: [0, 1, 2], scale: 1, rotate: true, glow: false}.
+     * A structure's geoModel replaces this one.
+     */
+    @SuppressWarnings("unused")
+    public ControllerBuilderJS geoModel(JsonObject geoModel) {
+        this.geoModel = geoModel;
+        return this;
+    }
+
     private static String checkId(String id) {
         if (ResourceLocation.tryParse(id) == null) throw new IllegalArgumentException("Invalid id: " + id);
         return id;
@@ -121,6 +137,7 @@ public class ControllerBuilderJS {
         if (workingSound != null) model.config().addProperty("workingSound", workingSound);
         if (workingParticle != null) model.config().addProperty("workingParticle", workingParticle);
         if (workingSoundInterval != null) model.config().addProperty("workingSoundInterval", workingSoundInterval);
+        if (geoModel != null) model.config().add(GeoModelConfig.KEY, geoModel);
         return model;
     }
 }
