@@ -91,6 +91,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
     private int comparatorSignal = 0;
     private RecipeStorages portStorages = null;
+    // the port block entities portStorages was gathered from: a chunk unload + load replaces them with new objects
+    private List<BlockEntity> portBlockEntities = List.of();
+    // chunks the formed structure covers (minX, minZ, maxX, maxZ), null until its ports are gathered
+    @Nullable
+    private int[] structureChunks = null;
     // synced to clients in the update tag
     private boolean isFormed = false;
     @Getter
@@ -244,6 +249,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private void runMachineTick() {
         if (level == null) return;
         long gameTime = level.getGameTime();
+        if (isFormed && !structureChunksLoaded()) {
+            // part of the machine is in an unloaded chunk: wait, instead of loading it or working with its old ports
+            for (ResourceLocation rid : activeRecipes.keySet()) {
+                activeRecipeLastUpdate.put(rid, gameTime);
+            }
+            lastTick = gameTime;
+            return;
+        }
         if ((!isFormed || gameTime % COMMON.structureValidationRate.get() == 0) && lastTick != gameTime) {
             if (COMMON.asyncStructureValidation.get()) {
                 validateStructureAsync(level);
@@ -393,8 +406,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
      private void runRecipe() {
+         if (portStorages != null && portsReplaced()) {
+             // a port's chunk was unloaded and loaded again: its block entity, and storage, is a new object now
+             portStorages = null;
+             storageCache.clear();
+         }
          if (portStorages == null) {
              portStorages = (structure == null) ? null : structure.getStorages(level, getBlockPos());
+             rememberPorts();
          }
          if (portStorages != null && portStorages.inputItemPortIndex().changedSinceLastPoll()) {
              storageCache.isValid = false;
@@ -407,6 +426,60 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (allowed) processActiveRecipeOutputs();
         if (structure != null && allowed) scanAndStartRecipes(gameTime);
         performRecipeTick();
+    }
+
+    /** Remembers the block entities the port storages came from, and the chunks the structure covers. */
+    private void rememberPorts() {
+        portBlockEntities = List.of();
+        structureChunks = null;
+        if (portStorages == null || structure == null || level == null) {
+            return;
+        }
+        var ports = new ArrayList<BlockEntity>();
+        for (BlockPos pos : structure.getPortPositions(level, getBlockPos())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be != null) {
+                ports.add(be);
+            }
+        }
+        portBlockEntities = ports;
+        int minX = getBlockPos().getX() >> 4, maxX = minX;
+        int minZ = getBlockPos().getZ() >> 4, maxZ = minZ;
+        for (BlockPos pos : structure.getPositions(level, getBlockPos())) {
+            minX = Math.min(minX, pos.getX() >> 4);
+            maxX = Math.max(maxX, pos.getX() >> 4);
+            minZ = Math.min(minZ, pos.getZ() >> 4);
+            maxZ = Math.max(maxZ, pos.getZ() >> 4);
+        }
+        structureChunks = new int[]{minX, minZ, maxX, maxZ};
+    }
+
+    /** Whether a port block entity the storages came from was removed or replaced (its chunk reloaded). */
+    private boolean portsReplaced() {
+        if (level == null) {
+            return false;
+        }
+        for (BlockEntity be : portBlockEntities) {
+            if (be.isRemoved() || (level.isLoaded(be.getBlockPos()) && level.getBlockEntity(be.getBlockPos()) != be)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Whether every chunk of the formed structure is loaded (true while they aren't known yet). */
+    private boolean structureChunksLoaded() {
+        if (level == null || structureChunks == null) {
+            return true;
+        }
+        for (int x = structureChunks[0]; x <= structureChunks[2]; x++) {
+            for (int z = structureChunks[1]; z <= structureChunks[3]; z++) {
+                if (!level.hasChunk(x, z)) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     // Helper split to reduce runRecipe complexity
@@ -1016,6 +1089,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          activeRecipes.clear();
          currentRecipe = null;
          portStorages = null;
+         portBlockEntities = List.of();
+         structureChunks = null;
          // clear cached views and backoff timers as recipe state is reset
          storageCache.clear();
          recipeNextCheckTime.clear();
