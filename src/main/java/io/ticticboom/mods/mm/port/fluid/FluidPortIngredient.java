@@ -7,6 +7,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.PortPriority;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -86,7 +87,7 @@ public class FluidPortIngredient implements IPortIngredient {
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (amount <= 0) return true; // nothing to output
         if (storages == null) return false;
-        var fluidStorages = storages.getOutputStorages(FluidPortStorage.class);
+        var fluidStorages = PortPriority.orderedOutputs(storages.getOutputStorages(FluidPortStorage.class));
         if (fluidStorages.isEmpty()) return false;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
@@ -103,7 +104,7 @@ public class FluidPortIngredient implements IPortIngredient {
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (amount <= 0) return;
         if (storages == null) return;
-        var fluidStorages = storages.getOutputStorages(FluidPortStorage.class);
+        var fluidStorages = PortPriority.orderedOutputs(storages.getOutputStorages(FluidPortStorage.class));
         if (fluidStorages.isEmpty()) return;
         int remaining = amount;
         for (FluidPortStorage storage : fluidStorages) {
@@ -158,7 +159,7 @@ public class FluidPortIngredient implements IPortIngredient {
 
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
-        var fluidStorages = storages.getOutputStorages(FluidPortStorage.class);
+        var fluidStorages = PortPriority.orderedOutputs(storages.getOutputStorages(FluidPortStorage.class));
         var searchedStorages = new JsonArray();
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.FLUID.toString());

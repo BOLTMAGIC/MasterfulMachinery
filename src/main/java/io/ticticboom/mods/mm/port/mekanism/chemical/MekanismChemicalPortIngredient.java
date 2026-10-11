@@ -6,6 +6,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.PortPriority;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -87,7 +88,7 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = storages.getOutputStorages(getStorageClass());
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
             var inserted = storage.insert(createStack(this.chemical, remaining), Action.SIMULATE);
@@ -98,7 +99,7 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = storages.getOutputStorages(getStorageClass());
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
         long remaining = amount;
         for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
             var inserted = storage.insert(createStack(this.chemical, remaining), Action.EXECUTE);
@@ -131,7 +132,7 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
-        var outputStorages = storages.getOutputStorages(getStorageClass());
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
         var searchedStoragesJson = new JsonArray();
 
         json.addProperty("ingredientType", getTypeId().toString());
