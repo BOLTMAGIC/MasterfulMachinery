@@ -23,6 +23,11 @@ public class MekanismSlurryPortIngredient extends MekanismChemicalPortIngredient
     }
 
     @Override
+    public io.ticticboom.mods.mm.port.IPortIngredient scaled(double factor) {
+        return new MekanismSlurryPortIngredient(id, io.ticticboom.mods.mm.port.IPortIngredient.scaleAmount(amount, factor));
+    }
+
+    @Override
     public SlurryStack createStack(Slurry id, long amount) {
         return new SlurryStack(id, amount);
     }

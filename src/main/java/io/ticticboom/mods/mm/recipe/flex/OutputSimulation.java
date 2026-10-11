@@ -1,0 +1,61 @@
+package io.ticticboom.mods.mm.recipe.flex;
+
+import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.port.item.ItemPortStorage;
+import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
+import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
+import io.ticticboom.mods.mm.recipe.RecipeStateModel;
+import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.Level;
+
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Puts outputs into copies of the machine's item output ports, to know whether several outputs fit together
+ * (checking each alone would count the same empty slot for all of them). The real ports aren't touched.
+ */
+public class OutputSimulation {
+
+    private final List<ItemPortStorage> copies = new ArrayList<>();
+    private final RecipeStorages storages;
+    private final RecipeStateModel scratch = new RecipeStateModel();
+
+    public OutputSimulation(RecipeStorages real) {
+        var outputs = new ArrayList<IPortStorage>();
+        for (IPortStorage storage : real.outputStorages()) {
+            if (storage instanceof ItemPortStorage item) {
+                var copy = new ItemPortStorage((ItemPortStorageModel) item.getStorageModel(), () -> {});
+                copy.load(item.save(new CompoundTag()));
+                copies.add(copy);
+                outputs.add(copy);
+            } else {
+                outputs.add(storage);
+            }
+        }
+        storages = new RecipeStorages(real.inputStorages(), outputs);
+    }
+
+    /**
+     * Adds these outputs if all of them fit next to what was added before.
+     *
+     * @return false (and nothing added) if one doesn't fit
+     */
+    public boolean tryAdd(Level level, List<SingleItemPortIngredient> outputs) {
+        var before = new ArrayList<CompoundTag>();
+        for (ItemPortStorage copy : copies) {
+            before.add(copy.save(new CompoundTag()));
+        }
+        for (SingleItemPortIngredient output : outputs) {
+            if (!output.canOutput(level, storages, scratch)) {
+                for (int i = 0; i < copies.size(); i++) {
+                    copies.get(i).load(before.get(i));
+                }
+                return false;
+            }
+            output.output(level, storages, scratch);
+        }
+        return true;
+    }
+}

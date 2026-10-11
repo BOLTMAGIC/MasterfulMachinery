@@ -10,6 +10,8 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.function.Function;
@@ -27,6 +29,16 @@ public interface IKubeJSInterop {
      */
     default boolean onRecipeStart(MachineControllerBlockEntity controller, ResourceLocation recipeId) {
         return true;
+    }
+
+    /**
+     * MMEvents.flexOutput: lets scripts pick what a flex output makes from an input item.
+     *
+     * @return null to keep the template result, an empty stack to not accept the input, else the output item
+     */
+    @Nullable
+    default ItemStack resolveFlexOutput(ResourceLocation recipeId, String from, ItemStack input, ItemStack templateResult) {
+        return null;
     }
 
     /** MMEvents.recipeFinished, after a machine has produced a recipe's outputs. */

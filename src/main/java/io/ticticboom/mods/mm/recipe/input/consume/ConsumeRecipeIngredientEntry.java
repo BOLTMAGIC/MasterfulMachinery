@@ -8,6 +8,7 @@ import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.flex.RecipeMode;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import lombok.Getter;
@@ -19,6 +20,9 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     // expose ingredient for lightweight capability checks
@@ -29,6 +33,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final boolean perTick;
 
     private boolean shouldRun = true;
+    private final Map<Double, IPortIngredient> scaled = new ConcurrentHashMap<>();
 
     public ConsumeRecipeIngredientEntry(IPortIngredient ingredient, double chance, boolean perTick) {
         this.ingredient = ingredient;
@@ -36,16 +41,31 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         this.perTick = perTick;
     }
 
+    /**
+     * The ingredient for this run: in flex recipes multiplied by the run's cost multiplier (the number of kinds it
+     * takes, see FlexCost). Ingredients that can't be scaled keep their amount.
+     */
+    public IPortIngredient ingredientFor(RecipeStateModel state) {
+        double multiplier = state.getCostMultiplier();
+        if (multiplier == 1) {
+            return ingredient;
+        }
+        return scaled.computeIfAbsent(multiplier, m -> {
+            IPortIngredient copy = ingredient.scaled(m);
+            return copy == null ? ingredient : copy;
+        });
+    }
+
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         shouldRun = ChanceUtils.shouldProceed(chance);
-        return ingredient.canProcess(level, storages, state);
+        return ingredientFor(state).canProcess(level, storages, state);
     }
 
     @Override
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (!perTick && shouldRun) {
-            ingredient.process(level, storages, state);
+            ingredientFor(state).process(level, storages, state);
         }
     }
 
@@ -57,7 +77,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         // full one-time consume) and avoids double-consumption.
         if (perTick) {
             try {
-                ingredient.processTick(level, storages, state);
+                ingredientFor(state).processTick(level, storages, state);
             } catch (Throwable ignored) { }
         }
     }
@@ -103,6 +123,9 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
             if (perTick) {
                 list.add(Component.translatable("jei.mm.recipe.consumed_per_tick").withStyle(ChatFormatting.DARK_AQUA));
             }
+            if (model.mode() == RecipeMode.FLEX) {
+                list.add(Component.translatable("jei.mm.recipe.flex_cost").withStyle(ChatFormatting.DARK_AQUA));
+            }
         });
     }
 
@@ -110,7 +133,8 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
     public JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel state, JsonObject json) {
         json.addProperty("chance", chance);
         json.addProperty("perTick", perTick);
-        json.add("ingredient", ingredient.debugInput(level, storages, new JsonObject()));
+        json.addProperty("costMultiplier", state.getCostMultiplier());
+        json.add("ingredient", ingredientFor(state).debugInput(level, storages, new JsonObject()));
         return json;
     }
 }

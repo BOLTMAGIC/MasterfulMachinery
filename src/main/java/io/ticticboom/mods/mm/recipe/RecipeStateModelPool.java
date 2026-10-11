@@ -28,10 +28,7 @@ public class RecipeStateModelPool {
                 pool[i] = null;
 
                 // Reset the model state
-                model.setCanProcess(false);
-                model.setTickProgress(0);
-                model.setTickPercentage(0.0);
-                model.setCanFinish(false);
+                model.reset();
 
                 return model;
             }

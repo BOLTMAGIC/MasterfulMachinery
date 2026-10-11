@@ -9,6 +9,8 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -44,7 +46,13 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     private final int height;
 
     @Override
+    @SuppressWarnings("removal")
     public ResourceLocation getRegistryName(RecipeModel recipe) {
+        if (recipe.config() != null && recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            // JEI page copies of a flex recipe need their own names
+            return new ResourceLocation(recipe.id().getNamespace(),
+                    recipe.id().getPath() + "/jei_page_" + recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt());
+        }
         return recipe.id();
     }
 
@@ -100,10 +108,38 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
         }
+        // flex recipes: the input, its matching items and its outputs list one item per kind in the same order
+        for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex && flex.getJeiGroup().size() > 1) {
+                builder.createFocusLink(flex.getJeiGroup().toArray(new IRecipeSlotBuilder[0]));
+            }
+        }
 
         recipe.inputSlots().clear();
         recipe.inputSlots().addAll(inGrid.getSlots());
         recipe.inputSlots().addAll(outGrid.getSlots());
+    }
+
+    /** "Tier 5" (and "1/2") above the arrow of a flex recipe's JEI page. */
+    private static void drawFlexPageLabel(RecipeModel recipe, GuiGraphics gfx) {
+        if (recipe.config() == null || !recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            return;
+        }
+        int tier = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_TIER).getAsInt();
+        String part = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_PART).getAsString();
+        Component label = tier >= 0
+                ? Component.translatable("jei.mm.recipe.flex_page_tier", tier)
+                : Component.translatable("jei.mm.recipe.flex_page", recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt() + 1);
+        if (!part.isEmpty()) {
+            label = label.copy().append(" " + part);
+        }
+        var font = Minecraft.getInstance().font;
+        var pose = gfx.pose();
+        pose.pushPose();
+        pose.translate(82, 2, 0);
+        pose.scale(0.6f, 0.6f, 1);
+        gfx.drawString(font, label, -font.width(label) / 2, 0, 0x404040, false);
+        pose.popPose();
     }
 
     public static int rowsFor(int slotCount) {
@@ -126,6 +162,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics gfx, double mouseX, double mouseY) {
         bgProgressBar.draw(gfx, 70, 12);
         fgProgressBar.draw(gfx, 70, 12);
+        drawFlexPageLabel(recipe, gfx);
         var seconds = (double) recipe.ticks() / 20;
         var fmt = String.format("%.2f", seconds) + "s";
 

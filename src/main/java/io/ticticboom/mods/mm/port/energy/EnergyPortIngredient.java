@@ -30,6 +30,11 @@ public class EnergyPortIngredient implements IPortIngredient {
     public int getAmount() { return this.amount; }
 
     @Override
+    public IPortIngredient scaled(double factor) {
+        return new EnergyPortIngredient(IPortIngredient.scaleAmount(amount, factor));
+    }
+
+    @Override
     public PortContent display() {
         return PortContent.energy(amount, 0);
     }

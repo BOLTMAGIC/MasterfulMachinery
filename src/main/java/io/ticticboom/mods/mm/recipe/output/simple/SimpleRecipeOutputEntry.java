@@ -20,6 +20,10 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
@@ -27,14 +31,32 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     private final IPortIngredient ingredient;
     private final double chance;
     private final boolean perTick;
+    /** The "as" name of an mm:input/count entry whose count multiplies the amount, or null. */
+    @Getter
+    @Nullable
+    private final String scaleBy;
+    private final Map<Integer, IPortIngredient> scaled = new ConcurrentHashMap<>();
 
     private boolean shouldRun = true;
 
     public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick) {
+        this(ingredient, chance, perTick, null);
+    }
+
+    public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick, @Nullable String scaleBy) {
 
         this.ingredient = ingredient;
         this.chance = chance;
         this.perTick = perTick;
+        this.scaleBy = scaleBy;
+    }
+
+    /** The ingredient for this run: scaled by the counted items when "scale_by" is set. */
+    private IPortIngredient ingredientFor(RecipeStateModel state) {
+        if (scaleBy == null) {
+            return ingredient;
+        }
+        return scaled.computeIfAbsent(state.getCount(scaleBy), f -> ingredient.scaled(f));
     }
 
     @Override
@@ -43,22 +65,22 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         if (!shouldRun) {
             return true;
         }
-        return ingredient.canOutput(level, storages, state);
+        return ingredientFor(state).canOutput(level, storages, state);
     }
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (!perTick && shouldRun) {
-            ingredient.output(level, storages, state);
+            ingredientFor(state).output(level, storages, state);
         }
     }
 
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (perTick && shouldRun) {
-            ingredient.output(level, storages, state);
+            ingredientFor(state).output(level, storages, state);
         }
-        ingredient.outputTick(level, storages, state);
+        ingredientFor(state).outputTick(level, storages, state);
     }
 
     @Override
@@ -83,6 +105,9 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
             }
             if (perTick) {
                 list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
+            }
+            if (scaleBy != null) {
+                list.add(Component.translatable("jei.mm.recipe.scaled_by", scaleBy).withStyle(ChatFormatting.DARK_AQUA));
             }
         });
     }
@@ -115,7 +140,11 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     public JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject json) {
         json.addProperty("chance", chance);
         json.addProperty("perTick", perTick);
-        json.add("ingredient", ingredient.debugOutput(level, storages, new JsonObject()));
+        if (scaleBy != null) {
+            json.addProperty("scaleBy", scaleBy);
+            json.addProperty("factor", model.getCount(scaleBy));
+        }
+        json.add("ingredient", ingredientFor(model).debugOutput(level, storages, new JsonObject()));
         return json;
     }
 }

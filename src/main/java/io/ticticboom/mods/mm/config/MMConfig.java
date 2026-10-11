@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.config;
 
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.recipe.flex.FlexCost;
+
 public class MMConfig {
     public static boolean DEBUG_TOOL = true;
     public static boolean JEI_RECIPE_SPLIT = true;
@@ -13,6 +16,7 @@ public class MMConfig {
     public static boolean PREVIEW_BP_SCREEN = false;
     public static boolean PARALLEL_PROCESSING_DEFAULT = false;
     public static int MAX_PARALLEL_RECIPES = 5;
+    public static FlexCost FLEX_COST = FlexCost.LINEAR;
 
     public static void bake() {
         DEBUG_TOOL = MMConfigSetup.COMMON.debugTool.get();
@@ -27,5 +31,11 @@ public class MMConfig {
         PREVIEW_BP_SCREEN = MMConfigSetup.COMMON.previewBlueprintScreen.get();
         PARALLEL_PROCESSING_DEFAULT = MMConfigSetup.COMMON.parallelProcessingDefault.get();
         MAX_PARALLEL_RECIPES = MMConfigSetup.COMMON.maxParallelRecipes.get();
+        try {
+            FLEX_COST = FlexCost.of(MMConfigSetup.COMMON.flexCostScaling.get(), MMConfigSetup.COMMON.flexCostTable.get());
+        } catch (RuntimeException e) {
+            Ref.LOG.error("mm-common.toml [flex]: {}; using LINEAR", e.getMessage());
+            FLEX_COST = FlexCost.LINEAR;
+        }
     }
 }

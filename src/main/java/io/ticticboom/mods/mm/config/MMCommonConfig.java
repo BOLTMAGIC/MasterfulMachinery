@@ -1,6 +1,9 @@
 package io.ticticboom.mods.mm.config;
 
+import io.ticticboom.mods.mm.recipe.flex.FlexCost;
 import net.minecraftforge.common.ForgeConfigSpec;
+
+import java.util.List;
 
 public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue debugTool;
@@ -25,6 +28,8 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.IntValue toolBuildRange;
     public final ForgeConfigSpec.IntValue toolBuildBlocksPerTick;
     public final ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> toolBuildMode;
+    public final ForgeConfigSpec.EnumValue<FlexCost.Mode> flexCostScaling;
+    public final ForgeConfigSpec.ConfigValue<List<? extends String>> flexCostTable;
 
     public MMCommonConfig(ForgeConfigSpec.Builder builder) {
         asyncStructureValidation = builder.comment("Enables async structure validation to improve TPS. Disable in case of issues. Default: true")
@@ -77,6 +82,17 @@ public class MMCommonConfig {
                 .defineInRange("buildBlocksPerTick", 2, 1, 1024);
         toolBuildMode = builder.comment("Structure Builder placement: SEQUENTIAL, LAYER_BY_LAYER (bottom up), INSTANT (one tick).")
                 .defineEnum("buildMode", io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL);
+        builder.pop();
+
+        builder.comment("Flex recipes (\"mode\": \"flex\"): one run takes several kinds of item at once (e.g. mixed seeds).")
+                .push("flex");
+        flexCostScaling = builder.comment("How the other consumed inputs of a flex run (energy, fluids, items...) grow with the number of kinds it takes.",
+                        "LINEAR: cost x kinds (10 kinds cost 10 times one kind). ONCE: the same cost for any number of kinds.",
+                        "TABLE: the multiplier comes from costTable. A recipe can override this with \"flex_cost\". Default: LINEAR")
+                .defineEnum("costScaling", FlexCost.Mode.LINEAR);
+        flexCostTable = builder.comment("For costScaling = TABLE: \"kinds=multiplier\" steps; a run uses the step with the most kinds not above its own.",
+                        "Example: [\"1=1\", \"4=2\", \"7=3.5\"] means 1-3 kinds x1, 4-6 kinds x2, 7 or more x3.5. Default: [\"1=1\"]")
+                .defineListAllowEmpty(List.of("costTable"), () -> List.of("1=1"), o -> o instanceof String step && FlexCost.isStep(step));
         builder.pop();
 
         builder.comment("Preview features that are not yet stable or ready for use.")

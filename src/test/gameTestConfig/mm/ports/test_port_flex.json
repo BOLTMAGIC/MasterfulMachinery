@@ -1,0 +1,11 @@
+{
+  "id": "test_port_flex",
+  "name": "Test Port Flex",
+  "controllerIds": "mm:flex_test",
+  "type": "mm:item",
+  "config": {
+    "rows": 1,
+    "columns": 4,
+    "tierRank": 1
+  }
+}

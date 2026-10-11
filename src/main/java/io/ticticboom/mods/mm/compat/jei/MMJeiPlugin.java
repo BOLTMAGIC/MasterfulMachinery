@@ -101,12 +101,14 @@ public class MMJeiPlugin implements IModPlugin {
                 var recipes = MachineRecipeManager.RECIPES.values().stream()
                         .filter(x -> x.allStructureIds().contains(entry.getStructureModel().id()))
                         .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                        .flatMap(r -> FlexJeiPages.expand(r).stream())
                         .toList();
                 registration.addRecipes(entry.getRecipeType(), recipes);
             }
         } else {
             var sorted = MachineRecipeManager.RECIPES.values().stream()
                     .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                    .flatMap(r -> FlexJeiPages.expand(r).stream())
                     .collect(Collectors.toList());
             registration.addRecipes(MMRecipeCategory.RECIPE_TYPE, sorted);
         }

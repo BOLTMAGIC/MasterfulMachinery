@@ -62,6 +62,17 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         this.nbtStrong = nbtStrong;
     }
 
+    /** Every item this ingredient accepts, for JEI (flex recipes list one output per accepted item). */
+    public List<ItemStack> exampleStacks() {
+        ItemStack item = displayItem();
+        return item.isEmpty() ? List.of() : List.of(item);
+    }
+
+    /** Whether a stack is accepted by this ingredient (item/tag and NBT), ignoring its count. */
+    public boolean matches(ItemStack stack) {
+        return !stack.isEmpty() && filter.test(stack);
+    }
+
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if(storages == null) return false;
