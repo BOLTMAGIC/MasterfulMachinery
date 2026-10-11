@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyStack;
 import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.PortPriority;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -71,7 +72,7 @@ public class EnergyPortIngredient implements IPortIngredient {
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = storages.getOutputStorages(EnergyPortStorage.class);
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(EnergyPortStorage.class));
         int remaining = amount;
         for (EnergyPortStorage storage : outputStorages) {
             var inserted = storage.internalInsert(remaining, true);
@@ -82,7 +83,7 @@ public class EnergyPortIngredient implements IPortIngredient {
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = storages.getOutputStorages(EnergyPortStorage.class);
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(EnergyPortStorage.class));
         int remaining = amount;
         for (EnergyPortStorage storage : outputStorages) {
             var inserted = storage.internalInsert(remaining, false);
@@ -125,7 +126,7 @@ public class EnergyPortIngredient implements IPortIngredient {
 
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
-        var outputStorages = storages.getOutputStorages(EnergyPortStorage.class);
+        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(EnergyPortStorage.class));
         var searchedStoragesJson = new JsonArray();
         var searchIterationsJson = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ENERGY.toString());
