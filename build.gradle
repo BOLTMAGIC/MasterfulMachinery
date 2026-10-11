@@ -266,6 +266,14 @@ repositories {
         }
     }
     maven {
+        // GeckoLib (optional machine models)
+        name = 'GeckoLib'
+        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
+        content {
+            includeGroupByRegex("software\\.bernie.*")
+        }
+    }
+    maven {
         // Applied Mekanistics
         url = "https://api.modrinth.com/maven"
         content {
@@ -302,6 +310,9 @@ dependencies {
     compileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
     compileOnly(fg.deobf("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}")) { transitive = false }
     compileOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
+
+    // GeckoLib: optional machine models (compat/geckolib), not shipped and not needed at runtime
+    compileOnly(fg.deobf("software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4")) { transitive = false }
 
     //PNEUMATICCRAFT (PNCR)
     compileOnly fg.deobf("curse.maven:pneumaticcraft-281849:5279325")

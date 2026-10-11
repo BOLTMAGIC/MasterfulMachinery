@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlock;
+import io.ticticboom.mods.mm.client.render.ControllerGeoRenderer;
 import io.ticticboom.mods.mm.client.render.PortStatusLightRenderer;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -20,7 +21,8 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 /**
- * Tints the controller's screen (tintindex 0 of its model) by machine state. Port lights: PortStatusLightRenderer.
+ * Tints the controller's screen (tintindex 0 of its model) by machine state. Port lights: PortStatusLightRenderer,
+ * machine models: ControllerGeoRenderer.
  */
 @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public final class ControllerColorEvents {
@@ -39,6 +41,10 @@ public final class ControllerColorEvents {
             if (holder.getBlock().get().defaultBlockState().hasProperty(ControllerState.PROPERTY)) {
                 event.registerBlockEntityRenderer((BlockEntityType<BlockEntity>) holder.getBe().get(), ctx -> new PortStatusLightRenderer());
             }
+        }
+        // machine models (geoModel); draws nothing without GeckoLib or a geoModel
+        for (RegistryGroupHolder holder : MMControllerRegistry.CONTROLLERS) {
+            event.registerBlockEntityRenderer((BlockEntityType<BlockEntity>) holder.getBe().get(), ctx -> new ControllerGeoRenderer());
         }
     }
 

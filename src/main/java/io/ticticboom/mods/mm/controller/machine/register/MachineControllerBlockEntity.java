@@ -55,6 +55,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
+import net.minecraft.world.phys.AABB;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -83,6 +85,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     @Getter
     private StructureModel structure = null;
+    // client only: the GeckoLib animatable of this machine's model (an Object so MM doesn't load GeckoLib types)
+    @Nullable
+    private Object geoAnimatable;
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
     private int comparatorSignal = 0;
     private RecipeStorages portStorages = null;
@@ -1014,6 +1019,30 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     @Override
     public ControllerModel getModel() { return model; }
+
+    /** The GeckoLib model to draw now: the formed structure's geoModel, else the controller's (client side). */
+    @Nullable
+    public GeoModelConfig geoModel() {
+        return GeoModelConfig.resolve(model == null ? null : model.config(), structure == null ? null : structure.getConfig());
+    }
+
+    @Nullable
+    public Object getGeoAnimatable() {
+        return geoAnimatable;
+    }
+
+    public void setGeoAnimatable(@Nullable Object geoAnimatable) {
+        this.geoAnimatable = geoAnimatable;
+    }
+
+    @Override
+    public AABB getRenderBoundingBox() {
+        // a model can reach well outside the controller block: don't cull it with the block
+        if (level != null && level.isClientSide() && geoModel() != null) {
+            return INFINITE_EXTENT_AABB;
+        }
+        return super.getRenderBoundingBox();
+    }
 
     @Override
     public @NotNull Component getDisplayName() { return getName(); }
