@@ -13,6 +13,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.recipe.flex.FlexTemplate;
+import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
@@ -39,7 +40,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * "mm:output/flex": outputs the item worked out from what an "mm:input/flex" entry ("from") consumed, using the
+ * "mm:output/flex": for each kind of item an "mm:input/flex" entry ("from") took, outputs the item worked out from it, using the
  * "match"/"item" id template, or what a script picks in MMEvents.flexOutput.
  */
 public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
@@ -131,10 +132,13 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         return scaleBy == null ? count : IPortIngredient.scaleAmount(count, state.getCount(scaleBy));
     }
 
-    /** @return what to put in the output ports for this run, or null if there is nothing to output */
+    /**
+     * @param captured one kind of item the flex input took
+     * @return what to put in the output ports for it, or null if there is nothing to output
+     */
     @Nullable
-    private SingleItemPortIngredient outputFor(Level level, RecipeStateModel state) {
-        ItemStack result = resolve(level, state.getCapture(from));
+    public SingleItemPortIngredient outputFor(Level level, ItemStack captured, RecipeStateModel state) {
+        ItemStack result = resolve(level, captured);
         int amount = amount(state);
         if (result.isEmpty() || amount <= 0) {
             return null;
@@ -143,26 +147,39 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
                 new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(result.getItem()), amount, result.getTag(), true));
     }
 
+    /** What to put in the output ports this run: one output per kind of item the flex input took. */
+    private List<SingleItemPortIngredient> outputsFor(Level level, RecipeStateModel state) {
+        var outputs = new ArrayList<SingleItemPortIngredient>();
+        for (ItemStack captured : state.getCaptured(from)) {
+            SingleItemPortIngredient output = outputFor(level, captured, state);
+            if (output == null) {
+                // e.g. a reload removed the output item while the recipe was running: skip it, don't block the machine
+                Ref.LOG.debug("Flex recipe {} has no output for {}", recipeId, captured);
+                continue;
+            }
+            outputs.add(output);
+        }
+        return outputs;
+    }
+
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         shouldRun = ChanceUtils.shouldProceed(chance);
         if (!shouldRun) {
             return true;
         }
-        SingleItemPortIngredient output = outputFor(level, state);
-        if (output == null) {
-            // e.g. a reload removed the output item while the recipe was running: don't block the machine
-            Ref.LOG.debug("Flex recipe {} has no output for {}", recipeId, state.getCapture(from));
-            return true;
+        var outputs = outputsFor(level, state);
+        if (outputs.size() == 1) {
+            return outputs.get(0).canOutput(level, storages, state);
         }
-        return output.canOutput(level, storages, state);
+        // several kinds share the same empty slots: they have to fit together
+        return outputs.isEmpty() || new OutputSimulation(storages).tryAdd(level, outputs);
     }
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (!perTick && shouldRun) {
-            SingleItemPortIngredient output = outputFor(level, state);
-            if (output != null) {
+            for (SingleItemPortIngredient output : outputsFor(level, state)) {
                 output.output(level, storages, state);
             }
         }
@@ -171,8 +188,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (perTick && shouldRun) {
-            SingleItemPortIngredient output = outputFor(level, state);
-            if (output != null) {
+            for (SingleItemPortIngredient output : outputsFor(level, state)) {
                 output.output(level, storages, state);
             }
         }
@@ -253,7 +269,11 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         json.addProperty("chance", chance);
         json.addProperty("perTick", perTick);
         json.addProperty("amount", amount(model));
-        json.addProperty("resolved", String.valueOf(resolve(level, model.getCapture(from))));
+        var resolved = new com.google.gson.JsonArray();
+        for (ItemStack captured : model.getCaptured(from)) {
+            resolved.add(String.valueOf(resolve(level, captured)));
+        }
+        json.add("resolved", resolved);
         return json;
     }
 }

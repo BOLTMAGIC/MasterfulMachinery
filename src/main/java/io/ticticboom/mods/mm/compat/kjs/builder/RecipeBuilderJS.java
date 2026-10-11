@@ -44,13 +44,23 @@ public class RecipeBuilderJS {
     }
 
     /**
-     * Flex recipes: consumes any item matching the ingredient (e.g. {type: 'mm:item', tag: 'forge:seeds', count: 1})
-     * and remembers it as {@code as}.
+     * Flex recipes: takes every kind of item matching the ingredient (e.g. {type: 'mm:item', tag: 'forge:seeds',
+     * count: 1}) in one run, the ingredient's count of each, and remembers the kinds as {@code as}.
      */
     public RecipeBuilderJS flexInput(String as, JsonObject ingredient) {
         var entry = new JsonObject();
         entry.addProperty("type", "mm:input/flex");
         entry.addProperty("as", as);
+        entry.add("ingredient", ingredient);
+        return input(entry);
+    }
+
+    /** Like {@link #flexInput(String, JsonObject)}, taking at most {@code maxTypes} kinds per run. */
+    public RecipeBuilderJS flexInput(String as, JsonObject ingredient, int maxTypes) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:input/flex");
+        entry.addProperty("as", as);
+        entry.addProperty("max_types", maxTypes);
         entry.add("ingredient", ingredient);
         return input(entry);
     }

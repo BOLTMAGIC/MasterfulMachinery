@@ -7,9 +7,11 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
+import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import lombok.Getter;
@@ -30,9 +32,10 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /**
- * "mm:input/flex": consumes any item matching its ingredient (usually a tag) and remembers which one under its
- * "as" name, so "mm:output/flex" entries can work out the output from it. Items whose output doesn't exist are
- * left in the port. One recipe run always takes a single kind of item, never a mix from the tag.
+ * "mm:input/flex": takes, in one run, every kind of item in the input ports matching its ingredient (usually a
+ * tag), "count" of each, and remembers the kinds under its "as" name so "mm:output/flex" entries make one output
+ * per kind. Mixed seeds go in together and come out together. Items whose output doesn't exist stay in the port,
+ * and kinds whose outputs wouldn't fit next to the others wait for a later run. "max_types" caps the kinds per run.
  */
 public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
@@ -40,6 +43,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final String name;
     @Getter
     private final BaseItemPortIngredient ingredient;
+    private final int maxTypes;
     private final List<FlexRecipeOutputEntry> outputs = new ArrayList<>();
 
     private volatile List<ItemStack> accepted;
@@ -47,9 +51,10 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Getter
     private IRecipeSlotBuilder lastJeiSlot;
 
-    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient) {
+    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes) {
         this.name = name;
         this.ingredient = ingredient;
+        this.maxTypes = maxTypes;
     }
 
     public void bindOutput(FlexRecipeOutputEntry output) {
@@ -70,37 +75,57 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     }
 
     /**
-     * @return the first accepted item in the input ports with enough of it (count 1), or null
+     * @return the kinds of item to take this run (count 1 each), in port slot order: accepted, with enough of each
+     * in the ports, and with outputs that fit together in the output ports
      */
-    @Nullable
-    private ItemStack pick(Level level, @Nullable RecipeStorages storages) {
+    private List<ItemStack> pick(Level level, @Nullable RecipeStorages storages, RecipeStateModel state) {
+        var picked = new ArrayList<ItemStack>();
         if (storages == null) {
-            return null;
+            return picked;
         }
         var itemStorages = storages.getInputStorages(ItemPortStorage.class);
         var tried = new ArrayList<ItemStack>();
+        OutputSimulation simulation = null;
         for (ItemPortStorage storage : itemStorages) {
             var handler = storage.getHandler();
-            for (int slot = 0; slot < handler.getSlots(); slot++) {
+            for (int slot = 0; slot < handler.getSlots() && picked.size() < maxTypes; slot++) {
                 ItemStack stack = handler.getStackInSlot(slot);
                 if (!ingredient.matches(stack) || tried.stream().anyMatch(t -> ItemStack.isSameItemSameTags(t, stack))) {
                     continue;
                 }
                 tried.add(stack);
-                if (!accepts(level, stack)) {
+                if (!accepts(level, stack) || !enoughOf(itemStorages, stack)) {
                     continue;
                 }
-                int remaining = ingredient.getCount();
-                Predicate<ItemStack> same = exactly(stack);
-                for (ItemPortStorage s : itemStorages) {
-                    remaining = s.canExtract(same, remaining);
-                    if (remaining <= 0) {
-                        return stack.copyWithCount(1);
+                var kindOutputs = new ArrayList<SingleItemPortIngredient>();
+                for (FlexRecipeOutputEntry output : outputs) {
+                    SingleItemPortIngredient made = output.outputFor(level, stack, state);
+                    if (made != null) {
+                        kindOutputs.add(made);
                     }
+                }
+                if (simulation == null) {
+                    simulation = new OutputSimulation(storages);
+                }
+                // a kind whose output doesn't fit next to the others waits for a later run
+                if (simulation.tryAdd(level, kindOutputs)) {
+                    picked.add(stack.copyWithCount(1));
                 }
             }
         }
-        return null;
+        return picked;
+    }
+
+    private boolean enoughOf(List<ItemPortStorage> itemStorages, ItemStack stack) {
+        int remaining = ingredient.getCount();
+        Predicate<ItemStack> same = exactly(stack);
+        for (ItemPortStorage s : itemStorages) {
+            remaining = s.canExtract(same, remaining);
+            if (remaining <= 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static Predicate<ItemStack> exactly(ItemStack stack) {
@@ -110,27 +135,27 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
-        ItemStack picked = pick(level, storages);
-        state.setCapture(name, picked == null ? ItemStack.EMPTY : picked);
-        return picked != null;
+        var picked = pick(level, storages, state);
+        state.setCaptured(name, picked);
+        return !picked.isEmpty();
     }
 
     @Override
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
-        ItemStack picked = state.getCapture(name);
+        var picked = state.getCaptured(name);
         if (picked.isEmpty()) {
-            picked = pick(level, storages);
-            if (picked == null) {
-                return;
-            }
-            state.setCapture(name, picked);
+            picked = pick(level, storages, state);
+            state.setCaptured(name, picked);
         }
-        int remaining = ingredient.getCount();
-        Predicate<ItemStack> same = exactly(picked);
-        for (ItemPortStorage storage : storages.getInputStorages(ItemPortStorage.class)) {
-            remaining = storage.extract(same, remaining);
-            if (remaining <= 0) {
-                break;
+        var itemStorages = storages.getInputStorages(ItemPortStorage.class);
+        for (ItemStack kind : picked) {
+            int remaining = ingredient.getCount();
+            Predicate<ItemStack> same = exactly(kind);
+            for (ItemPortStorage storage : itemStorages) {
+                remaining = storage.extract(same, remaining);
+                if (remaining <= 0) {
+                    break;
+                }
             }
         }
     }
@@ -178,7 +203,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Override
     public JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel state, JsonObject json) {
         json.addProperty("as", name);
-        json.addProperty("captured", String.valueOf(state.getCapture(name)));
+        json.addProperty("maxTypes", maxTypes);
+        json.addProperty("captured", String.valueOf(state.getCaptured(name)));
         json.add("ingredient", ingredient.debugInput(level, storages, new JsonObject()));
         return json;
     }

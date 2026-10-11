@@ -10,7 +10,11 @@ import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntryParser;
 public class FlexRecipeIngredientEntryParser implements IRecipeIngredientEntryParser {
     @Override
     public IRecipeIngredientEntry parse(JsonObject json) {
-        return new FlexRecipeIngredientEntry(parseName(json, "flex input entry"), parseItemIngredient(json, "flex input entry"));
+        int maxTypes = json.has("max_types") ? json.get("max_types").getAsInt() : Integer.MAX_VALUE;
+        if (maxTypes < 1) {
+            throw new RuntimeException("'max_types' of a flex input entry must be at least 1: " + json);
+        }
+        return new FlexRecipeIngredientEntry(parseName(json, "flex input entry"), parseItemIngredient(json, "flex input entry"), maxTypes);
     }
 
     /** Reads the entry's "as" name, which outputs refer to. */
