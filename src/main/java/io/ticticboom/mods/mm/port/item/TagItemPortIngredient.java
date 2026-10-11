@@ -49,6 +49,11 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
         return all.isEmpty() ? ItemStack.EMPTY : all.get(0).copy();
     }
 
+    @Override
+    public List<ItemStack> exampleStacks() {
+        return stacks.get();
+    }
+
     private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
         var key = ItemTags.create(id);
         return  i -> i.is(key);

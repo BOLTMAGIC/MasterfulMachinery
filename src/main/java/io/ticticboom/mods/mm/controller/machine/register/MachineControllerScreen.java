@@ -24,6 +24,8 @@ import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.compat.jei.JeiRecipeLookup;
 import io.ticticboom.mods.mm.util.ChanceUtils;
@@ -362,10 +364,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         var inputs = new ArrayList<PortContent>();
         for (var entry : recipe.inputs().inputs()) {
+            PortContent content = null;
             if (entry instanceof ConsumeRecipeIngredientEntry consume) {
-                PortContent content = consume.getIngredient().display();
-                if (content != null) inputs.add(content);
+                content = consume.getIngredient().display();
+            } else if (entry instanceof FlexRecipeIngredientEntry flex) {
+                content = flex.getIngredient().display();
+            } else if (entry instanceof CountRecipeIngredientEntry count) {
+                content = count.getIngredient().display();
             }
+            if (content != null) inputs.add(content);
         }
         var outputs = new ArrayList<PortContent>();
         var chances = new ArrayList<Double>();

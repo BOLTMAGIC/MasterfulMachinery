@@ -25,6 +25,26 @@ public interface IPortIngredient {
     default void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
 
+    /**
+     * A copy of this ingredient with its amount multiplied by {@code factor}, for outputs with "scale_by".
+     *
+     * @return null if this ingredient can't be scaled
+     */
+    @Nullable
+    default IPortIngredient scaled(int factor) {
+        return null;
+    }
+
+    /** Multiplies an amount for {@link #scaled(int)}, clamped to int range. */
+    static int scaleAmount(int amount, int factor) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, (long) amount * factor));
+    }
+
+    /** Multiplies an amount for {@link #scaled(int)}, clamped to long range. */
+    static long scaleAmount(long amount, int factor) {
+        return factor <= 0 ? 0 : (amount > Long.MAX_VALUE / factor ? Long.MAX_VALUE : amount * factor);
+    }
+
     JsonObject debugInput(Level level, RecipeStorages storages, JsonObject json);
     JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json);
 

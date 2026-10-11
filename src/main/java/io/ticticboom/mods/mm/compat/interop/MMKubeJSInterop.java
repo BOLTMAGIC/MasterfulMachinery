@@ -18,6 +18,7 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -103,6 +104,16 @@ public class MMKubeJSInterop implements IKubeJSInterop {
         }
         var result = MMKubeEvents.RECIPE_STARTED.post(new MachineRecipeEventJS(controller, recipeId.toString()), recipeId);
         return !result.interruptFalse();
+    }
+
+    @Override
+    public ItemStack resolveFlexOutput(ResourceLocation recipeId, String from, ItemStack input, ItemStack templateResult) {
+        if (recipeId == null || !MMKubeEvents.FLEX_OUTPUT.hasListeners()) {
+            return null;
+        }
+        var event = new FlexOutputEventJS(recipeId.toString(), from, input, templateResult);
+        MMKubeEvents.FLEX_OUTPUT.post(event, recipeId);
+        return event.isChanged() ? event.getResult() : null;
     }
 
     @Override

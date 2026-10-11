@@ -22,6 +22,11 @@ public class MekanismPigmentPortIngredient extends MekanismChemicalPortIngredien
     }
 
     @Override
+    public io.ticticboom.mods.mm.port.IPortIngredient scaled(int factor) {
+        return new MekanismPigmentPortIngredient(id, io.ticticboom.mods.mm.port.IPortIngredient.scaleAmount(amount, factor));
+    }
+
+    @Override
     public PigmentStack createStack(Pigment id, long amount) {
         return new PigmentStack(id, amount);
     }

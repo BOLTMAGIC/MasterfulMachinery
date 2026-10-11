@@ -548,12 +548,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (!recipe.conditions().canRun(conditionContext())) {
                 continue;
             }
-            if (!recipe.inputs().canProcess(level, portStorages, new RecipeStateModel())) {
+            // one state for both checks: flex outputs need the item the flex input picked, scaled ones the count
+            RecipeStateModel scanState = new RecipeStateModel();
+            if (!recipe.inputs().canProcess(level, portStorages, scanState)) {
                 // not enough of something; any change to the ports clears this wait
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
                 continue;
             }
-            if (!recipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
+            if (!recipe.outputs().canProcess(level, portStorages, scanState)) {
                 // Do not consume inputs when the output ports are already full.
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
                 continue;
@@ -700,17 +702,21 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (!startedRecipeThisPass && selectedRoundRobinRecipe != null
                 && !activeRecipes.containsKey(selectedRoundRobinRecipe.id())
                 && canStartRecipeGivenParallelRules(selectedRoundRobinRecipe)
-                && selectedRoundRobinRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
-                && selectedRoundRobinRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                && inputsAndOutputsFit(selectedRoundRobinRecipe)) {
             startedRecipeThisPass = startRecipe(selectedRoundRobinRecipe, gameTime, selectedRoundRobinInputItemId);
         }
         if (!startedRecipeThisPass && deferredRecipe != null && !activeRecipes.containsKey(deferredRecipe.id())
                 && canStartRecipeGivenParallelRules(deferredRecipe)
-                && deferredRecipe.inputs().canProcess(level, portStorages, new RecipeStateModel())
-                && deferredRecipe.outputs().canProcess(level, portStorages, new RecipeStateModel())) {
+                && inputsAndOutputsFit(deferredRecipe)) {
             startRecipe(deferredRecipe, gameTime, deferredPrimaryInputItemId);
         }
         nextRecipeCheckIndex = nextPosition % recipeIndex.size();
+    }
+
+    /** Checks inputs and outputs against one state: flex and scaled outputs depend on what the inputs found. */
+    private boolean inputsAndOutputsFit(RecipeModel recipe) {
+        RecipeStateModel probe = new RecipeStateModel();
+        return recipe.inputs().canProcess(level, portStorages, probe) && recipe.outputs().canProcess(level, portStorages, probe);
     }
 
     private int getChecks(int total) {

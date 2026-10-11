@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.NoCountItemRenderer;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
+import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -48,6 +49,11 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         if (requiredNbt != null) {
             stack.setTag(requiredNbt.copy());
         }
+    }
+
+    @Override
+    public IPortIngredient scaled(int factor) {
+        return new SingleItemPortIngredient(itemId, IPortIngredient.scaleAmount(count, factor), requiredNbt, nbtStrong);
     }
 
     @Override

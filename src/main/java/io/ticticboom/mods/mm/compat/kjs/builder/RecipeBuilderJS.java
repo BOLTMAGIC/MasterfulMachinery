@@ -15,6 +15,7 @@ public class RecipeBuilderJS {
     private int ticks;
     private ResourceLocation structureId;
     private boolean parallelProcessing = false;
+    private String mode;
     private final List<ResourceLocation> extraStructureIds = new ArrayList<>();
     private final JsonArray conditions = new JsonArray();
     @Getter
@@ -34,6 +35,51 @@ public class RecipeBuilderJS {
     public RecipeBuilderJS output(JsonObject entry) {
         outputs.add(entry);
         return this;
+    }
+
+    /** "fixed" (default) or "flex": flex recipes take any item matching a flexInput and work out the output. */
+    public RecipeBuilderJS mode(String mode) {
+        this.mode = mode;
+        return this;
+    }
+
+    /**
+     * Flex recipes: consumes any item matching the ingredient (e.g. {type: 'mm:item', tag: 'forge:seeds', count: 1})
+     * and remembers it as {@code as}.
+     */
+    public RecipeBuilderJS flexInput(String as, JsonObject ingredient) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:input/flex");
+        entry.addProperty("as", as);
+        entry.add("ingredient", ingredient);
+        return input(entry);
+    }
+
+    /**
+     * Flex recipes: outputs {@code count} of the item named by the {@code item} template for what flexInput
+     * {@code from} consumed; {@code match} is a regex on the input id path ({ns}, {path}, $1.. in the template).
+     */
+    public RecipeBuilderJS flexOutput(String from, String match, String item, int count) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:output/flex");
+        entry.addProperty("from", from);
+        entry.addProperty("match", match);
+        entry.addProperty("item", item);
+        entry.addProperty("count", count);
+        return output(entry);
+    }
+
+    /**
+     * Counts the items matching the ingredient in the input ports without consuming them (at least the
+     * ingredient's count, at most {@code max}), for outputs with "scale_by": {@code as}.
+     */
+    public RecipeBuilderJS countInput(String as, JsonObject ingredient, int max) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:input/count");
+        entry.addProperty("as", as);
+        entry.addProperty("max", max);
+        entry.add("ingredient", ingredient);
+        return input(entry);
     }
 
     public RecipeBuilderJS ticks(int ticks) {
@@ -148,6 +194,9 @@ public class RecipeBuilderJS {
         json.addProperty("ticks", ticks);
         json.addProperty("structureId", structureId.toString());
         json.addProperty("parallelProcessing", parallelProcessing);
+        if (mode != null) {
+            json.addProperty("mode", mode);
+        }
         var inputArr = new JsonArray();
         for (JsonObject input : inputs) {
             inputArr.add(input);
