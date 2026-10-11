@@ -113,7 +113,14 @@ public class PortTypeStructurePiece extends StructurePiece implements TieredPort
 
     @Override
     public Supplier<List<Block>> createBlocksSupplier() {
-        return () -> blocks;
+        return () -> {
+            // models re-made by a reload or structure sync may not have been through validateSetup yet; the ports
+            // are registered at startup, so the list can always be filled here
+            if (blocks.isEmpty()) {
+                validateSetup(null);
+            }
+            return blocks;
+        };
     }
 
     @Override

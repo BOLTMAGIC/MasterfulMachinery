@@ -101,6 +101,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final int MIN_OUTPUTS = 2;
     private static final int SLOT_STEP = 19;
     private static final int TOOLTIP_MISSING = 10;
+    /** Fitting blocks listed under one missing position. */
+    private static final int TOOLTIP_OPTIONS = 8;
     // recipes with more inputs or outputs than fit show the next few this often
     private static final long CYCLE_MS = 1200;
     private static final boolean JEI = ModList.get().isLoaded("jei");
@@ -676,6 +678,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             }
             lines.add(line);
             lines.add(Component.literal("  ").append(offsetText(m.pos())).withStyle(ChatFormatting.GRAY));
+            // every block that fits, e.g. each tier of a port type
+            int options = Math.min(TOOLTIP_OPTIONS, m.options().size());
+            for (int j = 0; j < options; j++) {
+                lines.add(Component.literal("   - ").append(m.options().get(j)).withStyle(ChatFormatting.DARK_AQUA));
+            }
+            if (m.options().size() > options) {
+                lines.add(Component.literal("   ").append(Component.translatable("gui.mm.controller.missing.more", m.options().size() - options))
+                        .withStyle(ChatFormatting.DARK_GRAY));
+            }
         }
         if (diagnosis.total() > shown) {
             lines.add(Component.translatable("gui.mm.controller.missing.more", diagnosis.total() - shown).withStyle(ChatFormatting.DARK_GRAY));

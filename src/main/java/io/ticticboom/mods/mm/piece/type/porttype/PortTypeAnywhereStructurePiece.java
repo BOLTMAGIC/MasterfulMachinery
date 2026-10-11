@@ -97,7 +97,13 @@ public class PortTypeAnywhereStructurePiece extends StructurePiece implements Ti
 
     @Override
     public Supplier<List<Block>> createBlocksSupplier() {
-        return () -> blocks;
+        return () -> {
+            // see PortTypeStructurePiece#createBlocksSupplier
+            if (blocks.isEmpty()) {
+                validateSetup(null);
+            }
+            return blocks;
+        };
     }
 
     @Override
