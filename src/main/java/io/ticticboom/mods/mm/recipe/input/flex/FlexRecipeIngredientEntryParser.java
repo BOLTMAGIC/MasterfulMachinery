@@ -14,7 +14,8 @@ public class FlexRecipeIngredientEntryParser implements IRecipeIngredientEntryPa
         if (maxTypes < 1) {
             throw new RuntimeException("'max_types' of a flex input entry must be at least 1: " + json);
         }
-        return new FlexRecipeIngredientEntry(parseName(json, "flex input entry"), parseItemIngredient(json, "flex input entry"), maxTypes);
+        double chance = json.has("chance") ? json.get("chance").getAsDouble() : 1.0;
+        return new FlexRecipeIngredientEntry(parseName(json, "flex input entry"), parseItemIngredient(json, "flex input entry"), maxTypes, chance);
     }
 
     /** Reads the entry's "as" name, which outputs refer to. */

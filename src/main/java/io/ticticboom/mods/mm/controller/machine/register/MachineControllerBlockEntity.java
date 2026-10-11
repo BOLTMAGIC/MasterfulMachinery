@@ -928,7 +928,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                     for (var inputEntry : recipe.inputs().inputs()) {
                         try {
                             if (inputEntry instanceof ConsumeRecipeIngredientEntry cre) {
-                                var ingr = cre.getIngredient();
+                                var ingr = cre.ingredientFor(state);
                                 if (cre.isPerTick() && ingr instanceof EnergyPortIngredient epi) {
                                     int total = epi.getAmount();
                                     int ticks = Math.max(1, recipe.ticks());

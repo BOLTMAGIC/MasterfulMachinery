@@ -22,7 +22,7 @@ public class MekanismInfusePortIngredient extends MekanismChemicalPortIngredient
     }
 
     @Override
-    public io.ticticboom.mods.mm.port.IPortIngredient scaled(int factor) {
+    public io.ticticboom.mods.mm.port.IPortIngredient scaled(double factor) {
         return new MekanismInfusePortIngredient(id, io.ticticboom.mods.mm.port.IPortIngredient.scaleAmount(amount, factor));
     }
 

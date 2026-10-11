@@ -26,23 +26,24 @@ public interface IPortIngredient {
     }
 
     /**
-     * A copy of this ingredient with its amount multiplied by {@code factor}, for outputs with "scale_by".
+     * A copy of this ingredient with its amount multiplied by {@code factor}, for outputs with "scale_by" and the
+     * flex recipe cost.
      *
      * @return null if this ingredient can't be scaled
      */
     @Nullable
-    default IPortIngredient scaled(int factor) {
+    default IPortIngredient scaled(double factor) {
         return null;
     }
 
-    /** Multiplies an amount for {@link #scaled(int)}, clamped to int range. */
-    static int scaleAmount(int amount, int factor) {
-        return (int) Math.min(Integer.MAX_VALUE, Math.max(0L, (long) amount * factor));
+    /** Multiplies an amount for {@link #scaled(double)}, rounded up and clamped to int range. */
+    static int scaleAmount(int amount, double factor) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0, Math.ceil(amount * factor)));
     }
 
-    /** Multiplies an amount for {@link #scaled(int)}, clamped to long range. */
-    static long scaleAmount(long amount, int factor) {
-        return factor <= 0 ? 0 : (amount > Long.MAX_VALUE / factor ? Long.MAX_VALUE : amount * factor);
+    /** Multiplies an amount for {@link #scaled(double)}, rounded up and clamped to long range. */
+    static long scaleAmount(long amount, double factor) {
+        return (long) Math.min(Long.MAX_VALUE, Math.max(0, Math.ceil(amount * factor)));
     }
 
     JsonObject debugInput(Level level, RecipeStorages storages, JsonObject json);

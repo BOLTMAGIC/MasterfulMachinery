@@ -25,6 +25,8 @@ public class RecipeStateModel {
     private final Map<String, List<ItemStack>> captures = new HashMap<>();
     /** "mm:input/count" entries: how many matching items were in the input ports, by their "as" name. */
     private final Map<String, Integer> counts = new HashMap<>();
+    /** Flex recipes: what this run's other consumed inputs are multiplied by (see FlexCost), 1 otherwise. */
+    private double costMultiplier = 1;
 
     public void proceedTick() {
         tickProgress++;
@@ -58,6 +60,7 @@ public class RecipeStateModel {
         canFinish = false;
         captures.clear();
         counts.clear();
+        costMultiplier = 1;
     }
 
     public CompoundTag save(CompoundTag tag) {
@@ -73,6 +76,9 @@ public class RecipeStateModel {
                 capturesTag.put(name, list);
             });
             tag.put("captures", capturesTag);
+        }
+        if (costMultiplier != 1) {
+            tag.putDouble("costMultiplier", costMultiplier);
         }
         if (!counts.isEmpty()) {
             var countsTag = new CompoundTag();
@@ -96,6 +102,9 @@ public class RecipeStateModel {
                 stacks.add(ItemStack.of(list.getCompound(i)));
             }
             model.setCaptured(name, stacks);
+        }
+        if (tag.contains("costMultiplier")) {
+            model.setCostMultiplier(tag.getDouble("costMultiplier"));
         }
         var countsTag = tag.getCompound("counts");
         for (String name : countsTag.getAllKeys()) {

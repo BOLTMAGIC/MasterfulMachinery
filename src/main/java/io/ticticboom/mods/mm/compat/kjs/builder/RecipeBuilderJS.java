@@ -1,6 +1,8 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import lombok.Getter;
@@ -16,6 +18,7 @@ public class RecipeBuilderJS {
     private ResourceLocation structureId;
     private boolean parallelProcessing = false;
     private String mode;
+    private JsonElement flexCost;
     private final List<ResourceLocation> extraStructureIds = new ArrayList<>();
     private final JsonArray conditions = new JsonArray();
     @Getter
@@ -53,6 +56,32 @@ public class RecipeBuilderJS {
         entry.addProperty("as", as);
         entry.add("ingredient", ingredient);
         return input(entry);
+    }
+
+    /**
+     * Like {@link #flexInput(String, JsonObject, int)}; {@code chance} is the chance each kind is consumed
+     * (0 keeps the items in the port).
+     */
+    public RecipeBuilderJS flexInput(String as, JsonObject ingredient, int maxTypes, double chance) {
+        var entry = new JsonObject();
+        entry.addProperty("type", "mm:input/flex");
+        entry.addProperty("as", as);
+        entry.addProperty("max_types", maxTypes);
+        entry.addProperty("chance", chance);
+        entry.add("ingredient", ingredient);
+        return input(entry);
+    }
+
+    /** Flex recipes: how the other consumed inputs grow with the kinds per run: 'linear', 'once' or 'table'. */
+    public RecipeBuilderJS flexCost(String mode) {
+        this.flexCost = new JsonPrimitive(mode);
+        return this;
+    }
+
+    /** Flex recipes: e.g. {mode: 'table', table: {'1': 1, '4': 2, '7': 3.5}}. */
+    public RecipeBuilderJS flexCost(JsonObject cost) {
+        this.flexCost = cost;
+        return this;
     }
 
     /** Like {@link #flexInput(String, JsonObject)}, taking at most {@code maxTypes} kinds per run. */
@@ -206,6 +235,9 @@ public class RecipeBuilderJS {
         json.addProperty("parallelProcessing", parallelProcessing);
         if (mode != null) {
             json.addProperty("mode", mode);
+        }
+        if (flexCost != null) {
+            json.add("flex_cost", flexCost);
         }
         var inputArr = new JsonArray();
         for (JsonObject input : inputs) {

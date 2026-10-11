@@ -40,7 +40,7 @@ public class FluidPortIngredient implements IPortIngredient {
     }
 
     @Override
-    public IPortIngredient scaled(int factor) {
+    public IPortIngredient scaled(double factor) {
         return new FluidPortIngredient(fluidId, IPortIngredient.scaleAmount(amount, factor));
     }
 

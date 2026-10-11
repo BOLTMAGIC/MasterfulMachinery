@@ -23,7 +23,7 @@ public class MekanismGasPortIngredient extends MekanismChemicalPortIngredient<Ga
     }
 
     @Override
-    public io.ticticboom.mods.mm.port.IPortIngredient scaled(int factor) {
+    public io.ticticboom.mods.mm.port.IPortIngredient scaled(double factor) {
         return new MekanismGasPortIngredient(id, io.ticticboom.mods.mm.port.IPortIngredient.scaleAmount(amount, factor));
     }
 

@@ -30,7 +30,7 @@ public class EnergyPortIngredient implements IPortIngredient {
     public int getAmount() { return this.amount; }
 
     @Override
-    public IPortIngredient scaled(int factor) {
+    public IPortIngredient scaled(double factor) {
         return new EnergyPortIngredient(IPortIngredient.scaleAmount(amount, factor));
     }
 

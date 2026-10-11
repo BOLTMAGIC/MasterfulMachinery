@@ -4,7 +4,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.config.MMConfig;
+import io.ticticboom.mods.mm.recipe.flex.FlexCost;
 import io.ticticboom.mods.mm.recipe.flex.RecipeMode;
+import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
@@ -14,7 +16,10 @@ import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
+import org.jetbrains.annotations.Nullable;
+
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -44,7 +49,7 @@ public record RecipeModel(
                 (j) -> RecipeConditions.parse(j.getAsJsonArray("conditions")));
         var parallelProcessing = json.has("parallelProcessing") && json.get("parallelProcessing").isJsonPrimitive() ? json.get("parallelProcessing").getAsBoolean() : MMConfig.PARALLEL_PROCESSING_DEFAULT;
         try {
-            linkEntries(id, RecipeMode.parse(json), inputs, outputs);
+            linkEntries(id, RecipeMode.parse(json), FlexCost.parse(json), inputs, outputs);
         } catch (RuntimeException e) {
             throw new RuntimeException("MM recipe " + id + ": " + e.getMessage(), e);
         }
@@ -54,7 +59,10 @@ public record RecipeModel(
     /**
      * Checks the mode and the names that entries refer to, and connects flex outputs to their flex input.
      */
-    private static void linkEntries(ResourceLocation id, RecipeMode mode, RecipeInputs inputs, RecipeOutputs outputs) {
+    private static void linkEntries(ResourceLocation id, RecipeMode mode, @Nullable FlexCost cost, RecipeInputs inputs, RecipeOutputs outputs) {
+        // count, then flex inputs first: the others are paid per run with the cost multiplier the flex inputs set
+        inputs.inputs().sort(Comparator.comparingInt((IRecipeIngredientEntry input) -> input instanceof CountRecipeIngredientEntry ? 0
+                : input instanceof FlexRecipeIngredientEntry ? 1 : 2));
         Map<String, FlexRecipeIngredientEntry> flexInputs = new HashMap<>();
         Set<String> counted = new HashSet<>();
         for (var input : inputs.inputs()) {
@@ -65,11 +73,15 @@ public record RecipeModel(
                 if (flexInputs.put(flex.getName(), flex) != null || counted.contains(flex.getName())) {
                     throw new RuntimeException("two inputs are named '" + flex.getName() + "'");
                 }
+                flex.bindCost(cost);
             } else if (input instanceof CountRecipeIngredientEntry count) {
                 if (!counted.add(count.getName()) || flexInputs.containsKey(count.getName())) {
                     throw new RuntimeException("two inputs are named '" + count.getName() + "'");
                 }
             }
+        }
+        if (cost != null && mode != RecipeMode.FLEX) {
+            throw new RuntimeException("\"flex_cost\" needs \"mode\": \"flex\" on the recipe");
         }
         if (mode == RecipeMode.FLEX && flexInputs.isEmpty()) {
             throw new RuntimeException("a flex recipe needs at least one mm:input/flex input");
@@ -90,8 +102,8 @@ public record RecipeModel(
             } else if (output instanceof SimpleRecipeOutputEntry simple) {
                 scaleBy = simple.getScaleBy();
             }
-            if (scaleBy != null && !counted.contains(scaleBy)) {
-                throw new RuntimeException("output 'scale_by' is '" + scaleBy + "' but no mm:input/count has that 'as' name");
+            if (scaleBy != null && !counted.contains(scaleBy) && !flexInputs.containsKey(scaleBy)) {
+                throw new RuntimeException("output 'scale_by' is '" + scaleBy + "' but no mm:input/count or mm:input/flex has that 'as' name");
             }
         }
     }

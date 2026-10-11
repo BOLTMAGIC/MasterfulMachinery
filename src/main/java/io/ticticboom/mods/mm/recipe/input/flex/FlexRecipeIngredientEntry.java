@@ -11,7 +11,9 @@ import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.flex.FlexCost;
 import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
+import io.ticticboom.mods.mm.util.ChanceUtils;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import lombok.Getter;
@@ -36,6 +38,9 @@ import java.util.function.Predicate;
  * tag), "count" of each, and remembers the kinds under its "as" name so "mm:output/flex" entries make one output
  * per kind. Mixed seeds go in together and come out together. Items whose output doesn't exist stay in the port,
  * and kinds whose outputs wouldn't fit next to the others wait for a later run. "max_types" caps the kinds per run.
+ * "chance" (default 1) is the chance each kind is consumed; 0 keeps the items in the port (like a catalyst).
+ * The number of kinds is stored under the "as" name (usable by "scale_by") and sets the run's cost multiplier for
+ * the recipe's other consumed inputs (see FlexCost).
  */
 public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
@@ -44,6 +49,10 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Getter
     private final BaseItemPortIngredient ingredient;
     private final int maxTypes;
+    private final double chance;
+    /** The recipe's "flex_cost", or null for the config default. */
+    @Nullable
+    private FlexCost cost;
     private final List<FlexRecipeOutputEntry> outputs = new ArrayList<>();
 
     private volatile List<ItemStack> accepted;
@@ -51,10 +60,36 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Getter
     private IRecipeSlotBuilder lastJeiSlot;
 
-    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes) {
+    public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes, double chance) {
         this.name = name;
         this.ingredient = ingredient;
         this.maxTypes = maxTypes;
+        this.chance = chance;
+    }
+
+    public void bindCost(@Nullable FlexCost cost) {
+        this.cost = cost;
+    }
+
+    /** Stores the kinds this run takes, their number, and the cost multiplier that follows from it. */
+    private void setPicked(RecipeStateModel state, List<ItemStack> picked) {
+        state.setCaptured(name, picked);
+        state.setCount(name, picked.size());
+        state.setCostMultiplier((cost == null ? FlexCost.global() : cost).multiplier(picked.size()));
+    }
+
+    /**
+     * Takes the last kind out of this run, when the recipe can't pay its other inputs for all of them.
+     *
+     * @return false if there was at most one kind left
+     */
+    public boolean dropLastKind(RecipeStateModel state) {
+        var picked = state.getCaptured(name);
+        if (picked.size() <= 1) {
+            return false;
+        }
+        setPicked(state, picked.subList(0, picked.size() - 1));
+        return true;
     }
 
     public void bindOutput(FlexRecipeOutputEntry output) {
@@ -136,7 +171,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         var picked = pick(level, storages, state);
-        state.setCaptured(name, picked);
+        setPicked(state, picked);
         return !picked.isEmpty();
     }
 
@@ -145,10 +180,13 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         var picked = state.getCaptured(name);
         if (picked.isEmpty()) {
             picked = pick(level, storages, state);
-            state.setCaptured(name, picked);
+            setPicked(state, picked);
         }
         var itemStorages = storages.getInputStorages(ItemPortStorage.class);
         for (ItemStack kind : picked) {
+            if (chance <= 0 || !ChanceUtils.shouldProceed(chance)) {
+                continue;
+            }
             int remaining = ingredient.getCount();
             Predicate<ItemStack> same = exactly(kind);
             for (ItemPortStorage storage : itemStorages) {
@@ -196,7 +234,18 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         rSlot.addItemStacks(acceptedExamples());
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
         rSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
-        rSlot.addRichTooltipCallback((v, list) -> list.add(Component.translatable("jei.mm.recipe.flex_input").withStyle(ChatFormatting.DARK_AQUA)));
+        if (chance <= 0) {
+            slot.setBadgeNotUsed();
+            rSlot.setOverlay(new SlotBadgeDrawable(count, true), 0, 0);
+        }
+        rSlot.addRichTooltipCallback((v, list) -> {
+            list.add(Component.translatable("jei.mm.recipe.flex_input").withStyle(ChatFormatting.DARK_AQUA));
+            if (chance <= 0) {
+                list.add(Component.translatable("jei.mm.recipe.not_consumed").withStyle(ChatFormatting.DARK_AQUA));
+            } else if (chance < 1) {
+                list.add(Component.literal(String.format("%.2f", chance * 100) + "% Chance of Consumption").withStyle(ChatFormatting.DARK_AQUA));
+            }
+        });
         lastJeiSlot = rSlot;
     }
 
@@ -204,6 +253,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     public JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel state, JsonObject json) {
         json.addProperty("as", name);
         json.addProperty("maxTypes", maxTypes);
+        json.addProperty("chance", chance);
         json.addProperty("captured", String.valueOf(state.getCaptured(name)));
         json.add("ingredient", ingredient.debugInput(level, storages, new JsonObject()));
         return json;

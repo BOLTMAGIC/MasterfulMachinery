@@ -56,7 +56,7 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         if (scaleBy == null) {
             return ingredient;
         }
-        return scaled.computeIfAbsent(state.getCount(scaleBy), ingredient::scaled);
+        return scaled.computeIfAbsent(state.getCount(scaleBy), f -> ingredient.scaled(f));
     }
 
     @Override

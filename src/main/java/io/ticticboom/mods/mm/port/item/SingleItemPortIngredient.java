@@ -52,7 +52,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     }
 
     @Override
-    public IPortIngredient scaled(int factor) {
+    public IPortIngredient scaled(double factor) {
         return new SingleItemPortIngredient(itemId, IPortIngredient.scaleAmount(count, factor), requiredNbt, nbtStrong);
     }
 

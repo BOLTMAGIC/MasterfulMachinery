@@ -18,6 +18,8 @@
   "jei.mm.recipe.count_input": "Harcanmaz: \"%s\" olarak sayılır",
   "jei.mm.recipe.count_input_max": "En çok %s sayılır",
   "jei.mm.recipe.scaled_by": "x \"%s\" sayısı",
+  "jei.mm.recipe.flex_cost": "Çalışma başına: alınan tür sayısına göre çarpılır (mm-common.toml [flex] ya da tarifin flex_cost'u)",
+  "jei.mm.recipe.not_consumed": "Harcanmaz: portta kalır",
   "jei.mm.recipe.weighted_output": "%%%s ihtimal (bu çıktılardan biri)",
   "jei.mm.recipe.weighted_nothing": "%%%s ihtimalle hiçbir şey çıkmaz",
   "message.mm.debug_tool.saved_to": "Kaydedildi: ",
