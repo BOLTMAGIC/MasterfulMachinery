@@ -46,7 +46,13 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     private final int height;
 
     @Override
+    @SuppressWarnings("removal")
     public ResourceLocation getRegistryName(RecipeModel recipe) {
+        if (recipe.config() != null && recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            // JEI page copies of a flex recipe need their own names
+            return new ResourceLocation(recipe.id().getNamespace(),
+                    recipe.id().getPath() + "/jei_page_" + recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt());
+        }
         return recipe.id();
     }
 
@@ -114,6 +120,28 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         recipe.inputSlots().addAll(outGrid.getSlots());
     }
 
+    /** "Tier 5" (and "1/2") above the arrow of a flex recipe's JEI page. */
+    private static void drawFlexPageLabel(RecipeModel recipe, GuiGraphics gfx) {
+        if (recipe.config() == null || !recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            return;
+        }
+        int tier = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_TIER).getAsInt();
+        String part = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_PART).getAsString();
+        Component label = tier >= 0
+                ? Component.translatable("jei.mm.recipe.flex_page_tier", tier)
+                : Component.translatable("jei.mm.recipe.flex_page", recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt() + 1);
+        if (!part.isEmpty()) {
+            label = label.copy().append(" " + part);
+        }
+        var font = Minecraft.getInstance().font;
+        var pose = gfx.pose();
+        pose.pushPose();
+        pose.translate(82, 2, 0);
+        pose.scale(0.6f, 0.6f, 1);
+        gfx.drawString(font, label, -font.width(label) / 2, 0, 0x404040, false);
+        pose.popPose();
+    }
+
     public static int rowsFor(int slotCount) {
         return (slotCount + COLUMNS - 1) / COLUMNS;
     }
@@ -134,6 +162,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics gfx, double mouseX, double mouseY) {
         bgProgressBar.draw(gfx, 70, 12);
         fgProgressBar.draw(gfx, 70, 12);
+        drawFlexPageLabel(recipe, gfx);
         var seconds = (double) recipe.ticks() / 20;
         var fmt = String.format("%.2f", seconds) + "s";
 

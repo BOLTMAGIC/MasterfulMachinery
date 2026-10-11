@@ -16,6 +16,8 @@
   "jei.mm.recipe.flex_input": "Bunlardan karışık olarak: porttaki her tür aynı çalışmada işlenir",
   "jei.mm.recipe.flex_output": "Her girdi türü için o eşyadan üretilir",
   "jei.mm.recipe.flex_match": "Her girdi türü için gerekir: ona uyan eşya",
+  "jei.mm.recipe.flex_page_tier": "Tier %s",
+  "jei.mm.recipe.flex_page": "Sayfa %s",
   "jei.mm.recipe.count_input": "Harcanmaz: \"%s\" olarak sayılır",
   "jei.mm.recipe.count_input_max": "En çok %s sayılır",
   "jei.mm.recipe.scaled_by": "x \"%s\" sayısı",

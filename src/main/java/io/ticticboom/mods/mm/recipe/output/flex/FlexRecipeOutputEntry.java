@@ -193,13 +193,10 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
 
-    /** The output for each item the flex input accepts, in the same order (JEI and the controller screen). */
-    private List<ItemStack> exampleOutputs() {
+    /** The output for each of these input items, in the same order (JEI and the controller screen). */
+    private List<ItemStack> exampleOutputs(List<ItemStack> inputs) {
         var outputs = new ArrayList<ItemStack>();
-        if (input == null) {
-            return outputs;
-        }
-        for (ItemStack example : input.acceptedExamples()) {
+        for (ItemStack example : inputs) {
             outputs.add(resolve(null, example).copyWithCount(count));
         }
         return outputs;
@@ -211,7 +208,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         if (cached != null) {
             return cached;
         }
-        var outputs = exampleOutputs();
+        var outputs = input == null ? List.<ItemStack>of() : exampleOutputs(input.acceptedExamples());
         if (outputs.isEmpty()) {
             return List.of();
         }
@@ -224,7 +221,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
-        var outputs = exampleOutputs();
+        var outputs = input == null ? List.<ItemStack>of() : exampleOutputs(input.examplesFor(model));
         if (outputs.isEmpty()) {
             return;
         }

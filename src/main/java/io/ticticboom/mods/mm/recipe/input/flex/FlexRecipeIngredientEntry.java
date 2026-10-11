@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Predicate;
 
 /**
@@ -281,6 +282,55 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
 
+    /** JEI shows at most this many ingredients in one slot; longer lists are split into pages. */
+    public static final int JEI_SLOT_LIMIT = 100;
+    /** Config keys of a JEI page copy of a recipe (see {@link #jeiPages()} and FlexJeiPages). */
+    public static final String JEI_PAGE = "_jeiPage";
+    public static final String JEI_PAGE_TIER = "_jeiPageTier";
+    public static final String JEI_PAGE_PART = "_jeiPagePart";
+
+    /**
+     * One JEI page of this entry's accepted items.
+     *
+     * @param tier Mystical Agriculture crop tier of the items, or -1
+     * @param part "2/3" when a tier (or the whole list) needed several pages, else ""
+     */
+    public record JeiPage(int tier, String part, List<ItemStack> items) {
+    }
+
+    /**
+     * The accepted items split for JEI: with Mystical Agriculture one page per crop tier (lowest first), and any
+     * group longer than {@link #JEI_SLOT_LIMIT} in parts of that size. Items keep their tag order.
+     */
+    public List<JeiPage> jeiPages() {
+        var groups = new TreeMap<Integer, List<ItemStack>>();
+        for (ItemStack item : acceptedExamples()) {
+            MACrops.Info crop = MACrops.forSeeds(item.getItem());
+            groups.computeIfAbsent(crop == null ? Integer.MAX_VALUE : crop.tier(), k -> new ArrayList<>()).add(item);
+        }
+        var pages = new ArrayList<JeiPage>();
+        for (var group : groups.entrySet()) {
+            List<ItemStack> items = group.getValue();
+            int tier = group.getKey() == Integer.MAX_VALUE ? -1 : group.getKey();
+            int parts = (items.size() + JEI_SLOT_LIMIT - 1) / JEI_SLOT_LIMIT;
+            for (int i = 0; i < parts; i++) {
+                var chunk = items.subList(i * JEI_SLOT_LIMIT, Math.min(items.size(), (i + 1) * JEI_SLOT_LIMIT));
+                pages.add(new JeiPage(tier, parts > 1 ? (i + 1) + "/" + parts : "", List.copyOf(chunk)));
+            }
+        }
+        return pages;
+    }
+
+    /** The items to list in JEI for this recipe: its page's items for a JEI page copy, else all accepted items. */
+    public List<ItemStack> examplesFor(RecipeModel model) {
+        if (model.config() == null || !model.config().has(JEI_PAGE)) {
+            return acceptedExamples();
+        }
+        int page = model.config().get(JEI_PAGE).getAsInt();
+        var pages = jeiPages();
+        return page >= 0 && page < pages.size() ? pages.get(page).items() : List.of();
+    }
+
     /** The items this entry accepts with no world around (JEI): matching items whose outputs all exist. */
     public List<ItemStack> acceptedExamples() {
         var cached = accepted;
@@ -310,7 +360,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         if (count > 1) {
             rSlot.setOverlay(new SlotBadgeDrawable(count, false), 0, 0);
         }
-        rSlot.addItemStacks(acceptedExamples());
+        rSlot.addItemStacks(examplesFor(model));
         jeiGroup.clear();
         jeiGroup.add(rSlot);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);

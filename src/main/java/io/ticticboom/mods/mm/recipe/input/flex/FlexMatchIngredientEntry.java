@@ -102,7 +102,7 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
             return;
         }
         var stacks = new ArrayList<ItemStack>();
-        for (ItemStack kind : input.acceptedExamples()) {
+        for (ItemStack kind : input.examplesFor(model)) {
             stacks.add(requiredFor(kind).copyWithCount(count));
         }
         if (stacks.isEmpty()) {
