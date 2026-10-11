@@ -1,8 +1,6 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonPrimitive;
 import dev.latvian.mods.rhino.util.HideFromJS;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.model.IdList;
@@ -51,15 +49,13 @@ public class StructureBuilderJS {
         return this;
     }
 
-    /** GeckoLib model for this structure; replaces the controller's. See ControllerBuilderJS#geoModel. */
-    public StructureBuilderJS geoModel(JsonObject geoModel) {
+    /**
+     * GeckoLib model for this structure; replaces the controller's. See ControllerBuilderJS#geoModel.
+     * 'none': no GeckoLib model while this structure is formed, even if the controller has one.
+     * One JsonElement parameter on purpose: with JsonObject + String overloads Rhino can't pick for a JS object.
+     */
+    public StructureBuilderJS geoModel(JsonElement geoModel) {
         this.geoModel = geoModel;
-        return this;
-    }
-
-    /** 'none': no GeckoLib model while this structure is formed, even if the controller has one. */
-    public StructureBuilderJS geoModel(String none) {
-        this.geoModel = new JsonPrimitive(none);
         return this;
     }
 
