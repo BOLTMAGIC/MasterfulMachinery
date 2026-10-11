@@ -29,8 +29,9 @@ public record StructureDiagnosis(int total, List<Missing> missing) {
      * @param icon     item of the (first) block that belongs there, empty if there is none
      * @param required what belongs there
      * @param found    the block there now, or null if the position is empty
+     * @param options  every block that fits there when there is more than one (e.g. each port tier), else empty
      */
-    public record Missing(BlockPos pos, ItemStack icon, Component required, @Nullable Component found) {
+    public record Missing(BlockPos pos, ItemStack icon, Component required, @Nullable Component found, List<Component> options) {
     }
 
     /**
@@ -60,8 +61,9 @@ public record StructureDiagnosis(int total, List<Missing> missing) {
             } else {
                 required = Component.translatable("gui.mm.controller.missing.one_of", blocks.get(0).getName(), blocks.size() - 1);
             }
+            List<Component> options = blocks.size() > 1 ? blocks.stream().map(b -> (Component) b.getName()).toList() : List.of();
             var state = level.getBlockState(pos);
-            result.add(new Missing(pos, icon, required, state.isAir() ? null : state.getBlock().getName()));
+            result.add(new Missing(pos, icon, required, state.isAir() ? null : state.getBlock().getName(), options));
         }
         return new StructureDiagnosis(best.size(), result);
     }
@@ -73,13 +75,14 @@ public record StructureDiagnosis(int total, List<Missing> missing) {
             b.writeItem(m.icon());
             b.writeComponent(m.required());
             b.writeNullable(m.found(), FriendlyByteBuf::writeComponent);
+            b.writeCollection(m.options(), FriendlyByteBuf::writeComponent);
         });
     }
 
     public static StructureDiagnosis read(FriendlyByteBuf buf) {
         int total = buf.readVarInt();
         List<Missing> missing = buf.readList(b -> new Missing(b.readBlockPos(), b.readItem(), b.readComponent(),
-                b.readNullable(FriendlyByteBuf::readComponent)));
+                b.readNullable(FriendlyByteBuf::readComponent), b.readList(FriendlyByteBuf::readComponent)));
         return new StructureDiagnosis(total, missing);
     }
 }
