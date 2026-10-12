@@ -32,8 +32,11 @@ public class MMNetwork {
 
     public static void init() {
         int index = 0;
-        INSTANCE.registerMessage(index++, StructureSyncPkt.class, StructureSyncPkt::encode, StructureSyncPkt::decode, StructureSyncPkt::handle);
-        INSTANCE.registerMessage(index++, ProcessesSyncPkt.class, ProcessesSyncPkt::encode, ProcessesSyncPkt::decode, ProcessesSyncPkt::handle);
+        // server -> client only: a client must never be able to replace the server's structures or recipes
+        INSTANCE.registerMessage(index++, StructureSyncPkt.class, StructureSyncPkt::encode, StructureSyncPkt::decode,
+                StructureSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, ProcessesSyncPkt.class, ProcessesSyncPkt::encode, ProcessesSyncPkt::decode,
+                ProcessesSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt.class,
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::encode,
                 io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt::decode,

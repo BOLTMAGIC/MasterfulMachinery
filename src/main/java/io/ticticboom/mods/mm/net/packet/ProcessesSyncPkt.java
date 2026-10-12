@@ -46,7 +46,11 @@ public class ProcessesSyncPkt {
     }
 
     public static void handle(ProcessesSyncPkt packet, Supplier<NetworkEvent.Context> context) {
-        handler(packet);
+        // the singleplayer/LAN host already shares the integrated server's recipe map
+        if (!context.get().getNetworkManager().isMemoryConnection()) {
+            context.get().enqueueWork(() -> handler(packet));
+        }
+        context.get().setPacketHandled(true);
     }
 
     public static void handler(ProcessesSyncPkt packet) {
