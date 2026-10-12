@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.8] - 2026-10-12
+
+### INFO:
+**Version 0.1.35.8** JEI Server Fix
+
+**Special Thanks:**
+- **Knozyy**
+
+### Fixed
+
+#### #86 – JEI Dedicated Server Bug Fix (CRITICAL)
+- **Problem**: Recipes and multiblock structures didn't show in JEI on dedicated servers (only worked after opening singleplayer first).
+- **Root cause**: `StructureSyncPkt` and `ProcessesSyncPkt` sent from `PlayerLoggedInEvent` (after JEI initialization); static maps remained empty on dedicated servers.
+- **Solution**: Send both packets from `OnDatapackSyncEvent` (before recipe/tag packets); fixes now apply on `/reload` as well.
+- **Packet handling**: moved to main thread with `enqueueWork`, registered as `PLAY_TO_CLIENT`, skip on memory connections.
+- **JEI plugin fix**: `MMJeiPlugin.recipeCategories` now cleared at start of `registerCategories` (was static and accumulated categories on reload).
+
+
 ## [0.1.35.7] - 2026-10-11
 
 ### INFO:
@@ -75,11 +93,10 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ### Fixed
 
 #### #78 – Structure Builder: Anchor & Preview Management
-- **Anchor persistence fix**: anchor cleared once server accepts build job; preserved when build is rejected.
-- **Preview outline**: hidden when every planned block is already present and no obstructions exist.
-- **Post-build preview**: completed structures retain their preview outline; dismantled structures show saved anchor bringing back old preview on re-anchor.
-- **Refresh interval**: existing preview refresh maintained even when nothing to draw.
-
+- **Anchor cleared** after successful build; retained on rejection.
+- **Preview outline hidden** when all planned blocks present and no obstructions.
+- **Completed structures** keep their preview outline.
+- Existing preview refresh interval maintained even with nothing to draw.
 
 ## [0.1.35.4] - 2026-09-29
 ### INFO:
