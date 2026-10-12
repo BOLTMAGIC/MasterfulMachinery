@@ -47,7 +47,11 @@ public class StructureSyncPkt {
     }
 
     public static void handle(StructureSyncPkt packet, Supplier<NetworkEvent.Context> context) {
-        handler(packet);
+        // the singleplayer/LAN host already shares the integrated server's structure map
+        if (!context.get().getNetworkManager().isMemoryConnection()) {
+            context.get().enqueueWork(() -> handler(packet));
+        }
+        context.get().setPacketHandled(true);
     }
 
     public static void handler(StructureSyncPkt packet) {

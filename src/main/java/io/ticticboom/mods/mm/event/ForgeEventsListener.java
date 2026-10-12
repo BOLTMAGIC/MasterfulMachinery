@@ -2,16 +2,12 @@ package io.ticticboom.mods.mm.event;
 
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureLoader;
 import io.ticticboom.mods.mm.net.MMNetwork;
-import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
-import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.network.PacketDistributor;
@@ -31,11 +27,7 @@ public class ForgeEventsListener {
         // clear any stored corners on the saver item when a player joins (world reload/start safety)
         if (event.getEntity() instanceof ServerPlayer sp) clearSavedCorners(sp);
 
-        var structurePacket = new StructureSyncPkt(StructureManager.STRUCTURES);
-        MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())), structurePacket);
-        
-        var processPacket  = new ProcessesSyncPkt(MachineRecipeManager.RECIPES);
-        MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())), processPacket);
+        // structures and recipes are synced in DatapackSyncHandler, before JEI builds its recipe list
         MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())),
                 new io.ticticboom.mods.mm.net.packet.MMConfigSyncPkt(io.ticticboom.mods.mm.config.MMConfigOptions.serverSnapshot()));
     }
