@@ -10,6 +10,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -47,6 +48,7 @@ public final class StructureCategories extends SavedData {
     public static Snapshot clientSnapshot() { return client; }
 
     public static void receive(List<String> names, Map<String, String> assignments) {
+        //noinspection NonAtomicOperationOnVolatileField
         client = new Snapshot(List.copyOf(names), Map.copyOf(assignments), client.revision() + 1);
     }
 
@@ -69,7 +71,8 @@ public final class StructureCategories extends SavedData {
                 case "crazy_ae2" -> "Crazy AE2";
                 case "woot" -> "Woot";
                 case "" -> structure.groupName();
-                default -> BuildableStructure.fallbackName(new ResourceLocation(structure.id().getNamespace(), folder));
+                default -> //noinspection removal
+                        BuildableStructure.fallbackName(new ResourceLocation(structure.id().getNamespace(), folder));
             };
             importDefault(key(structure.id(), true), category);
         }
@@ -120,7 +123,7 @@ public final class StructureCategories extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
         ListTag names = new ListTag();
         for (String name : categories) names.add(StringTag.valueOf(name));
         tag.put("Categories", names);
@@ -171,6 +174,7 @@ public final class StructureCategories extends SavedData {
 
     private static boolean validName(@Nullable String name) {
         if (name == null || name.isBlank() || name.length() > 32 || !name.equals(name.strip())) return false;
+        //noinspection UnnecessaryUnicodeEscape
         return name.chars().noneMatch(c -> Character.isISOControl(c) || c == '\u00a7');
     }
 
