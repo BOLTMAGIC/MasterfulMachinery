@@ -363,17 +363,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         if (count > 1) {
             rSlot.setOverlay(new SlotBadgeDrawable(count, false), 0, 0);
         }
-        var examples = examplesFor(model);
-        if (maxTypes > 1 && !examples.isEmpty()) {
-            var firstItem = examples.get(0);
-            var repeated = new ArrayList<ItemStack>();
-            for (int i = 0; i < maxTypes; i++) {
-                repeated.add(firstItem.copy());
-            }
-            rSlot.addItemStacks(repeated);
-        } else {
-            rSlot.addItemStacks(examples);
-        }
+        rSlot.addItemStacks(examplesFor(model));
         jeiGroup.clear();
         jeiGroup.add(rSlot);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
