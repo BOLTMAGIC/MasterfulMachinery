@@ -73,6 +73,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private final ControllerModel model;
     private final RegistryGroupHolder groupHolder;
+    @Getter
     private final ResourceLocation controllerId;
 
     public MachineControllerBlockEntity(ControllerModel model, RegistryGroupHolder groupHolder, BlockPos pos, BlockState state) {
@@ -89,14 +90,19 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Nullable
     private Object geoAnimatable;
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
+    @Getter
     private int comparatorSignal = 0;
     private RecipeStorages portStorages = null;
     // the port block entities portStorages was gathered from: a chunk unload + load replaces them with new objects
     private List<BlockEntity> portBlockEntities = List.of();
     // chunks the formed structure covers (minX, minZ, maxX, maxZ), null until its ports are gathered
-    @Nullable
-    private int[] structureChunks = null;
+    private int @Nullable [] structureChunks = null;
+    /**
+     * -- GETTER --
+     * Whether the structure was formed at the last validation; also known on the client.
+     */
     // synced to clients in the update tag
+    @Getter
     private boolean isFormed = false;
     @Getter
     private RecipeModel currentRecipe;
@@ -108,10 +114,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Nullable
     private RecipeSelectionMode recipeModeOverride = null;
     /** Assemble: preferred port tier per port type, and which structure to build (null = first). */
+    @Getter
     private final TierPrefs assemblyTiers = new TierPrefs();
     @Nullable
     private ResourceLocation assemblyStructureId = null;
     // set from the controller screen: this machine plays no working sound (its particles stay)
+    @Getter
     private boolean soundMuted = false;
     // name given by a player (screen, or a named controller item); null = the machine's name
     @Nullable
@@ -195,17 +203,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return 1 + (int) Math.round(Mth.clamp(percent, 0, 100) / 100 * 14);
     }
 
-    /** Neighbours (comparators) are only told when the signal actually changes. */
+    /** Neighbors (comparators) are only told when the signal actually changes. */
     private void updateComparatorSignal() {
         int next = computeComparatorSignal();
         if (next != comparatorSignal) {
             comparatorSignal = next;
+            assert level != null;
             level.updateNeighbourForOutputSignal(getBlockPos(), getBlockState().getBlock());
         }
-    }
-
-    public int getComparatorSignal() {
-        return comparatorSignal;
     }
 
     /**
@@ -272,7 +277,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     /**
      * Mirrors the machine's state into the block state, which picks the controller's model and screen color.
-     * Only clients are notified (no neighbour or shape updates), and only when the state actually changes.
+     * Only clients are notified (no neighbor or shape updates), and only when the state actually changes.
      */
     private void updateControllerState() {
         if (level == null) return;
@@ -327,8 +332,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
      * @return the controller's own screen colors (unformedColor / idleColor / workingColor from KubeJS or JSON)
      * for its ports' status lights, -1 where it has none; null when it sets no color at all
      */
-    @Nullable
-    private int[] machineColors() {
+    private int @Nullable [] machineColors() {
         int[] colors = new int[ControllerState.values().length];
         boolean any = false;
         for (ControllerState s : ControllerState.values()) {
@@ -339,7 +343,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return any ? colors : null;
     }
 
-    private void setPortColors(BlockPos portPos, @Nullable int[] colors) {
+    private void setPortColors(BlockPos portPos, int @Nullable [] colors) {
         if (level != null && level.isLoaded(portPos) && level.getBlockEntity(portPos) instanceof AbstractPortBlockEntity port) {
             port.setMachineColors(colors);
         }
@@ -871,7 +875,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     /**
-     * @return false if a KubeJS script cancelled the start (MMEvents.recipeStarted)
+     * @return false if a KubeJS script canceled the start (MMEvents.recipeStarted)
      */
      private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
          if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
@@ -1008,14 +1012,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                             if (inputEntry instanceof ConsumeRecipeIngredientEntry cre) {
                                 var ingr = cre.ingredientFor(state);
                                 if (cre.isPerTick() && ingr instanceof EnergyPortIngredient epi) {
-                                    int total = epi.getAmount();
-                                    int ticks = Math.max(1, recipe.ticks());
-                                    int base = total / ticks;
-                                    int rem = total % ticks;
-                                    int tickIndex = state.getTickProgress();
-                                    int toExtract = base + ((tickIndex == ticks - 1) ? rem : 0);
+                                    long total = epi.amount();
+                                    long ticks = Math.max(1, recipe.ticks());
+                                    long base = total / ticks;
+                                    long rem = total % ticks;
+                                    long tickIndex = state.getTickProgress();
+                                    long toExtract = base + ((tickIndex == ticks - 1) ? rem : 0);
                                      if (toExtract > 0 && portStorages != null) {
-                                         int remaining = toExtract;
+                                         long remaining = toExtract;
                                          var inputStorages = portStorages.getInputStorages(EnergyPortStorage.class);
                                          for (EnergyPortStorage storage : inputStorages) {
                                              var extracted = storage.internalExtract(remaining, false);
@@ -1244,11 +1248,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         assemblyStructureId = tag.contains("AssemblyStructure") ? ResourceLocation.tryParse(tag.getString("AssemblyStructure")) : null;
     }
 
-    /** Whether the structure was formed at the last validation; also known on the client. */
-    public boolean isFormed() {
-        return isFormed;
-    }
-
     @Override
     public @NotNull CompoundTag getUpdateTag() {
         var tag = new CompoundTag();
@@ -1334,10 +1333,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         storageCache.isValid = false;
         setChanged();
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
-    }
-
-    public boolean isSoundMuted() {
-        return soundMuted;
     }
 
     public void setSoundMuted(boolean muted) {
@@ -1473,14 +1468,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }, "mm-controller-validate-delayed");
         t.setDaemon(true);
         return t;
-    }
-
-    public ResourceLocation getControllerId() {
-        return controllerId;
-    }
-
-    public TierPrefs getAssemblyTiers() {
-        return assemblyTiers;
     }
 
     /** Stores a tier a client chose; ignores keys this machine does not have and clamps the tier to what exists. */

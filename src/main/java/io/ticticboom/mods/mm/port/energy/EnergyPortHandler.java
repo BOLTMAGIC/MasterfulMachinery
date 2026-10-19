@@ -1,7 +1,6 @@
 package io.ticticboom.mods.mm.port.energy;
 
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraftforge.energy.EnergyStorage;
 
@@ -13,7 +12,25 @@ public class EnergyPortHandler extends EnergyStorage {
         this.changed = changed;
     }
 
-    public int unboundedReceiveEnergy(int maxReceive, boolean simulate) {
+    public long unboundedReceiveEnergy(long maxReceive, boolean simulate) {
+        // Handle large amounts by extracting in chunks to avoid int overflow
+        if (maxReceive <= Integer.MAX_VALUE) {
+            return unboundedReceiveEnergyInt((int) maxReceive, simulate);
+        }
+
+        long received = 0;
+        long remaining = maxReceive;
+        while (remaining > 0) {
+            int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
+            int result = unboundedReceiveEnergyInt(chunk, simulate);
+            received += result;
+            if (result < chunk) break; // Can't receive more
+            remaining -= result;
+        }
+        return received;
+    }
+
+    private int unboundedReceiveEnergyInt(int maxReceive, boolean simulate) {
         // room left, not energy + maxReceive: that sum overflows int near an Integer.MAX_VALUE capacity
         int canReceive = Math.max(0, Math.min(this.capacity - this.energy, maxReceive));
         if (!simulate) {
@@ -23,7 +40,25 @@ public class EnergyPortHandler extends EnergyStorage {
         return canReceive;
     }
 
-    public int unboundedExtractEnergy(int maxExtract, boolean simulate) {
+    public long unboundedExtractEnergy(long maxExtract, boolean simulate) {
+        // Handle large amounts by extracting in chunks to avoid int overflow
+        if (maxExtract <= Integer.MAX_VALUE) {
+            return unboundedExtractEnergyInt((int) maxExtract, simulate);
+        }
+
+        long extracted = 0;
+        long remaining = maxExtract;
+        while (remaining > 0) {
+            int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
+            int result = unboundedExtractEnergyInt(chunk, simulate);
+            extracted += result;
+            if (result < chunk) break; // Can't extract more
+            remaining -= result;
+        }
+        return extracted;
+    }
+
+    private int unboundedExtractEnergyInt(int maxExtract, boolean simulate) {
         int canExtract = Math.min(this.energy, maxExtract);
         if (!simulate) {
             this.energy -= canExtract;

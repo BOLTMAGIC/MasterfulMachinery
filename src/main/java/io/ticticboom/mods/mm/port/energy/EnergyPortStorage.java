@@ -25,7 +25,9 @@ public class EnergyPortStorage implements IPortStorage {
     private final LazyOptional<IEnergyStorage> handlerLazyOptional;
     private final UUID uid = UUID.randomUUID();
 
+    // Priority accessors
     // Priority for outputs. Default 0. Range 0..10.
+    @Getter
     private int priority = 0;
 
     public EnergyPortStorage(EnergyPortStorageModel model, INotifyChangeFunction changed) {
@@ -86,11 +88,11 @@ public class EnergyPortStorage implements IPortStorage {
         return dump;
     }
 
-    public int internalExtract(int amount, boolean simulate) {
+    public long internalExtract(long amount, boolean simulate) {
         return handler.unboundedExtractEnergy(amount, simulate);
     }
 
-    public int internalInsert(int amount, boolean simulate) {
+    public long internalInsert(long amount, boolean simulate) {
         return handler.unboundedReceiveEnergy(amount, simulate);
     }
 
@@ -103,7 +105,5 @@ public class EnergyPortStorage implements IPortStorage {
         return handler.getEnergyStored();
     }
 
-    // Priority accessors
-    public int getPriority() { return this.priority; }
     public void setPriority(int priority) { this.priority = Math.max(0, Math.min(10, priority)); }
 }
