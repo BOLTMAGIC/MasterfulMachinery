@@ -27,7 +27,6 @@ import net.minecraftforge.registries.ForgeRegistries;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
-import io.ticticboom.mods.mm.port.energy.EnergyPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -877,12 +876,23 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     /**
      * @return false if a KubeJS script canceled the start (MMEvents.recipeStarted)
      */
-     private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
-         if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
-             return false;
-         }
-         RecipeStateModel newState = new RecipeStateModel();
-         recipe.inputs().process(level, portStorages, newState);
+      private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation primaryInputItemId) {
+          if (!MMInteropManager.KUBEJS.map(kjs -> kjs.onRecipeStart(this, recipe.id())).orElse(true)) {
+              return false;
+          }
+          // Re-validate that inputs are still available before consuming, to prevent race conditions
+          // where multiple recipes see the same resource availability but consume sequentially
+          RecipeStateModel newState = new RecipeStateModel();
+          if (!recipe.inputs().canProcess(level, portStorages, newState)) {
+              recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
+              return false;
+          }
+          if (!recipe.outputs().canProcess(level, portStorages, newState)) {
+              recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
+              return false;
+          }
+
+          recipe.inputs().process(level, portStorages, newState);
          // Candidate contents are checked by canProcess before use. The periodic input
          // signature refreshes this index when consuming inputs changes availability.
          newState.setCanProcess(true);
@@ -1001,43 +1011,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
             if (recipe != null) {
                 int prevProgress = state.getTickProgress();
-                // First process per-tick inputs (e.g. energy consumed per tick)
-                try {
-                    // We need custom handling for per-tick energy ingredients so that
-                    // when the recipe's ingredient 'amount' represents total energy,
-                    // it is distributed across recipe.ticks(). For all other inputs
-                    // or non-energy per-tick inputs, delegate to the ingredient entry.
-                    for (var inputEntry : recipe.inputs().inputs()) {
-                        try {
-                            if (inputEntry instanceof ConsumeRecipeIngredientEntry cre) {
-                                var ingr = cre.ingredientFor(state);
-                                if (cre.isPerTick() && ingr instanceof EnergyPortIngredient epi) {
-                                    long total = epi.amount();
-                                    long ticks = Math.max(1, recipe.ticks());
-                                    long base = total / ticks;
-                                    long rem = total % ticks;
-                                    long tickIndex = state.getTickProgress();
-                                    long toExtract = base + ((tickIndex == ticks - 1) ? rem : 0);
-                                     if (toExtract > 0 && portStorages != null) {
-                                         long remaining = toExtract;
-                                         var inputStorages = portStorages.getInputStorages(EnergyPortStorage.class);
-                                         for (EnergyPortStorage storage : inputStorages) {
-                                             var extracted = storage.internalExtract(remaining, false);
-                                             remaining -= extracted;
-                                             if (remaining <= 0) break;
-                                         }
-                                     }
-                                     continue;
-                                 }
-                             }
-                             // default processing for other ingredient types
-                             inputEntry.processTick(level, portStorages, state);
-                         } catch (Throwable ignoredInner) { }
-                     }
-                 } catch (Throwable ignored) { }
-
-                 // Then process per-tick outputs
-                 recipe.outputs().processTick(level, portStorages, state);
+                recipe.inputs().processTick(level, portStorages, state);
+                recipe.outputs().processTick(level, portStorages, state);
                 if (!state.isCanFinish()) state.proceedTick();
                 state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
                 boolean progressed = state.getTickProgress() != prevProgress;

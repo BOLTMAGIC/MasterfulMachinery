@@ -12,6 +12,16 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
   - Controller GUI showed wrong recipe outputs for flex recipes (e.g. "air_seed" when "slime_seed", "bronze_seed", "dirt_seed" were being processed)
   - Consume inputs (energy/fluid) are now properly scaled.
 
+#### Energy Port Integer Overflow with Large Amounts
+- **Problem**: 
+  - Energy ports with MAX_INT capacity incorrectly allowed unlimited extraction in chunk-based operations (simulation state not tracked between chunks).
+  - **Fix**: Consistent energy state tracking across chunk iterations prevents phantom extraction.
+
+#### Flex Recipe JEI Display – max_types Tooltip
+- **Problem**: 
+  - When `max_types` > 1, it wasn't clear how many different recipe kinds the controller could process at once in flex mode.
+  - **Fix**: JEI tooltip now shows "Up to X kinds per run" when hovering over the flex input ingredient.
+
 ## [0.1.35.8] - 2026-10-12
 
 ### INFO:

@@ -14,6 +14,7 @@
   "jei.mm.recipe.consumed_per_tick": "Tick başına tüketilir",
   "jei.mm.recipe.output_per_tick": "Tick başına üretilir",
   "jei.mm.recipe.flex_input": "Bunlardan karışık olarak: porttaki her tür aynı çalışmada işlenir",
+  "jei.mm.recipe.flex_max_types": "Çalışma başına en çok %s tür",
   "jei.mm.recipe.flex_output": "Her girdi türü için o eşyadan üretilir",
   "jei.mm.recipe.flex_match": "Her girdi türü için gerekir: ona uyan eşya",
   "jei.mm.recipe.flex_page_tier": "Tier %s",

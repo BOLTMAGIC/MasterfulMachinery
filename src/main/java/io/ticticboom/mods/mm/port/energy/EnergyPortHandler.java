@@ -13,19 +13,31 @@ public class EnergyPortHandler extends EnergyStorage {
     }
 
     public long unboundedReceiveEnergy(long maxReceive, boolean simulate) {
-        // Handle large amounts by extracting in chunks to avoid int overflow
+        // Handle large amounts by receiving in chunks to avoid int overflow
         if (maxReceive <= Integer.MAX_VALUE) {
             return unboundedReceiveEnergyInt((int) maxReceive, simulate);
         }
 
         long received = 0;
         long remaining = maxReceive;
+        int simulatedEnergy = this.energy;  // Track energy state during all operations
+
         while (remaining > 0) {
             int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
-            int result = unboundedReceiveEnergyInt(chunk, simulate);
-            received += result;
-            if (result < chunk) break; // Can't receive more
-            remaining -= result;
+            int canReceive = Math.max(0, Math.min(this.capacity - simulatedEnergy, chunk));
+            
+            // Always update simulated state consistently
+            simulatedEnergy += canReceive;
+            received += canReceive;
+
+            if (canReceive < chunk) break; // Can't receive more
+            remaining -= canReceive;
+        }
+
+        // Apply final state to real energy if not simulating
+        if (!simulate) {
+            this.energy = simulatedEnergy;
+            changed.call();
         }
         return received;
     }
@@ -48,12 +60,24 @@ public class EnergyPortHandler extends EnergyStorage {
 
         long extracted = 0;
         long remaining = maxExtract;
+        int simulatedEnergy = this.energy;  // Track energy state during all operations
+
         while (remaining > 0) {
             int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
-            int result = unboundedExtractEnergyInt(chunk, simulate);
-            extracted += result;
-            if (result < chunk) break; // Can't extract more
-            remaining -= result;
+            int canExtract = Math.min(simulatedEnergy, chunk);
+            
+            // Always update simulated state consistently
+            simulatedEnergy -= canExtract;
+            extracted += canExtract;
+
+            if (canExtract < chunk) break; // Can't extract more
+            remaining -= canExtract;
+        }
+
+        // Apply final state to real energy if not simulating
+        if (!simulate) {
+            this.energy = simulatedEnergy;
+            changed.call();
         }
         return extracted;
     }
