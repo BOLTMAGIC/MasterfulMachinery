@@ -26,5 +26,13 @@ public interface IRecipeOutputEntry {
         return List.of();
     }
 
+    /**
+     * @param state the recipe's current state (captured items, etc.), or null if running
+     * @return what this entry can output, each with its chance (0-1), for the controller screen
+     */
+    default List<DisplayedOutput> displayedOutputs(@org.jetbrains.annotations.Nullable RecipeStateModel state) {
+        return displayedOutputs();
+    }
+
     JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject jsonObject);
 }

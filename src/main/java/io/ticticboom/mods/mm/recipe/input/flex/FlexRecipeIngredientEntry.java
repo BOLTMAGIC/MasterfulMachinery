@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
+import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -29,6 +30,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -56,6 +58,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final String name;
     @Getter
     private final BaseItemPortIngredient ingredient;
+    @Getter
     private final int maxTypes;
     private final double chance;
     private final List<Predicate<ItemStack>> exclude;
@@ -70,7 +73,12 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final List<FlexMatchIngredientEntry> matches = new ArrayList<>();
 
     private volatile List<ItemStack> accepted;
-    /** The JEI slots of the last setRecipe call that list one item per kind, in the same order (linked together). */
+    /** The JEI slots of the last setRecipe call that list one item per kind, in the same order (linked together).
+     * -- GETTER --
+     * The JEI slots to link, see
+     * .
+     */
+    @Getter
     private final List<IRecipeSlotBuilder> jeiGroup = new ArrayList<>();
 
     public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes, double chance,
@@ -91,11 +99,6 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     /** Adds a JEI slot that lists one item per accepted kind, so it turns together with this entry's slot. */
     public void addToJeiGroup(IRecipeSlotBuilder slot) {
         jeiGroup.add(slot);
-    }
-
-    /** The JEI slots to link, see {@link #addToJeiGroup}. */
-    public List<IRecipeSlotBuilder> getJeiGroup() {
-        return jeiGroup;
     }
 
     public void bindCost(@Nullable FlexCost cost) {
@@ -389,5 +392,34 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         json.addProperty("captured", String.valueOf(state.getCaptured(name)));
         json.add("ingredient", ingredient.debugInput(level, storages, new JsonObject()));
         return json;
+    }
+
+    /** Get the display content for this flex input, considering the current recipe state. */
+    public List<PortContent> getDisplayContent(@Nullable RecipeStateModel state) {
+        if (state == null) {
+            // No state, return generic display
+            var content = ingredient.display();
+            return content != null ? List.of(content) : List.of();
+        }
+        // Return display content for each captured item in the state
+        var captured = state.getCaptured(name);
+        var result = new ArrayList<PortContent>();
+        for (ItemStack item : captured) {
+            PortContent content = new SingleItemPortIngredient(
+                ForgeRegistries.ITEMS.getKey(item.getItem()),
+                ingredient.getCount(),
+                item.getTag(),
+                true
+            ).display();
+            if (content != null) {
+                result.add(content);
+            }
+        }
+        // Fallback to generic display if no captured items
+        if (result.isEmpty()) {
+            var content = ingredient.display();
+            if (content != null) result.add(content);
+        }
+        return result;
     }
 }

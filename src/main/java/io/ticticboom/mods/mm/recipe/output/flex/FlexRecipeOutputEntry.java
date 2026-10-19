@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * "mm:output/flex": for each kind of item an "mm:input/flex" entry ("from") took, outputs the item worked out from it, using the
+ * "mm:output/flex": for each kind of item a "mm:input/flex" entry ("from") took, outputs the item worked out from it, using the
  * "match"/"item" id template, or what a script picks in MMEvents.flexOutput.
  */
 public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
@@ -212,11 +212,43 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         if (outputs.isEmpty()) {
             return List.of();
         }
-        // the first accepted item's output stands for the rest
-        ItemStack first = outputs.get(0);
-        var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(first.getItem()), count, first.getTag(), true);
-        displayed = List.of(new DisplayedOutput(ingredient, chance));
+        // show outputs for up to maxTypes kinds, so the GUI shows what kinds can be processed
+        var result = new ArrayList<DisplayedOutput>();
+        int maxToShow = input == null ? 1 : input.getMaxTypes();
+        // skip empty ItemStacks that have no valid output
+        int shown = 0;
+        for (ItemStack output : outputs) {
+            if (!output.isEmpty() && shown < maxToShow) {
+                var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(output.getItem()), count, output.getTag(), true);
+                result.add(new DisplayedOutput(ingredient, chance));
+                shown++;
+            }
+        }
+        displayed = List.copyOf(result);
         return displayed;
+    }
+
+    @Override
+    public List<DisplayedOutput> displayedOutputs(@Nullable RecipeStateModel state) {
+        // If we have a state with captured items, show outputs for those - all of them
+        if (state != null && input != null) {
+            var captured = state.getCaptured(from);
+            if (!captured.isEmpty()) {
+                var result = new ArrayList<DisplayedOutput>();
+                for (ItemStack item : captured) {
+                    ItemStack output = resolve(null, item);
+                    if (!output.isEmpty()) {
+                        var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(output.getItem()), count, output.getTag(), true);
+                        result.add(new DisplayedOutput(ingredient, chance));
+                    }
+                }
+                if (!result.isEmpty()) {
+                    return result;
+                }
+            }
+        }
+        // Fallback to default behavior if no state or no captured items
+        return displayedOutputs();
     }
 
     @Override

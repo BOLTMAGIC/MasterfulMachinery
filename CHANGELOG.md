@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.9] - 2026-10-19
+### Fixed
+
+#### Flex Recipes Controller GUI Display & Cost Scaling
+- **Problem**: 
+  - Controller GUI showed wrong recipe outputs for flex recipes (e.g. "air_seed" when "slime_seed", "bronze_seed", "dirt_seed" were being processed)
+  - Consume inputs (energy/fluid) are now properly scaled.
+
 ## [0.1.35.8] - 2026-10-12
 
 ### INFO:

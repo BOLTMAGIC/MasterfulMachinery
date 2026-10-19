@@ -13,16 +13,15 @@ import io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
-import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.builder.AssemblyScreen;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
 import io.ticticboom.mods.mm.port.PortContent;
-import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
-import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
+import io.ticticboom.mods.mm.recipe.RecipeStateModel;
+import io.ticticboom.mods.mm.recipe.flex.RecipeMode;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
@@ -58,7 +57,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Controller status, top to bottom inside MM's dark screen: machine name, a coloured status line
+ * Controller status, top to bottom inside MM's dark screen: machine name, a colored status line
  * (not formed / paused by redstone / running / idle), the running recipe (inputs, MM's progress arrow,
  * outputs, percentage), then aligned label / value rows for structure, parallel count, redstone mode
  * (click to cycle) and recipe order. Every row explains itself in a tooltip.
@@ -235,7 +234,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         var texture = Ref.UiTextures.GUI_LARGE;
         int x = this.leftPos;
         int y = this.topPos;
-        // frame (its edges repeat), then a plain grey middle over what the repeated texture middle would show
+        // frame (its edges repeat), then a plain gray middle over what the repeated texture middle would show
         gfx.blitNineSlicedSized(texture, x, y, imageWidth, imageHeight, FRAME, FRAME, FRAME, FRAME_BOTTOM, 174, 222, 0, 0, 256, 256);
         gfx.fill(x + FRAME, y + FRAME, x + imageWidth - FRAME, y + imageHeight - FRAME_BOTTOM, GREY);
         // the dark panel: its edges from the texture, a plain middle (the texture's faint pattern would repeat)
@@ -292,6 +291,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         MMConfigSetup.CLIENT.bigControllerScreen.save();
         if (nameBox != null) finishRename(true);
         // lay the screen out again at its new size
+        assert this.minecraft != null;
         init(this.minecraft, this.width, this.height);
     }
 
@@ -365,12 +365,33 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             return RecipeRow.EMPTY;
         }
         var inputs = new ArrayList<PortContent>();
+        RecipeStateModel state = be.getRecipeState();
+
+        // First pass: collect all flex inputs to determine cost multiplier if state is null
+        if (state == null && recipe.mode() == RecipeMode.FLEX) {
+            int totalFlexItems = 0;
+            for (var entry : recipe.inputs().inputs()) {
+                if (entry instanceof FlexRecipeIngredientEntry flex) {
+                    totalFlexItems += flex.getDisplayContent(null).size();
+                }
+            }
+            // Create a state with the correct cost multiplier based on flex item count
+            if (totalFlexItems > 0) {
+                state = new RecipeStateModel();
+                state.setCostMultiplier(totalFlexItems);
+            }
+        }
+
+        // Second pass: display all inputs with correct scaling
         for (var entry : recipe.inputs().inputs()) {
             PortContent content = null;
             if (entry instanceof ConsumeRecipeIngredientEntry consume) {
-                content = consume.getIngredient().display();
+                // Use ingredientFor(state) to get the scaled ingredient for this run
+                content = consume.ingredientFor(state != null ? state : new RecipeStateModel()).display();
             } else if (entry instanceof FlexRecipeIngredientEntry flex) {
-                content = flex.getIngredient().display();
+                var contents = flex.getDisplayContent(state);
+                inputs.addAll(contents);
+                // already added via addAll
             } else if (entry instanceof CountRecipeIngredientEntry count) {
                 content = count.getIngredient().display();
             }
@@ -379,7 +400,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         var outputs = new ArrayList<PortContent>();
         var chances = new ArrayList<Double>();
         for (var entry : recipe.outputs().outputs()) {
-            for (DisplayedOutput output : entry.displayedOutputs()) {
+            for (DisplayedOutput output : entry.displayedOutputs(state)) {
                 PortContent content = output.ingredient().display();
                 if (content != null) {
                     outputs.add(content);
@@ -441,7 +462,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+    protected void renderBg(@NotNull GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
         drawBackground(gfx);
         drawPageButton(gfx, mouseX, mouseY);
         drawSizeButton(gfx, mouseX, mouseY);
@@ -545,7 +566,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
+    protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {
         if (nameBox == null) {
             drawClipped(gfx, be.getName(), LEFT, NAME_Y, assembleBtnX - LEFT - 4, 0xFFFFFF);
         }
@@ -725,7 +746,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         Shown hovered = hoveredSlot(mouseX, mouseY);
         if (hovered != null) {
             var content = hovered.content();
-            var lines = new ArrayList<Component>(content.kind() == PortContent.Kind.ITEM
+            var lines = new ArrayList<>(content.kind() == PortContent.Kind.ITEM
                     ? Screen.getTooltipFromItem(Minecraft.getInstance(), content.item())
                     : PortContentIcon.tooltip(content));
             if (hovered.chance() < 1) {
@@ -802,8 +823,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     lines.add(Component.translatable(be.getStructure() != null
                         ? key + ".hint.formed" : key + ".hint.not_formed").withStyle(ChatFormatting.GRAY));
                 }
-                case TIER -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
-                case PARALLEL -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
+                case TIER, PARALLEL -> lines.add(Component.translatable(key + ".hint").withStyle(ChatFormatting.GRAY));
                 case REDSTONE -> {
                     lines.add(Component.translatable("gui.mm.controller.redstone." + redstoneMode() + ".hint").withStyle(ChatFormatting.GRAY));
                     lines.add(Component.translatable("gui.mm.controller.redstone.hint").withStyle(ChatFormatting.YELLOW));
