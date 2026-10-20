@@ -96,8 +96,7 @@ public class GalleryList {
             if (!entry.builder()) mmMachines.add(machineKey(entry.id()));
         }
         this.allEntries = structures.stream().filter(entry -> !entry.builder()
-                || !entry.id().getNamespace().equals("mbtool")
-                || !entry.id().getPath().startsWith("custom_multiblocks/")
+                || (!entry.id().getNamespace().equals("mm") && !entry.id().getPath().startsWith("custom_multiblocks/"))
                 || !mmMachines.contains(machineKey(entry.id()))).toList();
         this.categoryRevision = StructureCategories.clientSnapshot().revision();
         this.groups = group(allEntries);
@@ -349,7 +348,7 @@ public class GalleryList {
         return true;
     }
 
-    public boolean mouseDragged(double mouseX, double mouseY, int button) {
+    public boolean mouseDragged(@SuppressWarnings("unused") double mouseX, double mouseY, int button) {
         if (!draggingScrollbar || button != 0) return false;
         scrollToThumb(mouseY);
         return true;

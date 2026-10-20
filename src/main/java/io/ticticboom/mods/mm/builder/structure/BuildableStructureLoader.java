@@ -19,13 +19,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Loads {@code data/<ns>/mm_builder_structures/**.nbt} plus, for packs made for the old Multi Builder Tool,
- * {@code mbtool_structures/**} and {@code spatial_structures/**} into {@link BuildableStructureRegistry#SERVER}.
+ * Loads {@code data/<ns>/mm_builder_structures/**.nbt}, {@code data/<ns>/structure_builder/structures/**.nbt},
+ * plus for {@code spatial_structures/**} into {@link BuildableStructureRegistry#SERVER}.
  * The id is the file path below the folder without {@code .nbt}; when two folders hold the same id the earlier
  * folder wins. Files are read off-thread, blocks resolved on apply.
  */
 public class BuildableStructureLoader extends SimplePreparableReloadListener<Map<ResourceLocation, CompoundTag>> {
-    public static final List<String> FOLDERS = List.of("mm_builder_structures", "mbtool_structures", "spatial_structures");
+    public static final List<String> FOLDERS = List.of("mm_builder_structures", "spatial_structures", "structure_builder/structures");
 
     @Override
     protected @NotNull Map<ResourceLocation, CompoundTag> prepare(@NotNull ResourceManager resourceManager, @NotNull ProfilerFiller profiler) {

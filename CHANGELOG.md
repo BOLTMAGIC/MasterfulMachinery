@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.35.9.1] - 2026-10-20
+### Fixed
+
+#### Structure Builder: Not showing NBT files for some multiblocks
+
 ## [0.1.35.9] - 2026-10-19
 ### Fixed
 
@@ -199,9 +204,9 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 
 #### #70 – Structure Builder: Other Mods' Multiblocks
 - **Gallery integration**: now lists multiblocks from other mods (Mekanism, NuclearCraft, Blood Magic, etc.) defined as vanilla structure .nbt files in datapacks (Multi Builder Tool format).
-- **Paths**: loads `data/<ns>/mm_builder_structures/**.nbt`; legacy support for `mbtool_structures/**` and `spatial_structures/**`.
+- **Paths**: loads `data/<ns>/mm_builder_structures/**.nbt` and `data/<ns>/structure_builder/structures/**.nbt`; legacy support `spatial_structures/**`.
 - **Compatibility**: skips structures with unregistered blocks (mod not installed).
-- **Multi Builder Tool bundles**: MIT licensed .nbt files included under `data/mbtool/mbtool_structures/` (same paths → no duplicates in packs still using MBT).
+- **Multi Builder Tool bundles**: MIT licensed .nbt files included under `data/mm/structure_builder/structures/` (same paths → no duplicates in packs still using MBT).
 - **Naming**: from lang key `structure.<ns>.<path>` or title-cased file name; grouped by owning mod.
 - **Sync**: synced to clients on login & `/reload` (palette-compressed, split <512KB packets).
 - **Building**: gallery, 3D preview, hologram, building work like MM structures; rotation from facing + Shift+scroll; all-or-nothing materials from store → inventory → ME with auto-craft.
@@ -222,7 +227,7 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 - **AE2 ME Storage Bus on Item Ports**: `Ae2ItemPortStorage` allows AE2 Storage Buses to attach directly to MM Item Ports; exposes inventory to ME network with accurate channel & capacity handling.
 - **Item port improvements**: improved stack insertion to prevent loss on oversized stacks; respect slot limits.
 - **Controller-free dismantling**: extended DismantlePlanner & ToolDismantles to dismantle non-MM builder structures (datapack .nbt files matching tool template).
-- **Void Miner relocations**: corrected .nbt structures to `data/mbtool/mm_builder_structures/voidminer/` (overrides broken legacy palette entries).
+- **Void Miner relocations**: corrected .nbt structures to `data/mm/structure_builder/structures/voidminer/` (overrides broken legacy palette entries).
 - **UI polish**: JEI ingredient hovering in ControllerPortList; fixed 3D layer preview for connected textures (GuiStructureRenderer); formatted multi-line tooltips for Machine Wrench, Network Linker, Input Gateway.
 
 #### #72 – Item Port Capacity & Rendering Optimization
