@@ -1,7 +1,7 @@
-The structure files under data/mbtool/mbtool_structures/ are copied unchanged from Multi Builder Tool
+The structure files under data/mm/structure_builder/structures/ are copied from Multi Builder Tool
 (https://github.com/igentuman/multi-builder-tool) and are used under the following license.
-Four Void Miner structures with invalid palette indices were corrected and moved to
-data/mbtool/mm_builder_structures/voidminer/ so they take precedence over older datapack copies.
+Four Void Miner structures (voidminer/voidminer_tier3, 6, 7 and 8) had invalid palette indices and were corrected;
+the other files are unchanged.
 
 # The MIT License (MIT)
 

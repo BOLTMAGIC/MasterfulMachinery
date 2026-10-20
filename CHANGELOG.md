@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+### Changed
+
+#### Structure Builder: one folder for other mods' structures
+- **Problem**: the bundled .nbt files were moved to `data/structure_builder/structures/`, a folder the loader didn't read, so none of them (Void Miners included) showed up. Before that, old copies in a pack's `mbtool_structures/` could replace MM's fixed Void Miner files.
+- **Fix**: the Structure Builder reads only `data/<ns>/structure_builder/structures/**.nbt`. MM's own files are in `data/mm/structure_builder/structures/` (ids `mm:<path>`, e.g. `mm:voidminer/voidminer_tier3_citrinetine`). `mbtool_structures/`, `mm_builder_structures/` and `spatial_structures/` are no longer read.
+- **Packs**: move your own structure .nbt files to `data/<ns>/structure_builder/structures/`. Scripts using `mbtool:` ids in `MMEvents.builderStructures` should use the new ids.
+
 ## [0.1.35.9] - 2026-10-19
 ### Fixed
 
