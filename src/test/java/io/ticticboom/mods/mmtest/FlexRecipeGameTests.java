@@ -4,6 +4,10 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
+import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
+import io.ticticboom.mods.mm.recipe.RecipeModel;
+import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
+import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -56,6 +60,24 @@ public class FlexRecipeGameTests {
                     check(helper, count(helper, INPUT, Items.STRIPPED_OAK_LOG) == 1, "stripped log should stay");
                 })
                 .thenSucceed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void flexOutputShowsOneEntryForJei(GameTestHelper helper) {
+        // JEI sizes recipes by displayedOutputs().size() but draws a flex output as one cycling slot; the saplings
+        // recipe accepts many kinds and sets no max_types, so one entry per kind would reserve a row per kind
+        int flexOutputs = 0;
+        for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(STRUCTURE)) {
+            for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
+                if (output instanceof FlexRecipeOutputEntry) {
+                    flexOutputs++;
+                    int shown = output.displayedOutputs().size();
+                    check(helper, shown == 1, recipe.id() + ": expected 1 displayed flex output, got " + shown);
+                }
+            }
+        }
+        check(helper, flexOutputs > 0, "no flex output in the mmtest:flex_test recipes");
+        helper.succeed();
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 300)
