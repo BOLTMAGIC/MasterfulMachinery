@@ -23,7 +23,8 @@ public record SlotBadgeDrawable(int count, boolean notUsed) implements IDrawable
             gfx.drawString(Minecraft.getInstance().font, "x", x + 12, y + 12, 0xFF5555, true);
         }
         if (count > 1) {
-            CountFormat.drawSlotCount(gfx, x, y, count);
+            // JEI already draws overlays at z=200, above the item
+            CountFormat.drawSlotCount(gfx, x, y, count, 0);
         }
     }
 }

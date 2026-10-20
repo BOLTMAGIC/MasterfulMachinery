@@ -7,7 +7,15 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ## [0.1.35.10] - 2026-10-20
 ### Changed
 
+#### JEI: flex recipes show `max_types` kinds side by side
+- A flex recipe with `"max_types": 4` shows 4 input slots (and 4 matching / output slots), each on a different kind, turning together. Without `max_types`, or when JEI shows a focused item, one slot cycles through every kind as before. At most 9 slots.
+
 #### Structure Builder: one folder for other mods' structures
+
+### Fixed
+
+#### JEI: slot counts drawn over tooltips
+- The count badge of a JEI slot (e.g. "3.1K") showed through the tooltip of a neighbouring slot: JEI already draws slot overlays 200 higher, and the badge added another 200, the tooltip's depth.
 
 ## [0.1.35.9] - 2026-10-19
 ### Fixed

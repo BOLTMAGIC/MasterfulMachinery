@@ -34,5 +34,10 @@ public interface IRecipeOutputEntry {
         return displayedOutputs();
     }
 
+    /** How many JEI slots setRecipe adds without a focus, for sizing the recipe's slot grid. */
+    default int jeiSlotCount(RecipeModel model) {
+        return displayedOutputs().size();
+    }
+
     JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject jsonObject);
 }
