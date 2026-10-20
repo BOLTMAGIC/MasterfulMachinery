@@ -15,7 +15,6 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.List;
 
-@SuppressWarnings("unused")
 @GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)
 public class StructureCategoriesGameTests {
@@ -42,12 +41,11 @@ public class StructureCategoriesGameTests {
     @GameTest(template = "empty")
     public static void legacyFoldersAreImportedAndAdminChangesSurviveReload(GameTestHelper helper) {
         ResourceLocation machine = ResourceLocation.tryBuild("mmtest", "assembly_test");
-        BuildableStructure reactor = BuildableStructure.of(ResourceLocation.tryBuild("mm", "reactor/nuclearcraft_fission_reactor"),
+        BuildableStructure reactor = BuildableStructure.of(ResourceLocation.tryBuild("mbtool", "reactor/nuclearcraft_fission_reactor"),
                 new Vec3i(1, 1, 1), List.of(new BuildableStructure.Placement(BlockPos.ZERO, Blocks.STONE.defaultBlockState())));
-        BuildableStructure nested = BuildableStructure.of(ResourceLocation.tryBuild("mm", "voidminer/solar/panel"),
+        BuildableStructure nested = BuildableStructure.of(ResourceLocation.tryBuild("mbtool", "voidminer/solar/panel"),
                 new Vec3i(1, 1, 1), reactor.blocks());
         StructureCategories data = new StructureCategories();
-        assert machine != null;
         data.importDefaults(List.of(machine), List.of(reactor, nested));
         check(helper, data.snapshot().category(machine, false).equals("Custom Multiblocks"), "MM machines not grouped");
         check(helper, data.snapshot().category(reactor.id(), true).equals("Reactor"), "legacy reactor folder not imported");
@@ -72,10 +70,9 @@ public class StructureCategoriesGameTests {
         StructureCategories data = new StructureCategories();
         check(helper, data.apply(StructureCategories.Action.CREATE, "", "Factory"), "manual category creation failed");
         check(helper, data.apply(StructureCategories.Action.ASSIGN, StructureCategories.key(machine, false), "Factory"), "manual assignment failed");
-        assert machine != null;
         data.importDefaults(List.of(machine), List.of());
         check(helper, data.snapshot().category(machine, false).equals("Factory"), "manual assignment overwritten by import");
-        BuildableStructure altar = BuildableStructure.of(ResourceLocation.tryBuild("mm", "blood_magic_altar/altar_2"),
+        BuildableStructure altar = BuildableStructure.of(ResourceLocation.tryBuild("mbtool", "blood_magic_altar/altar_2"),
                 new Vec3i(1, 1, 1), List.of(new BuildableStructure.Placement(BlockPos.ZERO, Blocks.STONE.defaultBlockState())));
         data.importDefaults(List.of(machine), List.of(altar));
         check(helper, data.snapshot().category(altar.id(), true).equals("Blood Magic Altar"), "newly loaded structure not imported");

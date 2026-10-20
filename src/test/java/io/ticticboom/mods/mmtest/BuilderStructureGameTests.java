@@ -29,14 +29,13 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.io.IOException;
-import java.util.Objects;
 
 /**
  * Non-MM structures for the Multiblock Tool: loading the test {@code .nbt} files from mm_builder_structures,
- * structure_builder/structures and spatial_structures, their names, groups and buildability, and the chunked client sync.
+ * mbtool_structures and spatial_structures, their names, groups and buildability, and the chunked client sync.
  */
-@SuppressWarnings("unused")
 @GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)
 public class BuilderStructureGameTests {
@@ -51,10 +50,11 @@ public class BuilderStructureGameTests {
         Map<Integer, String> names = Map.of(1, "rubetine", 2, "aurantium", 3, "citrinetine",
                 4, "verdium", 5, "azurine", 6, "caerium", 7, "amethystine",
                 8, "rosarium", 9, "ultimate");
+        Set<Integer> corrected = Set.of(3, 6, 7, 8);
         for (var tier : names.entrySet()) {
-            ResourceLocation file = ResourceLocation.tryBuild("mm", "structure_builder/structures/voidminer/voidminer_tier"
+            String folder = corrected.contains(tier.getKey()) ? "mm_builder_structures" : "mbtool_structures";
+            ResourceLocation file = ResourceLocation.tryBuild("mbtool", folder + "/voidminer/voidminer_tier"
                     + tier.getKey() + "_" + tier.getValue() + ".nbt");
-            assert file != null;
             var resource = helper.getLevel().getServer().getResourceManager().getResource(file);
             check(helper, resource.isPresent(), "missing Void Miner tier " + tier.getKey());
             try (var in = resource.orElseThrow().open()) {
@@ -77,14 +77,12 @@ public class BuilderStructureGameTests {
     public static void loadsVanillaStructureWithStates(GameTestHelper helper) {
         BuildableStructure tower = BuildableStructureRegistry.SERVER.get(id("test_tower"));
         check(helper, tower != null, "mmtest:test_tower should be loaded");
-        // the mm_builder_structures file wins over the structure_builder/structures one with the same id (a single dirt block)
-        assert tower != null;
+        // the mm_builder_structures file wins over the mbtool_structures one with the same id (a single dirt block)
         check(helper, tower.blockCount() == 10, "expected 9 stone + 1 stairs (air and structure void skipped), got " + tower.blockCount());
         check(helper, tower.size().equals(new Vec3i(3, 2, 3)), "expected size 3x2x3, got " + tower.size());
         BlockState stairs = tower.blocks().stream().filter(p -> p.pos().equals(new BlockPos(1, 1, 1)))
                 .map(BuildableStructure.Placement::state).findFirst().orElse(null);
         check(helper, stairs != null && stairs.is(Blocks.OAK_STAIRS), "expected oak stairs at 1,1,1, got " + stairs);
-        assert stairs != null;
         check(helper, stairs.getValue(StairBlock.FACING) == Direction.EAST && stairs.getValue(StairBlock.HALF) == Half.TOP,
                 "known properties should be applied, got " + stairs);
         // the unknown "bogus" property and the invalid shape value are ignored
@@ -101,8 +99,7 @@ public class BuilderStructureGameTests {
         check(helper, BuildableStructureRegistry.SERVER.get(id("nuclearcraft_fission_reactor")) == null,
                 "the NuclearCraft reactor should be skipped without NuclearCraft");
         BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
-        check(helper, boiler != null, "the Mekanism boiler from structure_builder/structures should load with Mekanism present");
-        assert boiler != null;
+        check(helper, boiler != null, "the Mekanism boiler from mbtool_structures should load with Mekanism present");
         check(helper, boiler.blockCount() == 128, "expected 128 non-air blocks in the boiler, got " + boiler.blockCount());
         check(helper, boiler.buildable(), "every boiler block has an item form");
         helper.succeed();
@@ -112,7 +109,6 @@ public class BuilderStructureGameTests {
     public static void detectsUnbuildableBlocks(GameTestHelper helper) {
         BuildableStructure structure = BuildableStructureRegistry.SERVER.get(id("unbuildable"));
         check(helper, structure != null, "an unbuildable structure is still listed");
-        assert structure != null;
         check(helper, !structure.buildable(), "fire and water have no item form");
         check(helper, structure.unbuildableBlock() == Blocks.FIRE, "the first unbuildable block should be fire, got " + structure.unbuildableBlock());
         helper.succeed();
@@ -122,22 +118,19 @@ public class BuilderStructureGameTests {
     public static void resolvesNamesAndGroups(GameTestHelper helper) {
         BuildableStructure named = BuildableStructureRegistry.SERVER.get(id("named/lang_named"));
         check(helper, named != null, "a structure in a sub folder should load as mmtest:named/lang_named");
-        assert named != null;
         check(helper, BuildableStructure.langKey(named.id()).equals("structure.mmtest.named.lang_named"), "unexpected lang key " + BuildableStructure.langKey(named.id()));
         check(helper, named.displayName().getString().equals("Lang Named Tower"), "the lang key should name it, got " + named.displayName().getString());
 
         BuildableStructure mixed = BuildableStructureRegistry.SERVER.get(id("mixed_mods"));
-        assert mixed != null;
         check(helper, mixed.displayName().getString().equals("Mixed Mods"), "without a lang key the file name is title-cased, got " + mixed.displayName().getString());
         // 10 stone, 3 Immersive Engineering, 2 Mekanism: the most common non-vanilla namespace wins
         check(helper, mixed.group().equals("immersiveengineering"), "expected group immersiveengineering, got " + mixed.group());
         check(helper, mixed.groupName().equals("Immersive Engineering"), "expected the mod's display name, got " + mixed.groupName());
 
         BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
-        assert boiler != null;
         check(helper, boiler.group().equals("mekanism") && boiler.groupName().equals("Mekanism"), "expected group Mekanism, got " + boiler.groupName());
         check(helper, boiler.displayName().getString().equals("Mekanism Boiler"), "got " + boiler.displayName().getString());
-        check(helper, BuildableStructure.fallbackName(Objects.requireNonNull(ResourceLocation.tryBuild("mm", "structure_builder/structures/woot/woot_tier_1_copper"))).equals("Woot Tier 1 Copper"), "title case of a nested path");
+        check(helper, BuildableStructure.fallbackName(ResourceLocation.tryBuild("mbtool", "woot/woot_tier_1_copper")).equals("Woot Tier 1 Copper"), "title case of a nested path");
         helper.succeed();
     }
 
@@ -183,7 +176,6 @@ public class BuilderStructureGameTests {
             check(helper, (result != null) == (i == packets.size() - 1), "the list completes only with the last chunk (chunk " + i + ")");
             received = result;
         }
-        assert received != null;
         check(helper, received.equals(structures), "the decoded structures should equal the sent ones");
         BuildableStructure tower = received.stream().filter(s -> s.id().equals(id("test_tower"))).findFirst().orElseThrow();
         check(helper, tower.group().equals("mmtest") && tower.buildable(), "derived fields are recomputed after decoding");
@@ -214,7 +206,7 @@ public class BuilderStructureGameTests {
         // an empty registry still sends one packet so the client clears its list
         List<BuildableStructureSyncPkt> empty = BuildableStructureSync.split(List.of(), 3, 1200);
         check(helper, empty.size() == 1 && empty.get(0).structures().isEmpty(), "expected one empty packet");
-        check(helper, Objects.requireNonNull(assembler.accept(roundTrip(empty.get(0)))).isEmpty(), "an empty batch completes as an empty list");
+        check(helper, assembler.accept(roundTrip(empty.get(0))).isEmpty(), "an empty batch completes as an empty list");
 
         // a structure larger than one packet is left out instead of breaking the sync
         List<BuildableStructureSyncPkt> oversized = BuildableStructureSync.split(List.of(big(id("huge"), 12)), 4, 1200);
