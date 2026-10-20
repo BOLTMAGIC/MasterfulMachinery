@@ -29,12 +29,11 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.io.IOException;
 
 /**
- * Non-MM structures for the Multiblock Tool: loading the test {@code .nbt} files from mm_builder_structures,
- * mbtool_structures and spatial_structures, their names, groups and buildability, and the chunked client sync.
+ * Non-MM structures for the Multiblock Tool: loading the test {@code .nbt} files from structure_builder/structures
+ * (and not from the old mbtool_structures folder), their names, groups and buildability, and the chunked client sync.
  */
 @GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)
@@ -50,10 +49,8 @@ public class BuilderStructureGameTests {
         Map<Integer, String> names = Map.of(1, "rubetine", 2, "aurantium", 3, "citrinetine",
                 4, "verdium", 5, "azurine", 6, "caerium", 7, "amethystine",
                 8, "rosarium", 9, "ultimate");
-        Set<Integer> corrected = Set.of(3, 6, 7, 8);
         for (var tier : names.entrySet()) {
-            String folder = corrected.contains(tier.getKey()) ? "mm_builder_structures" : "mbtool_structures";
-            ResourceLocation file = ResourceLocation.tryBuild("mbtool", folder + "/voidminer/voidminer_tier"
+            ResourceLocation file = ResourceLocation.tryBuild("mm", "structure_builder/structures/voidminer/voidminer_tier"
                     + tier.getKey() + "_" + tier.getValue() + ".nbt");
             var resource = helper.getLevel().getServer().getResourceManager().getResource(file);
             check(helper, resource.isPresent(), "missing Void Miner tier " + tier.getKey());
@@ -77,7 +74,6 @@ public class BuilderStructureGameTests {
     public static void loadsVanillaStructureWithStates(GameTestHelper helper) {
         BuildableStructure tower = BuildableStructureRegistry.SERVER.get(id("test_tower"));
         check(helper, tower != null, "mmtest:test_tower should be loaded");
-        // the mm_builder_structures file wins over the mbtool_structures one with the same id (a single dirt block)
         check(helper, tower.blockCount() == 10, "expected 9 stone + 1 stairs (air and structure void skipped), got " + tower.blockCount());
         check(helper, tower.size().equals(new Vec3i(3, 2, 3)), "expected size 3x2x3, got " + tower.size());
         BlockState stairs = tower.blocks().stream().filter(p -> p.pos().equals(new BlockPos(1, 1, 1)))
@@ -93,13 +89,21 @@ public class BuilderStructureGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void ignoresOldMultiBuilderToolFolders(GameTestHelper helper) {
+        // mbtool_structures/legacy_tower.nbt is a valid file, but only structure_builder/structures is read
+        check(helper, BuildableStructureRegistry.SERVER.get(id("legacy_tower")) == null,
+                "a file in the old mbtool_structures folder should not be loaded");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void skipsStructuresWithUnknownBlocks(GameTestHelper helper) {
         check(helper, BuildableStructureRegistry.SERVER.get(id("unknown_block")) == null, "a structure with an unknown block should be skipped");
         // a real Multi Builder Tool file for a mod that isn't in the dev runtime
         check(helper, BuildableStructureRegistry.SERVER.get(id("nuclearcraft_fission_reactor")) == null,
                 "the NuclearCraft reactor should be skipped without NuclearCraft");
         BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
-        check(helper, boiler != null, "the Mekanism boiler from mbtool_structures should load with Mekanism present");
+        check(helper, boiler != null, "the Mekanism boiler (a Multi Builder Tool file) should load with Mekanism present");
         check(helper, boiler.blockCount() == 128, "expected 128 non-air blocks in the boiler, got " + boiler.blockCount());
         check(helper, boiler.buildable(), "every boiler block has an item form");
         helper.succeed();
@@ -130,7 +134,7 @@ public class BuilderStructureGameTests {
         BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
         check(helper, boiler.group().equals("mekanism") && boiler.groupName().equals("Mekanism"), "expected group Mekanism, got " + boiler.groupName());
         check(helper, boiler.displayName().getString().equals("Mekanism Boiler"), "got " + boiler.displayName().getString());
-        check(helper, BuildableStructure.fallbackName(ResourceLocation.tryBuild("mbtool", "woot/woot_tier_1_copper")).equals("Woot Tier 1 Copper"), "title case of a nested path");
+        check(helper, BuildableStructure.fallbackName(ResourceLocation.tryBuild("mm", "woot/woot_tier_1_copper")).equals("Woot Tier 1 Copper"), "title case of a nested path");
         helper.succeed();
     }
 

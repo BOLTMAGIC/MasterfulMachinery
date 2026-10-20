@@ -89,14 +89,13 @@ public class GalleryList {
         this.onCategorize = onCategorize;
         this.selected = selected;
         this.selectedBuilder = selectedBuilder;
-        // The pack also ships old Multi Builder Tool NBT copies of its MM machines. Prefer the live MM
+        // A pack may also ship NBT copies of its MM machines (custom_multiblocks/). Prefer the live MM
         // structure, whose ports and tier choices stay in sync with the machine definition.
         Set<String> mmMachines = new HashSet<>();
         for (Entry entry : structures) {
             if (!entry.builder()) mmMachines.add(machineKey(entry.id()));
         }
         this.allEntries = structures.stream().filter(entry -> !entry.builder()
-                || !entry.id().getNamespace().equals("mbtool")
                 || !entry.id().getPath().startsWith("custom_multiblocks/")
                 || !mmMachines.contains(machineKey(entry.id()))).toList();
         this.categoryRevision = StructureCategories.clientSnapshot().revision();

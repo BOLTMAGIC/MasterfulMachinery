@@ -1,4 +1,4 @@
-mbtool_structures/mekanism_boiler.nbt and spatial_structures/nuclearcraft_fission_reactor.nbt are copied unchanged
+structure_builder/structures/mekanism_boiler.nbt and structure_builder/structures/nuclearcraft_fission_reactor.nbt are copied unchanged
 from Multi Builder Tool (github.com/igentuman/multi-builder-tool) under the following license.
 
 # The MIT License (MIT)
