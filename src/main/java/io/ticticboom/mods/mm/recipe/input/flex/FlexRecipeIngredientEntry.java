@@ -98,15 +98,20 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     public static final int JEI_MAX_LANES = 9;
 
     /**
-     * How many slots JEI shows for this entry (and for each of its flex_match / flex output entries): one per kind a
-     * run can take, so "max_types": 4 shows 4 kinds next to each other. Without "max_types" (no limit), or with a
-     * focus (every slot would show the focused item), one slot cycles through all kinds.
+     * How many slots JEI shows for this entry (and for each of its flex_match / flex output entries) without a focus:
+     * one per kind a run can take, so "max_types": 4 shows 4 kinds next to each other. Without "max_types" (no
+     * limit) one slot cycles through all kinds. No JEI types here, so it can be called where JEI isn't loaded.
      */
-    public int jeiLanes(RecipeModel model, @Nullable IFocusGroup focus) {
-        if (maxTypes == Integer.MAX_VALUE || (focus != null && !focus.isEmpty())) {
+    public int jeiLanes(RecipeModel model) {
+        if (maxTypes == Integer.MAX_VALUE) {
             return 1;
         }
         return Math.max(1, Math.min(Math.min(maxTypes, JEI_MAX_LANES), examplesFor(model).size()));
+    }
+
+    /** {@link #jeiLanes(RecipeModel)}, but one slot with a focus: every slot would show the focused item. */
+    public int jeiLanesWithFocus(RecipeModel model, IFocusGroup focus) {
+        return focus.isEmpty() ? jeiLanes(model) : 1;
     }
 
     /**
@@ -144,7 +149,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     @Override
     public int jeiSlotCount(RecipeModel model) {
-        return jeiLanes(model, null);
+        return jeiLanes(model);
     }
 
     public void bindCost(@Nullable FlexCost cost) {
@@ -402,7 +407,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
         List<ItemStack> examples = examplesFor(model);
-        int lanes = jeiLanes(model, focus);
+        int lanes = jeiLanesWithFocus(model, focus);
         for (int lane = 0; lane < lanes; lane++) {
             addJeiSlot(builder, helpers, grid, forLane(examples, lane), lane);
         }

@@ -100,15 +100,15 @@ public class FlexRecipeGameTests {
         check(helper, flex != null, "no saplings flex recipe in mmtest:flex_test");
         int kinds = flex.acceptedExamples().size();
         check(helper, kinds >= 4, "expected at least 4 sapling kinds with leaves, got " + kinds);
-        check(helper, flex.jeiLanes(saplings, null) == 1, "without max_types one slot cycles through all kinds");
+        check(helper, flex.jeiLanes(saplings) == 1, "without max_types one slot cycles through all kinds");
 
         // the same ingredient with a max_types: one slot per kind a run takes, never more than the kinds or the cap
         var four = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 4, 1, List.of(), null, null);
-        check(helper, four.jeiLanes(saplings, null) == 4, "max_types 4 should give 4 slots, got " + four.jeiLanes(saplings, null));
+        check(helper, four.jeiLanes(saplings) == 4, "max_types 4 should give 4 slots, got " + four.jeiLanes(saplings));
         var many = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 1000, 1, List.of(), null, null);
         // (not bound to an output, so it accepts every sapling, also those without leaves)
         int expected = Math.min(FlexRecipeIngredientEntry.JEI_MAX_LANES, many.acceptedExamples().size());
-        check(helper, many.jeiLanes(saplings, null) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiLanes(saplings, null));
+        check(helper, many.jeiLanes(saplings) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiLanes(saplings));
 
         // lanes list the same kinds started later, so side by side they show different kinds while turning together
         check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 0).equals(List.of(1, 2, 3)), "lane 0 keeps the order");

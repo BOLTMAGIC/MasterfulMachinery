@@ -256,7 +256,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         if (input == null || exampleOutputs(input.examplesFor(model)).isEmpty()) {
             return 0;
         }
-        return input.jeiLanes(model, null);
+        return input.jeiLanes(model);
     }
 
     @Override
@@ -266,7 +266,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
             return;
         }
         // one slot per lane of the flex input, listing the outputs in the same (rotated) order
-        int lanes = input.jeiLanes(model, focus);
+        int lanes = input.jeiLanesWithFocus(model, focus);
         for (int lane = 0; lane < lanes; lane++) {
             addJeiSlot(builder, helpers, grid, FlexRecipeIngredientEntry.forLane(outputs, lane), lane);
         }

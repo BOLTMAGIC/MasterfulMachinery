@@ -107,7 +107,7 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
     @Override
     public int jeiSlotCount(RecipeModel model) {
         var input = inputOf(model);
-        return input == null || input.examplesFor(model).isEmpty() ? 0 : input.jeiLanes(model, null);
+        return input == null || input.examplesFor(model).isEmpty() ? 0 : input.jeiLanes(model);
     }
 
     @Override
@@ -124,7 +124,7 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
             return;
         }
         // one slot per lane of the flex input, listing the matching items in the same (rotated) order
-        int lanes = input.jeiLanes(model, focus);
+        int lanes = input.jeiLanesWithFocus(model, focus);
         for (int lane = 0; lane < lanes; lane++) {
             addJeiSlot(builder, helpers, grid, FlexRecipeIngredientEntry.forLane(stacks, lane), input, lane);
         }
