@@ -120,6 +120,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // set from the controller screen: this machine plays no working sound (its particles stay)
     @Getter
     private boolean soundMuted = false;
+    // set from the controller screen: the machine's GeckoLib model stands still (no idle / working animation)
+    @Getter
+    private boolean animationsHidden = false;
     // name given by a player (screen, or a named controller item); null = the machine's name
     @Nullable
     private String customName = null;
@@ -1151,6 +1154,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (soundMuted) {
             tag.putBoolean("SoundMuted", true);
         }
+        if (animationsHidden) {
+            tag.putBoolean("AnimationsHidden", true);
+        }
         if (!assemblyTiers.asMap().isEmpty()) tag.put("AssemblyTiers", assemblyTiers.save());
         if (assemblyStructureId != null) tag.putString("AssemblyStructure", assemblyStructureId.toString());
         super.saveAdditional(tag);
@@ -1209,6 +1215,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
         customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
         soundMuted = tag.getBoolean("SoundMuted");
+        animationsHidden = tag.getBoolean("AnimationsHidden");
         // load redstone mode
         try {
             if (tag.contains("redstoneMode")) {
@@ -1312,6 +1319,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     public void setSoundMuted(boolean muted) {
         soundMuted = muted;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    }
+
+    public void setAnimationsHidden(boolean hidden) {
+        animationsHidden = hidden;
         setChanged();
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }

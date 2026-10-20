@@ -36,6 +36,7 @@ public class GeckoLibCompat implements GeoBridge {
             return;
         }
         animatable.setState(state);
+        animatable.setAnimationsHidden(be.isAnimationsHidden());
         // a copy, so a failure inside GeckoLib can't leave the level's pose stack unbalanced
         PoseStack local = new PoseStack();
         local.last().pose().set(pose.last().pose());

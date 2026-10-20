@@ -14,6 +14,8 @@ import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.client.builder.AssemblyScreen;
+import io.ticticboom.mods.mm.client.geo.GeoBridge;
+import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.client.gui.widgets.ControllerPortList;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
 import io.ticticboom.mods.mm.port.PortContent;
@@ -108,7 +110,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private static final long CYCLE_MS = 1200;
     private static final boolean JEI = ModList.get().isLoaded("jei");
 
-    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, SOUND, LINK }
+    private enum Row { STRUCTURE, TIER, PARALLEL, REDSTONE, MODE, SOUND, ANIMATION, LINK }
 
     // packs name tiered structures like "Auto Crusher Tier 1.5"; the tier gets its own row
     private static final Pattern TIER = Pattern.compile("(?i)\\s*\\b(?:tier|seviye|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
@@ -523,6 +525,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             var soundButton = isOnRow(Row.SOUND, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
             gfx.blitNineSlicedSized(soundButton, x + VALUE_X - 2, sy, valueRight - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         }
+        if (hasAnimation()) {
+            int ay = y + rowY(Row.ANIMATION) - 2;
+            var animationButton = isOnRow(Row.ANIMATION, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
+            gfx.blitNineSlicedSized(animationButton, x + VALUE_X - 2, ay, valueRight - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        }
 
         if (wide) {
             drawProgressBar(gfx);
@@ -629,6 +636,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             drawClipped(gfx, Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off" : "gui.mm.controller.sound.on"),
                     VALUE_X + 1, rowY(Row.SOUND), valueRight - VALUE_X - 3, TEXT);
         }
+        if (hasAnimation()) {
+            drawClipped(gfx, Component.translatable(be.isAnimationsHidden() ? "gui.mm.controller.animation.off" : "gui.mm.controller.animation.on"),
+                    VALUE_X + 1, rowY(Row.ANIMATION), valueRight - VALUE_X - 3, TEXT);
+        }
         if (NetworkLink.AVAILABLE) {
             LinkData link = be.getNetworkLink();
             if (link != null) {
@@ -646,12 +657,19 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private List<Row> rows() {
         List<Row> shown = new ArrayList<>(List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE));
         if (hasWorkingSound()) shown.add(Row.SOUND);
+        if (hasAnimation()) shown.add(Row.ANIMATION);
         if (NetworkLink.AVAILABLE) shown.add(Row.LINK);
         return shown;
     }
 
     private boolean hasWorkingSound() {
         return be.getBlockState().getBlock() instanceof MachineControllerBlock block && block.hasWorkingSound();
+    }
+
+    /** Whether the machine's GeckoLib model has animations to stop (and GeckoLib is there to draw it). */
+    private boolean hasAnimation() {
+        GeoModelConfig geo = be.geoModel();
+        return geo != null && geo.animations() != null && GeoBridge.get() != null;
     }
 
     /** While the multiblock isn't formed, the recipe section lists what is missing where. */
@@ -840,6 +858,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                         lines.add(Component.translatable("gui.mm.controller.sound.none.hint").withStyle(ChatFormatting.GRAY));
                     }
                 }
+                case ANIMATION -> {
+                    lines.add(Component.translatable(be.isAnimationsHidden() ? "gui.mm.controller.animation.off.hint" : "gui.mm.controller.animation.on.hint").withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("gui.mm.controller.animation.hint").withStyle(ChatFormatting.YELLOW));
+                }
                 case LINK -> {
                     LinkData link = be.getNetworkLink();
                     if (link != null) {
@@ -935,6 +957,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         if (!onPortsPage() && hasWorkingSound() && isOnRow(Row.SOUND, mouseX, mouseY)) {
             MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.SOUND_MUTED, Boolean.toString(!be.isSoundMuted())));
+            Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
+            return true;
+        }
+        if (!onPortsPage() && hasAnimation() && isOnRow(Row.ANIMATION, mouseX, mouseY)) {
+            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.ANIMATIONS_HIDDEN, Boolean.toString(!be.isAnimationsHidden())));
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
             return true;
         }
