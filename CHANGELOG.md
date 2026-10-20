@@ -7,8 +7,11 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ## [0.1.35.10] - 2026-10-20
 ### Changed
 
-#### JEI: flex recipes show `max_types` kinds side by side
-- A flex recipe with `"max_types": 4` shows 4 input slots (and 4 matching / output slots), each on a different kind, turning together. Without `max_types`, or when JEI shows a focused item, one slot cycles through every kind as before. At most 9 slots.
+#### JEI: flex recipes show `max_types` input slots
+- A flex recipe with `"max_types": 4` shows its input slot 4 times side by side, all on the same kind, so players see they can put in up to 4 kinds per run. Matching items and outputs stay one slot. Without `max_types`, one slot as before. At most 9 copies.
+
+#### JEI: no empty slot frames under a scroll grid
+- With more slots than fit, the slot frames were drawn below the scroll grid too.
 
 #### Structure Builder: one folder for other mods' structures
 

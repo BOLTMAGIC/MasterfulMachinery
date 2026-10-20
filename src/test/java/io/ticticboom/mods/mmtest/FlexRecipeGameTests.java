@@ -86,7 +86,7 @@ public class FlexRecipeGameTests {
     }
 
     @GameTest(template = TEMPLATE)
-    public static void maxTypesSetsTheJeiLanes(GameTestHelper helper) {
+    public static void maxTypesSetsTheJeiInputCopies(GameTestHelper helper) {
         RecipeModel saplings = null;
         FlexRecipeIngredientEntry flex = null;
         for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(STRUCTURE)) {
@@ -100,20 +100,17 @@ public class FlexRecipeGameTests {
         check(helper, flex != null, "no saplings flex recipe in mmtest:flex_test");
         int kinds = flex.acceptedExamples().size();
         check(helper, kinds >= 4, "expected at least 4 sapling kinds with leaves, got " + kinds);
-        check(helper, flex.jeiLanes(saplings) == 1, "without max_types one slot cycles through all kinds");
+        check(helper, flex.jeiCopies(saplings) == 1, "without max_types one input slot");
+        check(helper, flex.jeiSlotCount(saplings) == 1, "the JEI grid should count one input slot");
 
-        // the same ingredient with a max_types: one slot per kind a run takes, never more than the kinds or the cap
+        // the same ingredient with a max_types: one copy per kind a run takes, never more than the kinds or the cap
         var four = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 4, 1, List.of(), null, null);
-        check(helper, four.jeiLanes(saplings) == 4, "max_types 4 should give 4 slots, got " + four.jeiLanes(saplings));
+        check(helper, four.jeiCopies(saplings) == 4, "max_types 4 should give 4 slots, got " + four.jeiCopies(saplings));
+        check(helper, four.jeiSlotCount(saplings) == 4, "the JEI grid should count the 4 copies");
         var many = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 1000, 1, List.of(), null, null);
         // (not bound to an output, so it accepts every sapling, also those without leaves)
-        int expected = Math.min(FlexRecipeIngredientEntry.JEI_MAX_LANES, many.acceptedExamples().size());
-        check(helper, many.jeiLanes(saplings) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiLanes(saplings));
-
-        // lanes list the same kinds started later, so side by side they show different kinds while turning together
-        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 0).equals(List.of(1, 2, 3)), "lane 0 keeps the order");
-        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 1).equals(List.of(2, 3, 1)), "lane 1 starts at the 2nd kind");
-        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 4).equals(List.of(2, 3, 1)), "lanes wrap around");
+        int expected = Math.min(FlexRecipeIngredientEntry.JEI_MAX_COPIES, many.acceptedExamples().size());
+        check(helper, many.jeiCopies(saplings) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiCopies(saplings));
         helper.succeed();
     }
 
