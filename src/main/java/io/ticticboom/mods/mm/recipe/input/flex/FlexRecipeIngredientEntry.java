@@ -374,7 +374,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         }
         rSlot.addRichTooltipCallback((v, list) -> {
             list.add(Component.translatable("jei.mm.recipe.flex_input").withStyle(ChatFormatting.DARK_AQUA));
-            if (maxTypes > 1) {
+            // Integer.MAX_VALUE = no "max_types" in the recipe (no limit)
+            if (maxTypes > 1 && maxTypes != Integer.MAX_VALUE) {
                 list.add(Component.translatable("jei.mm.recipe.flex_max_types", maxTypes).withStyle(ChatFormatting.GOLD));
             }
             if (chance <= 0) {

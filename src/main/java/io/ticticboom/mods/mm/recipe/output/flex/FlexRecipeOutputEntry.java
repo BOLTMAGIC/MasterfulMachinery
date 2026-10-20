@@ -212,16 +212,16 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         if (outputs.isEmpty()) {
             return List.of();
         }
-        // show outputs for up to maxTypes kinds, so the GUI shows what kinds can be processed
+        // One entry: JEI shows a flex output as a single cycling slot and sizes the recipe (and, through MMJeiPlugin,
+        // every MM category) by this count, so one per kind would reserve a row per kind. The controller screen lists
+        // the kinds a run actually took through displayedOutputs(state).
         var result = new ArrayList<DisplayedOutput>();
-        int maxToShow = input == null ? 1 : input.getMaxTypes();
-        // skip empty ItemStacks that have no valid output
-        int shown = 0;
         for (ItemStack output : outputs) {
-            if (!output.isEmpty() && shown < maxToShow) {
+            // the first kind with a valid output stands for the rest
+            if (!output.isEmpty()) {
                 var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(output.getItem()), count, output.getTag(), true);
                 result.add(new DisplayedOutput(ingredient, chance));
-                shown++;
+                break;
             }
         }
         displayed = List.copyOf(result);
