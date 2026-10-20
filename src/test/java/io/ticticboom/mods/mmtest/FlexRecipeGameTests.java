@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import net.minecraft.core.BlockPos;
@@ -23,6 +24,8 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import java.util.List;
 
 /**
  * Flex recipes, count inputs and the per-kind cost on a real server, with vanilla items. Structure
@@ -64,8 +67,8 @@ public class FlexRecipeGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void flexOutputShowsOneEntryForJei(GameTestHelper helper) {
-        // JEI sizes recipes by displayedOutputs().size() but draws a flex output as one cycling slot; the saplings
-        // recipe accepts many kinds and sets no max_types, so one entry per kind would reserve a row per kind
+        // the flex recipes set no max_types: one entry for the controller screen and one cycling JEI slot, not
+        // one per kind (the saplings recipe accepts many kinds)
         int flexOutputs = 0;
         for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(STRUCTURE)) {
             for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
@@ -73,10 +76,44 @@ public class FlexRecipeGameTests {
                     flexOutputs++;
                     int shown = output.displayedOutputs().size();
                     check(helper, shown == 1, recipe.id() + ": expected 1 displayed flex output, got " + shown);
+                    int slots = output.jeiSlotCount(recipe);
+                    check(helper, slots == 1, recipe.id() + ": expected 1 JEI slot for the flex output, got " + slots);
                 }
             }
         }
         check(helper, flexOutputs > 0, "no flex output in the mmtest:flex_test recipes");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void maxTypesSetsTheJeiLanes(GameTestHelper helper) {
+        RecipeModel saplings = null;
+        FlexRecipeIngredientEntry flex = null;
+        for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(STRUCTURE)) {
+            for (var input : recipe.inputs().inputs()) {
+                if (input instanceof FlexRecipeIngredientEntry entry && entry.getName().equals("sapling")) {
+                    saplings = recipe;
+                    flex = entry;
+                }
+            }
+        }
+        check(helper, flex != null, "no saplings flex recipe in mmtest:flex_test");
+        int kinds = flex.acceptedExamples().size();
+        check(helper, kinds >= 4, "expected at least 4 sapling kinds with leaves, got " + kinds);
+        check(helper, flex.jeiLanes(saplings, null) == 1, "without max_types one slot cycles through all kinds");
+
+        // the same ingredient with a max_types: one slot per kind a run takes, never more than the kinds or the cap
+        var four = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 4, 1, List.of(), null, null);
+        check(helper, four.jeiLanes(saplings, null) == 4, "max_types 4 should give 4 slots, got " + four.jeiLanes(saplings, null));
+        var many = new FlexRecipeIngredientEntry("sapling", flex.getIngredient(), 1000, 1, List.of(), null, null);
+        // (not bound to an output, so it accepts every sapling, also those without leaves)
+        int expected = Math.min(FlexRecipeIngredientEntry.JEI_MAX_LANES, many.acceptedExamples().size());
+        check(helper, many.jeiLanes(saplings, null) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiLanes(saplings, null));
+
+        // lanes list the same kinds started later, so side by side they show different kinds while turning together
+        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 0).equals(List.of(1, 2, 3)), "lane 0 keeps the order");
+        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 1).equals(List.of(2, 3, 1)), "lane 1 starts at the 2nd kind");
+        check(helper, FlexRecipeIngredientEntry.forLane(List.of(1, 2, 3), 4).equals(List.of(2, 3, 1)), "lanes wrap around");
         helper.succeed();
     }
 

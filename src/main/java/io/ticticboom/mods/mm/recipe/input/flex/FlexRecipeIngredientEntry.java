@@ -73,13 +73,11 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     private final List<FlexMatchIngredientEntry> matches = new ArrayList<>();
 
     private volatile List<ItemStack> accepted;
-    /** The JEI slots of the last setRecipe call that list one item per kind, in the same order (linked together).
-     * -- GETTER --
-     * The JEI slots to link, see
-     * .
+    /**
+     * The JEI slots of the last recipe layout, by lane: lane i holds this entry's i-th slot and the i-th slot of each
+     * flex_match / flex output entry. They list one item per kind in the same order and are linked together.
      */
-    @Getter
-    private final List<IRecipeSlotBuilder> jeiGroup = new ArrayList<>();
+    private final List<List<IRecipeSlotBuilder>> jeiLanes = new ArrayList<>();
 
     public FlexRecipeIngredientEntry(String name, BaseItemPortIngredient ingredient, int maxTypes, double chance,
                                      List<Predicate<ItemStack>> exclude, @Nullable Integer minTier, @Nullable Integer maxTier) {
@@ -96,9 +94,57 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         matches.add(match);
     }
 
-    /** Adds a JEI slot that lists one item per accepted kind, so it turns together with this entry's slot. */
-    public void addToJeiGroup(IRecipeSlotBuilder slot) {
-        jeiGroup.add(slot);
+    /** At most this many kinds are shown side by side in JEI (one slot each, see {@link #jeiLanes}). */
+    public static final int JEI_MAX_LANES = 9;
+
+    /**
+     * How many slots JEI shows for this entry (and for each of its flex_match / flex output entries): one per kind a
+     * run can take, so "max_types": 4 shows 4 kinds next to each other. Without "max_types" (no limit), or with a
+     * focus (every slot would show the focused item), one slot cycles through all kinds.
+     */
+    public int jeiLanes(RecipeModel model, @Nullable IFocusGroup focus) {
+        if (maxTypes == Integer.MAX_VALUE || (focus != null && !focus.isEmpty())) {
+            return 1;
+        }
+        return Math.max(1, Math.min(Math.min(maxTypes, JEI_MAX_LANES), examplesFor(model).size()));
+    }
+
+    /**
+     * The list for lane {@code lane}: the same items, started {@code lane} items later, so the lanes show different
+     * kinds while JEI turns them together. Lists with the same order rotated by the same lane stay aligned.
+     */
+    public static <T> List<T> forLane(List<T> items, int lane) {
+        if (lane == 0 || items.size() < 2) {
+            return items;
+        }
+        int shift = lane % items.size();
+        var rotated = new ArrayList<T>(items.size());
+        rotated.addAll(items.subList(shift, items.size()));
+        rotated.addAll(items.subList(0, shift));
+        return rotated;
+    }
+
+    /** Forgets the slots of the last layout; called before a recipe is laid out. */
+    public void clearJeiLanes() {
+        jeiLanes.clear();
+    }
+
+    /** Adds a JEI slot of lane {@code lane}, so it turns together with this entry's slot of that lane. */
+    public void addToJeiLane(int lane, IRecipeSlotBuilder slot) {
+        while (jeiLanes.size() <= lane) {
+            jeiLanes.add(new ArrayList<>());
+        }
+        jeiLanes.get(lane).add(slot);
+    }
+
+    /** The JEI slots to link, one group per lane. */
+    public List<List<IRecipeSlotBuilder>> getJeiLanes() {
+        return jeiLanes;
+    }
+
+    @Override
+    public int jeiSlotCount(RecipeModel model) {
+        return jeiLanes(model, null);
     }
 
     public void bindCost(@Nullable FlexCost cost) {
@@ -355,6 +401,14 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
+        List<ItemStack> examples = examplesFor(model);
+        int lanes = jeiLanes(model, focus);
+        for (int lane = 0; lane < lanes; lane++) {
+            addJeiSlot(builder, helpers, grid, forLane(examples, lane), lane);
+        }
+    }
+
+    private void addJeiSlot(IRecipeLayoutBuilder builder, IJeiHelpers helpers, SlotGrid grid, List<ItemStack> items, int lane) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.INPUT, slot.getInnerX(), slot.getInnerY());
@@ -363,9 +417,8 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         if (count > 1) {
             rSlot.setOverlay(new SlotBadgeDrawable(count, false), 0, 0);
         }
-        rSlot.addItemStacks(examplesFor(model));
-        jeiGroup.clear();
-        jeiGroup.add(rSlot);
+        rSlot.addItemStacks(items);
+        addToJeiLane(lane, rSlot);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
         rSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
         if (chance <= 0) {

@@ -97,21 +97,30 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     @Override
     public void setRecipe(@NotNull IRecipeLayoutBuilder builder, RecipeModel recipe, @NotNull IFocusGroup focuses) {
-        int inputRows = rowsFor(recipe.inputs().inputs().size());
-        int outputCount = recipe.outputs().outputs().stream().mapToInt(o -> o.displayedOutputs().size()).sum();
-        int outputRows = rowsFor(outputCount);
+        int inputRows = rowsFor(inputSlotCount(recipe));
+        int outputRows = rowsFor(outputSlotCount(recipe));
         var inGrid = new SlotGrid(20, 20, COLUMNS, inputRows, 0, 0);
         var outGrid = new SlotGrid(20, 20, COLUMNS, outputRows, 100, 0);
+        for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                // before any entry adds its slots: flex_match entries may come before their flex input
+                flex.clearJeiLanes();
+            }
+        }
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
             input.setRecipe(builder, recipe, focuses, helpers, inGrid);
         }
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
         }
-        // flex recipes: the input, its matching items and its outputs list one item per kind in the same order
+        // flex recipes: per lane, the input, its matching items and its outputs list one item per kind in the same order
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
-            if (input instanceof FlexRecipeIngredientEntry flex && flex.getJeiGroup().size() > 1) {
-                builder.createFocusLink(flex.getJeiGroup().toArray(new IRecipeSlotBuilder[0]));
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                for (var lane : flex.getJeiLanes()) {
+                    if (lane.size() > 1) {
+                        builder.createFocusLink(lane.toArray(new IRecipeSlotBuilder[0]));
+                    }
+                }
             }
         }
 
@@ -144,6 +153,16 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     public static int rowsFor(int slotCount) {
         return (slotCount + COLUMNS - 1) / COLUMNS;
+    }
+
+    /** JEI input slots of the recipe without a focus (a flex input with "max_types" shows one per kind). */
+    public static int inputSlotCount(RecipeModel recipe) {
+        return recipe.inputs().inputs().stream().mapToInt(i -> i.jeiSlotCount(recipe)).sum();
+    }
+
+    /** JEI output slots of the recipe without a focus. */
+    public static int outputSlotCount(RecipeModel recipe) {
+        return recipe.outputs().outputs().stream().mapToInt(o -> o.jeiSlotCount(recipe)).sum();
     }
 
     @Override
@@ -194,9 +213,9 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             }
         }
 
-        boolean scrollInputs = recipe.inputs().inputs().size() > COLUMNS * VISIBLE_ROWS;
-        boolean scrollOutputs = recipe.outputs().outputs().stream()
-                .mapToInt(o -> o.displayedOutputs().size()).sum() > COLUMNS * VISIBLE_ROWS;
+        // the slots actually laid out (same test as createRecipeExtras for the scroll grids)
+        boolean scrollInputs = recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).size() > COLUMNS * VISIBLE_ROWS;
+        boolean scrollOutputs = recipeSlotsView.getSlotViews(RecipeIngredientRole.OUTPUT).size() > COLUMNS * VISIBLE_ROWS;
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             boolean scrollSide = inputSlot.x < 100 ? scrollInputs : scrollOutputs;
             if (inputSlot.used() && !scrollSide) {
