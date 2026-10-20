@@ -80,6 +80,7 @@ public final class MMConfigOptions {
             bool("parallelProcessingDefault", "Parallel processing default", Scope.SERVER, S.parallelProcessingDefault),
             integer("maxParallelRecipes", "Maximum parallel recipes", Scope.SERVER, S.maxParallelRecipes, 1, 100),
             bool("showJeiMaxParallel", "Show parallel limit in JEI", Scope.SERVER, S.showJeiMaxParallel),
+            bool("showJeiFlexInputCopies", "Flex input slot per kind in JEI", Scope.SERVER, S.showJeiFlexInputCopies),
             integer("network_link.outputInterval", "Network output interval (ticks)", Scope.SERVER, S.networkLinkOutputInterval, 1, 1200),
             bool("network_link.opBypass", "Operator network bypass", Scope.SERVER, S.networkLinkOpBypass),
             bool("network_link.sendContentsOnRemove", "Send port contents on removal", Scope.SERVER, S.networkLinkSendOnRemove),

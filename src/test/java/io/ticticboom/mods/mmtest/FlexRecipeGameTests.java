@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
@@ -111,6 +112,15 @@ public class FlexRecipeGameTests {
         // (not bound to an output, so it accepts every sapling, also those without leaves)
         int expected = Math.min(FlexRecipeIngredientEntry.JEI_MAX_COPIES, many.acceptedExamples().size());
         check(helper, many.jeiCopies(saplings) == expected, "max_types 1000 should give " + expected + " slots, got " + many.jeiCopies(saplings));
+
+        // showJeiFlexInputCopies = false in mm-common.toml: one slot
+        boolean before = MMConfig.JEI_FLEX_INPUT_COPIES;
+        MMConfig.JEI_FLEX_INPUT_COPIES = false;
+        try {
+            check(helper, four.jeiCopies(saplings) == 1, "with the config off one slot, got " + four.jeiCopies(saplings));
+        } finally {
+            MMConfig.JEI_FLEX_INPUT_COPIES = before;
+        }
         helper.succeed();
     }
 

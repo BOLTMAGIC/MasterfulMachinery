@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.recipe.input.flex;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.NoCountItemRenderer;
 import io.ticticboom.mods.mm.compat.mysticalagriculture.MACrops;
+import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
@@ -100,11 +101,12 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     /**
      * How many copies of its input slot JEI shows: one per kind a run can take, all showing the same kind, so
      * "max_types": 4 shows 4 seeds side by side and players see they can put in up to 4 kinds. Without "max_types"
-     * (no limit) one slot. Never more than {@link #JEI_MAX_COPIES} or the kinds there are.
+     * (no limit), or with showJeiFlexInputCopies off in mm-common.toml, one slot. Never more than
+     * {@link #JEI_MAX_COPIES} or the kinds there are.
      * No JEI types here, so it can be called where JEI isn't loaded (tests).
      */
     public int jeiCopies(RecipeModel model) {
-        if (maxTypes == Integer.MAX_VALUE) {
+        if (maxTypes == Integer.MAX_VALUE || !MMConfig.JEI_FLEX_INPUT_COPIES) {
             return 1;
         }
         return Math.max(1, Math.min(Math.min(maxTypes, JEI_MAX_COPIES), examplesFor(model).size()));
@@ -387,12 +389,44 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         // "max_types" copies of the same slot, linked so they all show the same kind
         List<ItemStack> examples = examplesFor(model);
         int copies = jeiCopies(model);
+        List<Component> kindLines = maxTypesTooltip();
         for (int i = 0; i < copies; i++) {
-            addJeiSlot(builder, helpers, grid, examples);
+            addJeiSlot(builder, helpers, grid, examples, kindLines);
         }
     }
 
-    private void addJeiSlot(IRecipeLayoutBuilder builder, IJeiHelpers helpers, SlotGrid grid, List<ItemStack> items) {
+    /**
+     * "Up to 4 kinds per run, from tier 1 to tier 5 seeds" (the tiers of the Mystical Agriculture seeds the recipe
+     * takes, left out without MA seeds) and that they can be mixed; nothing without "max_types".
+     */
+    private List<Component> maxTypesTooltip() {
+        // Integer.MAX_VALUE = no "max_types" in the recipe (no limit)
+        if (maxTypes <= 1 || maxTypes == Integer.MAX_VALUE) {
+            return List.of();
+        }
+        int lowest = Integer.MAX_VALUE;
+        int highest = Integer.MIN_VALUE;
+        for (ItemStack item : acceptedExamples()) {
+            MACrops.Info crop = MACrops.forSeeds(item.getItem());
+            if (crop != null) {
+                lowest = Math.min(lowest, crop.tier());
+                highest = Math.max(highest, crop.tier());
+            }
+        }
+        Component kinds;
+        if (lowest == Integer.MAX_VALUE) {
+            kinds = Component.translatable("jei.mm.recipe.flex_max_types", maxTypes);
+        } else if (lowest == highest) {
+            kinds = Component.translatable("jei.mm.recipe.flex_max_types_tier", maxTypes, lowest);
+        } else {
+            kinds = Component.translatable("jei.mm.recipe.flex_max_types_tiers", maxTypes, lowest, highest);
+        }
+        return List.of(kinds.copy().withStyle(ChatFormatting.GOLD),
+                Component.translatable("jei.mm.recipe.flex_mixed").withStyle(ChatFormatting.GOLD));
+    }
+
+    private void addJeiSlot(IRecipeLayoutBuilder builder, IJeiHelpers helpers, SlotGrid grid, List<ItemStack> items,
+                            List<Component> kindLines) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.INPUT, slot.getInnerX(), slot.getInnerY());
@@ -411,10 +445,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         }
         rSlot.addRichTooltipCallback((v, list) -> {
             list.add(Component.translatable("jei.mm.recipe.flex_input").withStyle(ChatFormatting.DARK_AQUA));
-            // Integer.MAX_VALUE = no "max_types" in the recipe (no limit)
-            if (maxTypes > 1 && maxTypes != Integer.MAX_VALUE) {
-                list.add(Component.translatable("jei.mm.recipe.flex_max_types", maxTypes).withStyle(ChatFormatting.GOLD));
-            }
+            list.addAll(kindLines);
             if (chance <= 0) {
                 list.add(Component.translatable("jei.mm.recipe.not_consumed").withStyle(ChatFormatting.DARK_AQUA));
             } else if (chance < 1) {

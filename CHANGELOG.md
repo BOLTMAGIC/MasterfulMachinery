@@ -8,7 +8,8 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ### Changed
 
 #### JEI: flex recipes show `max_types` input slots
-- A flex recipe with `"max_types": 4` shows its input slot 4 times side by side, all on the same kind, so players see they can put in up to 4 kinds per run. Matching items and outputs stay one slot. Without `max_types`, one slot as before. At most 9 copies.
+- A flex recipe with `"max_types": 4` shows its input slot 4 times side by side, all on the same kind, so players see they can put in up to 4 kinds per run. Matching items and outputs stay one slot. Without `max_types`, one slot as before. At most 9 copies. `showJeiFlexInputCopies` in `mm-common.toml` (also in the in-game config screen) turns it off.
+- Tooltip: "Up to 4 kinds per run, from tier 1 to tier 5 seeds" (tiers of the recipe's Mystical Agriculture seeds) and that the kinds can be mixed.
 
 #### JEI: no empty slot frames under a scroll grid
 - With more slots than fit, the slot frames were drawn below the scroll grid too.
