@@ -4,13 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.35.10] - 2026-10-21
+
 ### Added
 
 #### Controller: show, stop or hide a machine's model
 - Machines with a GeckoLib model get an "Animation" row in the controller screen: **On** (animated) -> **Off** (the model stands still in its rest pose) -> **Hidden** (the model isn't drawn). For every player, saved with the controller. A model without animations goes On -> Hidden; machines without a model (or without GeckoLib) don't show the row.
 
 ### Changed
+
+#### JEI: flex recipes show `max_types` kinds side by side
+- A flex recipe with `"max_types": 4` shows 4 input slots (and 4 matching / output slots), each on a different kind, turning together. Without `max_types`, or when JEI shows a focused item, one slot cycles through every kind as before. At most 9 slots.
 
 #### JEI: flex `max_types` slots show the same kind
 - 0.1.35.10 showed a different kind in each of the `max_types` slots, and also repeated the matching item and output slots. Now the input slot is repeated `max_types` times, all on the same kind, so players see they can put in up to that many kinds; matching items and outputs are one slot again. At most 9 copies.
@@ -20,26 +24,15 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 #### JEI: thousands separator for energy
 - Energy amounts in JEI read "1 000 000 FE" instead of "1000000 FE", like the port screens.
 
-### Fixed
-
-#### Tests didn't compile (`compileTestJava`)
-- A GameTest called a method with a JEI type in its signature; the test classpath has no JEI.
-
-#### JEI: no empty slot frames under a scroll grid
-- With more slots than fit, the slot frames were drawn below the scroll grid too.
-
-## [0.1.35.10] - 2026-10-20
-### Changed
-
-#### JEI: flex recipes show `max_types` kinds side by side
-- A flex recipe with `"max_types": 4` shows 4 input slots (and 4 matching / output slots), each on a different kind, turning together. Without `max_types`, or when JEI shows a focused item, one slot cycles through every kind as before. At most 9 slots.
-
 #### Structure Builder: one folder for other mods' structures
 
 ### Fixed
 
 #### JEI: slot counts drawn over tooltips
 - The count badge of a JEI slot (e.g. "3.1K") showed through the tooltip of a neighbouring slot: JEI already draws slot overlays 200 higher, and the badge added another 200, the tooltip's depth.
+
+#### JEI: no empty slot frames under a scroll grid
+- With more slots than fit, the slot frames were drawn below the scroll grid too.
 
 ## [0.1.35.9] - 2026-10-19
 ### Fixed
