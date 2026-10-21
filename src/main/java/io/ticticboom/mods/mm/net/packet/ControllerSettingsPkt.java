@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.net.packet;
 
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
 import io.ticticboom.mods.mm.networklink.Permissions;
 import net.minecraft.core.BlockPos;
@@ -11,10 +12,11 @@ import net.minecraftforge.network.NetworkEvent;
 import java.util.function.Supplier;
 
 /**
- * Controller screen -> server: change the controller's recipe order, its name or mute its working sound.
+ * Controller screen -> server: change the controller's recipe order, its name, mute its working sound or how it
+ * shows its model (animated, still, hidden).
  */
 public record ControllerSettingsPkt(BlockPos pos, Setting setting, String value) {
-    public enum Setting { RECIPE_ORDER, NAME, SOUND_MUTED }
+    public enum Setting { RECIPE_ORDER, NAME, SOUND_MUTED, MODEL_DISPLAY }
 
     private static final double MAX_DISTANCE_SQR = 64 * 64;
 
@@ -47,6 +49,10 @@ public record ControllerSettingsPkt(BlockPos pos, Setting setting, String value)
                 case RECIPE_ORDER -> controller.setRecipeSelectionMode(RecipeSelectionMode.parse(pkt.value));
                 case NAME -> controller.setCustomName(pkt.value);
                 case SOUND_MUTED -> controller.setSoundMuted(Boolean.parseBoolean(pkt.value));
+                case MODEL_DISPLAY -> {
+                    ModelDisplay display = ModelDisplay.parse(pkt.value);
+                    if (display != null) controller.setModelDisplay(display);
+                }
             }
         });
         ctx.get().setPacketHandled(true);

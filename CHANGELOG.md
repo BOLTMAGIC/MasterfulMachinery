@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
+### Added
+
+#### Controller: show, stop or hide a machine's model
+- Machines with a GeckoLib model get an "Animation" row in the controller screen: **On** (animated) -> **Off** (the model stands still in its rest pose) -> **Hidden** (the model isn't drawn). For every player, saved with the controller. A model without animations goes On -> Hidden; machines without a model (or without GeckoLib) don't show the row.
+
 ### Changed
 
 #### JEI: flex `max_types` slots show the same kind
