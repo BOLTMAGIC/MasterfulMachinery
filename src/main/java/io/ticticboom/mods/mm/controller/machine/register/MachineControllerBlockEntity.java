@@ -120,9 +120,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // set from the controller screen: this machine plays no working sound (its particles stay)
     @Getter
     private boolean soundMuted = false;
-    // set from the controller screen: the machine's GeckoLib model stands still (no idle / working animation)
+    // set from the controller screen: the machine's GeckoLib model is animated, stands still or isn't drawn
     @Getter
-    private boolean animationsHidden = false;
+    private ModelDisplay modelDisplay = ModelDisplay.ON;
     // name given by a player (screen, or a named controller item); null = the machine's name
     @Nullable
     private String customName = null;
@@ -1154,8 +1154,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (soundMuted) {
             tag.putBoolean("SoundMuted", true);
         }
-        if (animationsHidden) {
-            tag.putBoolean("AnimationsHidden", true);
+        if (modelDisplay != ModelDisplay.ON) {
+            tag.putString("ModelDisplay", modelDisplay.serializedName());
         }
         if (!assemblyTiers.asMap().isEmpty()) tag.put("AssemblyTiers", assemblyTiers.save());
         if (assemblyStructureId != null) tag.putString("AssemblyStructure", assemblyStructureId.toString());
@@ -1215,7 +1215,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
         customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
         soundMuted = tag.getBoolean("SoundMuted");
-        animationsHidden = tag.getBoolean("AnimationsHidden");
+        ModelDisplay display = ModelDisplay.parse(tag.getString("ModelDisplay"));
+        modelDisplay = display == null ? ModelDisplay.ON : display;
         // load redstone mode
         try {
             if (tag.contains("redstoneMode")) {
@@ -1323,8 +1324,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
-    public void setAnimationsHidden(boolean hidden) {
-        animationsHidden = hidden;
+    public void setModelDisplay(ModelDisplay display) {
+        modelDisplay = display;
         setChanged();
         if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }

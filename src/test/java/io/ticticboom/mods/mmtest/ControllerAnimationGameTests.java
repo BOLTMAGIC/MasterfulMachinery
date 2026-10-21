@@ -2,6 +2,7 @@ package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
@@ -15,8 +16,8 @@ import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
 
 /**
- * The controller screen's Animation switch: kept in the controller's data (saved, sent to clients in the update tag),
- * so the machine's model stays still after a reload and for every player.
+ * The controller screen's model switch (On / Off / Hidden): kept in the controller's data (saved, sent to clients in
+ * the update tag), so it stays after a reload and applies for every player.
  */
 @GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)
@@ -25,23 +26,37 @@ public class ControllerAnimationGameTests {
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
 
     @GameTest(template = TEMPLATE)
-    public static void hiddenAnimationsAreSavedAndSynced(GameTestHelper helper) {
+    public static void modelDisplayIsSavedAndSynced(GameTestHelper helper) {
         helper.setBlock(CONTROLLER, block("flex_test").defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
         var controller = (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
-        check(helper, !controller.isAnimationsHidden(), "animations should be on by default");
-        check(helper, !controller.getUpdateTag().contains("AnimationsHidden"), "nothing to save while they are on");
+        check(helper, controller.getModelDisplay() == ModelDisplay.ON, "the model should be on by default");
+        check(helper, !controller.getUpdateTag().contains("ModelDisplay"), "nothing to save while it is on");
 
-        controller.setAnimationsHidden(true);
-        check(helper, controller.isAnimationsHidden(), "animations should be hidden");
-        check(helper, controller.getUpdateTag().getBoolean("AnimationsHidden"), "clients get the switch in the update tag");
+        for (ModelDisplay display : new ModelDisplay[]{ModelDisplay.OFF, ModelDisplay.HIDDEN}) {
+            controller.setModelDisplay(display);
+            check(helper, controller.getUpdateTag().getString("ModelDisplay").equals(display.serializedName()),
+                    "clients get " + display + " in the update tag");
+            // a chunk reload loads the controller from its saved data
+            BlockPos pos = helper.absolutePos(CONTROLLER);
+            var reloaded = BlockEntity.loadStatic(pos, helper.getLevel().getBlockState(pos), controller.saveWithFullMetadata());
+            check(helper, reloaded instanceof MachineControllerBlockEntity be && be.getModelDisplay() == display,
+                    display + " should survive a reload");
+        }
 
-        // a chunk reload loads the controller from its saved data
-        BlockPos pos = helper.absolutePos(CONTROLLER);
-        var reloaded = BlockEntity.loadStatic(pos, helper.getLevel().getBlockState(pos), controller.saveWithFullMetadata());
-        check(helper, reloaded instanceof MachineControllerBlockEntity be && be.isAnimationsHidden(), "hidden animations should survive a reload");
+        controller.setModelDisplay(ModelDisplay.ON);
+        check(helper, !controller.getUpdateTag().contains("ModelDisplay"), "switched back on, nothing left in the data");
+        helper.succeed();
+    }
 
-        controller.setAnimationsHidden(false);
-        check(helper, !controller.getUpdateTag().contains("AnimationsHidden"), "switched back on, nothing left in the data");
+    @GameTest(template = TEMPLATE)
+    public static void modelDisplayCyclesAndSkipsOffWithoutAnimations(GameTestHelper helper) {
+        check(helper, ModelDisplay.ON.next(true) == ModelDisplay.OFF, "On -> Off");
+        check(helper, ModelDisplay.OFF.next(true) == ModelDisplay.HIDDEN, "Off -> Hidden");
+        check(helper, ModelDisplay.HIDDEN.next(true) == ModelDisplay.ON, "Hidden -> On");
+        // a model without animations: Off would change nothing
+        check(helper, ModelDisplay.ON.next(false) == ModelDisplay.HIDDEN, "On -> Hidden without animations");
+        check(helper, ModelDisplay.HIDDEN.next(false) == ModelDisplay.ON, "Hidden -> On without animations");
+        check(helper, ModelDisplay.parse("hidden") == ModelDisplay.HIDDEN && ModelDisplay.parse("bogus") == null, "parse");
         helper.succeed();
     }
 

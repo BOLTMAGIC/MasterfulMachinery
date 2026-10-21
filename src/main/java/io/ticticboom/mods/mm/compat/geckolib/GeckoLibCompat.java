@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.geo.GeoBridge;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
+import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import net.minecraft.client.renderer.MultiBufferSource;
 import org.jetbrains.annotations.Nullable;
@@ -36,7 +37,7 @@ public class GeckoLibCompat implements GeoBridge {
             return;
         }
         animatable.setState(state);
-        animatable.setAnimationsHidden(be.isAnimationsHidden());
+        animatable.setAnimationsHidden(be.getModelDisplay() != ModelDisplay.ON);
         // a copy, so a failure inside GeckoLib can't leave the level's pose stack unbalanced
         PoseStack local = new PoseStack();
         local.last().pose().set(pose.last().pose());

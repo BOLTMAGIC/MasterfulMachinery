@@ -525,7 +525,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             var soundButton = isOnRow(Row.SOUND, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
             gfx.blitNineSlicedSized(soundButton, x + VALUE_X - 2, sy, valueRight - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         }
-        if (hasAnimation()) {
+        if (hasModel()) {
             int ay = y + rowY(Row.ANIMATION) - 2;
             var animationButton = isOnRow(Row.ANIMATION, mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
             gfx.blitNineSlicedSized(animationButton, x + VALUE_X - 2, ay, valueRight - VALUE_X + 2, BUTTON_HEIGHT, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
@@ -636,8 +636,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             drawClipped(gfx, Component.translatable(be.isSoundMuted() ? "gui.mm.controller.sound.off" : "gui.mm.controller.sound.on"),
                     VALUE_X + 1, rowY(Row.SOUND), valueRight - VALUE_X - 3, TEXT);
         }
-        if (hasAnimation()) {
-            drawClipped(gfx, Component.translatable(be.isAnimationsHidden() ? "gui.mm.controller.animation.off" : "gui.mm.controller.animation.on"),
+        if (hasModel()) {
+            drawClipped(gfx, Component.translatable("gui.mm.controller.animation." + be.getModelDisplay().serializedName()),
                     VALUE_X + 1, rowY(Row.ANIMATION), valueRight - VALUE_X - 3, TEXT);
         }
         if (NetworkLink.AVAILABLE) {
@@ -657,7 +657,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     private List<Row> rows() {
         List<Row> shown = new ArrayList<>(List.of(Row.STRUCTURE, Row.TIER, Row.PARALLEL, Row.REDSTONE, Row.MODE));
         if (hasWorkingSound()) shown.add(Row.SOUND);
-        if (hasAnimation()) shown.add(Row.ANIMATION);
+        if (hasModel()) shown.add(Row.ANIMATION);
         if (NetworkLink.AVAILABLE) shown.add(Row.LINK);
         return shown;
     }
@@ -666,10 +666,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return be.getBlockState().getBlock() instanceof MachineControllerBlock block && block.hasWorkingSound();
     }
 
-    /** Whether the machine's GeckoLib model has animations to stop (and GeckoLib is there to draw it). */
-    private boolean hasAnimation() {
+    /** Whether the machine has a GeckoLib model to show, stop or hide (and GeckoLib is there to draw it). */
+    private boolean hasModel() {
+        return be.geoModel() != null && GeoBridge.get() != null;
+    }
+
+    /** Whether the model has animations: without, the switch skips "Off" (nothing would change). */
+    private boolean hasAnimations() {
         GeoModelConfig geo = be.geoModel();
-        return geo != null && geo.animations() != null && GeoBridge.get() != null;
+        return geo != null && geo.animations() != null;
     }
 
     /** While the multiblock isn't formed, the recipe section lists what is missing where. */
@@ -859,7 +864,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     }
                 }
                 case ANIMATION -> {
-                    lines.add(Component.translatable(be.isAnimationsHidden() ? "gui.mm.controller.animation.off.hint" : "gui.mm.controller.animation.on.hint").withStyle(ChatFormatting.GRAY));
+                    lines.add(Component.translatable("gui.mm.controller.animation." + be.getModelDisplay().serializedName() + ".hint").withStyle(ChatFormatting.GRAY));
                     lines.add(Component.translatable("gui.mm.controller.animation.hint").withStyle(ChatFormatting.YELLOW));
                 }
                 case LINK -> {
@@ -960,8 +965,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
             return true;
         }
-        if (!onPortsPage() && hasAnimation() && isOnRow(Row.ANIMATION, mouseX, mouseY)) {
-            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.ANIMATIONS_HIDDEN, Boolean.toString(!be.isAnimationsHidden())));
+        if (!onPortsPage() && hasModel() && isOnRow(Row.ANIMATION, mouseX, mouseY)) {
+            var next = be.getModelDisplay().next(hasAnimations());
+            MMNetwork.INSTANCE.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.MODEL_DISPLAY, next.serializedName()));
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1.0f));
             return true;
         }

@@ -7,8 +7,8 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 ## [Unreleased]
 ### Added
 
-#### Controller: hide a machine's animations
-- Machines with an animated GeckoLib model get an "Animation: On / Hidden" row in the controller screen. Hidden stops the model's idle and working animations (it stands still in its rest pose) for every player; saved with the controller. Machines without animations (or without GeckoLib) don't show the row.
+#### Controller: show, stop or hide a machine's model
+- Machines with a GeckoLib model get an "Animation" row in the controller screen: **On** (animated) -> **Off** (the model stands still in its rest pose) -> **Hidden** (the model isn't drawn). For every player, saved with the controller. A model without animations goes On -> Hidden; machines without a model (or without GeckoLib) don't show the row.
 
 ## [0.1.35.10] - 2026-10-20
 ### Changed
