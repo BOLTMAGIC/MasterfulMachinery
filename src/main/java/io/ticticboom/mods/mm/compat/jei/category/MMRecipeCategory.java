@@ -104,7 +104,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
             if (input instanceof FlexRecipeIngredientEntry flex) {
                 // before any entry adds its slots: flex_match entries may come before their flex input
-                flex.clearJeiLanes();
+                flex.clearJeiGroup();
             }
         }
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
@@ -113,14 +113,11 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
         }
-        // flex recipes: per lane, the input, its matching items and its outputs list one item per kind in the same order
+        // flex recipes: the input (and its max_types copies), its matching items and its outputs list one item per
+        // kind in the same order
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
-            if (input instanceof FlexRecipeIngredientEntry flex) {
-                for (var lane : flex.getJeiLanes()) {
-                    if (lane.size() > 1) {
-                        builder.createFocusLink(lane.toArray(new IRecipeSlotBuilder[0]));
-                    }
-                }
+            if (input instanceof FlexRecipeIngredientEntry flex && flex.getJeiGroup().size() > 1) {
+                builder.createFocusLink(flex.getJeiGroup().toArray(new IRecipeSlotBuilder[0]));
             }
         }
 
@@ -213,9 +210,18 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             }
         }
 
-        // the slots actually laid out (same test as createRecipeExtras for the scroll grids)
-        boolean scrollInputs = recipeSlotsView.getSlotViews(RecipeIngredientRole.INPUT).size() > COLUMNS * VISIBLE_ROWS;
-        boolean scrollOutputs = recipeSlotsView.getSlotViews(RecipeIngredientRole.OUTPUT).size() > COLUMNS * VISIBLE_ROWS;
+        // the slots setRecipe laid out (createRecipeExtras puts more than COLUMNS * VISIBLE_ROWS in a scroll grid, which
+        // draws its own slot backgrounds; slots inside it aren't in recipeSlotsView, so count the grid entries)
+        int inputs = 0;
+        int outputs = 0;
+        for (SlotGridEntry slot : recipe.inputSlots()) {
+            if (slot.used()) {
+                if (slot.x < 100) inputs++;
+                else outputs++;
+            }
+        }
+        boolean scrollInputs = inputs > COLUMNS * VISIBLE_ROWS;
+        boolean scrollOutputs = outputs > COLUMNS * VISIBLE_ROWS;
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             boolean scrollSide = inputSlot.x < 100 ? scrollInputs : scrollOutputs;
             if (inputSlot.used() && !scrollSide) {

@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.energy;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.util.CountFormat;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -21,7 +22,8 @@ public class EnergyIngredientRenderer implements IIngredientRenderer<EnergyStack
     @Override
     public @NotNull List<Component> getTooltip(EnergyStack ingredient, @NotNull TooltipFlag tooltipFlag) {
         var result = new ArrayList<Component>();
-        result.add(Component.literal(ingredient.amount() + " FE"));
+        // "1 000 000 FE", grouped like the port screens' amounts
+        result.add(Component.literal(CountFormat.grouped(ingredient.amount()) + " FE"));
         return result;
     }
 }

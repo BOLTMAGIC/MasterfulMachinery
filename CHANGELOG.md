@@ -10,6 +10,24 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 #### Controller: show, stop or hide a machine's model
 - Machines with a GeckoLib model get an "Animation" row in the controller screen: **On** (animated) -> **Off** (the model stands still in its rest pose) -> **Hidden** (the model isn't drawn). For every player, saved with the controller. A model without animations goes On -> Hidden; machines without a model (or without GeckoLib) don't show the row.
 
+### Changed
+
+#### JEI: flex `max_types` slots show the same kind
+- 0.1.35.10 showed a different kind in each of the `max_types` slots, and also repeated the matching item and output slots. Now the input slot is repeated `max_types` times, all on the same kind, so players see they can put in up to that many kinds; matching items and outputs are one slot again. At most 9 copies.
+- Tooltip: "Up to 4 kinds per run, from tier 1 to tier 5 seeds" (tiers of the recipe's Mystical Agriculture seeds, left out without them) and "Mix them: they don't need to be the same kind".
+- `showJeiFlexInputCopies` in `mm-common.toml` (also in the in-game config screen) turns the copies off.
+
+#### JEI: thousands separator for energy
+- Energy amounts in JEI read "1 000 000 FE" instead of "1000000 FE", like the port screens.
+
+### Fixed
+
+#### Tests didn't compile (`compileTestJava`)
+- A GameTest called a method with a JEI type in its signature; the test classpath has no JEI.
+
+#### JEI: no empty slot frames under a scroll grid
+- With more slots than fit, the slot frames were drawn below the scroll grid too.
+
 ## [0.1.35.10] - 2026-10-20
 ### Changed
 

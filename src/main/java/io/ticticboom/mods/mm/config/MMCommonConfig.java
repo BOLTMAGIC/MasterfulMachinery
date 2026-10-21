@@ -21,6 +21,7 @@ public class MMCommonConfig {
     public final ForgeConfigSpec.BooleanValue parallelProcessingDefault;
     public final ForgeConfigSpec.IntValue maxParallelRecipes;
     public final ForgeConfigSpec.BooleanValue showJeiMaxParallel;
+    public final ForgeConfigSpec.BooleanValue showJeiFlexInputCopies;
     public final ForgeConfigSpec.IntValue toolEnergyCapacity;
     public final ForgeConfigSpec.IntValue toolEnergyPerPlacedBlock;
     public final ForgeConfigSpec.IntValue toolEnergyPerDismantledBlock;
@@ -53,6 +54,9 @@ public class MMCommonConfig {
                 .defineInRange("maxParallelRecipes", 5, 1, 100);
         showJeiMaxParallel = builder.comment("Show 'Max Parallel Processing' line in JEI structure view. Default: true")
                 .define("showJeiMaxParallel", true);
+        showJeiFlexInputCopies = builder.comment("In JEI, show a flex recipe's input slot once per kind a run can take (\"max_types\", up to 9),",
+                        "so players see how many kinds they can put in. When false, one slot. Default: true")
+                .define("showJeiFlexInputCopies", true);
 
         builder.comment("Network linker (needs AE2): links a multiblock to an owner and an AE2 network.")
                 .push("network_link");

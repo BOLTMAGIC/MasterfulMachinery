@@ -24,10 +24,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -92,27 +90,14 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
 
-    /** The recipe's flex input this entry follows ("from"), or null. */
-    @Nullable
-    private FlexRecipeIngredientEntry inputOf(RecipeModel model) {
+    @Override
+    public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
         FlexRecipeIngredientEntry input = null;
         for (var entry : model.inputs().inputs()) {
             if (entry instanceof FlexRecipeIngredientEntry flex && flex.getName().equals(from)) {
                 input = flex;
             }
         }
-        return input;
-    }
-
-    @Override
-    public int jeiSlotCount(RecipeModel model) {
-        var input = inputOf(model);
-        return input == null || input.examplesFor(model).isEmpty() ? 0 : input.jeiLanes(model, null);
-    }
-
-    @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
-        var input = inputOf(model);
         if (input == null) {
             return;
         }
@@ -123,15 +108,6 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
         if (stacks.isEmpty()) {
             return;
         }
-        // one slot per lane of the flex input, listing the matching items in the same (rotated) order
-        int lanes = input.jeiLanes(model, focus);
-        for (int lane = 0; lane < lanes; lane++) {
-            addJeiSlot(builder, helpers, grid, FlexRecipeIngredientEntry.forLane(stacks, lane), input, lane);
-        }
-    }
-
-    private void addJeiSlot(IRecipeLayoutBuilder builder, IJeiHelpers helpers, SlotGrid grid, List<ItemStack> stacks,
-                            FlexRecipeIngredientEntry input, int lane) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.INPUT, slot.getInnerX(), slot.getInnerY());
@@ -153,7 +129,7 @@ public class FlexMatchIngredientEntry implements IRecipeIngredientEntry {
                 list.add(Component.literal(String.format("%.2f", chance * 100) + "% Chance of Consumption").withStyle(ChatFormatting.DARK_AQUA));
             }
         });
-        input.addToJeiLane(lane, rSlot);
+        input.addToJeiGroup(rSlot);
     }
 
     @Override
