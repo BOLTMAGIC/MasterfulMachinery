@@ -252,27 +252,11 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
-    public int jeiSlotCount(RecipeModel model) {
-        if (input == null || exampleOutputs(input.examplesFor(model)).isEmpty()) {
-            return 0;
-        }
-        return input.jeiLanes(model, null);
-    }
-
-    @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
         var outputs = input == null ? List.<ItemStack>of() : exampleOutputs(input.examplesFor(model));
         if (outputs.isEmpty()) {
             return;
         }
-        // one slot per lane of the flex input, listing the outputs in the same (rotated) order
-        int lanes = input.jeiLanes(model, focus);
-        for (int lane = 0; lane < lanes; lane++) {
-            addJeiSlot(builder, helpers, grid, FlexRecipeIngredientEntry.forLane(outputs, lane), lane);
-        }
-    }
-
-    private void addJeiSlot(IRecipeLayoutBuilder builder, IJeiHelpers helpers, SlotGrid grid, List<ItemStack> outputs, int lane) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.OUTPUT, slot.getInnerX(), slot.getInnerY());
@@ -283,8 +267,10 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         rSlot.addItemStacks(outputs);
         var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
         rSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
-        // listed in the same order as the input's slot of this lane: linked by MMRecipeCategory so they turn together
-        input.addToJeiLane(lane, rSlot);
+        if (input != null) {
+            // listed in the same order as the input's slot: linked by MMRecipeCategory so they turn together
+            input.addToJeiGroup(rSlot);
+        }
         double percent = chance * 100.0;
         String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
         rSlot.addRichTooltipCallback((v, list) -> {
