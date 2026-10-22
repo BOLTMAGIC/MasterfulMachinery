@@ -70,6 +70,22 @@ public class PatternRunGameTests {
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 200)
+    public static void controllerScreenShowsPatternRunProgress(GameTestHelper helper) {
+        var controller = build(helper);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> expectStarted(helper, controller, 1, "the pattern run should start"))
+                .thenIdle(10)
+                .thenExecute(() -> {
+                    var state = controller.getRecipeState();
+                    check(helper, state != null && state.getTickProgress() > 0,
+                            "the controller screen should show the running pattern's progress, state " + state);
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 200)
     public static void parallelLimitCountsPatternRuns(GameTestHelper helper) {
         var controller = build(helper);
 

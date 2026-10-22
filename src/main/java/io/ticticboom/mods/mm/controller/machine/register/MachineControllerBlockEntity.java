@@ -1483,7 +1483,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     public RecipeStateModel getRecipeState() {
-        if (activeRecipes.isEmpty()) return null;
+        if (activeRecipes.isEmpty()) {
+            // a running pattern run, so a machine busy with AE2 crafts shows its progress too
+            for (PatternRun run : patternRuns) {
+                if (!run.isReturning()) return run.getState();
+            }
+            return null;
+        }
         return activeRecipes.values().iterator().next();
     }
 
