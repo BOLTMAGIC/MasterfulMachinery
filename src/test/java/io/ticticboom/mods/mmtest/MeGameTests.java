@@ -23,6 +23,10 @@ public final class MeGameTests {
         if (ModList.get().isLoaded("ae2")) {
             event.register(MeToolGameTests.class);
             event.register(MeItemPortGameTests.class);
+            event.register(PatternPortGameTests.class);
+            if (ModList.get().isLoaded("appmek")) {
+                event.register(PatternPortChemicalGameTests.class);
+            }
         } else {
             LOGGER.info("AE2 is not installed: skipping the ME GameTests");
         }

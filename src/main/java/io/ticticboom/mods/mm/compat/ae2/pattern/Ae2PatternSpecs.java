@@ -1,0 +1,56 @@
+package io.ticticboom.mods.mm.compat.ae2.pattern;
+
+import appeng.api.crafting.IPatternDetails;
+import appeng.api.stacks.AEFluidKey;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.AEKey;
+import appeng.api.stacks.GenericStack;
+import io.ticticboom.mods.mm.pattern.PatternIngredient;
+import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
+import io.ticticboom.mods.mm.pattern.PatternSpec;
+import net.minecraftforge.fml.ModList;
+import net.minecraftforge.registries.ForgeRegistries;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+
+/** AE2 patterns and stacks as MM sees them. */
+public final class Ae2PatternSpecs {
+    private static final boolean APPMEK = ModList.get().isLoaded("appmek");
+
+    private Ae2PatternSpecs() {
+    }
+
+    /** @return null if the pattern has something MM can't carry */
+    @Nullable
+    public static PatternSpec spec(IPatternDetails details) {
+        var inputs = new ArrayList<PatternIngredient>();
+        for (IPatternDetails.IInput input : details.getInputs()) {
+            GenericStack[] possible = input.getPossibleInputs();
+            if (possible.length == 0) {
+                return null;
+            }
+            PatternIngredient ingredient = ingredient(possible[0].what(), possible[0].amount() * input.getMultiplier());
+            if (ingredient == null) {
+                return null;
+            }
+            inputs.add(ingredient);
+        }
+        GenericStack primary = details.getPrimaryOutput();
+        PatternIngredient output = primary == null ? null : ingredient(primary.what(), primary.amount());
+        return output == null ? null : new PatternSpec(inputs, output);
+    }
+
+    /** @return null for a kind of key MM can't carry */
+    @Nullable
+    public static PatternIngredient ingredient(AEKey key, long amount) {
+        if (key instanceof AEItemKey item) {
+            return new PatternIngredient(Kind.ITEM, ForgeRegistries.ITEMS.getKey(item.getItem()), amount,
+                    item.getTag() == null ? null : item.getTag().copy());
+        }
+        if (key instanceof AEFluidKey fluid) {
+            return new PatternIngredient(Kind.FLUID, ForgeRegistries.FLUIDS.getKey(fluid.getFluid()), amount, null);
+        }
+        return APPMEK ? Ae2ChemicalKeys.ingredient(key, amount) : null;
+    }
+}

@@ -1,13 +1,27 @@
 package io.ticticboom.mods.mm.pattern;
 
+import io.ticticboom.mods.mm.compat.ae2.pattern.PatternPortCraftingMachine;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
+import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
+import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.MachineLinks;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.util.LazyOptional;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * A Pattern Port: finds the machine it belongs to (like an Input Gateway) and remembers why the last push was
@@ -22,6 +36,13 @@ public class PatternPortBlockEntity extends BlockEntity {
     private long refreshAt = Long.MIN_VALUE;
     @Nullable
     private PatternStartResult lastResult;
+    private boolean noRecipe;
+    // recipe found per (pattern, structure), until recipes reload
+    private final Map<List<Object>, Optional<ResourceLocation>> recipeByPattern = new HashMap<>();
+    private int recipeGeneration = -1;
+    // the AE2 crafting machine capability, made on first request; only with AE2
+    @Nullable
+    private LazyOptional<?> craftingMachine;
 
     public PatternPortBlockEntity(BlockPos pos, BlockState state) {
         super(MMRegisters.PATTERN_PORT_BE.get(), pos, state);
@@ -53,5 +74,53 @@ public class PatternPortBlockEntity extends BlockEntity {
 
     public void setLastResult(@Nullable PatternStartResult result) {
         this.lastResult = result;
+        this.noRecipe = false;
+    }
+
+    /** Whether the last push was refused because no recipe of the machine fits the pattern. */
+    public boolean lastHadNoRecipe() {
+        return noRecipe;
+    }
+
+    public void setNoRecipe() {
+        this.lastResult = null;
+        this.noRecipe = true;
+    }
+
+    /**
+     * The machine's recipe a pattern is for, or null.
+     *
+     * @param pattern the pattern's identity (AE2's encoded pattern), the cache key with the machine's structure
+     */
+    @Nullable
+    public RecipeModel recipeFor(Object pattern, MachineControllerBlockEntity machine, PatternSpec spec) {
+        if (recipeGeneration != MachineRecipeManager.generation) {
+            recipeByPattern.clear();
+            recipeGeneration = MachineRecipeManager.generation;
+        }
+        var structure = machine.getStructure().id();
+        var id = recipeByPattern.computeIfAbsent(List.of(pattern, structure), key -> Optional.ofNullable(
+                PatternRecipeMatcher.match(MachineRecipeManager.getRecipeForStructureIds(List.of(structure)), spec)).map(RecipeModel::id));
+        return id.map(MachineRecipeManager.RECIPES::get).orElse(null);
+    }
+
+    @Override
+    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
+        if (NetworkLink.AVAILABLE && PatternPortCraftingMachine.isCraftingMachine(cap)) {
+            if (craftingMachine == null) {
+                craftingMachine = PatternPortCraftingMachine.capabilityFor(this);
+            }
+            return craftingMachine.cast();
+        }
+        return super.getCapability(cap, side);
+    }
+
+    @Override
+    public void invalidateCaps() {
+        super.invalidateCaps();
+        if (craftingMachine != null) {
+            craftingMachine.invalidate();
+            craftingMachine = null;
+        }
     }
 }
