@@ -140,6 +140,11 @@ public abstract class MekanismChemicalPortStorage<CHEMICAL extends Chemical<CHEM
     protected abstract MekanismChemicalPortStorage<CHEMICAL, STACK> createEmpty(MekanismChemicalPortStorageModel model);
 
     @Override
+    public boolean carriedByPatterns() {
+        return true;
+    }
+
+    @Override
     public IPortStorage simulationCopy() {
         var copy = createEmpty(model);
         copy.load(save(new CompoundTag()));
