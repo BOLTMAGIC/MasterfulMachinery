@@ -117,13 +117,18 @@ public class RecipePauseGameTests {
         helper.startSequence()
                 .thenWaitUntil(() -> formed(helper, controller, "tick_output_test"))
                 .thenExecute(() -> storage(helper, INPUT).insert(new ItemStack(Items.IRON_INGOT), 1))
+                // each time the port is full, leave it full for longer than the whole recipe before making room
                 .thenWaitUntil(() -> check(helper, count(helper, OUTPUT, Items.GOLD_INGOT) == 5, "the output port isn't full yet"))
+                .thenIdle(30)
                 .thenExecute(() -> taken[0] += takeAll(helper, OUTPUT))
                 .thenWaitUntil(() -> check(helper, count(helper, OUTPUT, Items.GOLD_INGOT) == 5, "no more gold after making room"))
+                .thenIdle(30)
                 .thenExecute(() -> taken[0] += takeAll(helper, OUTPUT))
                 .thenWaitUntil(() -> check(helper, count(helper, OUTPUT, Items.GOLD_INGOT) == 5, "no more gold after making room"))
+                .thenIdle(30)
                 .thenExecute(() -> taken[0] += takeAll(helper, OUTPUT))
                 .thenWaitUntil(() -> check(helper, count(helper, OUTPUT, Items.GOLD_INGOT) == 5, "no more gold after making room"))
+                .thenIdle(30)
                 .thenExecute(() -> check(helper, taken[0] + takeAll(helper, OUTPUT) == 20, "all 20 gold should be made, none thrown away"))
                 .thenSucceed();
     }
