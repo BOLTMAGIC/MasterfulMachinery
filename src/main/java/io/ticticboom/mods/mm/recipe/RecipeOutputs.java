@@ -4,6 +4,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
+import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import net.minecraft.world.level.Level;
@@ -32,7 +34,13 @@ public record RecipeOutputs(
                 return false;
             }
         }
-        return true;
+        // each output checked the free space alone: outputs sharing an empty slot have to fit together, or the
+        // last ones would be thrown away when the recipe finishes
+        var items = new ArrayList<SingleItemPortIngredient>();
+        for (IRecipeOutputEntry output : outputs) {
+            items.addAll(output.plannedItemOutputs(level, model));
+        }
+        return items.size() < 2 || new OutputSimulation(storages).tryAdd(level, items);
     }
 
     public void process(Level level, RecipeStorages storages, RecipeStateModel model) {

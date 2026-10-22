@@ -190,6 +190,11 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
+    public List<SingleItemPortIngredient> plannedItemOutputs(Level level, RecipeStateModel state) {
+        return !perTick && shouldRun ? outputsFor(level, state) : List.of();
+    }
+
+    @Override
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
 
