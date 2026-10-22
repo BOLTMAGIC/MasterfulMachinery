@@ -966,6 +966,38 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return new RecipeConditionContext(level, getBlockPos(), structure);
     }
 
+    /** What one tick did to a running recipe, see {@link #tickRun}. */
+    private enum RunStep { WAITING, PROGRESSED, OUTPUTS_BLOCKED, FINISHED }
+
+    /**
+     * One tick of a running recipe: its per-tick inputs and outputs, its progress and, once done, its outputs.
+     * WAITING while its conditions don't hold (night ended...) or a per-tick output doesn't fit; OUTPUTS_BLOCKED when
+     * it just reached the end but its outputs don't fit yet (it keeps its consumed inputs, the outputs are tried again
+     * later).
+     */
+    private RunStep tickRun(RecipeModel recipe, RecipeStateModel state, RecipeStorages storages) {
+        if (!recipe.conditions().canRun(conditionContext())) {
+            return RunStep.WAITING;
+        }
+        if (!recipe.outputs().canProcessTick(level, storages, state)) {
+            // a per-tick output doesn't fit: wait for room instead of throwing it away
+            return RunStep.WAITING;
+        }
+        recipe.inputs().processTick(level, storages, state);
+        recipe.outputs().processTick(level, storages, state);
+        if (!state.isCanFinish()) state.proceedTick();
+        state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
+        if (state.getTickProgress() < recipe.ticks()) {
+            return RunStep.PROGRESSED;
+        }
+        state.setCanFinish(true);
+        if (!recipe.outputs().canProcess(level, storages, state)) {
+            return RunStep.OUTPUTS_BLOCKED;
+        }
+        recipe.outputs().process(level, storages, state);
+        return RunStep.FINISHED;
+    }
+
     private void performRecipeTick() {
         long gameTime = (level == null) ? 0L : level.getGameTime();
         // stall timeout in ticks: if a recipe hasn't updated for this many ticks, ditch it
@@ -987,11 +1019,6 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             ResourceLocation recipeId = entry.getKey();
             RecipeStateModel state = entry.getValue();
             RecipeModel recipe = MachineRecipeManager.RECIPES.get(recipeId);
-            // a recipe whose conditions stop holding (night ended...) waits; it isn't stalled
-            if (recipe != null && !recipe.conditions().canRun(conditionContext())) {
-                activeRecipeLastUpdate.put(recipeId, gameTime);
-                continue;
-            }
             if (state.isCanFinish() && recipe != null) {
                 // A completed recipe owns its consumed inputs until its outputs fit.
                 // processActiveRecipeOutputs retries the output on the next tick.
@@ -1014,33 +1041,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 continue;
             }
             if (recipe != null) {
-                if (!recipe.outputs().canProcessTick(level, portStorages, state)) {
-                    // a per-tick output doesn't fit: wait for room instead of throwing it away
-                    activeRecipeLastUpdate.put(recipeId, gameTime);
+                RunStep step = tickRun(recipe, state, portStorages);
+                if (step == RunStep.FINISHED) {
+                    toRemove.add(recipeId);
+                    MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
                     continue;
                 }
-                int prevProgress = state.getTickProgress();
-                recipe.inputs().processTick(level, portStorages, state);
-                recipe.outputs().processTick(level, portStorages, state);
-                if (!state.isCanFinish()) state.proceedTick();
-                state.setTickPercentage(((double) state.getTickProgress() / recipe.ticks()) * 100);
-                boolean progressed = state.getTickProgress() != prevProgress;
-                 if (state.getTickProgress() >= recipe.ticks()) {
-                     state.setCanFinish(true);
-                     boolean canOutputs = recipe.outputs().canProcess(level, portStorages, state);
-                     if (canOutputs) {
-                         recipe.outputs().process(level, portStorages, state);
-                         toRemove.add(recipeId);
-                         MMInteropManager.KUBEJS.ifPresent(kjs -> kjs.onRecipeFinish(this, recipeId));
-                         progressed = true;
-                    } else {
-                        int recipeSkipCooldownTicks = 100;
-                        recipeNextCheckTime.put(recipeId, gameTime + recipeSkipCooldownTicks);
-                    }
+                if (step == RunStep.OUTPUTS_BLOCKED) {
+                    int recipeSkipCooldownTicks = 100;
+                    recipeNextCheckTime.put(recipeId, gameTime + recipeSkipCooldownTicks);
                 }
-                if (progressed) {
-                    activeRecipeLastUpdate.put(recipeId, gameTime);
-                }
+                activeRecipeLastUpdate.put(recipeId, gameTime);
             }
         }
         for (ResourceLocation id : toRemove) {
