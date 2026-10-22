@@ -1,0 +1,11 @@
+{
+  "id": "test_prio_item",
+  "name": "Test Priority Item",
+  "controllerIds": "mm:priority_test",
+  "type": "mm:item",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "tierRank": 1
+  }
+}

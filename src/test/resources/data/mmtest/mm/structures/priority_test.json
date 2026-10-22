@@ -1,0 +1,29 @@
+{
+  "name": "priority_test",
+  "controllerIds": "mm:priority_test",
+  "layout": [
+    [
+      "ICOOFF"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "F": {
+      "portType": "mm:fluid",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    }
+  }
+}
