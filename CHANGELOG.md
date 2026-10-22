@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+#### Pattern Port (AE2)
+- New block an AE2 Pattern Provider sees as a crafting machine. Pushed patterns run on the machine right away, without going through the input ports; the outputs (byproducts too) go back to the Pattern Provider. Placed like the Input Gateway, which stays.
+- The pattern's inputs must be exactly what a recipe consumes; energy, catalysts and other inputs a pattern can't carry come from the machine's ports. Mekanism chemicals work with Applied Mekanistics.
+- The same pattern runs up to the machine's parallel limit; pattern runs pause with the machine; outputs wait while the Pattern Provider is full. Jade shows the running patterns and why a push was refused.
+- See `temp_docs/notes/PatternPort.md`.
+
 ## [0.1.35.10] - 2026-10-21
 
 ### Added

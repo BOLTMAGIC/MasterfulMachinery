@@ -4,6 +4,7 @@ import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.compat.waila.PatternPortDataProvider;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.pattern.PatternRun;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -13,6 +14,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -24,6 +26,9 @@ import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
+import snownee.jade.api.BlockAccessor;
+
+import java.lang.reflect.Proxy;
 
 /**
  * AE2 pushing patterns into a Pattern Port (registered by MeGameTests only with AE2). mmtest:pattern_push_test is
@@ -121,6 +126,44 @@ public class PatternPortGameTests {
                     check(helper, controller.getPatternRuns().size() == 2, "two crafts should run, there are " + controller.getPatternRuns().size());
                 })
                 .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void jadeShowsThePatternPortState(GameTestHelper helper) {
+        var controller = build(helper);
+        var nothing = TestPattern.of("nothing", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIRT), 1)},
+                new GenericStack(AEItemKey.of(Items.DIAMOND), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern");
+                    var data = jadeData(helper);
+                    check(helper, data.getInt("PatternRuns") == 1, "Jade should get 1 running pattern, data " + data);
+                    check(helper, !data.getString("PatternMachine").isEmpty(), "Jade should get the machine's name, data " + data);
+                    check(helper, !push(helper, nothing), "no recipe makes a diamond from dirt");
+                    check(helper, "no_recipe".equals(jadeData(helper).getString("PatternLast")), "Jade should get why the last push was refused, data "
+                            + jadeData(helper));
+                })
+                .thenSucceed();
+    }
+
+    /** What PatternPortDataProvider sends to the client for the port. */
+    static CompoundTag jadeData(GameTestHelper helper) {
+        var be = helper.getBlockEntity(PORT);
+        BlockPos pos = helper.absolutePos(PORT);
+        BlockAccessor accessor = (BlockAccessor) Proxy.newProxyInstance(BlockAccessor.class.getClassLoader(),
+                new Class<?>[]{BlockAccessor.class}, (proxy, method, args) -> switch (method.getName()) {
+                    case "getBlockEntity" -> be;
+                    case "getLevel" -> helper.getLevel();
+                    case "getPosition" -> pos;
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    default -> null;
+                });
+        var data = new CompoundTag();
+        PatternPortDataProvider.INSTANCE.appendServerData(data, accessor);
+        return data;
     }
 
     static TestPattern ironToGold(String name) {

@@ -393,6 +393,8 @@ dependencies {
     testCompileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
     testCompileOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
     testCompileOnly fg.deobf("curse.maven:mekanism-268560:5125665")
+    // Jade API for the port tooltip GameTests
+    testCompileOnly fg.deobf("curse.maven:jade-324717:${jade_id}")
 
     // UNIT TESTS (plain logic, no Minecraft)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'

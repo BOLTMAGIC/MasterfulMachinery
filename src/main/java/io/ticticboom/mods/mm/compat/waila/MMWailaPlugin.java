@@ -2,6 +2,8 @@ package io.ticticboom.mods.mm.compat.waila;
 
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlock;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.pattern.PatternPortBlock;
+import io.ticticboom.mods.mm.pattern.PatternPortBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.register.ItemPortBlock;
 import io.ticticboom.mods.mm.port.fluid.register.FluidPortBlock;
@@ -24,11 +26,13 @@ public class MMWailaPlugin implements IWailaPlugin {
         registration.registerBlockDataProvider(ControllerDataProvider.INSTANCE, MachineControllerBlockEntity.class);
         registration.registerBlockDataProvider(PortPriorityDataProvider.INSTANCE, AbstractPortBlockEntity.class);
         registration.registerBlockDataProvider(PortMachineDataProvider.INSTANCE, AbstractPortBlockEntity.class);
+        registration.registerBlockDataProvider(PatternPortDataProvider.INSTANCE, PatternPortBlockEntity.class);
     }
 
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(ControllerDataProvider.INSTANCE, MachineControllerBlock.class);
+        registration.registerBlockComponent(PatternPortDataProvider.INSTANCE, PatternPortBlock.class);
 
         // register port priority tooltip for known port block classes
         registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, ItemPortBlock.class);
