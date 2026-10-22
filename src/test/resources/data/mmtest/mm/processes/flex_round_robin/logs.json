@@ -1,0 +1,12 @@
+{
+  "ticks": 10,
+  "structureId": "mmtest:flex_round_robin_test",
+  "mode": "flex",
+  "inputs": [{
+    "type": "mm:input/flex", "as": "kind", "max_types": 2, "chance": 0,
+    "ingredient": { "type": "mm:item", "tag": "minecraft:logs", "count": 1 }
+  }],
+  "outputs": [{
+    "type": "mm:output/flex", "from": "kind", "match": "(.+)_log", "item": "{ns}:$1_planks", "count": 1
+  }]
+}

@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+- Creative tab population and controller lookups skip registry entries removed by a world/server registry remap instead of crashing on a removed controller.
+- Round Robin also rotates the kinds selected inside flex recipes, including reusable inputs and NBT variants. Only kinds in a successfully started run advance their turn; `max_types`, cost and output capacity checks still apply. The controller saves the history across reloads.
+  - With six reusable seeds and `max_types: 3`, the first three run together, then the other three; the controller's parallel recipe limit does not multiply that batch.
+
 ## [0.1.35.10] - 2026-10-21
 
 ### Added

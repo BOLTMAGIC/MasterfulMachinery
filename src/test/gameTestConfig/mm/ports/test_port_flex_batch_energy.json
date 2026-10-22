@@ -1,0 +1,7 @@
+{
+  "id": "test_port_flex_batch_energy",
+  "name": "Test Flex Batch Energy",
+  "controllerIds": "mm:flex_batch_test",
+  "type": "mm:energy",
+  "config": { "capacity": 6000000, "maxReceive": 6000000, "maxExtract": 6000000, "tierRank": 1, "autoPush": false }
+}

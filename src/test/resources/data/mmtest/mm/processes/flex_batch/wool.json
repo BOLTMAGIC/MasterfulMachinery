@@ -1,0 +1,15 @@
+{
+  "ticks": 400,
+  "structureId": "mmtest:flex_batch_test",
+  "mode": "flex",
+  "flex_cost": "linear",
+  "inputs": [
+    { "type": "mm:input/consume", "ingredient": { "type": "mm:energy", "amount": 1000000 } },
+    { "type": "mm:input/consume", "ingredient": { "type": "mm:fluid", "fluid": "minecraft:water", "amount": 100 } },
+    { "type": "mm:input/flex", "as": "seed", "max_types": 3, "chance": 0,
+      "ingredient": { "type": "mm:item", "tag": "minecraft:wool", "count": 1 } }
+  ],
+  "outputs": [{
+    "type": "mm:output/flex", "from": "seed", "match": "(.+)_wool", "item": "minecraft:$1_carpet", "count": 64
+  }]
+}

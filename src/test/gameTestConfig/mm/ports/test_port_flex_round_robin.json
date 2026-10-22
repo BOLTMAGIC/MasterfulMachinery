@@ -1,0 +1,7 @@
+{
+  "id": "test_port_flex_round_robin",
+  "name": "Test Port Flex Round Robin",
+  "controllerIds": "mm:flex_round_robin_test",
+  "type": "mm:item",
+  "config": { "rows": 1, "columns": 4, "tierRank": 1 }
+}
