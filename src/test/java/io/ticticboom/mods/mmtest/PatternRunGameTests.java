@@ -3,6 +3,8 @@ package io.ticticboom.mods.mmtest;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.pattern.PatternBuffer;
+import io.ticticboom.mods.mm.pattern.PatternPortBlockEntity;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
 import io.ticticboom.mods.mm.pattern.PatternRun;
@@ -141,6 +143,26 @@ public class PatternRunGameTests {
     private static void expectStarted(GameTestHelper helper, MachineControllerBlockEntity controller, int iron, String message) {
         var result = start(helper, controller, iron);
         check(helper, result == PatternStartResult.STARTED, message + ", got " + result);
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void patternPortFindsItsMachine(GameTestHelper helper) {
+        var controller = build(helper);
+        // touching the input port, and far from the machine
+        BlockPos touching = INPUT.offset(0, 0, -1);
+        BlockPos away = new BlockPos(6, 1, 0);
+        helper.setBlock(touching, MMRegisters.PATTERN_PORT.get());
+        helper.setBlock(away, MMRegisters.PATTERN_PORT.get());
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(touching)).machine() == controller,
+                            "a pattern port touching an input port belongs to that machine");
+                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(away)).machine() == null,
+                            "a pattern port away from any machine belongs to none");
+                })
+                .thenSucceed();
     }
 
     private static PatternStartResult start(GameTestHelper helper, MachineControllerBlockEntity controller, int iron) {

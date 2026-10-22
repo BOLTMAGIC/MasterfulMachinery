@@ -2,11 +2,10 @@ package io.ticticboom.mods.mm.gateway;
 
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
-import io.ticticboom.mods.mm.port.common.autoio.PortSides;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.MachineLinks;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
@@ -103,22 +102,7 @@ public class InputGatewayBlockEntity extends BlockEntity {
      */
     @Nullable
     private MachineControllerBlockEntity searchController(ServerLevel serverLevel) {
-        BlockPos self = getBlockPos();
-        var builtInto = PortSides.findController(serverLevel, self, controller -> controller.getStructure() != null
-                && controller.getStructure().getPositions(serverLevel, controller.getBlockPos()).contains(self));
-        if (builtInto != null) {
-            return builtInto;
-        }
-        for (Direction dir : Direction.values()) {
-            BlockPos portPos = self.relative(dir);
-            if (serverLevel.getExistingBlockEntity(portPos) instanceof IPortBlockEntity port && port.isInput()) {
-                var controller = PortSides.findController(serverLevel, portPos, port.getStorage());
-                if (controller != null && controller.getStructure() != null) {
-                    return controller;
-                }
-            }
-        }
-        return null;
+        return MachineLinks.find(serverLevel, getBlockPos());
     }
 
     @Override

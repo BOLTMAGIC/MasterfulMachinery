@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "mm:block/pattern_port" }
+  }
+}
