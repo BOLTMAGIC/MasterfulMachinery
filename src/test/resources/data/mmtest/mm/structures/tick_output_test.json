@@ -1,0 +1,23 @@
+{
+  "name": "tick_output_test",
+  "controllerIds": "mm:tick_output_test",
+  "layout": [
+    [
+      "ICO"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    }
+  }
+}

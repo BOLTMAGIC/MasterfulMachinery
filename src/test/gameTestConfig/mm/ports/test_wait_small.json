@@ -1,0 +1,12 @@
+{
+  "id": "test_wait_small",
+  "name": "Test Wait Small",
+  "controllerIds": "mm:tick_output_test",
+  "type": "mm:item",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "slotCapacity": 5,
+    "tierRank": 1
+  }
+}
