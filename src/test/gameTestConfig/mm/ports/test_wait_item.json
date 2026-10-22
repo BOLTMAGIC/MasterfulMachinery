@@ -1,7 +1,7 @@
 {
   "id": "test_wait_item",
   "name": "Test Wait Item",
-  "controllerIds": ["mm:recipe_pause_test", "mm:output_fit_test", "mm:fluid_fit_test", "mm:pattern_run_test", "mm:pattern_push_test"],
+  "controllerIds": ["mm:recipe_pause_test", "mm:output_fit_test", "mm:fluid_fit_test", "mm:pattern_run_test", "mm:pattern_push_test", "mm:pattern_casing_test"],
   "type": "mm:item",
   "config": {
     "rows": 1,

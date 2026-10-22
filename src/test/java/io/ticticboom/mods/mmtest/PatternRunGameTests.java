@@ -182,6 +182,25 @@ public class PatternRunGameTests {
                 .thenSucceed();
     }
 
+    @GameTest(template = TEMPLATE, timeoutTicks = 100)
+    public static void patternPortCanStandInForCasing(GameTestHelper helper) {
+        // mmtest:pattern_casing_test is "ICOG": the Pattern Port takes the glass's place
+        BlockPos glass = OUTPUT.offset(1, 0, 0);
+        helper.setBlock(CONTROLLER, block("pattern_casing_test").defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+        helper.setBlock(INPUT, block("test_wait_item_input"));
+        helper.setBlock(OUTPUT, block("test_wait_item_output"));
+        helper.setBlock(glass, MMRegisters.PATTERN_PORT.get());
+        var controller = live(helper);
+        ResourceLocation id = ResourceLocation.tryBuild("mmtest", "pattern_casing_test");
+
+        helper.startSequence()
+                .thenWaitUntil(() -> check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id)
+                        && !"not_formed".equals(controller.statusKey()), "the machine should form with the Pattern Port in place of the glass"))
+                .thenExecute(() -> check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(glass)).machine() == controller,
+                        "a Pattern Port built into the machine belongs to it"))
+                .thenSucceed();
+    }
+
     private static PatternStartResult start(GameTestHelper helper, MachineControllerBlockEntity controller, int iron) {
         RecipeModel recipe = MachineRecipeManager.RECIPES.get(RECIPE);
         var spec = new PatternSpec(List.of(item("iron_ingot", 1)), item("gold_ingot", 1));
