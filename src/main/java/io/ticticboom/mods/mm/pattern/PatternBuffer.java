@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -88,6 +89,14 @@ public final class PatternBuffer {
         return leftovers().isEmpty();
     }
 
+    /** Takes this much out of the buffer, from the unused inputs first. */
+    public void remove(PatternIngredient stack) {
+        long left = in.remove(stack, stack.amount());
+        if (left > 0) {
+            out.remove(stack, left);
+        }
+    }
+
     public CompoundTag save() {
         var tag = new CompoundTag();
         tag.put("In", in.save());
@@ -135,6 +144,24 @@ public final class PatternBuffer {
                 }
                 default -> PatternChemicals.insert(chemicalStorage(stack.kind()), stack);
             };
+        }
+
+        /** @return how much of {@code amount} it didn't have */
+        long remove(PatternIngredient stack, long amount) {
+            long has = 0;
+            for (PatternIngredient held : contents()) {
+                if (held.sameResource(stack)) has = held.amount();
+            }
+            int taking = (int) Math.min(Math.min(has, amount), Integer.MAX_VALUE);
+            if (taking > 0) {
+                switch (stack.kind()) {
+                    case ITEM -> items.getHandler().extractMatching(ForgeRegistries.ITEMS.getValue(stack.id()),
+                            s -> Objects.equals(s.getTag(), stack.nbt()), taking, false);
+                    case FLUID -> fluids.getHandler().drain(new FluidStack(ForgeRegistries.FLUIDS.getValue(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
+                    default -> PatternChemicals.remove(chemicals.get(stack.kind()), taking);
+                }
+            }
+            return amount - taking;
         }
 
         List<IPortStorage> storages() {

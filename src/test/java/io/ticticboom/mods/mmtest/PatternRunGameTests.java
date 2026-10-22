@@ -26,6 +26,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.gametest.GameTestHolder;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -44,7 +45,7 @@ public class PatternRunGameTests {
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos INPUT = CONTROLLER.offset(-1, 0, 0);
     private static final BlockPos OUTPUT = CONTROLLER.offset(1, 0, 0);
-    // where a pattern provider would be; nothing is given back before PatternReturn
+    // where a pattern provider would be; empty unless a test puts a chest there
     private static final BlockPos RETURN = CONTROLLER.offset(0, 0, 2);
     private static final ResourceLocation RECIPE = ResourceLocation.tryBuild("mmtest", "pattern_run_test");
 
@@ -121,6 +122,7 @@ public class PatternRunGameTests {
     @GameTest(template = TEMPLATE, timeoutTicks = 200)
     public static void aRemovedRecipeReturnsTheBuffer(GameTestHelper helper) {
         var controller = build(helper);
+        helper.setBlock(RETURN, Blocks.CHEST);
 
         helper.startSequence()
                 .thenWaitUntil(() -> formed(helper, controller))
@@ -131,11 +133,10 @@ public class PatternRunGameTests {
                     runs.getCompound(0).putString("Recipe", "mmtest:no_such_recipe");
                 }))
                 .thenWaitUntil(() -> {
-                    var runs = live(helper).getPatternRuns();
-                    check(helper, runs.size() == 1 && runs.get(0).isReturning(), "a run whose recipe is gone should give back what it holds");
-                    var left = runs.get(0).getBuffer().leftovers();
-                    check(helper, left.size() == 1 && left.get(0).sameResource(item("iron_ingot", 1)) && left.get(0).amount() == 1,
-                            "the unused iron should be kept to give back, has " + left);
+                    check(helper, live(helper).getPatternRuns().isEmpty(), "a run whose recipe is gone should give back what it holds and end");
+                    var chest = helper.getBlockEntity(RETURN).getCapability(ForgeCapabilities.ITEM_HANDLER).orElseThrow(IllegalStateException::new);
+                    check(helper, chest.getStackInSlot(0).is(Items.IRON_INGOT) && chest.getStackInSlot(0).getCount() == 1,
+                            "the unused iron should be in the chest");
                 })
                 .thenSucceed();
     }

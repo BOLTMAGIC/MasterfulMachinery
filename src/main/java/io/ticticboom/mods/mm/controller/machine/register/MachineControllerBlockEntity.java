@@ -27,6 +27,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.pattern.PatternBuffer;
+import io.ticticboom.mods.mm.pattern.PatternReturn;
 import io.ticticboom.mods.mm.pattern.PatternRun;
 import io.ticticboom.mods.mm.pattern.PatternStartResult;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -41,6 +42,7 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -265,6 +267,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private void runMachineTick() {
         if (level == null) return;
+        drainPatternRuns();
         long gameTime = level.getGameTime();
         if (isFormed && !structureChunksLoaded()) {
             // part of the machine is in an unloaded chunk: wait, instead of loading it or working with its old ports
@@ -1068,6 +1071,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
         }
         return new RecipeStorages(inputs, outputs);
+    }
+
+    /**
+     * Finished pattern runs give what they hold back to their pattern provider, whatever state the machine is in;
+     * the ones that gave everything back end.
+     */
+    private void drainPatternRuns() {
+        if (!patternRuns.isEmpty() && level instanceof ServerLevel serverLevel) {
+            patternRuns.removeIf(run -> run.isReturning() && PatternReturn.drain(serverLevel, run));
+        }
     }
 
     /** One tick of every pattern run, while the machine is formed and allowed to run (else they wait). */

@@ -15,11 +15,14 @@ import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 
 /**
@@ -46,7 +49,46 @@ public class PatternPortGameTests {
                 .thenWaitUntil(() -> formed(helper, controller))
                 .thenExecute(() -> check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern"))
                 .thenExecute(() -> check(helper, count(helper, INPUT, Items.IRON_INGOT) == 0, "the input port isn't used"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.GOLD_INGOT) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the gold should be given back to the pattern provider"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 300)
+    public static void outputsWaitWhileTheReceiverIsFull(GameTestHelper helper) {
+        var controller = build(helper);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    var chest = chestHandler(helper);
+                    for (int slot = 0; slot < chest.getSlots(); slot++) {
+                        chest.insertItem(slot, new ItemStack(Items.DIRT, 64), false);
+                    }
+                })
+                .thenExecute(() -> check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern"))
                 .thenWaitUntil(() -> check(helper, finishedWith(controller, Items.GOLD_INGOT), "the pushed craft hasn't made its gold"))
+                .thenIdle(20)
+                .thenExecute(() -> check(helper, finishedWith(controller, Items.GOLD_INGOT) && chest(helper, Items.GOLD_INGOT) == 0,
+                        "the gold should wait in the buffer while the provider is full"))
+                .thenExecute(() -> chestHandler(helper).extractItem(0, 64, false))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.GOLD_INGOT) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the gold should be given back once there is room"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void byproductsGoBackToo(GameTestHelper helper) {
+        var controller = build(helper);
+        // mmtest:pattern_push_byproduct: 1 diamond -> 1 emerald + 1 copper ingot
+        var pattern = TestPattern.of("diamond", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIAMOND), 1)},
+                new GenericStack(AEItemKey.of(Items.EMERALD), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> check(helper, push(helper, pattern), "the pattern port should take the pattern"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.EMERALD) == 1 && chest(helper, Items.COPPER_INGOT) == 1,
+                        "the emerald and the copper byproduct should both be given back"))
                 .thenSucceed();
     }
 
@@ -101,6 +143,22 @@ public class PatternPortGameTests {
             }
         }
         return false;
+    }
+
+    static IItemHandler chestHandler(GameTestHelper helper) {
+        return helper.getBlockEntity(PROVIDER).getCapability(ForgeCapabilities.ITEM_HANDLER, PROVIDER_SIDE.getOpposite())
+                .orElseThrow(IllegalStateException::new);
+    }
+
+    static int chest(GameTestHelper helper, Item item) {
+        var chest = chestHandler(helper);
+        int total = 0;
+        for (int slot = 0; slot < chest.getSlots(); slot++) {
+            if (chest.getStackInSlot(slot).is(item)) {
+                total += chest.getStackInSlot(slot).getCount();
+            }
+        }
+        return total;
     }
 
     static MachineControllerBlockEntity build(GameTestHelper helper) {

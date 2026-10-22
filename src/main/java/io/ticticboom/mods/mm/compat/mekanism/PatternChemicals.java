@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.mekanism;
 
+import io.ticticboom.mods.mm.cap.MekCapabilities;
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -13,12 +14,16 @@ import mekanism.api.Action;
 import mekanism.api.AutomationType;
 import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.ChemicalStack;
+import mekanism.api.chemical.IChemicalHandler;
 import mekanism.api.chemical.IChemicalTank;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.infuse.InfusionStack;
 import mekanism.api.chemical.pigment.PigmentStack;
 import mekanism.api.chemical.slurry.SlurryStack;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.Capability;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -71,6 +76,28 @@ public final class PatternChemicals {
     /** Takes up to {@code amount} out of the storage. */
     public static void remove(IPortStorage storage, long amount) {
         ((MekanismChemicalPortStorage<?, ?>) storage).chemicalTank.extract(amount, Action.EXECUTE, AutomationType.INTERNAL);
+    }
+
+    /** Hands the chemical to the block's Mekanism handler on that side; @return how much it took */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static long give(BlockEntity target, Direction side, PatternIngredient chemical) {
+        Capability<? extends IChemicalHandler> cap = switch (chemical.kind()) {
+            case GAS -> MekCapabilities.GAS;
+            case INFUSION -> MekCapabilities.INFUSE;
+            case PIGMENT -> MekCapabilities.PIGMENT;
+            case SLURRY -> MekCapabilities.SLURRY;
+            default -> null;
+        };
+        ChemicalStack stack = stack(chemical);
+        if (cap == null || stack == null) {
+            return 0;
+        }
+        IChemicalHandler handler = target.getCapability(cap, side).resolve().orElse(null);
+        if (handler == null) {
+            return 0;
+        }
+        ChemicalStack left = handler.insertChemical(stack, Action.EXECUTE);
+        return chemical.amount() - left.getAmount();
     }
 
     @Nullable
