@@ -1,0 +1,15 @@
+{
+  "ticks": 1,
+  "structureId": "mmtest:pattern_match",
+  "mode": "flex",
+  "inputs": [
+    {
+      "type": "mm:input/flex",
+      "as": "log",
+      "ingredient": {"type": "mm:item", "tag": "minecraft:logs", "count": 1}
+    }
+  ],
+  "outputs": [
+    {"type": "mm:output/flex", "from": "log", "match": "(.+)_log", "item": "{ns}:$1_planks", "count": 2}
+  ]
+}

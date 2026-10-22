@@ -28,6 +28,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
     // expose ingredient for lightweight capability checks
     @Getter
     private final IPortIngredient ingredient;
+    @Getter
     private final double chance;
     @Getter
     private final boolean perTick;

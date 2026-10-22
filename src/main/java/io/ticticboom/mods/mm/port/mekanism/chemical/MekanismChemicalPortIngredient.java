@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical;
 
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.port.PortContent;
 
 import com.google.gson.JsonArray;
@@ -54,6 +56,15 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         return this.id;
     }
 
+    /** The kind of chemical this is in an AE2 pattern (Applied Mekanistics). */
+    private PatternIngredient.Kind patternKind() {
+        ResourceLocation type = getTypeId();
+        if (type.equals(Ref.Ports.MEK_INFUSE)) return PatternIngredient.Kind.INFUSION;
+        if (type.equals(Ref.Ports.MEK_PIGMENT)) return PatternIngredient.Kind.PIGMENT;
+        if (type.equals(Ref.Ports.MEK_SLURRY)) return PatternIngredient.Kind.SLURRY;
+        return PatternIngredient.Kind.GAS;
+    }
+
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (storages == null) return false;
@@ -89,6 +100,11 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
     @Override
     public boolean canSimulateOutput() {
         return true;
+    }
+
+    @Override
+    public PatternIngredient asPatternIngredient() {
+        return new PatternIngredient(patternKind(), id, amount, null);
     }
 
     @Override
