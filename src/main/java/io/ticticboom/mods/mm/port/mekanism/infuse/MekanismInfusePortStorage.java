@@ -34,6 +34,11 @@ public class MekanismInfusePortStorage extends MekanismChemicalPortStorage<Infus
     }
 
     @Override
+    protected MekanismInfusePortStorage createEmpty(MekanismChemicalPortStorageModel model) {
+        return new MekanismInfusePortStorage(model, () -> {});
+    }
+
+    @Override
     protected IForgeRegistry<InfuseType> getChemicalRegistry() {
         return MekanismAPI.infuseTypeRegistry();
     }

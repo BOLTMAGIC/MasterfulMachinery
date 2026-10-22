@@ -5,7 +5,6 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.IPortIngredient;
-import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -85,9 +84,13 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
-    public java.util.List<SingleItemPortIngredient> plannedItemOutputs(Level level, RecipeStateModel state) {
-        return !perTick && shouldRun && ingredientFor(state) instanceof SingleItemPortIngredient item
-                ? java.util.List.of(item) : java.util.List.of();
+    public java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return !perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
+    }
+
+    @Override
+    public java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
+        return perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
     }
 
     @Override

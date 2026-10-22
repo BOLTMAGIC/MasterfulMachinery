@@ -1014,6 +1014,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 continue;
             }
             if (recipe != null) {
+                if (!recipe.outputs().canProcessTick(level, portStorages, state)) {
+                    // a per-tick output doesn't fit: wait for room instead of throwing it away
+                    activeRecipeLastUpdate.put(recipeId, gameTime);
+                    continue;
+                }
                 int prevProgress = state.getTickProgress();
                 recipe.inputs().processTick(level, portStorages, state);
                 recipe.outputs().processTick(level, portStorages, state);

@@ -34,6 +34,11 @@ public class MekanismSlurryPortStorage extends MekanismChemicalPortStorage<Slurr
     }
 
     @Override
+    protected MekanismSlurryPortStorage createEmpty(MekanismChemicalPortStorageModel model) {
+        return new MekanismSlurryPortStorage(model, () -> {});
+    }
+
+    @Override
     protected IForgeRegistry<Slurry> getChemicalRegistry() {
         return MekanismAPI.slurryRegistry();
     }

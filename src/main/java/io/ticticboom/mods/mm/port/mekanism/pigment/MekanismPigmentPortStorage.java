@@ -34,6 +34,11 @@ public class MekanismPigmentPortStorage extends MekanismChemicalPortStorage<Pigm
     }
 
     @Override
+    protected MekanismPigmentPortStorage createEmpty(MekanismChemicalPortStorageModel model) {
+        return new MekanismPigmentPortStorage(model, () -> {});
+    }
+
+    @Override
     protected IForgeRegistry<Pigment> getChemicalRegistry() {
         return MekanismAPI.pigmentRegistry();
     }

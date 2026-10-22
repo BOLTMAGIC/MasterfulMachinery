@@ -190,8 +190,13 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
-    public List<SingleItemPortIngredient> plannedItemOutputs(Level level, RecipeStateModel state) {
-        return !perTick && shouldRun ? outputsFor(level, state) : List.of();
+    public List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return !perTick && shouldRun ? List.copyOf(outputsFor(level, state)) : List.of();
+    }
+
+    @Override
+    public List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
+        return perTick && shouldRun ? List.copyOf(outputsFor(level, state)) : List.of();
     }
 
     @Override

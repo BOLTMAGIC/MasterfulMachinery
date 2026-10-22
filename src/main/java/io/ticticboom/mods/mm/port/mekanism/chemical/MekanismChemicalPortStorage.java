@@ -136,6 +136,16 @@ public abstract class MekanismChemicalPortStorage<CHEMICAL extends Chemical<CHEM
         return model;
     }
 
+    /** A new, empty storage of the same chemical type, for {@link #simulationCopy()}. */
+    protected abstract MekanismChemicalPortStorage<CHEMICAL, STACK> createEmpty(MekanismChemicalPortStorageModel model);
+
+    @Override
+    public IPortStorage simulationCopy() {
+        var copy = createEmpty(model);
+        copy.load(save(new CompoundTag()));
+        return copy;
+    }
+
     @Override
     public UUID getStorageUid() {
         return uid;

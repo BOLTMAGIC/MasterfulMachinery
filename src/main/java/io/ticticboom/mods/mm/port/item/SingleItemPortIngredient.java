@@ -70,6 +70,11 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         ItemStack probe = outputStack();
         List<ItemPortStorage> itemStorages = outputPorts(storages, probe);

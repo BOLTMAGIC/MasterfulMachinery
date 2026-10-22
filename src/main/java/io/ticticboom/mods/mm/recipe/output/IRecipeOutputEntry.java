@@ -2,7 +2,7 @@ package io.ticticboom.mods.mm.recipe.output;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
-import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
+import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -36,10 +36,15 @@ public interface IRecipeOutputEntry {
     }
 
     /**
-     * The items this run puts into the item ports when it finishes, as the last canOutput decided them (chance,
+     * What this run puts into the output ports when it finishes, as the last canOutput decided it (chance,
      * weighted pick). RecipeOutputs checks that the outputs of all entries fit together.
      */
-    default List<SingleItemPortIngredient> plannedItemOutputs(Level level, RecipeStateModel state) {
+    default List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return List.of();
+    }
+
+    /** What this run puts into the output ports every tick ("per_tick"); the recipe waits while it doesn't fit. */
+    default List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
         return List.of();
     }
 

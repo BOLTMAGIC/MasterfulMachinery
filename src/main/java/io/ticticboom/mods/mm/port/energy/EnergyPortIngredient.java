@@ -67,6 +67,11 @@ public record EnergyPortIngredient(long amount) implements IPortIngredient {
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(EnergyPortStorage.class));
         long remaining = amount;

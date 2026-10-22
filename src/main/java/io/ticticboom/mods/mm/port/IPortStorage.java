@@ -28,6 +28,15 @@ public interface IPortStorage {
     JsonObject debugDump();
 
     /**
+     * A detached copy with the same contents and settings, which OutputSimulation fills to see whether several
+     * outputs fit together; null when this kind of port can't be copied.
+     */
+    @org.jetbrains.annotations.Nullable
+    default IPortStorage simulationCopy() {
+        return null;
+    }
+
+    /**
      * @return what the port holds, for the controller's port list; empty when there is nothing to show
      */
     default List<PortContent> contents() {

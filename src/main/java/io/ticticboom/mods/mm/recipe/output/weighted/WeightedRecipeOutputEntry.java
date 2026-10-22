@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.port.IPortIngredient;
-import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -75,8 +74,8 @@ public class WeightedRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
-    public List<SingleItemPortIngredient> plannedItemOutputs(Level level, RecipeStateModel state) {
-        return picked != null && picked.ingredient() instanceof SingleItemPortIngredient item ? List.of(item) : List.of();
+    public List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return picked != null && picked.ingredient() != null ? List.of(picked.ingredient()) : List.of();
     }
 
     @Override

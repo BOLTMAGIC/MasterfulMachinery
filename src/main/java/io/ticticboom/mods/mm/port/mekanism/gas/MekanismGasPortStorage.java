@@ -39,6 +39,11 @@ public class MekanismGasPortStorage extends MekanismChemicalPortStorage<Gas, Gas
     }
 
     @Override
+    protected MekanismGasPortStorage createEmpty(MekanismChemicalPortStorageModel model) {
+        return new MekanismGasPortStorage(model, () -> {});
+    }
+
+    @Override
     protected IForgeRegistry<Gas> getChemicalRegistry() {
         return MekanismAPI.gasRegistry();
     }
