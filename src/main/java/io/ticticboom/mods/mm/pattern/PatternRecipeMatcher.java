@@ -24,15 +24,17 @@ public final class PatternRecipeMatcher {
     private PatternRecipeMatcher() {
     }
 
-    /** @return the first candidate the pattern is for, or null */
+    /** @return the candidate the pattern is for (the smallest recipe id when several fit), or null */
     @Nullable
     public static RecipeModel match(List<RecipeModel> candidates, PatternSpec spec) {
+        RecipeModel found = null;
         for (RecipeModel recipe : candidates) {
-            if (recipe.mode() == RecipeMode.FIXED && inputsMatch(recipe, spec) && makesPrimaryOutput(recipe, spec)) {
-                return recipe;
+            if (recipe.mode() == RecipeMode.FIXED && inputsMatch(recipe, spec) && makesPrimaryOutput(recipe, spec)
+                    && (found == null || recipe.id().toString().compareTo(found.id().toString()) < 0)) {
+                found = recipe;
             }
         }
-        return null;
+        return found;
     }
 
     private static boolean inputsMatch(RecipeModel recipe, PatternSpec spec) {

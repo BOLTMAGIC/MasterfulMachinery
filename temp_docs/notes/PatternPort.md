@@ -17,6 +17,7 @@ machine's input ports. Then put a Pattern Provider next to the Pattern Port.
   catalysts (inputs with `chance: 0`).
 - The pattern's main output must be one of the recipe's sure outputs (chance 1).
 - Flex recipes can't be run from a pattern.
+- If several recipes fit a pattern, the one with the smallest recipe id runs.
 
 ## While it runs
 - A pushed pattern starts only if the machine can start it now: built, allowed by redstone and the recipe's conditions,

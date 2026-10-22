@@ -76,6 +76,23 @@ public class PatternMatchGameTests {
         helper.succeed();
     }
 
+    @GameTest(template = TEMPLATE)
+    public static void ambiguousPatternPicksTheSmallestRecipeId(GameTestHelper helper) {
+        // pattern/iron and pattern/iron_copy both make gold from iron: the choice mustn't depend on the list's order
+        var spec = spec(List.of(item("iron_ingot", 1)), item("gold_ingot", 1));
+        var forward = new ArrayList<>(candidates());
+        forward.sort(java.util.Comparator.comparing(r -> r.id().toString()));
+        var backward = new ArrayList<>(forward);
+        java.util.Collections.reverse(backward);
+        for (var list : List.of(forward, backward)) {
+            RecipeModel found = PatternRecipeMatcher.match(list, spec);
+            if (found == null || !found.id().equals(ResourceLocation.tryBuild("mmtest", "pattern/iron"))) {
+                helper.fail("the smallest matching id should win, got " + (found == null ? null : found.id()));
+            }
+        }
+        helper.succeed();
+    }
+
     private static void expect(GameTestHelper helper, PatternSpec spec, String recipePath) {
         RecipeModel found = PatternRecipeMatcher.match(candidates(), spec);
         ResourceLocation got = found == null ? null : found.id();
