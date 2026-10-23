@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +28,8 @@ public class RecipeStateModel {
     private final Map<String, Integer> counts = new HashMap<>();
     /** Flex recipes: what this run's other consumed inputs are multiplied by (see FlexCost), 1 otherwise. */
     private double costMultiplier = 1;
+    /** Only used when probing a new run; the controller's saved history supplies this order. */
+    private transient Comparator<ItemStack> flexInputOrder;
 
     public void proceedTick() {
         tickProgress++;
@@ -61,6 +64,7 @@ public class RecipeStateModel {
         captures.clear();
         counts.clear();
         costMultiplier = 1;
+        flexInputOrder = null;
     }
 
     public CompoundTag save(CompoundTag tag) {

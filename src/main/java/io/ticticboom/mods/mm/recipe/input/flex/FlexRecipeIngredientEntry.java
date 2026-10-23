@@ -40,6 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.function.Predicate;
+import java.util.stream.IntStream;
 
 /**
  * "mm:input/flex": takes, in one run, every kind of item in the input ports matching its ingredient (usually a
@@ -197,7 +198,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
     }
 
     /**
-     * @return the kinds of item to take this run (count 1 each), in port slot order: accepted, with enough of each
+     * @return the kinds of item to take this run (count 1 each), in the controller's selection order: accepted, with enough of each
      * in the ports, and with outputs that fit together in the output ports
      */
     private List<ItemStack> pick(Level level, @Nullable RecipeStorages storages, RecipeStateModel state) {
@@ -206,37 +207,41 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
             return picked;
         }
         var itemStorages = storages.getInputStorages(ItemPortStorage.class);
+        var candidates = itemStorages.stream().flatMap(storage -> {
+            var handler = storage.getHandler();
+            return IntStream.range(0, handler.getSlots()).mapToObj(handler::getStackInSlot);
+        }).filter(stack -> !stack.isEmpty() && ingredient.matches(stack));
+        if (state.getFlexInputOrder() != null) {
+            // Stable sort keeps slot order for kinds that have never run (or ran together).
+            candidates = candidates.sorted(state.getFlexInputOrder());
+        }
         var tried = new ArrayList<ItemStack>();
         // matching items (e.g. cruxes) already counted for kinds picked before
         var reserved = new HashMap<Item, Integer>();
         OutputSimulation simulation = null;
-        for (ItemPortStorage storage : itemStorages) {
-            var handler = storage.getHandler();
-            for (int slot = 0; slot < handler.getSlots() && picked.size() < maxTypes; slot++) {
-                ItemStack stack = handler.getStackInSlot(slot);
-                if (!ingredient.matches(stack) || tried.stream().anyMatch(t -> ItemStack.isSameItemSameTags(t, stack))) {
-                    continue;
+        var iterator = candidates.iterator();
+        while (picked.size() < maxTypes && iterator.hasNext()) {
+            ItemStack stack = iterator.next();
+            if (tried.stream().anyMatch(t -> ItemStack.isSameItemSameTags(t, stack))) continue;
+            tried.add(stack);
+            if (!accepts(level, stack) || !enoughOf(itemStorages, stack) || !matchesAvailable(itemStorages, stack, reserved)) {
+                continue;
+            }
+            var kindOutputs = new ArrayList<SingleItemPortIngredient>();
+            for (FlexRecipeOutputEntry output : outputs) {
+                SingleItemPortIngredient made = output.outputFor(level, stack, state);
+                if (made != null) {
+                    kindOutputs.add(made);
                 }
-                tried.add(stack);
-                if (!accepts(level, stack) || !enoughOf(itemStorages, stack) || !matchesAvailable(itemStorages, stack, reserved)) {
-                    continue;
-                }
-                var kindOutputs = new ArrayList<SingleItemPortIngredient>();
-                for (FlexRecipeOutputEntry output : outputs) {
-                    SingleItemPortIngredient made = output.outputFor(level, stack, state);
-                    if (made != null) {
-                        kindOutputs.add(made);
-                    }
-                }
-                if (simulation == null) {
-                    simulation = new OutputSimulation(storages);
-                }
-                // a kind whose output doesn't fit next to the others waits for a later run
-                if (simulation.tryAdd(level, kindOutputs)) {
-                    picked.add(stack.copyWithCount(1));
-                    for (FlexMatchIngredientEntry match : matches) {
-                        reserved.merge(match.requiredFor(stack).getItem(), match.getCount(), Integer::sum);
-                    }
+            }
+            if (simulation == null) {
+                simulation = new OutputSimulation(storages);
+            }
+            // a kind whose output doesn't fit next to the others waits for a later run
+            if (simulation.tryAdd(level, kindOutputs)) {
+                picked.add(stack.copyWithCount(1));
+                for (FlexMatchIngredientEntry match : matches) {
+                    reserved.merge(match.requiredFor(stack).getItem(), match.getCount(), Integer::sum);
                 }
             }
         }

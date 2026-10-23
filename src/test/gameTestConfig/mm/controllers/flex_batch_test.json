@@ -1,0 +1,8 @@
+{
+  "id": "flex_batch_test",
+  "name": "Flex Batch Test",
+  "type": "mm:machine",
+  "parallelProcessingDefault": true,
+  "maxParallelRecipes": 3,
+  "recipeSelectionMode": "round_robin_input_item"
+}

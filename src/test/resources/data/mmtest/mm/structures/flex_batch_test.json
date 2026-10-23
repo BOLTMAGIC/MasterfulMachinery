@@ -1,0 +1,11 @@
+{
+  "name": "Flex Batch Test",
+  "controllerIds": "mm:flex_batch_test",
+  "layout": [["ICO", " EF"]],
+  "key": {
+    "I": { "portType": "mm:item", "input": true, "minTier": 1, "maxTier": 1 },
+    "O": { "portType": "mm:item", "input": false, "minTier": 1, "maxTier": 1 },
+    "E": { "portType": "mm:energy", "input": true, "minTier": 1, "maxTier": 1 },
+    "F": { "portType": "mm:fluid", "input": true, "minTier": 1, "maxTier": 1 }
+  }
+}

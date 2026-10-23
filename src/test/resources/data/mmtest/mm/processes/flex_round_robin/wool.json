@@ -1,0 +1,12 @@
+{
+  "ticks": 10,
+  "structureId": "mmtest:flex_round_robin_test",
+  "mode": "flex",
+  "inputs": [{
+    "type": "mm:input/flex", "as": "kind", "max_types": 1, "chance": 0,
+    "ingredient": { "type": "mm:item", "tag": "minecraft:wool", "count": 1 }
+  }],
+  "outputs": [{
+    "type": "mm:output/flex", "from": "kind", "match": "(.+)_wool", "item": "minecraft:$1_carpet", "count": 1
+  }]
+}

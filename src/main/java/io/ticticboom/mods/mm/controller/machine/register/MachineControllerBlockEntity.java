@@ -27,6 +27,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -47,6 +48,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.Nameable;
 import net.minecraft.world.level.block.Block;
@@ -60,6 +62,7 @@ import net.minecraft.world.phys.AABB;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -634,7 +637,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 continue;
             }
             // one state for both checks: flex outputs need the item the flex input picked, scaled ones the count
-            RecipeStateModel scanState = new RecipeStateModel();
+            RecipeStateModel scanState = newRecipeProbe();
             if (!recipe.inputs().canProcess(level, portStorages, scanState)) {
                 // not enough of something; any change to the ports clears this wait
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
@@ -647,13 +650,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
 
              if (canStartRecipeGivenParallelRules(recipe)) {
-                 ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe);
+                 ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe, scanState);
                  RecipeSelectionMode selectionMode = getRecipeSelectionMode();
                  if (selectionMode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primaryInputItemId != null) {
                      // primaryInputItemId may be a composed key (with __ suffix) or a base id.
                      ResourceLocation baseId = getResourceLocation(primaryInputItemId);
-                     // choose least-recently-used available stack key for this recipe's primary base item id
-                     var available = storageCache.availableItemStackKeys.get(baseId);
+                     // Flex already picked runnable kinds in history order; fixed inputs use the storage cache.
+                     var available = !scanState.getCaptures().isEmpty()
+                             ? List.of(primaryInputItemId) : storageCache.availableItemStackKeys.get(baseId);
                      if (available != null && !available.isEmpty()) {
                         ResourceLocation bestKey = null;
                         long bestLastUse = Long.MAX_VALUE;
@@ -800,8 +804,24 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     /** Checks inputs and outputs against one state: flex and scaled outputs depend on what the inputs found. */
     private boolean inputsAndOutputsFit(RecipeModel recipe) {
-        RecipeStateModel probe = new RecipeStateModel();
+        RecipeStateModel probe = newRecipeProbe();
         return recipe.inputs().canProcess(level, portStorages, probe) && recipe.outputs().canProcess(level, portStorages, probe);
+    }
+
+    private RecipeStateModel newRecipeProbe() {
+        var state = new RecipeStateModel();
+        if (getRecipeSelectionMode() == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM) {
+            state.setFlexInputOrder(Comparator.comparingLong(stack ->
+                    inputItemLastStartedSequence.getOrDefault(flexInputKey(stack), Long.MIN_VALUE)));
+        }
+        return state;
+    }
+
+    private static ResourceLocation flexInputKey(ItemStack stack) {
+        ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+        if (!stack.hasTag()) return id;
+        return ResourceLocation.tryBuild(id.getNamespace(), id.getPath() + "__flex_nbt_"
+                + Integer.toHexString(stack.getTag().hashCode()));
     }
 
     private int getChecks(int total) {
@@ -886,7 +906,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
           }
           // Re-validate that inputs are still available before consuming, to prevent race conditions
           // where multiple recipes see the same resource availability but consume sequentially
-          RecipeStateModel newState = new RecipeStateModel();
+          RecipeStateModel newState = newRecipeProbe();
           if (!recipe.inputs().canProcess(level, portStorages, newState)) {
               recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
               return false;
@@ -896,7 +916,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
               return false;
           }
 
+          if (!newState.getCaptures().isEmpty()) {
+              primaryInputItemId = getPrimaryConsumedItemInputId(recipe, newState);
+          }
           recipe.inputs().process(level, portStorages, newState);
+          newState.setFlexInputOrder(null);
          // Candidate contents are checked by canProcess before use. The periodic input
          // signature refreshes this index when consuming inputs changes availability.
          newState.setCanProcess(true);
@@ -910,6 +934,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (primaryInputItemId != null) {
             lastStartedInputItemId = primaryInputItemId;
             inputItemLastStartedSequence.put(primaryInputItemId, recipeSelectionSequence);
+        }
+        // Record only kinds in the run that actually started, after affordability/output checks and cancellation.
+        for (var input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                for (ItemStack kind : newState.getCaptured(flex.getName())) {
+                    inputItemLastStartedSequence.put(flexInputKey(kind), recipeSelectionSequence);
+                }
+            }
         }
         setChanged();
         return true;
@@ -926,7 +958,22 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Nullable
-    private ResourceLocation getPrimaryConsumedItemInputId(RecipeModel recipe) {
+    private ResourceLocation getPrimaryConsumedItemInputId(RecipeModel recipe, RecipeStateModel state) {
+        ResourceLocation flexKey = null;
+        long oldest = Long.MAX_VALUE;
+        for (var input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                for (ItemStack kind : state.getCaptured(flex.getName())) {
+                    ResourceLocation key = flexInputKey(kind);
+                    long lastUse = inputItemLastStartedSequence.getOrDefault(key, Long.MIN_VALUE);
+                    if (flexKey == null || lastUse < oldest) {
+                        flexKey = key;
+                        oldest = lastUse;
+                    }
+                }
+            }
+        }
+        if (flexKey != null) return flexKey;
         for (var input : recipe.inputs().inputs()) {
             if (input instanceof ConsumeRecipeIngredientEntry cre) {
                 var ingr = cre.getIngredient();

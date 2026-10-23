@@ -1,0 +1,14 @@
+{
+  "ticks": 10,
+  "structureId": "mmtest:flex_round_robin_test",
+  "mode": "flex",
+  "flex_cost": "linear",
+  "inputs": [
+    { "type": "mm:input/flex", "as": "kind", "chance": 0,
+      "ingredient": { "type": "mm:item", "tag": "minecraft:saplings", "count": 1 } },
+    { "type": "mm:input/consume", "ingredient": { "type": "mm:item", "item": "minecraft:bone_meal", "count": 1 } }
+  ],
+  "outputs": [{
+    "type": "mm:output/flex", "from": "kind", "match": "(.+)_sapling", "item": "{ns}:$1_leaves", "count": 1
+  }]
+}
