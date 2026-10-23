@@ -116,6 +116,11 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
     }
 
     @Override
+    public boolean carriedByPatterns() {
+        return true;
+    }
+
+    @Override
     public IPortStorage simulationCopy() {
         var copy = new FluidPortStorage(model, () -> {});
         copy.load(save(new CompoundTag()));

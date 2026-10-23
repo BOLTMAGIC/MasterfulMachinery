@@ -29,7 +29,9 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Getter
     private final IPortIngredient ingredient;
+    @Getter
     private final double chance;
+    @Getter
     private final boolean perTick;
     /** The "as" name of an mm:input/count entry whose count multiplies the amount, or null. */
     @Getter

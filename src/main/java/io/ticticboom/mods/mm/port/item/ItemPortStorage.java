@@ -89,6 +89,11 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     @Override
+    public boolean carriedByPatterns() {
+        return true;
+    }
+
+    @Override
     public IPortStorage simulationCopy() {
         var copy = new ItemPortStorage(model, () -> {});
         copy.load(save(new CompoundTag()));

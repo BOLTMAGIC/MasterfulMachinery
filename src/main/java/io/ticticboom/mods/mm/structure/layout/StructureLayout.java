@@ -343,8 +343,8 @@ public class StructureLayout {
     }
 
     /**
-     * An Input Gateway may stand in for any plain structure block (casing, glass...), so it can be built
-     * into the machine; never for a port.
+     * An Input Gateway or a Pattern Port may stand in for any plain structure block (casing, glass...), so it can
+     * be built into the machine; never for a port.
      */
     private static boolean isGatewayInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece) {
         var underlying = piece.piece().piece();
@@ -354,7 +354,8 @@ public class StructureLayout {
                 || underlying instanceof PortTypeAnywhereStructurePiece) {
             return false;
         }
-        return level.getBlockState(piece.findAbsolutePos(worldControllerPos)).is(MMRegisters.INPUT_GATEWAY.get());
+        var state = level.getBlockState(piece.findAbsolutePos(worldControllerPos));
+        return state.is(MMRegisters.INPUT_GATEWAY.get()) || state.is(MMRegisters.PATTERN_PORT.get());
     }
 
     /**

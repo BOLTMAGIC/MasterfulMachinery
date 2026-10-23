@@ -87,6 +87,9 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         return RECIPES.values().stream().filter(x -> x.allStructureIds().stream().anyMatch(structureIds::contains)).toList();
     }
 
+    /** Goes up on every recipe (re)load, so caches of recipes can tell they are stale. */
+    public static int generation = 0;
+
     public static Collection<RecipeModel> getRecipesByStrucutreId(ResourceLocation id) {
         if(RECIPES_BY_STRUCTURE.containsKey(id.toString())) {
             return RECIPES_BY_STRUCTURE.get(id.toString()).values();
@@ -103,6 +106,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
 
     public static void recieveRecipes(Map<ResourceLocation, JsonElement> jsons) {
         RECIPES.clear();
+        generation++;
         Ref.LCTX.reset("MM Machine Recipe Processes");
         try {
             for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {

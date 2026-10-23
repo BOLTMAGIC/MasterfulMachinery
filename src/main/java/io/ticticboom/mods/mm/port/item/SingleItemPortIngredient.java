@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
@@ -72,6 +73,11 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public boolean canSimulateOutput() {
         return true;
+    }
+
+    @Override
+    public PatternIngredient asPatternIngredient() {
+        return new PatternIngredient(PatternIngredient.Kind.ITEM, itemId, count, requiredNbt == null ? null : requiredNbt.copy());
     }
 
     @Override

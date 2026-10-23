@@ -1,4 +1,4 @@
 {
   "replace": false,
-  "values": ["mm:input_gateway"]
+  "values": ["mm:input_gateway", "mm:pattern_port"]
 }

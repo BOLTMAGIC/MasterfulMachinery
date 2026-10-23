@@ -6,6 +6,13 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
 
 ## [Unreleased]
 
+### Added
+
+#### Pattern Port (AE2)
+- New block an AE2 Pattern Provider sees as a crafting machine. Pushed patterns run on the machine right away, without going through the input ports; the outputs (byproducts too) go back to the Pattern Provider. Placed like the Input Gateway, which stays.
+- The pattern's inputs must be exactly what a recipe consumes; energy, catalysts and other inputs a pattern can't carry come from the machine's ports. Mekanism chemicals work with Applied Mekanistics.
+- The same pattern runs up to the machine's parallel limit; pattern runs pause with the machine; outputs wait while the Pattern Provider is full. Jade shows the running patterns and why a push was refused.
+- See `temp_docs/notes/PatternPort.md`.
 ### Fixed
 - Creative tab population and controller lookups skip registry entries removed by a world/server registry remap instead of crashing on a removed controller.
 - Round Robin also rotates the kinds selected inside flex recipes, including reusable inputs and NBT variants. Only kinds in a successfully started run advance their turn; `max_types`, cost and output capacity checks still apply. The controller saves the history across reloads.

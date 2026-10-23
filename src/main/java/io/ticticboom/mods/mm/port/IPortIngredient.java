@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.port;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
+import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -29,6 +30,16 @@ public interface IPortIngredient {
     default boolean canSimulateOutput() {
         return false;
     }
+
+    /**
+     * What this is in an AE2 pattern (item, fluid, chemical with its amount), or null when a pattern can't carry it
+     * (energy, mana...): the Pattern Port then takes it from the machine's ports.
+     */
+    @Nullable
+    default PatternIngredient asPatternIngredient() {
+        return null;
+    }
+
     void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot);
     default void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }
