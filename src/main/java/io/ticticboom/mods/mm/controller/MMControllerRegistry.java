@@ -30,6 +30,7 @@ public class MMControllerRegistry {
     }
     public static Item getControllerItem(ResourceLocation id) {
         for (RegistryGroupHolder holder : CONTROLLERS) {
+            if (!holder.getItem().isPresent()) continue;
             Item item = holder.getItem().get();
             if (item instanceof IControllerPart part) {
                 if (part.getModel().id().equals(id.getPath())) {
@@ -41,6 +42,7 @@ public class MMControllerRegistry {
     }
     public static Block getControllerBlock(ResourceLocation id) {
         for (RegistryGroupHolder holder : CONTROLLERS) {
+            if (!holder.getBlock().isPresent()) continue;
             var block = holder.getBlock().get();
             if (block instanceof IControllerPart part) {
                 if (part.getModel().id().equals(id.getPath())) {

@@ -23,6 +23,9 @@ import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.*;
 
+import java.util.Collection;
+import java.util.List;
+
 @SuppressWarnings("unused")
 public class MMRegisters {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(ForgeRegistries.BLOCKS, Ref.ID);
@@ -57,7 +60,7 @@ public class MMRegisters {
             .icon(() -> BLUEPRINT.get().getDefaultInstance())
             .withBackgroundLocation(Ref.UiTextures.CREATIVE_TAB_BG)
             .withSearchBar(55)
-            .displayItems((p, o) -> o.acceptAll(ITEMS.getEntries().stream().map(x -> x.get().getDefaultInstance()).toList()))
+            .displayItems((p, o) -> o.acceptAll(registeredItemStacks(ITEMS.getEntries())))
             .build());
 
     public static final RegistryObject<CreativeModeTab> MM_STRUCTURE_TAB = TABS.register("mm_structures", () -> CreativeModeTab.builder().title(Component.translatable("tab.mm.structures"))
@@ -66,6 +69,11 @@ public class MMRegisters {
             .withSearchBar(55)
             .displayItems((p, o) -> o.acceptAll(StructureManager.STRUCTURE_BLUEPRINTS.values()))
             .build());
+
+    static List<ItemStack> registeredItemStacks(Collection<? extends RegistryObject<? extends Item>> entries) {
+        // Joining a world/server can remap away a controller removed from the pack.
+        return entries.stream().filter(RegistryObject::isPresent).map(x -> x.get().getDefaultInstance()).toList();
+    }
 
     public static void register() {
         @SuppressWarnings("removal") var bus = FMLJavaModLoadingContext.get().getModEventBus();

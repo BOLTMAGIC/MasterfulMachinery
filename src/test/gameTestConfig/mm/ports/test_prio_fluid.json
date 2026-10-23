@@ -1,0 +1,12 @@
+{
+  "id": "test_prio_fluid",
+  "name": "Test Priority Fluid",
+  "controllerIds": "mm:priority_test",
+  "type": "mm:fluid",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "slotCapacity": 1000,
+    "tierRank": 1
+  }
+}

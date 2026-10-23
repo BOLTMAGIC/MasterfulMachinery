@@ -1,0 +1,7 @@
+{
+  "id": "test_port_flex_batch_item",
+  "name": "Test Flex Batch Items",
+  "controllerIds": "mm:flex_batch_test",
+  "type": "mm:item",
+  "config": { "rows": 1, "columns": 6, "tierRank": 1, "autoPush": false }
+}

@@ -79,9 +79,10 @@ public class PrioritySetterItem extends Item {
         int prio = getPriorityFromItem(context.getItemInHand());
         // set in storage
         var storage = portBe.getStorage();
-        int oldPrio = storage.getPriority();
         storage.setPriority(prio);
-        // logging suppressed
+        // the priority is saved with the port: without this it's lost when the chunk unloads (or the server stops)
+        // unless something else in that chunk changed
+        be.setChanged();
 
         serverPlayer.displayClientMessage(Component.translatable("item.mm.priority_setter.message.apply_success", prio), true);
         return InteractionResult.SUCCESS;

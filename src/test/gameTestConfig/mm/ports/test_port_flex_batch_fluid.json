@@ -1,0 +1,7 @@
+{
+  "id": "test_port_flex_batch_fluid",
+  "name": "Test Flex Batch Fluid",
+  "controllerIds": "mm:flex_batch_test",
+  "type": "mm:fluid",
+  "config": { "rows": 1, "columns": 1, "slotCapacity": 1000, "tierRank": 1, "autoPush": false }
+}
