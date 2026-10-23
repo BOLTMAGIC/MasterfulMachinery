@@ -21,6 +21,14 @@ public interface IPortIngredient {
     boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state);
     void output(Level level, RecipeStorages storages, RecipeStateModel state);
     default void outputTick(Level level, RecipeStorages storages, RecipeStateModel state) {}
+
+    /**
+     * Whether canOutput/output only touch output storages that {@link IPortStorage#simulationCopy()} can copy, so
+     * OutputSimulation can try this output next to the recipe's others.
+     */
+    default boolean canSimulateOutput() {
+        return false;
+    }
     void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot);
     default void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }

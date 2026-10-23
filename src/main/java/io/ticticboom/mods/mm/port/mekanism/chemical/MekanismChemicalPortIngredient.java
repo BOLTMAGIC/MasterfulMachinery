@@ -87,6 +87,11 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
         long remaining = amount;

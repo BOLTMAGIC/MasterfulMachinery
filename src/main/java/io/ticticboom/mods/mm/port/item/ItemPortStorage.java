@@ -89,6 +89,13 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     @Override
+    public IPortStorage simulationCopy() {
+        var copy = new ItemPortStorage(model, () -> {});
+        copy.load(save(new CompoundTag()));
+        return copy;
+    }
+
+    @Override
     public UUID getStorageUid() {
         return uid;
     }

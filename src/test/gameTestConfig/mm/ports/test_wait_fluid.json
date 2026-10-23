@@ -1,0 +1,12 @@
+{
+  "id": "test_wait_fluid",
+  "name": "Test Wait Fluid",
+  "controllerIds": "mm:fluid_fit_test",
+  "type": "mm:fluid",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "slotCapacity": 1000,
+    "tierRank": 1
+  }
+}

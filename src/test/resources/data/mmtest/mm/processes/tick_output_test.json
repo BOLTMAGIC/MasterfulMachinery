@@ -1,0 +1,25 @@
+{
+  "ticks": 20,
+  "structureId": "mmtest:tick_output_test",
+  "inputs": [
+    {
+      "type": "mm:input/consume",
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:iron_ingot",
+        "count": 1
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "mm:output/simple",
+      "per_tick": true,
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:gold_ingot",
+        "count": 1
+      }
+    }
+  ]
+}

@@ -23,7 +23,7 @@ public class ControllerInvalidationListener {
         for (var cbe : controllers) {
             try {
                 if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
-                    mc.invalidateProgress();
+                    mc.onNearbyBlockBroken(pos);
                 }
             } catch (Throwable ignored) {
             }

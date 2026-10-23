@@ -84,6 +84,11 @@ public class FluidPortIngredient implements IPortIngredient {
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (amount <= 0) return true; // nothing to output
         if (storages == null) return false;

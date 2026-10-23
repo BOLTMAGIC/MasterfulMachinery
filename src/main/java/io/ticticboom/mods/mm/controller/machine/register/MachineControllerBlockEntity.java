@@ -258,9 +258,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         long gameTime = level.getGameTime();
         if (isFormed && !structureChunksLoaded()) {
             // part of the machine is in an unloaded chunk: wait, instead of loading it or working with its old ports
-            for (ResourceLocation rid : activeRecipes.keySet()) {
-                activeRecipeLastUpdate.put(rid, gameTime);
-            }
+            pauseActiveRecipes(gameTime);
             lastTick = gameTime;
             return;
         }
@@ -274,6 +272,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         lastTick = gameTime;
         if (isFormed) {
             runRecipe();
+        } else {
+            pauseActiveRecipes(gameTime);
         }
     }
 
@@ -382,6 +382,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 if (structureModel.formed(level, getBlockPos())) {
                     setChanged();
                     structure = structureModel;
+                    keepRecipesOf(structureModel);
                     runRecipe();
                     return;
                 }
@@ -1000,7 +1001,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             // check for stalled recipe
             long last = activeRecipeLastUpdate.getOrDefault(recipeId, gameTime);
             if (gameTime - last > recipeStallTimeoutTicks) {
-                // give up on this recipe, return inputs where possible
+                // give up on this recipe (its inputs are lost); a paused machine refreshes the time, see pauseActiveRecipes
                 try {
                     if (recipe != null && portStorages != null) {
                         recipe.ditchRecipe(level, state, portStorages);
@@ -1013,6 +1014,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 continue;
             }
             if (recipe != null) {
+                if (!recipe.outputs().canProcessTick(level, portStorages, state)) {
+                    // a per-tick output doesn't fit: wait for room instead of throwing it away
+                    activeRecipeLastUpdate.put(recipeId, gameTime);
+                    continue;
+                }
                 int prevProgress = state.getTickProgress();
                 recipe.inputs().processTick(level, portStorages, state);
                 recipe.outputs().processTick(level, portStorages, state);
@@ -1049,14 +1055,41 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
+    /** A player is breaking the block at {@code pos}; only a block of the formed machine unforms it. */
+    public void onNearbyBlockBroken(BlockPos pos) {
+        if (structure != null && level != null && structure.getPositions(level, getBlockPos()).contains(pos)) {
+            invalidateProgress();
+        }
+    }
+
     public void invalidateProgress() {
         setChanged();
         structure = null;
         isFormed = false;
-        // clear caches and active recipes when structure is lost
-        invalidateRecipe(false);
-        recipeIndex = null;
-        candidatePositions = null;
+        // running recipes already took their inputs: they wait (see pauseActiveRecipes) until the machine forms again
+        forgetPorts();
+    }
+
+    /**
+     * After the machine formed (again): running recipes of another structure can't continue, the others go on
+     * where they stopped.
+     */
+    private void keepRecipesOf(StructureModel formed) {
+        activeRecipes.keySet().removeIf(id -> {
+            RecipeModel recipe = MachineRecipeManager.RECIPES.get(id);
+            boolean other = recipe != null && !recipe.allStructureIds().contains(formed.id());
+            if (other) {
+                activeRecipeLastUpdate.remove(id);
+            }
+            return other;
+        });
+    }
+
+    /** Running recipes don't stall (and get dropped) while the machine waits for its structure or its chunks. */
+    private void pauseActiveRecipes(long gameTime) {
+        for (ResourceLocation rid : activeRecipes.keySet()) {
+            activeRecipeLastUpdate.put(rid, gameTime);
+        }
     }
 
      public void invalidateRecipe(boolean typical) {
@@ -1070,6 +1103,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          }
          activeRecipes.clear();
          currentRecipe = null;
+         forgetPorts();
+     }
+
+     /** Drops the cached port storages and everything derived from them; they're collected again when needed. */
+     private void forgetPorts() {
          portStorages = null;
          portBlockEntities = List.of();
          structureChunks = null;
@@ -1399,7 +1437,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             setChanged();
             if (level != null) level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
             if (this.structure == null) invalidateProgress();
-            else if (this.isFormed && triggerRecipe) runRecipe();
+            else {
+                keepRecipesOf(this.structure);
+                if (this.isFormed && triggerRecipe) runRecipe();
+            }
         }
     }
 

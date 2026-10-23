@@ -84,6 +84,16 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
+    public java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return !perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
+    }
+
+    @Override
+    public java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
+        return perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
+    }
+
+    @Override
     public java.util.List<DisplayedOutput> displayedOutputs() {
         return java.util.List.of(new DisplayedOutput(ingredient, chance));
     }

@@ -74,6 +74,11 @@ public class WeightedRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
+    public List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return picked != null && picked.ingredient() != null ? List.of(picked.ingredient()) : List.of();
+    }
+
+    @Override
     public List<DisplayedOutput> displayedOutputs() {
         return options.stream()
                 .filter(o -> o.ingredient() != null)
