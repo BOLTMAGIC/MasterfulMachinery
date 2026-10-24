@@ -4,9 +4,64 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.1.36.0] - 2026-10-23
+
+### INFO:
+**Version 0.1.36.0** represents a major update focused on recipe stability, the new Pattern Port for AE2 integration, and critical bug fixes.
+
+**Special Thanks:**
+- **Knozyy** – Lead developer of recipe stability fixes, Pattern Port system, and priority system restoration.
 
 ### Added
+
+#### #92 – Fix Running Recipes Losing Inputs or Outputs (CRITICAL)
+- **Running recipes pause instead of being dropped** when structure unforms temporarily.
+  - Machine reforned after >10 seconds no longer ditches recipes; stall timers refresh while unformed.
+  - Recipes continue when structure forms again; only recipes not matching the new structure are dropped.
+- **Block break detection refined**: only blocks actually part of the machine unform it; breaking nearby cables/torches no longer clears running recipes.
+- **Output validation strengthened**: all outputs of a recipe must fit together before start and finish.
+  - New `IPortStorage.simulationCopy()` creates detached port copies for pre-flight output checks.
+  - Generic `OutputSimulation` validates all recipe outputs that support simulation (items, fluids, energy, Mekanism chemicals).
+  - Output entries report `plannedOutputs()` (post-chance-roll / weighted-pick amounts).
+- **Per-tick outputs wait for room** instead of being discarded; `RecipeOutputs.canProcessTick()` checks per-tick outputs and pauses recipe if they don't fit.
+- **Breaking controller still loses recipes** (unchanged); mana, kinetic, air outputs still checked one-by-one (non-copyable ports).
+
+#### #93 – Missing Controller Definitions & Flex Input Round-Robin
+- **Creative tab crash fix**: removed controller definitions no longer crash (`Registry Object not present` on FTB Quests icon lookups).
+  - Filter absent item entries and skip absent controller items/blocks during lookups.
+- **Flex input round-robin scheduling**: flex inputs now participate in controller scheduling (previously used slot order only).
+  - Reusable inputs (`chance: 0`) with `max_types` now rotate through kinds instead of selecting the first indefinitely.
+  - Controller usage order passed into flex probes; picked kinds recorded only for successful recipe runs.
+  - Default mode retains slot-order fallback; cost, matching-input, output-capacity checks unchanged.
+  - Example: Essence Forge with six seeds, `max_types: 3` now runs kinds 1–3, then 4–6, then 1–3 again.
+  - Parallel recipe limit does not multiply the flex batch.
+
+#### #94 – Fix Output Port Priority Being Lost & Jade Display
+- **Priority setter bug fixed**: `PrioritySetterItem.useOn` now calls `setChanged()` on block entity.
+  - Previously priority was only saved to disk on other changes; after restart/reload ports reverted to priority 0.
+  - Priorities now persist correctly across sessions.
+- **Jade priority line restored**: registered for all block types (previously only specific port blocks; Mekanism chemical ports were missing).
+  - Only MM output ports send priority data; other blocks show no change.
+
+#### #95 – Pattern Port: Run AE2 Patterns Without Input Ports
+- **New block `mm:pattern_port`**: AE2 Pattern Provider interface for direct pattern execution.
+  - Placed like Input Gateway: built into machine or next to input port; no crafting recipe.
+  - Pattern Provider pushes patterns without using input ports; MM runs patterns through `ICraftingMachine` capability.
+- **Pattern matching & validation**:
+  - Pattern cached per recipe until reload; matched on first push, reused for subsequent runs.
+  - Pattern's inputs must exactly match recipe's requirements (items with NBT, fluids, chemicals, amounts).
+  - Pattern's main output must be one of the recipe's sure (`chance: 1`) outputs.
+  - Flex recipes not matched; smallest recipe ID wins on multiple matches.
+- **Pattern execution**:
+  - Started only when machine is formed, redstone/recipe conditions met, parallel limit available, and non-pattern inputs (energy, catalysts, per-tick) present.
+  - Pushed items/fluids/chemicals go into run's own buffer (Input Gateway stays unused).
+  - Outputs AE2 can hold go back to Pattern Provider; others go to machine output ports or wait in buffer (never discarded).
+- **Persistence & UI**:
+  - Multiple patterns can run simultaneously up to parallel limit (pattern runs + normal recipes count together).
+  - Pattern runs pause with machine, survive chunk/world reloads, return held items on recipe removal.
+  - Jade shows running patterns, waiting outputs, last push refusal reason.
+  - Controller screen displays pattern progress.
+- **Dependencies**: AE2, Applied Mekanistics, Mekanism all optional; dev builds load Applied Mekanistics for GameTests.
 
 #### Pattern Port (AE2)
 - New block an AE2 Pattern Provider sees as a crafting machine. Pushed patterns run on the machine right away, without going through the input ports; the outputs (byproducts too) go back to the Pattern Provider. Placed like the Input Gateway, which stays.
