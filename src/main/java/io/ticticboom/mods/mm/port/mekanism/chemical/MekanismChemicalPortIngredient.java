@@ -15,11 +15,12 @@ import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import mekanism.api.Action;
 import mekanism.api.chemical.Chemical;
 import mekanism.api.chemical.ChemicalStack;
+import mekanism.client.jei.ChemicalStackRenderer;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
+import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
@@ -35,6 +36,8 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
     public abstract CHEMICAL findChemical(ResourceLocation id);
     public abstract Class<? extends MekanismChemicalPortStorage<CHEMICAL, STACK>> getStorageClass();
     public abstract ResourceLocation getTypeId();
+    /** Mekanism's JEI ingredient type for this kind of chemical. */
+    protected abstract IIngredientType<STACK> jeiType();
 
     public MekanismChemicalPortIngredient(ResourceLocation chemical, long amount) {
         this.id = chemical;
@@ -174,9 +177,13 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         return json;
     }
 
-    @SuppressWarnings("removal")
+    /**
+     * The slot holds the recipe's real amount, so a JEI transfer (an AE2 pattern) carries it; the renderer's capacity
+     * is that amount, so the slot still draws full, and its tooltip shows the amount.
+     */
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
-        recipeSlot.addTooltipCallback((a, c) -> c.add(1, Component.literal(amount + " mB")));
+        recipeSlot.addIngredient(jeiType(), createStack(chemical, amount));
+        recipeSlot.setCustomRenderer(jeiType(), new ChemicalStackRenderer<>(Math.max(1, amount), 16, 16));
     }
 }
