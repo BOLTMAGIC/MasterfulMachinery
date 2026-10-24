@@ -23,8 +23,6 @@ public record PatternMismatch(Reason reason, ResourceLocation what, long pattern
         OUTPUT_AMOUNT,
         /** The pattern has the input, in another amount. */
         AMOUNT,
-        /** The recipe consumes something the pattern doesn't have. */
-        MISSING,
         /** The pattern has something the recipe doesn't use. */
         EXTRA,
         /** The pattern has something MM can't carry (energy, mana... through an AE2 addon): those come from the ports. */
