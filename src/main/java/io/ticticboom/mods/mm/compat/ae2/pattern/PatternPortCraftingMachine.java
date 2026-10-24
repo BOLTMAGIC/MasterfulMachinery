@@ -56,7 +56,7 @@ public final class PatternPortCraftingMachine implements ICraftingMachine {
         PatternSpec spec = Ae2PatternSpecs.spec(details);
         RecipeModel recipe = spec == null ? null : port.recipeFor(details.getDefinition(), machine, spec);
         if (recipe == null) {
-            port.setNoRecipe();
+            port.setNoRecipe(spec == null ? Ae2PatternSpecs.unsupported(details) : port.explainNoRecipe(machine, spec));
             return false;
         }
         var buffer = PatternBuffer.forRun(spec, recipe);

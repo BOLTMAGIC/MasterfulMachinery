@@ -1,7 +1,9 @@
-package io.ticticboom.mods.mm.setup;
+package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
+import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;

@@ -6,6 +6,7 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
+import io.ticticboom.mods.mm.pattern.PatternMismatch;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
 import io.ticticboom.mods.mm.pattern.PatternSpec;
 import net.minecraftforge.fml.ModList;
@@ -39,6 +40,23 @@ public final class Ae2PatternSpecs {
         GenericStack primary = details.getPrimaryOutput();
         PatternIngredient output = primary == null ? null : ingredient(primary.what(), primary.amount());
         return output == null ? null : new PatternSpec(inputs, output);
+    }
+
+    /** @return the first of the pattern's inputs or main output MM can't carry, or null */
+    @Nullable
+    public static PatternMismatch unsupported(IPatternDetails details) {
+        for (IPatternDetails.IInput input : details.getInputs()) {
+            for (GenericStack possible : input.getPossibleInputs()) {
+                if (ingredient(possible.what(), possible.amount()) == null) {
+                    return new PatternMismatch(PatternMismatch.Reason.UNSUPPORTED, possible.what().getId(), possible.amount() * input.getMultiplier(), 0);
+                }
+            }
+        }
+        GenericStack primary = details.getPrimaryOutput();
+        if (primary != null && ingredient(primary.what(), primary.amount()) == null) {
+            return new PatternMismatch(PatternMismatch.Reason.UNSUPPORTED, primary.what().getId(), primary.amount(), 0);
+        }
+        return null;
     }
 
     /** @return null for a kind of key MM can't carry */

@@ -70,7 +70,7 @@ public class MMRegisters {
             .displayItems((p, o) -> o.acceptAll(StructureManager.STRUCTURE_BLUEPRINTS.values()))
             .build());
 
-    static List<ItemStack> registeredItemStacks(Collection<? extends RegistryObject<? extends Item>> entries) {
+    public static List<ItemStack> registeredItemStacks(Collection<? extends RegistryObject<? extends Item>> entries) {
         // Joining a world/server can remap away a controller removed from the pack.
         return entries.stream().filter(RegistryObject::isPresent).map(x -> x.get().getDefaultInstance()).toList();
     }
