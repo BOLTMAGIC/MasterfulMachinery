@@ -1,6 +1,7 @@
 package io.ticticboom.mods.mm.compat.waila;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.pattern.PatternMismatch;
 import io.ticticboom.mods.mm.pattern.PatternPortBlockEntity;
 import io.ticticboom.mods.mm.pattern.PatternRun;
 import net.minecraft.ChatFormatting;
@@ -22,6 +23,7 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
     private static final String RUNS_KEY = "PatternRuns";
     private static final String RETURNING_KEY = "PatternReturning";
     private static final String LAST_KEY = "PatternLast";
+    private static final String WHY_KEY = "PatternWhy";
 
     public static final PatternPortDataProvider INSTANCE = new PatternPortDataProvider();
 
@@ -44,6 +46,9 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
         }
         if (port.lastHadNoRecipe()) {
             data.putString(LAST_KEY, "no_recipe");
+            if (port.noRecipeWhy() != null) {
+                data.put(WHY_KEY, port.noRecipeWhy().save());
+            }
         } else if (port.lastResult() != null) {
             data.putString(LAST_KEY, port.lastResult().name().toLowerCase(Locale.ROOT));
         }
@@ -69,6 +74,11 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
         String last = data.getString(LAST_KEY);
         if (!last.isEmpty() && !last.equals("started")) {
             tooltip.add(Component.translatable("jade.mm.pattern_port.last." + last).withStyle(ChatFormatting.GRAY));
+        }
+        PatternMismatch why = data.contains(WHY_KEY) ? PatternMismatch.load(data.getCompound(WHY_KEY)) : null;
+        if (why != null) {
+            tooltip.add(Component.translatable("jade.mm.pattern_port.why." + why.reason().name().toLowerCase(Locale.ROOT),
+                    why.what().toString(), why.patternAmount(), why.recipeAmount()).withStyle(ChatFormatting.GRAY));
         }
     }
 }

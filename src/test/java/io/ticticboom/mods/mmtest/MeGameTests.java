@@ -24,6 +24,7 @@ public final class MeGameTests {
             event.register(MeToolGameTests.class);
             event.register(MeItemPortGameTests.class);
             event.register(PatternPortGameTests.class);
+            event.register(PatternPortMeGameTests.class);
             if (ModList.get().isLoaded("appmek")) {
                 event.register(PatternPortChemicalGameTests.class);
             }

@@ -148,6 +148,68 @@ public class PatternPortGameTests {
                 .thenSucceed();
     }
 
+    /** mmtest:pattern_push_catalyst: 1 redstone + a blaze rod that isn't consumed -> 1 lapis. JEI puts both in the pattern. */
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void catalystInThePatternComesBack(GameTestHelper helper) {
+        var controller = build(helper);
+        var pattern = TestPattern.of("catalyst", new GenericStack[]{new GenericStack(AEItemKey.of(Items.REDSTONE), 1),
+                new GenericStack(AEItemKey.of(Items.BLAZE_ROD), 1)}, new GenericStack(AEItemKey.of(Items.LAPIS_LAZULI), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> check(helper, push(helper, pattern), "a pattern carrying the catalyst should run"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.LAPIS_LAZULI) == 1 && chest(helper, Items.BLAZE_ROD) == 1
+                        && controller.getPatternRuns().isEmpty(), "the lapis and the unused blaze rod should be given back"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void catalystMayComeFromThePorts(GameTestHelper helper) {
+        var controller = build(helper);
+        var pattern = TestPattern.of("no_catalyst", new GenericStack[]{new GenericStack(AEItemKey.of(Items.REDSTONE), 1)},
+                new GenericStack(AEItemKey.of(Items.LAPIS_LAZULI), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, !push(helper, pattern), "without a blaze rod anywhere the pattern can't start");
+                    check(helper, "missing_inputs".equals(jadeData(helper).getString("PatternLast")), "Jade should say inputs are missing, data "
+                            + jadeData(helper));
+                    var port = helper.getBlockEntity(INPUT).getCapability(ForgeCapabilities.ITEM_HANDLER).orElseThrow(IllegalStateException::new);
+                    port.insertItem(0, new ItemStack(Items.BLAZE_ROD), false);
+                })
+                .thenExecute(() -> check(helper, push(helper, pattern), "with the blaze rod in the input port the pattern should run"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.LAPIS_LAZULI) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the lapis should be given back"))
+                .thenExecute(() -> check(helper, count(helper, INPUT, Items.BLAZE_ROD) == 1, "the catalyst should stay in the input port"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void jadeShowsWhyNoRecipeFits(GameTestHelper helper) {
+        var controller = build(helper);
+        var twoIron = TestPattern.of("two_iron", new GenericStack[]{new GenericStack(AEItemKey.of(Items.IRON_INGOT), 2)},
+                new GenericStack(AEItemKey.of(Items.GOLD_INGOT), 1));
+        var dirt = TestPattern.of("dirt", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIRT), 1)},
+                new GenericStack(AEItemKey.of(Items.DIAMOND), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, !push(helper, twoIron), "the recipe takes 1 iron, not 2");
+                    var why = jadeData(helper).getCompound("PatternWhy");
+                    check(helper, "amount".equals(why.getString("Reason")) && "minecraft:iron_ingot".equals(why.getString("What"))
+                            && why.getLong("Pattern") == 2 && why.getLong("Recipe") == 1, "Jade should say the iron amount differs, got " + why);
+                    check(helper, !push(helper, dirt), "nothing makes a diamond");
+                    why = jadeData(helper).getCompound("PatternWhy");
+                    check(helper, "no_output".equals(why.getString("Reason")) && "minecraft:diamond".equals(why.getString("What")),
+                            "Jade should say no recipe makes a diamond, got " + why);
+                    check(helper, push(helper, ironToGold("iron")), "a fitting pattern should run");
+                    check(helper, !jadeData(helper).contains("PatternWhy"), "a pattern that ran leaves no reason behind");
+                })
+                .thenSucceed();
+    }
+
     /** What PatternPortDataProvider sends to the client for the port. */
     static CompoundTag jadeData(GameTestHelper helper) {
         var be = helper.getBlockEntity(PORT);

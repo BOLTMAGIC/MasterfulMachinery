@@ -1,0 +1,11 @@
+{
+  "ticks": 20,
+  "structureId": "mmtest:pattern_push_test",
+  "inputs": [
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:redstone", "count": 1}},
+    {"type": "mm:input/consume", "chance": 0, "ingredient": {"type": "mm:item", "item": "minecraft:blaze_rod", "count": 1}}
+  ],
+  "outputs": [
+    {"type": "mm:output/simple", "ingredient": {"type": "mm:item", "item": "minecraft:lapis_lazuli", "count": 1}}
+  ]
+}

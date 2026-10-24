@@ -37,6 +37,9 @@ public class PatternPortBlockEntity extends BlockEntity {
     @Nullable
     private PatternStartResult lastResult;
     private boolean noRecipe;
+    // why the last pattern fit no recipe, when it didn't
+    @Nullable
+    private PatternMismatch noRecipeWhy;
     // recipe found per (pattern, structure), until recipes reload
     private final Map<List<Object>, Optional<ResourceLocation>> recipeByPattern = new HashMap<>();
     private int recipeGeneration = -1;
@@ -75,6 +78,7 @@ public class PatternPortBlockEntity extends BlockEntity {
     public void setLastResult(@Nullable PatternStartResult result) {
         this.lastResult = result;
         this.noRecipe = false;
+        this.noRecipeWhy = null;
     }
 
     /** Whether the last push was refused because no recipe of the machine fits the pattern. */
@@ -82,9 +86,23 @@ public class PatternPortBlockEntity extends BlockEntity {
         return noRecipe;
     }
 
-    public void setNoRecipe() {
+    /** @param why how the pattern differs from the closest recipe, if known */
+    public void setNoRecipe(@Nullable PatternMismatch why) {
         this.lastResult = null;
         this.noRecipe = true;
+        this.noRecipeWhy = why;
+    }
+
+    /** How the last refused pattern differs from the closest recipe, or null. */
+    @Nullable
+    public PatternMismatch noRecipeWhy() {
+        return noRecipeWhy;
+    }
+
+    /** Why a pattern fits none of the machine's recipes, against the closest one; null if one fits. */
+    @Nullable
+    public PatternMismatch explainNoRecipe(MachineControllerBlockEntity machine, PatternSpec spec) {
+        return PatternRecipeMatcher.explain(MachineRecipeManager.getRecipeForStructureIds(List.of(machine.getStructure().id())), spec);
     }
 
     /**
