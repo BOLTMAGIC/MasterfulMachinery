@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.1] - 2026-10-26
+
+**Special Thanks:**
+- **Knozyy**
+
+### Fixed
+
+- **#96 – Fix Pattern Port Not Running Patterns**
+
 ## [0.1.36.0] - 2026-10-23
 
 ### INFO:
@@ -63,14 +72,6 @@ The format is based on "Keep a Changelog" and this project follows [Semantic Ver
   - Controller screen displays pattern progress.
 - **Dependencies**: AE2, Applied Mekanistics, Mekanism all optional; dev builds load Applied Mekanistics for GameTests.
 
-#### Pattern Port (AE2)
-- New block an AE2 Pattern Provider sees as a crafting machine. Pushed patterns run on the machine right away, without going through the input ports; the outputs (byproducts too) go back to the Pattern Provider. Placed like the Input Gateway, which stays.
-- The pattern's inputs must be exactly what a recipe consumes; energy, catalysts and other inputs a pattern can't carry come from the machine's ports. Mekanism chemicals work with Applied Mekanistics.
-- The same pattern runs up to the machine's parallel limit; pattern runs pause with the machine; outputs wait while the Pattern Provider is full. Jade shows the running patterns and why a push was refused.
-- Catalysts (`chance: 0`) and per-tick inputs may be in the pattern, as JEI encodes them, or in the ports; unused ones go back to the Pattern Provider.
-- Jade says why a pattern fits no recipe: which input's amount differs, what is missing or extra, or what a pattern can't carry.
-- JEI: Mekanism chemical slots (gas, infusion, pigment, slurry) hold the recipe's real amount instead of 1000 mB, so AE2 patterns encoded from JEI ask for the right amount. Patterns encoded before must be made again.
-- See `temp_docs/notes/PatternPort.md`.
 ### Fixed
 - Creative tab population and controller lookups skip registry entries removed by a world/server registry remap instead of crashing on a removed controller.
 - Round Robin also rotates the kinds selected inside flex recipes, including reusable inputs and NBT variants. Only kinds in a successfully started run advance their turn; `max_types`, cost and output capacity checks still apply. The controller saves the history across reloads.
