@@ -314,7 +314,6 @@
   "jade.mm.pattern_port.why.no_output": "Bu makinenin hiçbir tarifi %1$s yapmıyor",
   "jade.mm.pattern_port.why.output_amount": "%1$s: desen %2$s bekliyor, tarif %3$s yapıyor",
   "jade.mm.pattern_port.why.amount": "%1$s: desende %2$s var, tarif %3$s istiyor",
-  "jade.mm.pattern_port.why.missing": "%1$s: tarif %3$s istiyor, desende yok",
   "jade.mm.pattern_port.why.extra": "%1$s: desende var (%2$s), tarif kullanmıyor",
   "jade.mm.pattern_port.why.unsupported": "%1$s: desen bunu taşıyamaz, desenden çıkar (makinenin port'ları verir)",
   "gui.mm.port.energy": "Enerji",

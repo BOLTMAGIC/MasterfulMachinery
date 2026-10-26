@@ -2,6 +2,7 @@ package io.ticticboom.mods.mmtest;
 
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
+import io.ticticboom.mods.mm.pattern.PatternMismatch;
 import io.ticticboom.mods.mm.pattern.PatternRecipeMatcher;
 import io.ticticboom.mods.mm.pattern.PatternSpec;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
@@ -63,6 +64,37 @@ public class PatternMatchGameTests {
     }
 
     @GameTest(template = TEMPLATE)
+    public static void sameItemInSeveralInputsAddsUp(GameTestHelper helper) {
+        // pattern/three_shards takes 16 shards three times: AE2 encodes them as one input of 48
+        expect(helper, spec(List.of(item("prismarine_shard", 48), item("cyan_dye", 16)), item("sea_lantern", 16)), "pattern/three_shards");
+        expect(helper, spec(List.of(item("prismarine_shard", 16), item("cyan_dye", 16)), item("sea_lantern", 16)), null);
+        explains(helper, spec(List.of(item("prismarine_shard", 16), item("cyan_dye", 16)), item("sea_lantern", 16)),
+                PatternMismatch.Reason.AMOUNT, 48);
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void inputsLeftOutComeFromPorts(GameTestHelper helper) {
+        // the water of pattern/with_water may sit in a tank instead of the ME system
+        expect(helper, spec(List.of(item("copper_ingot", 1)), item("lapis_lazuli", 1)), "pattern/with_water");
+        expect(helper, spec(List.of(item("copper_ingot", 1), fluid("water", 100)), item("lapis_lazuli", 1)), "pattern/with_water");
+        // what the pattern does carry, it carries in full
+        expect(helper, spec(List.of(item("copper_ingot", 1), fluid("water", 50)), item("lapis_lazuli", 1)), null);
+        // and the recipe has to use all of it
+        expect(helper, spec(List.of(item("copper_ingot", 1), item("dirt", 1)), item("lapis_lazuli", 1)), null);
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
+    public static void fullerFitWins(GameTestHelper helper) {
+        // pattern/iron and pattern/two_iron both make gold, but only two_iron uses 2 iron: one iron is pattern/iron
+        // (nothing from the ports), two iron is two_iron, never "pattern/iron with an extra iron"
+        expect(helper, spec(List.of(item("iron_ingot", 1)), item("gold_ingot", 1)), "pattern/iron");
+        expect(helper, spec(List.of(item("iron_ingot", 2)), item("gold_ingot", 1)), "pattern/two_iron");
+        helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE)
     public static void flexRecipesAreSkipped(GameTestHelper helper) {
         expect(helper, spec(List.of(item("oak_log", 1)), item("oak_planks", 2)), null);
         helper.succeed();
@@ -102,6 +134,13 @@ public class PatternMatchGameTests {
         }
     }
 
+    private static void explains(GameTestHelper helper, PatternSpec spec, PatternMismatch.Reason reason, long recipeAmount) {
+        PatternMismatch why = PatternRecipeMatcher.explain(candidates(), spec);
+        if (why == null || why.reason() != reason || why.recipeAmount() != recipeAmount) {
+            helper.fail("pattern " + spec + " should be explained as " + reason + " (" + recipeAmount + "), got " + why);
+        }
+    }
+
     private static List<RecipeModel> candidates() {
         return new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(ResourceLocation.tryBuild("mmtest", "pattern_match")));
     }
@@ -112,6 +151,10 @@ public class PatternMatchGameTests {
 
     private static PatternIngredient item(String path, long amount) {
         return new PatternIngredient(Kind.ITEM, mc(path), amount, null);
+    }
+
+    private static PatternIngredient fluid(String path, long amount) {
+        return new PatternIngredient(Kind.FLUID, mc(path), amount, null);
     }
 
     private static ResourceLocation mc(String path) {

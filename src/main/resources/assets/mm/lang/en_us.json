@@ -314,7 +314,6 @@
   "jade.mm.pattern_port.why.no_output": "No recipe of this machine makes %1$s",
   "jade.mm.pattern_port.why.output_amount": "%1$s: the pattern expects %2$s, the recipe makes %3$s",
   "jade.mm.pattern_port.why.amount": "%1$s: the pattern has %2$s, the recipe needs %3$s",
-  "jade.mm.pattern_port.why.missing": "%1$s: the recipe needs %3$s, the pattern has none",
   "jade.mm.pattern_port.why.extra": "%1$s: in the pattern (%2$s), the recipe doesn't use it",
   "jade.mm.pattern_port.why.unsupported": "%1$s: a pattern can't carry this, leave it out (the machine's ports give it)",
   "gui.mm.port.energy": "Energy",

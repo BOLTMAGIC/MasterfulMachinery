@@ -16,23 +16,32 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Finds the recipe an AE2 pattern is for. The pattern carries exactly what the recipe consumes (items, fluids,
- * chemicals, with their amounts); what a pattern can't carry (energy, mana...) comes from the machine's ports, and
- * catalysts and per-tick inputs may come either way. The pattern's primary output has to be one of the recipe's sure
- * outputs.
+ * Finds the recipe an AE2 pattern is for. Everything the pattern carries has to be consumed by the recipe, each
+ * resource in the recipe's full amount (a recipe using the same item in several inputs counts their sum); what the
+ * pattern leaves out comes from the machine's ports, like what a pattern can't carry (energy, mana...). Catalysts and
+ * per-tick inputs may come either way. The pattern's primary output has to be one of the recipe's sure outputs.
  */
 public final class PatternRecipeMatcher {
     private PatternRecipeMatcher() {
     }
 
-    /** @return the candidate the pattern is for (the smallest recipe id when several fit), or null */
+    /**
+     * @return the candidate the pattern is for, or null. When several fit, the one needing the fewest inputs from the
+     * ports, then the smallest recipe id.
+     */
     @Nullable
     public static RecipeModel match(List<RecipeModel> candidates, PatternSpec spec) {
         RecipeModel found = null;
+        int foundFromPorts = 0;
         for (RecipeModel recipe : candidates) {
-            if (recipe.mode() == RecipeMode.FIXED && inputMismatch(recipe, spec) == null && makesPrimaryOutput(recipe, spec)
-                    && (found == null || recipe.id().toString().compareTo(found.id().toString()) < 0)) {
+            if (recipe.mode() != RecipeMode.FIXED || !makesPrimaryOutput(recipe, spec)) {
+                continue;
+            }
+            Fit fit = fit(recipe, spec);
+            if (fit.mismatch() == null && (found == null || fit.fromPorts() < foundFromPorts
+                    || (fit.fromPorts() == foundFromPorts && recipe.id().toString().compareTo(found.id().toString()) < 0))) {
                 found = recipe;
+                foundFromPorts = fit.fromPorts();
             }
         }
         return found;
@@ -66,7 +75,7 @@ public final class PatternRecipeMatcher {
         if (closest == null) {
             return new PatternMismatch(PatternMismatch.Reason.NO_OUTPUT, primary.id(), primary.amount(), 0);
         }
-        PatternMismatch inputs = inputMismatch(closest, spec);
+        PatternMismatch inputs = fit(closest, spec).mismatch();
         if (inputs != null) {
             return inputs;
         }
@@ -88,42 +97,65 @@ public final class PatternRecipeMatcher {
         return shared;
     }
 
-    /** @return null if the pattern carries exactly what the recipe consumes, else the first difference */
-    @Nullable
-    private static PatternMismatch inputMismatch(RecipeModel recipe, PatternSpec spec) {
-        var left = new ArrayList<>(spec.inputs());
+    /**
+     * How a pattern fits a recipe.
+     *
+     * @param mismatch  the first difference, null if it fits
+     * @param fromPorts how many of the recipe's inputs the pattern leaves to the machine's ports
+     */
+    private record Fit(@Nullable PatternMismatch mismatch, int fromPorts) {
+    }
+
+    private static Fit fit(RecipeModel recipe, PatternSpec spec) {
+        var entries = new ArrayList<ConsumeRecipeIngredientEntry>();
         for (IRecipeIngredientEntry entry : recipe.inputs().inputs()) {
-            if (!(entry instanceof ConsumeRecipeIngredientEntry consume)) {
-                continue;
-            }
-            IPortIngredient ingredient = consume.getIngredient();
-            PatternIngredient wanted = ingredient.asPatternIngredient();
-            if (wanted == null) {
-                // not something a pattern carries: the machine's ports provide it
-                continue;
-            }
-            // catalysts and per-tick inputs may come in the pattern (JEI puts them there) or from the ports; what the
-            // run doesn't use goes back to the pattern provider
-            boolean optional = consume.getChance() <= 0 || consume.isPerTick();
-            int found = -1;
-            for (int i = 0; i < left.size(); i++) {
-                if (left.get(i).amount() == wanted.amount() && accepts(ingredient, wanted, left.get(i))) {
-                    found = i;
-                    break;
-                }
-            }
-            if (found >= 0) {
-                left.remove(found);
-            } else if (!optional) {
-                for (PatternIngredient given : left) {
-                    if (given.kind() == wanted.kind() && given.id().equals(wanted.id())) {
-                        return new PatternMismatch(PatternMismatch.Reason.AMOUNT, wanted.id(), given.amount(), wanted.amount());
-                    }
-                }
-                return new PatternMismatch(PatternMismatch.Reason.MISSING, wanted.id(), 0, wanted.amount());
+            // what a pattern can't carry is left out: the machine's ports provide it
+            if (entry instanceof ConsumeRecipeIngredientEntry consume && consume.getIngredient().asPatternIngredient() != null) {
+                entries.add(consume);
             }
         }
-        return left.isEmpty() ? null : new PatternMismatch(PatternMismatch.Reason.EXTRA, left.get(0).id(), left.get(0).amount(), 0);
+        var covered = new boolean[entries.size()];
+        for (PatternIngredient given : spec.inputs()) {
+            // the pattern's inputs are merged per resource, so add up every input of the recipe taking this one
+            long needed = 0;
+            long optional = 0;
+            boolean used = false;
+            for (int i = 0; i < entries.size(); i++) {
+                ConsumeRecipeIngredientEntry consume = entries.get(i);
+                PatternIngredient wanted = consume.getIngredient().asPatternIngredient();
+                if (!accepts(consume.getIngredient(), wanted, given)) {
+                    continue;
+                }
+                used = true;
+                covered[i] = true;
+                if (isOptional(consume)) {
+                    optional += wanted.amount();
+                } else {
+                    needed += wanted.amount();
+                }
+            }
+            if (!used) {
+                return new Fit(new PatternMismatch(PatternMismatch.Reason.EXTRA, given.id(), given.amount(), 0), 0);
+            }
+            // all of what the recipe needs, plus none, some or all of its catalysts; what the run doesn't use goes
+            // back to the pattern provider
+            if (given.amount() < needed || given.amount() > needed + optional) {
+                long recipeAmount = given.amount() < needed ? needed : needed + optional;
+                return new Fit(new PatternMismatch(PatternMismatch.Reason.AMOUNT, given.id(), given.amount(), recipeAmount), 0);
+            }
+        }
+        int fromPorts = 0;
+        for (int i = 0; i < entries.size(); i++) {
+            if (!covered[i] && !isOptional(entries.get(i))) {
+                fromPorts++;
+            }
+        }
+        return new Fit(null, fromPorts);
+    }
+
+    /** Catalysts and per-tick inputs may come in the pattern (JEI puts them there) or from the ports. */
+    private static boolean isOptional(ConsumeRecipeIngredientEntry consume) {
+        return consume.getChance() <= 0 || consume.isPerTick();
     }
 
     /** Items go through the recipe's own item check (exact or partial NBT match); other kinds compare as they are. */
