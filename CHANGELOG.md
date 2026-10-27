@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.2] - 2026-10-27
+
+### INFO:
+**Version 0.1.36.2** represents a performance optimization update with server tick reduction.
+
+**Special Thanks:**
+- **Knozyy** – Performance optimization and tuning.
+
+### Changed
+
+#### #98 – Performance Optimization (~4-5% Server Tick Reduction)
+- **Item port client sync**: ports now sync at most once per second while their screen is closed; still sync every tick while open; screen open sends contents immediately.
+- **Comparator updates optimized**: ports notify neighbors once per tick (not on every insert/extract); chunk dirty marking unchanged (saves unaffected).
+- **Recipe scan optimization**: controller skips scanning when every parallel slot is taken (limit of 0 means one recipe at a time, as before); recipe's own parallel rule checked before inputs/outputs.
+- **Flex output check optimization**: `OutputSimulation` copies item ports in-memory (`ItemPortHandler.copyContentsFrom`) instead of through NBT; tries each output set on fresh copy (no snapshot save/restore).
+- **Port lookup caching**: controllers cache port block entity lookups every 20 ticks (removed ports still noticed every tick).
+
 ## [0.1.36.1] - 2026-10-26
 
 **Special Thanks:**
