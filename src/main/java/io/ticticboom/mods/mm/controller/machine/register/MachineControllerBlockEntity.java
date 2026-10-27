@@ -727,7 +727,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (!state.isCanFinish()) {
             boolean fed;
             try {
-                fed = processTickInputs(recipe, state);
+                // a per-tick output that doesn't fit makes the recipe wait for room instead of throwing it away
+                fed = recipe.outputs().canProcessTick(level, portStorages, state) && processTickInputs(recipe, state);
                 if (fed) {
                     recipe.outputs().processTick(level, portStorages, state);
                 }

@@ -33,6 +33,15 @@ public interface IPortStorage {
 
     JsonObject debugDump();
 
+    /**
+     * A detached copy with the same contents and settings, which OutputSimulation fills to see whether several
+     * outputs fit together; null when this kind of port can't be copied.
+     */
+    @Nullable
+    default IPortStorage simulationCopy(HolderLookup.Provider registries) {
+        return null;
+    }
+
     default void setupContainer(AbstractContainerMenu container, Inventory inv, PortModel model) {
         BlockUtils.setupPlayerInventory(container, inv, 0, 0);
     }

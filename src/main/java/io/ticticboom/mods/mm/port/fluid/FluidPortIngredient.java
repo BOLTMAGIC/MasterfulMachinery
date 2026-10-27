@@ -87,6 +87,11 @@ public class FluidPortIngredient implements IPortIngredient {
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         int required = amount.resolve(state);
         if (required <= 0) return true; // nothing to output

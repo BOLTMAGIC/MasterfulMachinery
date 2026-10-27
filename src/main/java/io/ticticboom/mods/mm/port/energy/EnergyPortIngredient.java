@@ -80,6 +80,11 @@ public class EnergyPortIngredient implements ITickSpreadIngredient {
     }
 
     @Override
+    public boolean canSimulateOutput() {
+        return true;
+    }
+
+    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
         long remaining = resolveAmount(state);
         for (EnergyPortStorage storage : storages.getOutputStoragesByPriority(EnergyPortStorage.class)) {

@@ -66,6 +66,13 @@ public class EnergyPortStorage implements IPortStorage {
     }
 
     @Override
+    public IPortStorage simulationCopy(HolderLookup.Provider registries) {
+        var copy = new EnergyPortStorage(model, () -> {});
+        copy.load(save(new CompoundTag(), registries), registries);
+        return copy;
+    }
+
+    @Override
     public UUID getStorageUid() {
         return uid;
     }

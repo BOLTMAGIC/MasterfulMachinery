@@ -79,6 +79,17 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     }
 
     @Override
+    public java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return !perTick && shouldRun(state) ? java.util.List.of(ingredient) : java.util.List.of();
+    }
+
+    @Override
+    public java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
+        // a per-tick chance is rolled again on every tick, so room is kept as if it always hits
+        return perTick ? java.util.List.of(ingredient) : java.util.List.of();
+    }
+
+    @Override
     public void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
         ingredient.ditchRecipe(level, storages, state);
     }
