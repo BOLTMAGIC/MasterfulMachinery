@@ -45,6 +45,14 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         this.chanceRollKey = "c" + AmountRange.nextRollKey();
     }
 
+    public double getChance() {
+        return chance;
+    }
+
+    public boolean isPerTick() {
+        return perTick;
+    }
+
     @org.jetbrains.annotations.Nullable
     public String getScaleBy() {
         return scaleBy;

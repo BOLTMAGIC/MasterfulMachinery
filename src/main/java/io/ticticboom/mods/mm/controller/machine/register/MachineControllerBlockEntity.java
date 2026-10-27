@@ -47,6 +47,12 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.ListTag;
+import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.pattern.PatternBuffer;
+import io.ticticboom.mods.mm.pattern.PatternReturn;
+import io.ticticboom.mods.mm.pattern.PatternRun;
+import io.ticticboom.mods.mm.pattern.PatternStartResult;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -111,6 +117,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private long lastTick = Long.MIN_VALUE;
 
     private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
+    // crafts pushed by AE2 into a Pattern Port; they run next to activeRecipes, each with its own buffer
+    private final List<PatternRun> patternRuns = new ArrayList<>();
     @Getter
     private RecipeModel currentRecipe;
     private RecipeStorages portStorages = null;
@@ -197,6 +205,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return;
         }
         lastTick = gameTime;
+        drainPatternRuns();
         boolean loaded = !isFormed || structureChunksLoaded();
         if (loaded && (pendingValidation || (gameTime + validationOffset) % COMMON.structureValidationRate.get() == 0)) {
             pendingValidation = false;
@@ -211,7 +220,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         updateVisuals();
         updateControllerState();
         NetworkLink.tickController((ServerLevel) level, this);
-        boolean active = !activeRecipes.isEmpty();
+        boolean active = !activeRecipes.isEmpty() || !patternRuns.isEmpty();
         if (active || wasActive) {
             markChanged();
         }
@@ -729,8 +738,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             allowParallel = model.parallelProcessingDefault();
         }
         int limit = parallelLimit();
-        boolean underLimit = limit == 0 ? activeRecipes.isEmpty() : activeRecipes.size() < limit;
-        return (allowParallel || activeRecipes.isEmpty()) && underLimit;
+        int running = runningCount();
+        boolean underLimit = limit == 0 ? running == 0 : running < limit;
+        return (allowParallel || running == 0) && underLimit;
     }
 
     private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation inputKey, RecipeStateModel state) {
@@ -799,11 +809,17 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 var recipe = MachineRecipeManager.RECIPES.get(entry.getKey());
                 return recipe == null || tickRecipe(recipe, entry.getValue(), gameTime);
             });
+            tickPatternRuns(gameTime);
         }
         updateCurrentRecipe();
     }
 
     private boolean tickRecipe(RecipeModel recipe, RecipeStateModel state, long gameTime) {
+        return tickRecipe(recipe, state, gameTime, portStorages);
+    }
+
+    /** One tick of a running recipe against these storages (the ports, or a pattern run's buffer first). */
+    private boolean tickRecipe(RecipeModel recipe, RecipeStateModel state, long gameTime, RecipeStorages storages) {
         if (!state.isCanFinish() && !recipe.conditions().isEmpty() && !recipe.conditions().canRun(conditionContext())) {
             return false;
         }
@@ -811,9 +827,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             boolean fed;
             try {
                 // a per-tick output that doesn't fit makes the recipe wait for room instead of throwing it away
-                fed = recipe.outputs().canProcessTick(level, portStorages, state) && processTickInputs(recipe, state);
+                fed = recipe.outputs().canProcessTick(level, storages, state) && processTickInputs(recipe, state, storages);
                 if (fed) {
-                    recipe.outputs().processTick(level, portStorages, state);
+                    recipe.outputs().processTick(level, storages, state);
                 }
             } catch (RuntimeException e) {
                 if (failedRecipes.add(recipe.id())) {
@@ -832,9 +848,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return false;
         }
         state.setCanFinish(true);
-        if (recipe.outputs().canProcess(level, portStorages, state)) {
+        if (recipe.outputs().canProcess(level, storages, state)) {
             lastProgressTime = gameTime;
-            recipe.outputs().process(level, portStorages, state);
+            recipe.outputs().process(level, storages, state);
             recipeFinished(recipe);
             storageContentCacheValid = false;
             return true;
@@ -843,42 +859,141 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return false;
     }
 
-    private boolean processTickInputs(RecipeModel recipe, RecipeStateModel state) {
+    private boolean processTickInputs(RecipeModel recipe, RecipeStateModel state, RecipeStorages storages) {
         for (var input : recipe.inputs().inputs()) {
             if (input instanceof ConsumeRecipeIngredientEntry entry && entry.isPerTick()) {
                 // flex recipes pay per-tick inputs with the run's cost multiplier too
                 var ingredient = entry.ingredientFor(state);
                 if (ingredient instanceof ITickSpreadIngredient spread) {
-                    if (!drawTickSpread(recipe, state, spread)) {
+                    if (!drawTickSpread(recipe, state, spread, storages)) {
                         return false;
                     }
                     continue;
                 }
-                if (!ingredient.canProcess(level, portStorages, state)) {
+                if (!ingredient.canProcess(level, storages, state)) {
                     return false;
                 }
             }
-            input.processTick(level, portStorages, state);
+            input.processTick(level, storages, state);
         }
         return true;
     }
 
-    private boolean drawTickSpread(RecipeModel recipe, RecipeStateModel state, ITickSpreadIngredient spread) {
+    private boolean drawTickSpread(RecipeModel recipe, RecipeStateModel state, ITickSpreadIngredient spread, RecipeStorages storages) {
         long total = spread.resolveAmount(state);
         int ticks = Math.max(1, recipe.ticks());
         long toExtract = total / ticks + (state.getTickProgress() == ticks - 1 ? total % ticks : 0);
         if (toExtract <= 0) {
             return true;
         }
-        if (spread.extractFromInputs(portStorages, toExtract, true) < toExtract) {
+        if (spread.extractFromInputs(storages, toExtract, true) < toExtract) {
             return false;
         }
-        spread.extractFromInputs(portStorages, toExtract, false);
+        spread.extractFromInputs(storages, toExtract, false);
         return true;
+    }
+
+    /** The crafts AE2 pushed into a Pattern Port of this machine, running or giving back their outputs. */
+    public List<PatternRun> getPatternRuns() {
+        return Collections.unmodifiableList(patternRuns);
+    }
+
+    /** Recipes running now: normal ones and pattern runs that haven't finished. */
+    public int runningCount() {
+        int count = activeRecipes.size();
+        for (PatternRun run : patternRuns) {
+            if (!run.isReturning()) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Starts a craft AE2 pushed: the recipe's pattern inputs are already in the buffer, everything else (energy,
+     * catalysts...) comes from the machine's ports, the same checks as a normal recipe start apply.
+     *
+     * @param returnPos where to give the outputs back (the pattern provider), through its {@code returnFace} side
+     */
+    public PatternStartResult startPatternRun(RecipeModel recipe, PatternBuffer buffer, BlockPos returnPos, Direction returnFace) {
+        if (level == null || structure == null || !isFormed || portStorages == null) {
+            return PatternStartResult.NOT_FORMED;
+        }
+        if (!canRunAlongside(recipe)) {
+            return PatternStartResult.PARALLEL_FULL;
+        }
+        if (!isAllowedByRedstone() || !recipe.conditions().canRun(conditionContext())
+                || (MMInteropManager.KUBEJS.isPresent() && !MMInteropManager.KUBEJS.get().postRecipeStarted(this, recipe.id()))) {
+            return PatternStartResult.CONDITIONS;
+        }
+        var state = new RecipeStateModel();
+        RecipeStorages storages = runStorages(buffer);
+        if (!recipe.inputs().canProcess(level, storages, state)) {
+            return PatternStartResult.MISSING_INPUTS;
+        }
+        if (!recipe.outputs().canProcess(level, storages, state)) {
+            return PatternStartResult.OUTPUTS_BLOCKED;
+        }
+        recipe.inputs().process(level, storages, state);
+        state.setCanProcess(true);
+        patternRuns.add(new PatternRun(recipe.id(), state, buffer, returnPos, returnFace));
+        long gameTime = level.getGameTime();
+        lastStartedRecipeId = recipe.id();
+        lastRecipeStartTime = gameTime;
+        lastProgressTime = gameTime;
+        storageContentCacheValid = false;
+        markChanged();
+        return PatternStartResult.STARTED;
+    }
+
+    /** A pattern run's storages: its buffer first, then the machine's ports for what a pattern doesn't carry. */
+    private RecipeStorages runStorages(PatternBuffer buffer) {
+        var inputs = new ArrayList<>(buffer.inputs());
+        inputs.addAll(portStorages.inputStorages());
+        var outputs = new ArrayList<>(buffer.outputs());
+        for (IPortStorage storage : portStorages.outputStorages()) {
+            if (!storage.carriedByPatterns()) {
+                outputs.add(storage);
+            }
+        }
+        return new RecipeStorages(inputs, outputs);
+    }
+
+    /**
+     * Finished pattern runs give what they hold back to their pattern provider, whatever state the machine is in;
+     * the ones that gave everything back end.
+     */
+    private void drainPatternRuns() {
+        if (!patternRuns.isEmpty() && level instanceof ServerLevel serverLevel
+                && patternRuns.removeIf(run -> run.isReturning() && PatternReturn.drain(serverLevel, run))) {
+            markChanged();
+        }
+    }
+
+    /** One tick of every pattern run, while the machine is formed and allowed to run (else they wait). */
+    private void tickPatternRuns(long gameTime) {
+        if (patternRuns.isEmpty() || portStorages == null) {
+            return;
+        }
+        for (PatternRun run : patternRuns) {
+            if (run.isReturning()) continue;
+            RecipeModel recipe = MachineRecipeManager.RECIPES.get(run.getRecipeId());
+            // a reload removed the recipe: give back what the run holds
+            if (recipe == null || tickRecipe(recipe, run.getState(), gameTime, runStorages(run.getBuffer()))) {
+                run.setReturning();
+                markChanged();
+            }
+        }
     }
 
     private void updateCurrentRecipe() {
         currentRecipe = activeRecipes.isEmpty() ? null : MachineRecipeManager.RECIPES.get(activeRecipes.keySet().iterator().next());
+        if (currentRecipe == null) {
+            for (PatternRun run : patternRuns) {
+                if (!run.isReturning()) {
+                    currentRecipe = MachineRecipeManager.RECIPES.get(run.getRecipeId());
+                    break;
+                }
+            }
+        }
     }
 
     public void invalidateProgress() {
@@ -1066,12 +1181,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (!isFormed || portStorages == null) return "not_formed";
         if (!isAllowedByRedstone()) return "paused";
         if (isWorking()) return "running";
-        if (!activeRecipes.isEmpty()) return "stalled";
+        if (runningCount() > 0) return "stalled";
         return "idle";
     }
 
     public int getActiveRecipeCount() {
-        return activeRecipes.size();
+        return runningCount();
     }
 
     public int getDisplayedParallelLimit() {
@@ -1129,6 +1244,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             recipesTag.put(entry.getKey().toString(), entry.getValue().save(new CompoundTag(), registries));
         }
         tag.put("activeRecipes", recipesTag);
+        if (!patternRuns.isEmpty()) {
+            var runsTag = new ListTag();
+            for (PatternRun run : patternRuns) {
+                runsTag.add(run.save(registries));
+            }
+            tag.put("PatternRuns", runsTag);
+        }
         if (structure != null) {
             tag.putString("structureId", structure.id().toString());
         }
@@ -1180,6 +1302,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         super.loadAdditional(tag, registries);
         loadFluidVolumes(tag, registries);
         activeRecipes.clear();
+        patternRuns.clear();
+        for (Tag element : tag.getList("PatternRuns", Tag.TAG_COMPOUND)) {
+            PatternRun run = PatternRun.load((CompoundTag) element, registries);
+            if (run != null) {
+                patternRuns.add(run);
+            }
+        }
         CompoundTag recipesTag = tag.getCompound("activeRecipes");
         for (String key : recipesTag.getAllKeys()) {
             ResourceLocation recipeId = ResourceLocation.tryParse(key);
@@ -1238,6 +1367,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     public RecipeStateModel getRecipeState() {
         if (activeRecipes.isEmpty()) {
+            // a running pattern run, so a machine busy with AE2 crafts shows its progress too
+            for (PatternRun run : patternRuns) {
+                if (!run.isReturning()) return run.getState();
+            }
             return null;
         }
         return activeRecipes.values().iterator().next();

@@ -158,7 +158,8 @@ public class StructureLayout {
                 || underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece) {
             return false;
         }
-        return level.getBlockState(piece.findAbsolutePos(worldControllerPos)).is(MMRegisters.INPUT_GATEWAY.get());
+        var state = level.getBlockState(piece.findAbsolutePos(worldControllerPos));
+        return state.is(MMRegisters.INPUT_GATEWAY.get()) || state.is(MMRegisters.PATTERN_PORT.get());
     }
 
     public List<BlockPos> getPositions(Level level, BlockPos worldControllerPos, StructureModel model) {

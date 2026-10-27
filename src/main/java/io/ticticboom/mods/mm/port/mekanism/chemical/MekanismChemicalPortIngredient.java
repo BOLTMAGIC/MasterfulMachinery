@@ -117,6 +117,11 @@ public class MekanismChemicalPortIngredient implements IPortIngredient {
     }
 
     @Override
+    public io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        return new io.ticticboom.mods.mm.pattern.PatternIngredient(io.ticticboom.mods.mm.pattern.PatternIngredient.Kind.CHEMICAL, id, amount);
+    }
+
+    @Override
     public boolean canSimulateOutput() {
         return true;
     }

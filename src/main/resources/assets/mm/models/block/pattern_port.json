@@ -1,0 +1,21 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "loader": "neoforge:composite",
+  "children": {
+    "base": {
+      "parent": "minecraft:block/cube_all",
+      "render_type": "minecraft:solid",
+      "textures": { "all": "mm:block/base_block" }
+    },
+    "overlay": {
+      "parent": "minecraft:block/cube_all",
+      "render_type": "minecraft:translucent",
+      "textures": { "all": "mm:block/circuit_cutout" }
+    }
+  },
+  "item_render_order": ["base", "overlay"],
+  "textures": {
+    "all": "mm:block/base_block",
+    "particle": "mm:block/base_block"
+  }
+}

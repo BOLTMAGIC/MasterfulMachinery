@@ -246,6 +246,7 @@ public final class DismantlePlanner {
             }
         }
         Block gateway = MMRegisters.INPUT_GATEWAY.get();
+        Block patternPort = MMRegisters.PATTERN_PORT.get();
         int count = 0;
         for (PositionedLayoutPiece positioned : pieces) {
             StructurePiece piece = positioned.piece().piece();
@@ -257,7 +258,7 @@ public final class DismantlePlanner {
             } else if (isPort(piece)) {
                 fits = candidates != null && candidates.contains(existing);
             } else {
-                fits = existing == gateway || (candidates != null && candidates.contains(existing));
+                fits = existing == gateway || existing == patternPort || (candidates != null && candidates.contains(existing));
             }
             if (fits) {
                 count++;

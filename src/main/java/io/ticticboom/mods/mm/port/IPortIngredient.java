@@ -27,6 +27,16 @@ public interface IPortIngredient {
     default boolean canSimulateOutput() {
         return false;
     }
+
+    /**
+     * What this is in an AE2 pattern (item, fluid, chemical with its amount), or null when a pattern can't carry it
+     * (energy, mana..., or a ranged amount, which no pattern holds): the Pattern Port then takes it from the
+     * machine's ports.
+     */
+    @org.jetbrains.annotations.Nullable
+    default io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        return null;
+    }
     void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot);
     default void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state) {
     }

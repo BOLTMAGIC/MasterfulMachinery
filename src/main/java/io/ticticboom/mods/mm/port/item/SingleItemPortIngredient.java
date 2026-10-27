@@ -86,6 +86,17 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     }
 
     @Override
+    public io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        if (count.isRanged()) {
+            // a pattern holds a fixed amount; a ranged input comes from the ports
+            return null;
+        }
+        // the display stack carries the recipe's components and NBT (custom_data)
+        return new io.ticticboom.mods.mm.pattern.PatternIngredient(io.ticticboom.mods.mm.pattern.PatternIngredient.Kind.ITEM,
+                itemId, count.min(), stack.getComponentsPatch());
+    }
+
+    @Override
     public boolean canSimulateOutput() {
         return true;
     }

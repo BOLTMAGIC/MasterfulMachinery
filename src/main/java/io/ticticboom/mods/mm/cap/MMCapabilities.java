@@ -83,6 +83,9 @@ public class MMCapabilities {
         if (ModList.get().isLoaded("mekanism")) {
             MekCapabilities.registerGateway(event, gateway);
         }
+        if (ModList.get().isLoaded("ae2")) {
+            Ae2Capabilities.registerPatternPort(event, MMRegisters.PATTERN_PORT_BE.get());
+        }
     }
 
     /**

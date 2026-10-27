@@ -92,6 +92,12 @@ public class FluidPortIngredient implements IPortIngredient {
     }
 
     @Override
+    public io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        return amount.isRanged() ? null : new io.ticticboom.mods.mm.pattern.PatternIngredient(
+                io.ticticboom.mods.mm.pattern.PatternIngredient.Kind.FLUID, fluidId, amount.min());
+    }
+
+    @Override
     public boolean canSimulateOutput() {
         return true;
     }

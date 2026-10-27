@@ -42,6 +42,14 @@ public interface IPortStorage {
         return null;
     }
 
+    /**
+     * Whether an AE2 pattern carries what this kind of port holds (items, fluids, Mekanism chemicals): a pattern run
+     * takes and puts those in its own buffer, and uses the machine's ports only for everything else.
+     */
+    default boolean carriedByPatterns() {
+        return false;
+    }
+
     default void setupContainer(AbstractContainerMenu container, Inventory inv, PortModel model) {
         BlockUtils.setupPlayerInventory(container, inv, 0, 0);
     }

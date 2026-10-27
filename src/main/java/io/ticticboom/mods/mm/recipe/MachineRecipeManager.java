@@ -97,8 +97,12 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         profilerFiller.pop();
     }
 
+    /** Goes up on every recipe (re)load, so caches of recipes can tell they are stale. */
+    public static int generation = 0;
+
     public static void recieveRecipes(Map<ResourceLocation, JsonElement> jsons) {
         RECIPES.clear();
+        generation++;
         Ref.LCTX.reset("MM Machine Recipe Processes");
         try {
             // Each recipe is parsed independently. A single bad one used to abort the whole load

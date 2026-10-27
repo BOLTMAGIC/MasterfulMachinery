@@ -1,11 +1,10 @@
 package io.ticticboom.mods.mm.gateway;
 
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.structure.MachineLinks;
 import io.ticticboom.mods.mm.port.IPortStorage;
-import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -19,7 +18,6 @@ import java.util.List;
 public class InputGatewayBlockEntity extends BlockEntity {
     private static final int REFRESH_TICKS = 20;
     private static final int RELINK_EVERY = 10;
-    private static final int SEARCH_RADIUS = 16;
 
     private final IItemHandler itemHandler = new GatewayItemHandler(this::inputs);
     private final IFluidHandler fluidHandler = new GatewayFluidHandler(this::inputs);
@@ -89,31 +87,6 @@ public class InputGatewayBlockEntity extends BlockEntity {
 
     @Nullable
     private MachineControllerBlockEntity searchController(ServerLevel serverLevel) {
-        BlockPos self = getBlockPos();
-        for (Direction dir : Direction.values()) {
-            BlockPos portPos = self.relative(dir);
-            if (serverLevel.isLoaded(portPos) && serverLevel.getBlockEntity(portPos) instanceof AbstractPortBlockEntity port
-                    && port.isInput() && port.getControllerPos() != null
-                    && serverLevel.getBlockEntity(port.getControllerPos()) instanceof MachineControllerBlockEntity controller
-                    && controller.getPortStorages() != null) {
-                return controller;
-            }
-        }
-        for (int cx = (self.getX() - SEARCH_RADIUS) >> 4; cx <= (self.getX() + SEARCH_RADIUS) >> 4; cx++) {
-            for (int cz = (self.getZ() - SEARCH_RADIUS) >> 4; cz <= (self.getZ() + SEARCH_RADIUS) >> 4; cz++) {
-                var chunk = serverLevel.getChunkSource().getChunkNow(cx, cz);
-                if (chunk == null) {
-                    continue;
-                }
-                for (var be : chunk.getBlockEntities().values()) {
-                    if (be instanceof MachineControllerBlockEntity controller && be.getBlockPos().closerThan(self, SEARCH_RADIUS + 1)
-                            && controller.getPortStorages() != null && controller.getFormedRotation() != null
-                            && controller.getStructure().layout().contains(controller.getBlockPos(), controller.getFormedRotation(), self)) {
-                        return controller;
-                    }
-                }
-            }
-        }
-        return null;
+        return MachineLinks.find(serverLevel, getBlockPos());
     }
 }

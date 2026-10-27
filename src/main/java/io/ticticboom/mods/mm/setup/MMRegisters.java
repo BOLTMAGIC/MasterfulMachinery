@@ -9,6 +9,8 @@ import io.ticticboom.mods.mm.item.WrenchItem;
 import net.minecraft.world.item.BlockItem;
 import io.ticticboom.mods.mm.gateway.InputGatewayBlockEntity;
 import io.ticticboom.mods.mm.gateway.InputGatewayBlock;
+import io.ticticboom.mods.mm.pattern.PatternPortBlock;
+import io.ticticboom.mods.mm.pattern.PatternPortBlockEntity;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.debug.tool.DebugToolItem;
 import io.ticticboom.mods.mm.item.BlueprintItem;
@@ -52,6 +54,12 @@ public class MMRegisters {
     public static final DeferredHolder<Item, BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new BlockItem(INPUT_GATEWAY.get(), new Item.Properties()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<InputGatewayBlockEntity>> INPUT_GATEWAY_BE = BLOCK_ENTITIES.register("input_gateway",
             () -> BlockEntityType.Builder.of(InputGatewayBlockEntity::new, INPUT_GATEWAY.get()).build(null));
+
+    public static final DeferredHolder<Block, PatternPortBlock> PATTERN_PORT = BLOCKS.register("pattern_port", PatternPortBlock::new);
+    public static final DeferredHolder<Item, BlockItem> PATTERN_PORT_ITEM = ITEMS.register("pattern_port", () -> new BlockItem(PATTERN_PORT.get(), new Item.Properties()));
+    @SuppressWarnings("DataFlowIssue")
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PatternPortBlockEntity>> PATTERN_PORT_BE = BLOCK_ENTITIES.register("pattern_port",
+            () -> BlockEntityType.Builder.of(PatternPortBlockEntity::new, PATTERN_PORT.get()).build(null));
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MM_TAB = TABS.register("mm", () -> CreativeModeTab.builder().title(Component.translatable("tab.mm.main"))
             .icon(() -> BLUEPRINT.get().getDefaultInstance())

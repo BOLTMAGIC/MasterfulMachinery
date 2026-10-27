@@ -144,6 +144,11 @@ public class MekanismChemicalPortStorage implements IPortStorage, ILockablePortS
     }
 
     @Override
+    public boolean carriedByPatterns() {
+        return true;
+    }
+
+    @Override
     public IPortStorage simulationCopy(HolderLookup.Provider registries) {
         var copy = new MekanismChemicalPortStorage(model, () -> {});
         copy.load(save(new CompoundTag(), registries), registries);
