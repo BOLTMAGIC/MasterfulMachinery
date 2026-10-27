@@ -82,6 +82,17 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         return count.max();
     }
 
+    /** Every item this ingredient accepts, for JEI (flex recipes list one output per accepted item). */
+    public List<ItemStack> exampleStacks() {
+        var content = display();
+        return content == null || content.item() == null || content.item().isEmpty() ? List.of() : List.of(content.item().copy());
+    }
+
+    /** Whether a stack is accepted by this ingredient (item/tag and components), ignoring its count. */
+    public boolean matches(ItemStack stack) {
+        return !stack.isEmpty() && filter.test(stack);
+    }
+
     public int resolveCount(RecipeStateModel state) {
         return count.resolve(state);
     }

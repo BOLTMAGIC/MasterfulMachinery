@@ -21,6 +21,7 @@ public interface MMKubeEvents {
     EventHandler BUILDER_STRUCTURES = GROUP.server("builderStructures", () -> BuilderStructureEventJS.class);
     TargetedEventHandler<ResourceLocation> RECIPE_STARTED = GROUP.server("recipeStarted", () -> MachineRecipeEventJS.class).supportsTarget(EventTargetType.ID).hasResult();
     TargetedEventHandler<ResourceLocation> RECIPE_FINISHED = GROUP.server("recipeFinished", () -> MachineRecipeEventJS.class).supportsTarget(EventTargetType.ID);
+    TargetedEventHandler<ResourceLocation> FLEX_OUTPUT = GROUP.server("flexOutput", () -> FlexOutputEventJS.class).supportsTarget(EventTargetType.ID);
 
     // KubeJS 2101 registers groups through a registry handed to the plugin rather than
     // letting the group register itself.

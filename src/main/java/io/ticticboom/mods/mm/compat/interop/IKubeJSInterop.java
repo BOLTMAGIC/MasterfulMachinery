@@ -25,4 +25,16 @@ public interface IKubeJSInterop {
     boolean postRecipeStarted(MachineControllerBlockEntity controller, ResourceLocation recipeId);
 
     void postRecipeFinished(MachineControllerBlockEntity controller, ResourceLocation recipeId);
+
+    /**
+     * MMEvents.flexOutput: lets scripts pick what a flex output makes from an input item.
+     *
+     * @return null to keep the template result, an empty stack to not accept the input, else the output item
+     */
+    @org.jetbrains.annotations.Nullable
+    default net.minecraft.world.item.ItemStack resolveFlexOutput(ResourceLocation recipeId, String from,
+                                                                 net.minecraft.world.item.ItemStack input,
+                                                                 net.minecraft.world.item.ItemStack templateResult) {
+        return null;
+    }
 }

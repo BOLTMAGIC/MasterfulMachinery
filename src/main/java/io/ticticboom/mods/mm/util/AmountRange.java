@@ -57,6 +57,21 @@ public record AmountRange(int min, int max, String rollKey) {
                 "'%s' on an MM recipe ingredient must be a number or a {min, max} object, got: %s", field, el));
     }
 
+    /**
+     * This range with min and max multiplied by {@code factor} (rounded up), keeping the roll key so a scaled copy
+     * rolls the same value as the original.
+     */
+    public AmountRange scaled(double factor) {
+        int scaledMin = scaleAmount(min, factor);
+        int scaledMax = scaleAmount(max, factor);
+        return scaledMin == scaledMax ? of(scaledMin) : new AmountRange(scaledMin, scaledMax, rollKey);
+    }
+
+    /** Multiplies an amount, rounded up and clamped to int range. */
+    public static int scaleAmount(int amount, double factor) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0, Math.ceil(amount * factor)));
+    }
+
     public boolean isRanged() {
         return max > min;
     }

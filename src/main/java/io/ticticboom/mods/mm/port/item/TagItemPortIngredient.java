@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
@@ -50,6 +51,16 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
                 }).toList())
                 .orElseGet(List::of),
                 () -> BuiltInRegistries.ITEM.getTag(tag).map(holders -> holders.size() > 0).orElse(false), List.of());
+    }
+
+    @Override
+    public IPortIngredient scaled(double factor) {
+        return new TagItemPortIngredient(tag.location(), count.scaled(factor), requiredNbt, nbtStrong, components);
+    }
+
+    @Override
+    public List<ItemStack> exampleStacks() {
+        return stacks.get();
     }
 
     @Override

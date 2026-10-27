@@ -33,6 +33,16 @@ public interface IRecipeOutputEntry {
     default java.util.List<DisplayedOutput> displayedOutputs() {
         return java.util.List.of();
     }
+    /** What a run with this state puts out, for the controller screen; flex outputs list the kinds it took. */
+    default java.util.List<DisplayedOutput> displayedOutputs(@org.jetbrains.annotations.Nullable RecipeStateModel state) {
+        return displayedOutputs();
+    }
+
+    /** How many JEI slots setRecipe adds without a focus, for sizing the recipe's slot grid. */
+    default int jeiSlotCount(RecipeModel model) {
+        return displayedOutputs().size();
+    }
+
     void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid);
 
     JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject jsonObject);

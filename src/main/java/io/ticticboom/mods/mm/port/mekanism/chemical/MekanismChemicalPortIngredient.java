@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical;
 
+import io.ticticboom.mods.mm.util.LongAmountRange;
 import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -63,6 +64,11 @@ public class MekanismChemicalPortIngredient implements IPortIngredient {
      */
     public ResourceLocation getChemicalId() {
         return this.id;
+    }
+
+    @Override
+    public IPortIngredient scaled(double factor) {
+        return new MekanismChemicalPortIngredient(id, LongAmountRange.scaleAmount(amount, factor));
     }
 
     @Override

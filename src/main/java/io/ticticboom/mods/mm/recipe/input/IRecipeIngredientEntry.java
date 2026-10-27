@@ -16,5 +16,9 @@ public interface IRecipeIngredientEntry {
     default void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {}
     void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state);
     void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid);
+    /** How many JEI slots setRecipe adds without a focus, for sizing the recipe's slot grid. */
+    default int jeiSlotCount(RecipeModel model) {
+        return 1;
+    }
     JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel state, JsonObject json);
 }

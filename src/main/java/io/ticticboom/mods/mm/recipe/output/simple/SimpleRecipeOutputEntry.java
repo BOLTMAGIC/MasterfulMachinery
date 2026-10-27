@@ -27,13 +27,35 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     private final double chance;
     private final boolean perTick;
     private final String chanceRollKey;
+    /** The "as" name of an mm:input/count (or mm:input/flex) entry whose number multiplies the amount, or null. */
+    @org.jetbrains.annotations.Nullable
+    private final String scaleBy;
+    private final java.util.Map<Integer, IPortIngredient> scaled = new java.util.concurrent.ConcurrentHashMap<>();
 
     public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick) {
+        this(ingredient, chance, perTick, null);
+    }
+
+    public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick, @org.jetbrains.annotations.Nullable String scaleBy) {
 
         this.ingredient = ingredient;
         this.chance = chance;
         this.perTick = perTick;
+        this.scaleBy = scaleBy;
         this.chanceRollKey = "c" + AmountRange.nextRollKey();
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public String getScaleBy() {
+        return scaleBy;
+    }
+
+    /** The ingredient for this run: scaled by the counted items when "scale_by" is set. */
+    private IPortIngredient ingredientFor(RecipeStateModel state) {
+        if (scaleBy == null || state == null) {
+            return ingredient;
+        }
+        return scaled.computeIfAbsent(state.getCount(scaleBy), factor -> ingredient.scaled(factor));
     }
 
     @Override
@@ -60,33 +82,33 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         if (!shouldRun(state)) {
             return true;
         }
-        return ingredient.canOutput(level, storages, state);
+        return ingredientFor(state).canOutput(level, storages, state);
     }
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (!perTick && shouldRun(state)) {
-            ingredient.output(level, storages, state);
+            ingredientFor(state).output(level, storages, state);
         }
     }
 
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
         if (perTick && shouldRun(state)) {
-            ingredient.output(level, storages, state);
+            ingredientFor(state).output(level, storages, state);
         }
-        ingredient.outputTick(level, storages, state);
+        ingredientFor(state).outputTick(level, storages, state);
     }
 
     @Override
     public java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
-        return !perTick && shouldRun(state) ? java.util.List.of(ingredient) : java.util.List.of();
+        return !perTick && shouldRun(state) ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
     }
 
     @Override
     public java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
         // a per-tick chance is rolled again on every tick, so room is kept as if it always hits
-        return perTick ? java.util.List.of(ingredient) : java.util.List.of();
+        return perTick ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
     }
 
     @Override
@@ -105,6 +127,9 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
             }
             if (perTick) {
                 list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
+            }
+            if (scaleBy != null) {
+                list.add(Component.translatable("jei.mm.recipe.scaled_by", scaleBy).withStyle(ChatFormatting.DARK_AQUA));
             }
         });
     }
@@ -139,7 +164,11 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         json.addProperty("chance", chance);
         json.addProperty("perTick", perTick);
         json.addProperty("chanceRoll", shouldRun(model));
-        json.add("ingredient", ingredient.debugOutput(level, storages, new JsonObject()));
+        if (scaleBy != null) {
+            json.addProperty("scaleBy", scaleBy);
+            json.addProperty("factor", model.getCount(scaleBy));
+        }
+        json.add("ingredient", ingredientFor(model).debugOutput(level, storages, new JsonObject()));
         return json;
     }
 }

@@ -9,6 +9,8 @@ import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -45,6 +47,11 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     @Override
     public ResourceLocation getRegistryName(RecipeModel recipe) {
+        if (recipe.config() != null && recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            // JEI page copies of a flex recipe need their own names
+            return ResourceLocation.fromNamespaceAndPath(recipe.id().getNamespace(),
+                    recipe.id().getPath() + "/jei_page_" + recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt());
+        }
         return recipe.id();
     }
 
@@ -89,16 +96,28 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
 
     @Override
     public void setRecipe(@NotNull IRecipeLayoutBuilder builder, RecipeModel recipe, @NotNull IFocusGroup focuses) {
-        int inputRows = rowsFor(recipe.inputs().inputs().size());
-        int outputCount = recipe.outputs().outputs().stream().mapToInt(o -> o.displayedOutputs().size()).sum();
-        int outputRows = rowsFor(outputCount);
+        int inputRows = rowsFor(inputSlotCount(recipe));
+        int outputRows = rowsFor(outputSlotCount(recipe));
         var inGrid = new SlotGrid(20, 20, COLUMNS, inputRows, 0, 0);
         var outGrid = new SlotGrid(20, 20, COLUMNS, outputRows, 100, 0);
+        for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                // before any entry adds its slots: flex_match entries may come before their flex input
+                flex.clearJeiGroup();
+            }
+        }
         for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
             input.setRecipe(builder, recipe, focuses, helpers, inGrid);
         }
         for (IRecipeOutputEntry output : recipe.outputs().outputs()) {
             output.setRecipe(builder, recipe, focuses, helpers, outGrid);
+        }
+        // flex recipes: the input (and its max_types copies), its matching items and its outputs list one item per
+        // kind in the same order
+        for (IRecipeIngredientEntry input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex && flex.getJeiGroup().size() > 1) {
+                builder.createFocusLink(flex.getJeiGroup().toArray(new IRecipeSlotBuilder[0]));
+            }
         }
 
         recipe.inputSlots().clear();
@@ -106,8 +125,40 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         recipe.inputSlots().addAll(outGrid.getSlots());
     }
 
+    /** "Tier 5" (and "1/2") above the arrow of a flex recipe's JEI page. */
+    private static void drawFlexPageLabel(RecipeModel recipe, GuiGraphics gfx) {
+        if (recipe.config() == null || !recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
+            return;
+        }
+        int tier = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_TIER).getAsInt();
+        String part = recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE_PART).getAsString();
+        Component label = tier >= 0
+                ? Component.translatable("jei.mm.recipe.flex_page_tier", tier)
+                : Component.translatable("jei.mm.recipe.flex_page", recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt() + 1);
+        if (!part.isEmpty()) {
+            label = label.copy().append(" " + part);
+        }
+        var font = Minecraft.getInstance().font;
+        var pose = gfx.pose();
+        pose.pushPose();
+        pose.translate(82, 2, 0);
+        pose.scale(0.6f, 0.6f, 1);
+        gfx.drawString(font, label, -font.width(label) / 2, 0, 0x404040, false);
+        pose.popPose();
+    }
+
     public static int rowsFor(int slotCount) {
         return (slotCount + COLUMNS - 1) / COLUMNS;
+    }
+
+    /** JEI input slots of the recipe without a focus (a flex input with "max_types" shows one per kind). */
+    public static int inputSlotCount(RecipeModel recipe) {
+        return recipe.inputs().inputs().stream().mapToInt(i -> i.jeiSlotCount(recipe)).sum();
+    }
+
+    /** JEI output slots of the recipe without a focus. */
+    public static int outputSlotCount(RecipeModel recipe) {
+        return recipe.outputs().outputs().stream().mapToInt(o -> o.jeiSlotCount(recipe)).sum();
     }
 
     @Override
@@ -126,6 +177,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics gfx, double mouseX, double mouseY) {
         bgProgressBar.draw(gfx, 70, 12);
         fgProgressBar.draw(gfx, 70, 12);
+        drawFlexPageLabel(recipe, gfx);
         var seconds = (double) recipe.ticks() / 20;
         var fmt = String.format("%.2f", seconds);
 
@@ -156,9 +208,18 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
             }
         }
 
-        boolean scrollInputs = recipe.inputs().inputs().size() > COLUMNS * VISIBLE_ROWS;
-        boolean scrollOutputs = recipe.outputs().outputs().stream()
-                .mapToInt(o -> o.displayedOutputs().size()).sum() > COLUMNS * VISIBLE_ROWS;
+        // the slots setRecipe laid out (createRecipeExtras puts more than COLUMNS * VISIBLE_ROWS in a scroll grid, which
+        // draws its own slot backgrounds; slots inside it aren't in recipeSlotsView, so count the grid entries)
+        int inputs = 0;
+        int outputs = 0;
+        for (SlotGridEntry slot : recipe.inputSlots()) {
+            if (slot.used()) {
+                if (slot.x < 100) inputs++;
+                else outputs++;
+            }
+        }
+        boolean scrollInputs = inputs > COLUMNS * VISIBLE_ROWS;
+        boolean scrollOutputs = outputs > COLUMNS * VISIBLE_ROWS;
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             boolean scrollSide = inputSlot.x < 100 ? scrollInputs : scrollOutputs;
             if (inputSlot.used() && !scrollSide) {

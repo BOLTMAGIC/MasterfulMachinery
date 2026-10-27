@@ -39,6 +39,17 @@ public interface IPortIngredient {
         return null;
     }
 
+    /**
+     * A copy of this ingredient with its amount multiplied by {@code factor}, for outputs with "scale_by" and the
+     * flex recipe cost. A ranged amount keeps its roll.
+     *
+     * @return null if this ingredient can't be scaled
+     */
+    @org.jetbrains.annotations.Nullable
+    default IPortIngredient scaled(double factor) {
+        return null;
+    }
+
     @org.jetbrains.annotations.Nullable
     default PortContent display() {
         return null;

@@ -1,9 +1,14 @@
 package io.ticticboom.mods.mm.config;
 
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.recipe.flex.FlexCost;
+
 public class MMConfig {
     public static boolean DEBUG_TOOL = true;
     public static boolean JEI_RECIPE_SPLIT = true;
     public static boolean JEI_SHOW_MAX_PARALLEL = true;
+    public static boolean JEI_FLEX_INPUT_COPIES = true;
+    public static FlexCost FLEX_COST = FlexCost.LINEAR;
     public static boolean DEFAULT_PORT_AUTO_PUSH = false;
     public static boolean PREVIEW_BP_SCREEN = false;
     public static boolean PARALLEL_PROCESSING_DEFAULT = false;
@@ -22,6 +27,7 @@ public class MMConfig {
         DEBUG_TOOL = MMConfigSetup.COMMON.debugTool.get();
         JEI_RECIPE_SPLIT = MMConfigSetup.COMMON.splitRecipesJei.get();
         JEI_SHOW_MAX_PARALLEL = MMConfigSetup.COMMON.showJeiMaxParallel.get();
+        JEI_FLEX_INPUT_COPIES = MMConfigSetup.COMMON.showJeiFlexInputCopies.get();
         DEFAULT_PORT_AUTO_PUSH = MMConfigSetup.COMMON.portsAutoExtractByDefault.get();
         PREVIEW_BP_SCREEN = MMConfigSetup.COMMON.previewBlueprintScreen.get();
         PARALLEL_PROCESSING_DEFAULT = MMConfigSetup.COMMON.parallelProcessingDefault.get();
@@ -35,5 +41,11 @@ public class MMConfig {
         TOOL_ENERGY_RECEIVE_RATE = MMConfigSetup.COMMON.toolEnergyReceiveRate.get();
         NETWORK_LINK_SEND_ON_REMOVE = MMConfigSetup.COMMON.networkLinkSendOnRemove.get();
         NETWORK_LINK_OP_BYPASS = MMConfigSetup.COMMON.networkLinkOpBypass.get();
+        try {
+            FLEX_COST = FlexCost.of(MMConfigSetup.COMMON.flexCostScaling.get(), MMConfigSetup.COMMON.flexCostTable.get());
+        } catch (RuntimeException e) {
+            Ref.LOG.error("mm-common.toml [flex]: {}; using LINEAR", e.getMessage());
+            FLEX_COST = FlexCost.LINEAR;
+        }
     }
 }

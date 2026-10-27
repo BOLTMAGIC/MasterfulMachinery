@@ -49,8 +49,12 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         ENTRY_OUTPUT_PARSERS.clear();
         ENTRY_INGREDIENT_PARSERS.clear();
         ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.CONSUME_INPUT, new ConsumeRecipeIngredientEntryParser());
+        ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.FLEX_INPUT, new io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntryParser());
+        ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.COUNT_INPUT, new io.ticticboom.mods.mm.recipe.input.count.CountRecipeIngredientEntryParser());
+        ENTRY_INGREDIENT_PARSERS.put(Ref.RecipeEntries.FLEX_MATCH_INPUT, new io.ticticboom.mods.mm.recipe.input.flex.FlexMatchIngredientEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.SIMPLE_OUTPUT, new SimpleRecipeOutputEntryParser());
         ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.WEIGHTED_OUTPUT, new io.ticticboom.mods.mm.recipe.output.weighted.WeightedRecipeOutputEntryParser());
+        ENTRY_OUTPUT_PARSERS.put(Ref.RecipeEntries.FLEX_OUTPUT, new io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntryParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.DIMENSION, new DimensionRecipeConditionParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.WEATHER, new WeatherRecipeConditionParser());
         CONDITION_PARSERS.put(Ref.RecipeConditions.BIOME, BiomeRecipeCondition::parse);

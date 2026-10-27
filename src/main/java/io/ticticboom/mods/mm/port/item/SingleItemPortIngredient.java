@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
@@ -55,6 +56,16 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         if (requiredNbt != null) {
             ItemNbtUtil.setTag(stack, requiredNbt.copy());
         }
+    }
+
+    @Override
+    public List<ItemStack> exampleStacks() {
+        return List.of(stack.copy());
+    }
+
+    @Override
+    public IPortIngredient scaled(double factor) {
+        return new SingleItemPortIngredient(itemId, count.scaled(factor), requiredNbt, nbtStrong, components);
     }
 
     @Override

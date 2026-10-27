@@ -42,6 +42,18 @@ public record LongAmountRange(long min, long max, String rollKey) {
                 "'%s' on an MM recipe ingredient must be a number or a {min, max} object, got: %s", field, element));
     }
 
+    /** Like {@link AmountRange#scaled(double)}. */
+    public LongAmountRange scaled(double factor) {
+        long scaledMin = scaleAmount(min, factor);
+        long scaledMax = scaleAmount(max, factor);
+        return scaledMin == scaledMax ? of(scaledMin) : new LongAmountRange(scaledMin, scaledMax, rollKey);
+    }
+
+    /** Multiplies an amount, rounded up and clamped to long range. */
+    public static long scaleAmount(long amount, double factor) {
+        return (long) Math.min(Long.MAX_VALUE, Math.max(0, Math.ceil(amount * factor)));
+    }
+
     public boolean isRanged() {
         return max > min;
     }

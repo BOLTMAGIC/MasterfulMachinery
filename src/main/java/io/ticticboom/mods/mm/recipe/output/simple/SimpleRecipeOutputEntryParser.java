@@ -20,7 +20,14 @@ public class SimpleRecipeOutputEntryParser implements IRecipeOutputEntryParser {
         if (json.has("per_tick")) {
             perTick = json.get("per_tick").getAsBoolean();
         }
-        return new SimpleRecipeOutputEntry(ingredient, chance, perTick);
+        String scaleBy = null;
+        if (json.has("scale_by")) {
+            scaleBy = json.get("scale_by").getAsString();
+            if (ingredient.scaled(1) == null) {
+                throw new RuntimeException("This output can't use 'scale_by' (only item, fluid, energy and Mekanism chemical outputs can): " + json);
+            }
+        }
+        return new SimpleRecipeOutputEntry(ingredient, chance, perTick, scaleBy);
     }
 
     public static IPortIngredient parseIngredient(JsonObject json, String what) {

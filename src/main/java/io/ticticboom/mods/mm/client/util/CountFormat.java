@@ -36,12 +36,22 @@ public final class CountFormat {
     }
 
     public static void drawSlotCount(GuiGraphics gfx, int slotX, int slotY, long count) {
+        // z=200 draws above the item texture
+        drawSlotCount(gfx, slotX, slotY, count, 200);
+    }
+
+    /**
+     * @param z depth to add; a JEI slot overlay is already drawn at z=200, so it passes 0 (another 200 would reach the
+     *          tooltip's z=400 and show through tooltips drawn over the slot)
+     */
+    public static void drawSlotCount(GuiGraphics gfx, int slotX, int slotY, long count, int z) {
         String text = compact(count);
         var font = Minecraft.getInstance().font;
         float scale = text.length() > 3 ? 0.5f : 1.0f;
         var pose = gfx.pose();
         pose.pushPose();
-        pose.translate(slotX + 17, slotY + 17, 200);
+        // Anchor to the bottom-right corner of the slot inner area
+        pose.translate(slotX + 17, slotY + 17, z);
         pose.scale(scale, scale, 1.0f);
         gfx.drawString(font, text, -font.width(text), -font.lineHeight, 0xFFFFFF, true);
         pose.popPose();

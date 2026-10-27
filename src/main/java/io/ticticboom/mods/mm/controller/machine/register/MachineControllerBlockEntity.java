@@ -34,6 +34,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -67,6 +68,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -592,13 +594,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 recipeNextCheckTime.put(recipe.id(), gameTime + SKIP_COOLDOWN);
                 continue;
             }
-            var state = new RecipeStateModel();
+            var state = newRecipeProbe();
             if (!canStart(recipe, state)) {
                 continue;
             }
-            var primary = needs.primaryItem();
+            // flex recipes: the kind whose turn it is (the flex input already picked kinds in history order)
+            var flexPrimary = flexPrimaryKey(recipe, state);
+            var primary = flexPrimary != null ? flexPrimary : needs.primaryItem();
             if (mode == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM && primary != null) {
-                if (cachedItemIds.contains(primary)) {
+                if (flexPrimary != null || cachedItemIds.contains(primary)) {
                     var candidate = new Candidate(recipe, primary, state, inputItemLastStartedSequence.getOrDefault(primary, Long.MIN_VALUE));
                     if (roundRobin == null || prefers(candidate, roundRobin)) {
                         roundRobin = candidate;
@@ -632,6 +636,44 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             candidatePositions = recipeIndex.candidates(cachedItemIds, cachedFluidIds, cachedHasEnergy);
         }
         return candidatePositions;
+    }
+
+    /** A state for checking a new run; in Round Robin mode flex inputs take the kinds that waited longest first. */
+    private RecipeStateModel newRecipeProbe() {
+        var state = new RecipeStateModel();
+        if (getRecipeSelectionMode() == RecipeSelectionMode.ROUND_ROBIN_INPUT_ITEM) {
+            state.setFlexInputOrder(Comparator.comparingLong(stack ->
+                    inputItemLastStartedSequence.getOrDefault(flexInputKey(stack), Long.MIN_VALUE)));
+        }
+        return state;
+    }
+
+    /** The Round Robin key of a flex kind: its item id, plus its components when it has any. */
+    private static ResourceLocation flexInputKey(ItemStack stack) {
+        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+        var components = stack.getComponentsPatch();
+        if (components.isEmpty()) return id;
+        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "__flex_c_" + Integer.toHexString(components.hashCode()));
+    }
+
+    /** The kind, of those the flex inputs took into this state, that waited longest; null without flex kinds. */
+    @Nullable
+    private ResourceLocation flexPrimaryKey(RecipeModel recipe, RecipeStateModel state) {
+        ResourceLocation key = null;
+        long oldest = Long.MAX_VALUE;
+        for (var input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                for (ItemStack kind : state.getCaptured(flex.getName())) {
+                    ResourceLocation kindKey = flexInputKey(kind);
+                    long lastUse = inputItemLastStartedSequence.getOrDefault(kindKey, Long.MIN_VALUE);
+                    if (key == null || lastUse < oldest) {
+                        key = kindKey;
+                        oldest = lastUse;
+                    }
+                }
+            }
+        }
+        return key;
     }
 
     private boolean isEligible(RecipeModel recipe, @Nullable ResourceLocation requested, long gameTime) {
@@ -712,6 +754,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (inputKey != null) {
             inputItemLastStartedSequence.put(inputKey, recipeSelectionSequence);
         }
+        // every kind this flex run took has had its turn, not only the primary one
+        for (var input : recipe.inputs().inputs()) {
+            if (input instanceof FlexRecipeIngredientEntry flex) {
+                for (ItemStack kind : state.getCaptured(flex.getName())) {
+                    inputItemLastStartedSequence.put(flexInputKey(kind), recipeSelectionSequence);
+                }
+            }
+        }
+        state.setFlexInputOrder(null);
         markChanged();
         return true;
     }
@@ -795,7 +846,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private boolean processTickInputs(RecipeModel recipe, RecipeStateModel state) {
         for (var input : recipe.inputs().inputs()) {
             if (input instanceof ConsumeRecipeIngredientEntry entry && entry.isPerTick()) {
-                var ingredient = entry.getIngredient();
+                // flex recipes pay per-tick inputs with the run's cost multiplier too
+                var ingredient = entry.ingredientFor(state);
                 if (ingredient instanceof ITickSpreadIngredient spread) {
                     if (!drawTickSpread(recipe, state, spread)) {
                         return false;
@@ -1132,7 +1184,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         for (String key : recipesTag.getAllKeys()) {
             ResourceLocation recipeId = ResourceLocation.tryParse(key);
             if (recipeId != null) {
-                activeRecipes.put(recipeId, RecipeStateModel.load(recipesTag.getCompound(key)));
+                activeRecipes.put(recipeId, RecipeStateModel.load(recipesTag.getCompound(key), registries));
             }
         }
         structure = tag.contains("structureId") ? StructureManager.STRUCTURES.get(ResourceLocation.tryParse(tag.getString("structureId"))) : null;

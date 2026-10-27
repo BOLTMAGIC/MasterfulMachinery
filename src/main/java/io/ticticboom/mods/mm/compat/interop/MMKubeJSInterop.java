@@ -73,6 +73,18 @@ public class MMKubeJSInterop implements IKubeJSInterop {
     }
 
     @Override
+    public net.minecraft.world.item.ItemStack resolveFlexOutput(ResourceLocation recipeId, String from,
+                                                                net.minecraft.world.item.ItemStack input,
+                                                                net.minecraft.world.item.ItemStack templateResult) {
+        if (recipeId == null || !MMKubeEvents.FLEX_OUTPUT.hasListeners()) {
+            return null;
+        }
+        var event = new io.ticticboom.mods.mm.compat.kjs.event.FlexOutputEventJS(recipeId.toString(), from, input, templateResult);
+        MMKubeEvents.FLEX_OUTPUT.post(event, recipeId);
+        return event.isChanged() ? event.getResult() : null;
+    }
+
+    @Override
     public void postRecipeFinished(MachineControllerBlockEntity controller, ResourceLocation recipeId) {
         if (MMKubeEvents.RECIPE_FINISHED.hasListeners()) {
             MMKubeEvents.RECIPE_FINISHED.post(new MachineRecipeEventJS(controller, recipeId.toString()), recipeId);

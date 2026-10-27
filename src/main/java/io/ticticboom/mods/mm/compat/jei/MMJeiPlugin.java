@@ -95,9 +95,8 @@ public class MMJeiPlugin implements IModPlugin {
         } else {
             recipes = new ArrayList<>(MachineRecipeManager.RECIPES.values());
         }
-        int maxInputRows = recipes.stream().mapToInt(r -> MMRecipeCategory.rowsFor(r.inputs().inputs().size())).max().orElse(1);
-        int maxOutputRows = recipes.stream().mapToInt(r -> MMRecipeCategory.rowsFor(
-                r.outputs().outputs().stream().mapToInt(o -> o.displayedOutputs().size()).sum())).max().orElse(1);
+        int maxInputRows = recipes.stream().mapToInt(r -> MMRecipeCategory.rowsFor(MMRecipeCategory.inputSlotCount(r))).max().orElse(1);
+        int maxOutputRows = recipes.stream().mapToInt(r -> MMRecipeCategory.rowsFor(MMRecipeCategory.outputSlotCount(r))).max().orElse(1);
         int maxRows = Math.max(maxInputRows, maxOutputRows);
         int height = Math.max(40, Math.min(maxRows, MMRecipeCategory.VISIBLE_ROWS) * 20);
         MMRecipeCategory category = new MMRecipeCategory(registration.getJeiHelpers(), parent, height);
@@ -113,12 +112,14 @@ public class MMJeiPlugin implements IModPlugin {
                 var recipes = MachineRecipeManager.RECIPES.values().stream()
                         .filter(x -> x.runsIn(entry.getStructureModel().id()))
                         .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                        .flatMap(r -> FlexJeiPages.expand(r).stream())
                         .toList();
                 registration.addRecipes(entry.getRecipeType(), recipes);
             }
         } else {
             var sorted = MachineRecipeManager.RECIPES.values().stream()
                     .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
+                    .flatMap(r -> FlexJeiPages.expand(r).stream())
                     .collect(Collectors.toList());
             registration.addRecipes(MMRecipeCategory.RECIPE_TYPE, sorted);
         }
