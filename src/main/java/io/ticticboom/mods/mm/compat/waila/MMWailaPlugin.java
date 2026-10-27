@@ -4,12 +4,6 @@ import net.minecraft.world.level.block.Block;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlock;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
-import io.ticticboom.mods.mm.port.item.register.ItemPortBlock;
-import io.ticticboom.mods.mm.port.fluid.register.FluidPortBlock;
-import io.ticticboom.mods.mm.port.energy.register.EnergyPortBlock;
-import io.ticticboom.mods.mm.port.kinetic.register.CreateKineticPortBlock;
-import io.ticticboom.mods.mm.port.pneumaticcraft.air.register.PneumaticAirPortBlock;
-import io.ticticboom.mods.mm.port.botania.mana.register.BotaniaManaPortBlock;
 import io.ticticboom.mods.mm.port.replication.matter.register.ReplicationMatterPortBlock;
 import net.neoforged.fml.ModList;
 import snownee.jade.api.IWailaClientRegistration;
@@ -38,15 +32,9 @@ public class MMWailaPlugin implements IWailaPlugin {
     @Override
     public void registerClient(IWailaClientRegistration registration) {
         registration.registerBlockComponent(ControllerDataProvider.INSTANCE, MachineControllerBlock.class);
+        // every block, so optional ports (Mekanism...) are covered without loading their classes; only MM ports get server data
         registration.registerBlockComponent(PortMachineDataProvider.INSTANCE, Block.class);
-
-        // register port priority tooltip for known port block classes
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, ItemPortBlock.class);
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, FluidPortBlock.class);
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, EnergyPortBlock.class);
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, CreateKineticPortBlock.class);
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, PneumaticAirPortBlock.class);
-        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, BotaniaManaPortBlock.class);
+        registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, Block.class);
 
         registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, EntityPortBlock.class);
         if (ModList.get().isLoaded("mekanism")) {
@@ -56,7 +44,6 @@ public class MMWailaPlugin implements IWailaPlugin {
         // Unlike the other port blocks this one implements a Titanium interface, so naming the
         // class at all resolves it. Behind the check it stays unloaded when Replication is absent.
         if (ModList.get().isLoaded("replication")) {
-            registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, ReplicationMatterPortBlock.class);
             registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ReplicationMatterPortBlock.class);
         }
         if (ModList.get().isLoaded("ars_nouveau")) {
