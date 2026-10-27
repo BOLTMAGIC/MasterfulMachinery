@@ -65,6 +65,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import java.util.HashMap;
@@ -125,7 +126,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private List<RecipeModel> cachedStructureRecipes = null;
     private int cachedRecipeVersion = -1;
-    private final Map<ResourceLocation, RecipeRequirements> requirements = new HashMap<>();
+    private RecipeCandidateIndex recipeIndex = null;
+    // positions in cachedStructureRecipes of the recipes the cached port contents might run; null = rebuild
+    private int[] candidatePositions = null;
     private int nextRecipeCheckIndex = 0;
     private ResourceLocation lastStartedRecipeId = null;
     private long lastRecipeStartTime = Long.MIN_VALUE;
@@ -495,6 +498,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             return;
         }
         lastResourceScanTime = gameTime;
+        // the candidate list only depends on which ids are present: keep it while they stay the same
+        var previousItemIds = Set.copyOf(cachedItemIds);
+        var previousFluidIds = Set.copyOf(cachedFluidIds);
+        boolean previousHasEnergy = cachedHasEnergy;
         cachedItemIds.clear();
         cachedFluidIds.clear();
         cachedHasEnergy = false;
@@ -522,6 +529,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
                 break;
             }
         }
+        if (cachedHasEnergy != previousHasEnergy || !cachedItemIds.equals(previousItemIds) || !cachedFluidIds.equals(previousFluidIds)) {
+            candidatePositions = null;
+        }
         storageContentCacheValid = true;
         recipeNextCheckTime.clear();
     }
@@ -545,7 +555,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (cachedStructureRecipes == null || cachedRecipeVersion != MachineRecipeManager.RECIPE_VERSION) {
             cachedStructureRecipes = new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(structure.id()));
             cachedRecipeVersion = MachineRecipeManager.RECIPE_VERSION;
-            requirements.clear();
+            recipeIndex = new RecipeCandidateIndex(cachedStructureRecipes);
+            candidatePositions = null;
             failedRecipes.clear();
             recipeNextCheckTime.clear();
         }
@@ -553,20 +564,30 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (total == 0) {
             return;
         }
+        // only recipes whose inputs could be in the ports are checked; that list changes with the port contents
+        int[] candidates = scanCandidates();
+        if (candidates.length == 0) {
+            return;
+        }
         var mode = getRecipeSelectionMode();
-        int checks = mode.fairScheduling() ? total : Math.min(SEARCH_CHECKS_PER_TICK, total);
-        int index = nextRecipeCheckIndex % total;
+        int checks = mode.fairScheduling() ? candidates.length : Math.min(SEARCH_CHECKS_PER_TICK, candidates.length);
+        // continue from where the last pass stopped, in the structure's recipe order
+        int found = Arrays.binarySearch(candidates, nextRecipeCheckIndex % total);
+        int index = found >= 0 ? found : -found - 1;
+        int nextPosition = nextRecipeCheckIndex;
         var requested = activeRequest(gameTime);
         Candidate roundRobin = null;
         Candidate deferred = null;
         boolean started = false;
         for (int performed = 0; performed < checks; performed++) {
-            RecipeModel recipe = cachedStructureRecipes.get(index);
-            index = (index + 1) % total;
+            int position = candidates[index % candidates.length];
+            index = (index + 1) % candidates.length;
+            nextPosition = position + 1;
+            RecipeModel recipe = cachedStructureRecipes.get(position);
             if (!isEligible(recipe, requested, gameTime)) {
                 continue;
             }
-            var needs = requirements.computeIfAbsent(recipe.id(), id -> RecipeRequirements.of(recipe));
+            var needs = recipeIndex.requirements(position);
             if (!mayHaveInputs(needs)) {
                 recipeNextCheckTime.put(recipe.id(), gameTime + SKIP_COOLDOWN);
                 continue;
@@ -593,13 +614,24 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
             started |= startRecipe(recipe, gameTime, primary, state);
         }
-        nextRecipeCheckIndex = index;
+        nextRecipeCheckIndex = nextPosition % total;
         if (!started && roundRobin != null && canStart(roundRobin.recipe(), roundRobin.state())) {
             started = startRecipe(roundRobin.recipe(), gameTime, roundRobin.inputKey(), roundRobin.state());
         }
         if (!started && deferred != null && canStart(deferred.recipe(), deferred.state())) {
             startRecipe(deferred.recipe(), gameTime, deferred.inputKey(), deferred.state());
         }
+    }
+
+    /** Positions to scan: every recipe while the port contents aren't known, else the ones they might run. */
+    private int[] scanCandidates() {
+        if (!storageContentCacheValid) {
+            return recipeIndex.all();
+        }
+        if (candidatePositions == null) {
+            candidatePositions = recipeIndex.candidates(cachedItemIds, cachedFluidIds, cachedHasEnergy);
+        }
+        return candidatePositions;
     }
 
     private boolean isEligible(RecipeModel recipe, @Nullable ResourceLocation requested, long gameTime) {
