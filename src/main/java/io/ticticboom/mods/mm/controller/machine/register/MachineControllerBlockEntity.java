@@ -175,6 +175,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private int nextRecipeCheckIndex = 0;
     // when a recipe is skipped due to missing resources, wait N ticks before rechecking
     private static final int RECIPE_SKIP_COOLDOWN_TICKS = 20;
+    // how often port block entities are looked up again to see whether one was replaced (removal is checked every tick)
+    private static final int PORT_REPLACED_CHECK_TICKS = 20;
     private ResourceLocation lastStartedRecipeId = null;
     // game time of the last recipe start, synced so the screen can show recipes that finish within a tick
     private long lastRecipeStartTime = Long.MIN_VALUE;
@@ -483,8 +485,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (level == null) {
             return false;
         }
+        // an unloaded chunk marks its block entities removed, so that check is enough most ticks
+        boolean lookUp = level.getGameTime() % PORT_REPLACED_CHECK_TICKS == 0;
         for (BlockEntity be : portBlockEntities) {
-            if (be.isRemoved() || (level.isLoaded(be.getBlockPos()) && level.getBlockEntity(be.getBlockPos()) != be)) {
+            if (be.isRemoved()) {
+                return true;
+            }
+            if (lookUp && level.isLoaded(be.getBlockPos()) && level.getBlockEntity(be.getBlockPos()) != be) {
                 return true;
             }
         }
@@ -616,6 +623,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
              candidatePositions = null;
          }
          if (recipeIndex.isEmpty()) return;
+         // every parallel slot is taken: no recipe could start, so don't check their inputs and outputs
+         if (!hasFreeParallelSlot()) return;
          // only recipes whose inputs could be in the ports are checked; that list is rebuilt when the ports change
          if (!storageCache.isValid) rebuildStorageCache();
          if (candidatePositions == null) {
@@ -648,6 +657,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
             if (!recipe.conditions().canRun(conditionContext())) {
+                continue;
+            }
+            // checked before the (costly) input and output checks, whose result would be thrown away
+            if (!canStartRecipeGivenParallelRules(recipe)) {
                 continue;
             }
             // one state for both checks: flex outputs need the item the flex input picked, scaled ones the count
@@ -896,6 +909,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (!isAllowedByRedstone()) return "paused";
         if (getDisplayedRecipe() != null) return "running";
         return "idle";
+    }
+
+    /** Whether some recipe could start next to the running ones, whatever its own parallel setting. */
+    private boolean hasFreeParallelSlot() {
+        int controllerLimit = getParallelLimit();
+        return controllerLimit == 0 ? runningCount() == 0 : runningCount() < controllerLimit;
     }
 
     private boolean canStartRecipeGivenParallelRules(RecipeModel recipe) {

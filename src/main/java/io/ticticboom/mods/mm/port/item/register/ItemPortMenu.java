@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.util.MenuUtils;
 import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.entity.player.Player;
 
 public class ItemPortMenu extends MMContainerMenu implements IPortMenu {
     @Getter
@@ -34,6 +35,17 @@ public class ItemPortMenu extends MMContainerMenu implements IPortMenu {
         this.be = be;
         IPortStorage storage = be.getStorage();
         storage.setupContainer(this, inv, model);
+        if (!inv.player.level().isClientSide() && be instanceof ItemPortBlockEntity port) {
+            port.addViewer();
+        }
+    }
+
+    @Override
+    public void removed(Player player) {
+        super.removed(player);
+        if (!player.level().isClientSide() && be instanceof ItemPortBlockEntity port) {
+            port.removeViewer();
+        }
     }
 
     public ItemPortMenu(PortModel model, RegistryGroupHolder groupHolder, boolean isInput, int windowId, Inventory inv, FriendlyByteBuf buf) {

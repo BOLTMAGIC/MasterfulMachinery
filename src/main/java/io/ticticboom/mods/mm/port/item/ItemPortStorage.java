@@ -96,7 +96,8 @@ public class ItemPortStorage implements IPortStorage {
     @Override
     public IPortStorage simulationCopy() {
         var copy = new ItemPortStorage(model, () -> {});
-        copy.load(save(new CompoundTag()));
+        copy.handler.copyContentsFrom(handler);
+        copy.priority = priority;
         return copy;
     }
 
