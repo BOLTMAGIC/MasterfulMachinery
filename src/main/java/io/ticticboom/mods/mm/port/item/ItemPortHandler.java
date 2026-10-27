@@ -90,6 +90,20 @@ public class ItemPortHandler extends ItemStackHandler {
         contentRevision++;
     }
 
+    /**
+     * Copies the stacks and actual counts of a handler of the same size, without going through NBT
+     * (used for simulation copies, which are made several times per recipe scan).
+     */
+    public void copyContentsFrom(ItemPortHandler other) {
+        int size = Math.min(stacks.size(), other.stacks.size());
+        for (int i = 0; i < size; i++) {
+            stacks.set(i, other.stacks.get(i).copy());
+            actualCounts[i] = other.actualCounts[i];
+            reindexSlot(i);
+        }
+        contentRevision++;
+    }
+
     @Override
     protected void onContentsChanged(int slot) {
         reindexSlot(slot);

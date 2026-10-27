@@ -34,7 +34,13 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     @Getter
     private final boolean input;
 
+    // while nobody has the port's screen open, contents go to clients at most this often (ticks)
+    private static final int UNWATCHED_SYNC_INTERVAL = 20;
+
     private boolean contentsSyncPending;
+    private long lastContentsSync;
+    // players with this port's screen open (server side)
+    private int viewers;
 
     public ItemPortBlockEntity(RegistryGroupHolder groupHolder, PortModel model, boolean input, BlockPos pos,
                                BlockState state) {
@@ -92,13 +98,33 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
             return;
         }
 
+        // a full update re-serializes every slot; a busy machine changes its ports every tick
+        if (viewers == 0 && level.getGameTime() - lastContentsSync < UNWATCHED_SYNC_INTERVAL) {
+            return;
+        }
         contentsSyncPending = false;
+        lastContentsSync = level.getGameTime();
         syncBlockEntityToClients();
+    }
+
+    /** A player opened this port's screen: its slots show the synced contents, so send them every tick again. */
+    public void addViewer() {
+        viewers++;
+        if (contentsSyncPending && level != null && !level.isClientSide) {
+            contentsSyncPending = false;
+            lastContentsSync = level.getGameTime();
+            syncBlockEntityToClients();
+        }
+    }
+
+    public void removeViewer() {
+        viewers = Math.max(0, viewers - 1);
     }
 
     /**
      * Called by child storages/handlers when their contents change.
-     * Marks the chunk dirty and coalesces client sync to one full block-entity update per tick.
+     * Marks the chunk dirty and coalesces client sync to one full block-entity update per tick while the port's
+     * screen is open, one per {@link #UNWATCHED_SYNC_INTERVAL} ticks otherwise.
      */
     public void notifyMenuChanged() {
         if (level == null || level.isClientSide) return;

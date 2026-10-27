@@ -19,6 +19,8 @@ import org.jetbrains.annotations.Nullable;
 public abstract class AbstractPortBlockEntity extends BlockEntity implements IPortBlockEntity, IPortPart {
 
     protected long lastTick = 0;
+    // game time of the last markChangedWithoutSync that told neighbors (comparators)
+    private long lastMarkedTick = Long.MIN_VALUE;
     @Nullable
     protected PortAutoIO autoIO;
     // status light colors of the machine this port belongs to (unformed, idle, working; -1 = client config),
@@ -117,6 +119,15 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (level == null || level.isClientSide()) {
             return;
         }
+        // ports change many times a tick (each insert/extract); comparators read the final contents when they
+        // update, so neighbors are told once a tick. The chunk is still marked dirty every time (a save may
+        // have happened in between).
+        long gameTime = level.getGameTime();
+        if (gameTime == lastMarkedTick) {
+            level.blockEntityChanged(worldPosition);
+            return;
+        }
+        lastMarkedTick = gameTime;
         super.setChanged();
     }
 
