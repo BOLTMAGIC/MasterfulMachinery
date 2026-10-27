@@ -26,6 +26,9 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
+import java.util.Collection;
+import java.util.List;
+
 @SuppressWarnings("unused")
 public class MMRegisters {
     public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(BuiltInRegistries.BLOCK, Ref.ID);
@@ -54,7 +57,7 @@ public class MMRegisters {
             .icon(() -> BLUEPRINT.get().getDefaultInstance())
             .backgroundTexture(Ref.UiTextures.CREATIVE_TAB_BG)
             .withSearchBar(55)
-            .displayItems((p, o) -> o.acceptAll(ITEMS.getEntries().stream().map(x -> x.get().getDefaultInstance()).toList()))
+            .displayItems((p, o) -> o.acceptAll(registeredItemStacks(ITEMS.getEntries())))
             .build());
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MM_STRUCTURE_TAB = TABS.register("mm_structures", () -> CreativeModeTab.builder().title(Component.translatable("tab.mm.structures"))
@@ -63,6 +66,11 @@ public class MMRegisters {
             .withSearchBar(55)
             .displayItems((p, o) -> o.acceptAll(StructureManager.STRUCTURE_BLUEPRINTS.values()))
             .build());
+
+    static List<ItemStack> registeredItemStacks(Collection<? extends DeferredHolder<Item, ? extends Item>> entries) {
+        // Joining a world/server can leave a controller removed from the pack unbound.
+        return entries.stream().filter(DeferredHolder::isBound).map(x -> x.get().getDefaultInstance()).toList();
+    }
 
     public static void register(IEventBus bus) {
         BLOCKS.register(bus);
