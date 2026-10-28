@@ -41,6 +41,8 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     private long changeCount = 0;
     private long lastSync = Long.MIN_VALUE / 2;
     private boolean syncPending = false;
+    // game time of the last setChanged that told neighbors (comparators)
+    private long lastMarkedTick = Long.MIN_VALUE;
 
     public AbstractPortBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
         super(type, pos, state);
@@ -147,7 +149,16 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (level == null || level.isClientSide()) {
             return;
         }
-        super.setChanged();
+        // ports change many times a tick (each insert/extract); comparators read the final contents when they
+        // update, so neighbors are told once a tick. The chunk is still marked dirty every time (a save may have
+        // happened in between).
+        long gameTime = level.getGameTime();
+        if (gameTime == lastMarkedTick) {
+            level.blockEntityChanged(worldPosition);
+        } else {
+            lastMarkedTick = gameTime;
+            super.setChanged();
+        }
         changeCount++;
         requestSync();
     }

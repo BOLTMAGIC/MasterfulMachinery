@@ -578,6 +578,10 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         if (total == 0) {
             return;
         }
+        // every parallel slot is taken: no recipe could start, so don't check their conditions, inputs and outputs
+        if (!hasFreeParallelSlot()) {
+            return;
+        }
         // only recipes whose inputs could be in the ports are checked; that list changes with the port contents
         int[] candidates = scanCandidates();
         if (candidates.length == 0) {
@@ -733,6 +737,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         long a = recipeLastStartedSequence.getOrDefault(candidate.recipe().id(), Long.MIN_VALUE);
         long b = recipeLastStartedSequence.getOrDefault(current.recipe().id(), Long.MIN_VALUE);
         return a < b;
+    }
+
+    /** Whether some recipe could start next to the running ones, whatever its own parallel setting. */
+    private boolean hasFreeParallelSlot() {
+        int limit = parallelLimit();
+        int running = runningCount();
+        return limit == 0 ? running == 0 : running < limit;
     }
 
     private boolean canRunAlongside(RecipeModel recipe) {
