@@ -23,18 +23,13 @@ public final class Ae2KeyBridges {
             if (present("appflux")) {
                 found.add(new EnergyBridge());
             }
-            if (present("appmek", "mekanism")) {
-                found.add(new ChemicalBridge());
-            }
-            if (present("arseng", "ars_nouveau")) {
-                found.add(new SourceBridge());
-            }
-            if (present("appliedpneumatics", "pneumaticcraft")) {
-                found.add(new AirBridge());
-            }
-            if (present("rep_ae2_bridge", "replication")) {
-                found.add(new MatterBridge());
-            }
+            // 26.1: Applied Mekanistics, Ars Energistique, Applied Pneumatics and the Replication AE2 bridge have no
+            // 26.1.2 release yet; their bridges (ChemicalBridge, SourceBridge, AirBridge, MatterBridge) are left out of
+            // the build. Put their branches back when they ship:
+            // if (present("appmek", "mekanism")) found.add(new ChemicalBridge());
+            // if (present("arseng", "ars_nouveau")) found.add(new SourceBridge());
+            // if (present("appliedpneumatics", "pneumaticcraft")) found.add(new AirBridge());
+            // if (present("rep_ae2_bridge", "replication")) found.add(new MatterBridge());
             loaded = List.copyOf(found);
         }
         return loaded;

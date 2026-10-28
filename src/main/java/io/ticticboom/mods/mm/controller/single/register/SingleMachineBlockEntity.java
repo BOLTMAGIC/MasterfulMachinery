@@ -4,7 +4,7 @@ import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockE
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerMenu;
 import io.ticticboom.mods.mm.controller.single.SingleMachineSlot;
 import io.ticticboom.mods.mm.controller.single.SingleMachines;
-import io.ticticboom.mods.mm.gateway.GatewayChemicalHandler;
+// [26.1-pending] import: import io.ticticboom.mods.mm.gateway.GatewayChemicalHandler;
 import io.ticticboom.mods.mm.gateway.GatewayEnergyHandler;
 import io.ticticboom.mods.mm.gateway.GatewayFluidHandler;
 import io.ticticboom.mods.mm.gateway.GatewayItemHandler;
@@ -86,7 +86,9 @@ public class SingleMachineBlockEntity extends MachineControllerBlockEntity {
 
     public Object chemicalHandler() {
         if (chemicalHandler == null) {
-            chemicalHandler = new GatewayChemicalHandler(() -> inputs, () -> outputs);
+            // [26.1-pending] Mekanism has no 26.1.2 release yet: no chemical handler (only MekCapabilities asks for it)
+            // chemicalHandler = new GatewayChemicalHandler(() -> inputs, () -> outputs);
+            return null;
         }
         return chemicalHandler;
     }

@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.pattern;
 
-import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
+// [26.1-pending] import: import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
@@ -112,7 +112,8 @@ public final class PatternBuffer {
 
         void needs(Kind kind) {
             if (kind == Kind.CHEMICAL && chemicals == null) {
-                chemicals = PatternChemicals.storageFor(CHEMICAL_CAPACITY);
+                // [26.1-pending] Mekanism has no 26.1.2 release yet: no chemical storage, chemicals aren't accepted
+                // chemicals = PatternChemicals.storageFor(CHEMICAL_CAPACITY);
             }
         }
 
@@ -136,10 +137,8 @@ public final class PatternBuffer {
                     fluids.getHandler().fill(fluid, IFluidHandler.FluidAction.EXECUTE);
                     yield true;
                 }
-                case CHEMICAL -> {
-                    needs(Kind.CHEMICAL);
-                    yield PatternChemicals.insert(chemicals, stack);
-                }
+                // [26.1-pending] Mekanism: needs(Kind.CHEMICAL); yield PatternChemicals.insert(chemicals, stack);
+                case CHEMICAL -> false;
             };
         }
 
@@ -155,7 +154,7 @@ public final class PatternBuffer {
                     case ITEM -> items.getHandler().extractMatching(BuiltInRegistries.ITEM.get(stack.id()),
                             s -> s.getComponentsPatch().equals(stack.components()), taking, false);
                     case FLUID -> fluids.getHandler().drain(new FluidStack(BuiltInRegistries.FLUID.get(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
-                    case CHEMICAL -> PatternChemicals.remove(chemicals, taking);
+                    case CHEMICAL -> { } // [26.1-pending] Mekanism: PatternChemicals.remove(chemicals, taking);
                 }
             }
             return amount - taking;
@@ -185,12 +184,7 @@ public final class PatternBuffer {
                     add(found, new PatternIngredient(Kind.FLUID, BuiltInRegistries.FLUID.getKey(stack.getFluid()), stack.getAmount()));
                 }
             }
-            if (chemicals != null) {
-                PatternIngredient chemical = PatternChemicals.contents(chemicals);
-                if (chemical != null) {
-                    found.add(chemical);
-                }
-            }
+            // [26.1-pending] Mekanism: chemicals is never made, PatternChemicals.contents(chemicals) would list it here
             return found;
         }
 
@@ -218,7 +212,7 @@ public final class PatternBuffer {
             var side = new Side();
             side.items.load(tag.getCompound("Items"), registries);
             side.fluids.load(tag.getCompound("Fluids"), registries);
-            if (tag.contains("Chemicals")) {
+            if (tag.contains("Chemicals") && side.chemicals != null) {
                 side.needs(Kind.CHEMICAL);
                 side.chemicals.load(tag.getCompound("Chemicals"), registries);
             }

@@ -15,7 +15,7 @@ import io.ticticboom.mods.mm.controller.IControllerBlock;
 import io.ticticboom.mods.mm.controller.IControllerPart;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
 import io.ticticboom.mods.mm.model.ControllerModel;
-import io.ticticboom.mods.mm.port.kinetic.register.CreateKineticGenPortBlockEntity;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.kinetic.register.CreateKineticGenPortBlockEntity;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.util.WorldUtil;

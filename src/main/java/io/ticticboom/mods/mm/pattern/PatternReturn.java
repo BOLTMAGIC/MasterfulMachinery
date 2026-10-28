@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.pattern;
 
 import io.ticticboom.mods.mm.cap.MMCapabilities;
-import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
+// [26.1-pending] import: import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
@@ -35,7 +35,7 @@ public final class PatternReturn {
             long given = switch (left.kind()) {
                 case ITEM -> giveItems(level, run, left);
                 case FLUID -> giveFluid(level, run, left);
-                case CHEMICAL -> MEKANISM ? PatternChemicals.give(level, pos, run.getReturnFace(), left) : 0;
+                case CHEMICAL -> 0; // [26.1-pending] Mekanism: MEKANISM ? PatternChemicals.give(level, pos, run.getReturnFace(), left) : 0
             };
             if (given > 0) {
                 run.getBuffer().remove(left.withAmount(given));

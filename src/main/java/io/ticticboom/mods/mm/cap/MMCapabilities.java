@@ -70,9 +70,10 @@ public class MMCapabilities {
                 event.registerBlockEntity(ITEM, single, (be, side) -> be.itemHandler());
                 event.registerBlockEntity(FLUID, single, (be, side) -> be.fluidHandler());
                 event.registerBlockEntity(ENERGY, single, (be, side) -> be.energyHandler());
-                if (ModList.get().isLoaded("mekanism")) {
-                    MekCapabilities.registerSingle(event, single);
-                }
+                // [26.1-pending] Mekanism has no 26.1.2 release yet
+                // if (ModList.get().isLoaded("mekanism")) {
+                // MekCapabilities.registerSingle(event, single);
+                // }
             }
         }
         event.registerItem(ENERGY_ITEM, (stack, context) -> ToolEnergy.of(stack), MMRegisters.MULTIBLOCK_TOOL.get());
@@ -80,9 +81,10 @@ public class MMCapabilities {
         event.registerBlockEntity(ITEM, gateway, (be, side) -> be.itemHandler());
         event.registerBlockEntity(FLUID, gateway, (be, side) -> be.fluidHandler());
         event.registerBlockEntity(ENERGY, gateway, (be, side) -> be.energyHandler());
-        if (ModList.get().isLoaded("mekanism")) {
-            MekCapabilities.registerGateway(event, gateway);
-        }
+        // [26.1-pending] Mekanism has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("mekanism")) {
+        // MekCapabilities.registerGateway(event, gateway);
+        // }
         if (ModList.get().isLoaded("ae2")) {
             Ae2Capabilities.registerPatternPort(event, MMRegisters.PATTERN_PORT_BE.get());
         }
@@ -98,22 +100,26 @@ public class MMCapabilities {
      */
     private static List<BlockCapability<?, Direction>> compatCapabilities() {
         var result = new ArrayList<BlockCapability<?, Direction>>();
-        if (ModList.get().isLoaded("mekanism")) {
-            result.add(MekCapabilities.CHEMICAL);
-            result.add(MekCapabilities.HEAT);
-        }
-        if (ModList.get().isLoaded("pneumaticcraft")) {
-            result.add(PncCapabilities.AIR_HANDLER_MACHINE);
-        }
+        // [26.1-pending] Mekanism has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("mekanism")) {
+        // result.add(MekCapabilities.CHEMICAL);
+        // result.add(MekCapabilities.HEAT);
+        // }
+        // [26.1-pending] PneumaticCraft has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("pneumaticcraft")) {
+        // result.add(PncCapabilities.AIR_HANDLER_MACHINE);
+        // }
         if (ModList.get().isLoaded("replication")) {
             result.add(ReplicationCapabilities.MATTER_HANDLER);
         }
-        if (ModList.get().isLoaded("ars_nouveau")) {
-            result.add(ArsCapabilities.SOURCE);
-        }
-        if (ModList.get().isLoaded("projecte")) {
-            result.add(ProjectECapabilities.EMC_STORAGE);
-        }
+        // [26.1-pending] Ars Nouveau has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("ars_nouveau")) {
+        // result.add(ArsCapabilities.SOURCE);
+        // }
+        // [26.1-pending] ProjectE has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("projecte")) {
+        // result.add(ProjectECapabilities.EMC_STORAGE);
+        // }
         return result;
     }
 

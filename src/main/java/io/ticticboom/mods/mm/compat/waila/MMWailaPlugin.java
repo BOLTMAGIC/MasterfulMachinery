@@ -12,11 +12,11 @@ import snownee.jade.api.IWailaClientRegistration;
 import snownee.jade.api.IWailaCommonRegistration;
 import snownee.jade.api.IWailaPlugin;
 import snownee.jade.api.WailaPlugin;
-import io.ticticboom.mods.mm.port.ars.source.register.ArsSourcePortBlock;
-import io.ticticboom.mods.mm.port.projecte.emc.register.ProjectEEmcPortBlock;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.ars.source.register.ArsSourcePortBlock;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.projecte.emc.register.ProjectEEmcPortBlock;
 import io.ticticboom.mods.mm.port.entity.register.EntityPortBlock;
-import io.ticticboom.mods.mm.port.mekanism.chemical.register.MekanismChemicalPortBlock;
-import io.ticticboom.mods.mm.port.mekanism.heat.register.MekanismHeatPortBlock;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.mekanism.chemical.register.MekanismChemicalPortBlock;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.mekanism.heat.register.MekanismHeatPortBlock;
 import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortBlock;
 
 
@@ -41,21 +41,24 @@ public class MMWailaPlugin implements IWailaPlugin {
         registration.registerBlockComponent(PortPriorityDataProvider.INSTANCE, Block.class);
 
         registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, EntityPortBlock.class);
-        if (ModList.get().isLoaded("mekanism")) {
-            registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, MekanismChemicalPortBlock.class);
-            registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, MekanismHeatPortBlock.class);
-        }
+        // [26.1-pending] Mekanism has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("mekanism")) {
+        // registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, MekanismChemicalPortBlock.class);
+        // registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, MekanismHeatPortBlock.class);
+        // }
         // Unlike the other port blocks this one implements a Titanium interface, so naming the
         // class at all resolves it. Behind the check it stays unloaded when Replication is absent.
         if (ModList.get().isLoaded("replication")) {
             registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ReplicationMatterPortBlock.class);
         }
-        if (ModList.get().isLoaded("ars_nouveau")) {
-            registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ArsSourcePortBlock.class);
-        }
-        if (ModList.get().isLoaded("projecte")) {
-            registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ProjectEEmcPortBlock.class);
-        }
+        // [26.1-pending] Ars Nouveau has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("ars_nouveau")) {
+        // registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ArsSourcePortBlock.class);
+        // }
+        // [26.1-pending] ProjectE has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("projecte")) {
+        // registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, ProjectEEmcPortBlock.class);
+        // }
         if (ModList.get().isLoaded("nuclear_radiation")) {
             registration.registerBlockComponent(PortContentsDataProvider.INSTANCE, NuclearRadiationPortBlock.class);
         }

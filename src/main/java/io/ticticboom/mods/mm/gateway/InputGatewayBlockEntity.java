@@ -48,7 +48,9 @@ public class InputGatewayBlockEntity extends BlockEntity {
 
     public Object chemicalHandler() {
         if (chemicalHandler == null) {
-            chemicalHandler = new GatewayChemicalHandler(this::inputs);
+            // [26.1-pending] Mekanism has no 26.1.2 release yet: no chemical handler (only MekCapabilities asks for it)
+            // chemicalHandler = new GatewayChemicalHandler(this::inputs);
+            return null;
         }
         return chemicalHandler;
     }

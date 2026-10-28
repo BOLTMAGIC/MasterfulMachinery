@@ -5,18 +5,18 @@ import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.ae2.pattern.Ae2PatternPortType;
-import io.ticticboom.mods.mm.port.ars.source.ArsSourcePortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.ars.source.ArsSourcePortType;
 import io.ticticboom.mods.mm.port.botania.mana.BotaniaManaPortType;
 import io.ticticboom.mods.mm.port.energy.EnergyPortType;
 import io.ticticboom.mods.mm.port.entity.EntityPortType;
 import io.ticticboom.mods.mm.port.fluid.FluidPortType;
 import io.ticticboom.mods.mm.port.item.ItemPortType;
-import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortType;
-import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortType;
-import io.ticticboom.mods.mm.port.mekanism.heat.MekanismHeatPortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.kinetic.CreateKineticPortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.mekanism.chemical.MekanismChemicalPortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.mekanism.heat.MekanismHeatPortType;
 import io.ticticboom.mods.mm.port.nuclear.radiation.NuclearRadiationPortType;
-import io.ticticboom.mods.mm.port.pneumaticcraft.air.PneumaticAirPortType;
-import io.ticticboom.mods.mm.port.projecte.emc.ProjectEEmcPortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.pneumaticcraft.air.PneumaticAirPortType;
+// [26.1-pending] import: import io.ticticboom.mods.mm.port.projecte.emc.ProjectEEmcPortType;
 import io.ticticboom.mods.mm.port.replication.link.ReplicationLinkPortType;
 import io.ticticboom.mods.mm.port.replication.matter.ReplicationMatterPortType;
 import io.ticticboom.mods.mm.port.replication.matter.feature.ReplicationMatterPipeHook;
@@ -38,17 +38,20 @@ public class MMPortRegistry {
         register(Ref.Ports.ENERGY, new EnergyPortType());
         register(Ref.Ports.ENTITY, new EntityPortType());
 
-        if (ModList.get().isLoaded("mekanism")) {
-            register(Ref.Ports.MEK_CHEMICAL, new MekanismChemicalPortType());
-            register(Ref.Ports.MEK_HEAT, new MekanismHeatPortType());
-        }
-        if (ModList.get().isLoaded("create")) {
-            register(Ref.Ports.CREATE_KINETIC, new CreateKineticPortType());
-        }
+        // [26.1-pending] Mekanism has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("mekanism")) {
+        // register(Ref.Ports.MEK_CHEMICAL, new MekanismChemicalPortType());
+        // register(Ref.Ports.MEK_HEAT, new MekanismHeatPortType());
+        // }
+        // [26.1-pending] Create has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("create")) {
+        // register(Ref.Ports.CREATE_KINETIC, new CreateKineticPortType());
+        // }
 
-        if (ModList.get().isLoaded("pneumaticcraft")) {
-            register(Ref.Ports.PNEUMATIC_AIR, new PneumaticAirPortType());
-        }
+        // [26.1-pending] PneumaticCraft has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("pneumaticcraft")) {
+        // register(Ref.Ports.PNEUMATIC_AIR, new PneumaticAirPortType());
+        // }
 
         if (ModList.get().isLoaded("replication")) {
             register(Ref.Ports.REPLICATION_MATTER, new ReplicationMatterPortType());
@@ -64,13 +67,15 @@ public class MMPortRegistry {
             register(Ref.Ports.AE2_PATTERN, new Ae2PatternPortType());
         }
 
-        if (ModList.get().isLoaded("ars_nouveau")) {
-            register(Ref.Ports.ARS_SOURCE, new ArsSourcePortType());
-        }
+        // [26.1-pending] Ars Nouveau has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("ars_nouveau")) {
+        // register(Ref.Ports.ARS_SOURCE, new ArsSourcePortType());
+        // }
 
-        if (ModList.get().isLoaded("projecte")) {
-            register(Ref.Ports.PROJECTE_EMC, new ProjectEEmcPortType());
-        }
+        // [26.1-pending] ProjectE has no 26.1.2 release yet
+        // if (ModList.get().isLoaded("projecte")) {
+        // register(Ref.Ports.PROJECTE_EMC, new ProjectEEmcPortType());
+        // }
 
         if (ModList.get().isLoaded("nuclear_radiation")) {
             register(Ref.Ports.NUCLEAR_RADIATION, new NuclearRadiationPortType());
