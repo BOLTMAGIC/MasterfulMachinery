@@ -313,3 +313,13 @@ unifiedPublishing {
 test {
     useJUnitPlatform()
 }
+
+// MM registers config-defined ports and controllers at mod construction, so the game test server needs
+// its definitions in run/test_server/config/mm before it starts.
+tasks.register('copyGameTestConfig', Copy) {
+    from 'src/test/gameTestConfig'
+    into 'run/test_server/config'
+}
+tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    dependsOn 'copyGameTestConfig'
+}

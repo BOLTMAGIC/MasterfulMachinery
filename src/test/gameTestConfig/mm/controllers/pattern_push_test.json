@@ -1,0 +1,7 @@
+{
+  "id": "pattern_push_test",
+  "name": "Pattern Push Test",
+  "type": "mm:machine",
+  "parallelProcessingDefault": true,
+  "maxParallelRecipes": 2
+}

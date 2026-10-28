@@ -1,0 +1,11 @@
+{
+  "ticks": 20,
+  "structureId": "mmtest:pattern_push_test",
+  "inputs": [
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:diamond", "count": 1}}
+  ],
+  "outputs": [
+    {"type": "mm:output/simple", "ingredient": {"type": "mm:item", "item": "minecraft:emerald", "count": 1}},
+    {"type": "mm:output/simple", "ingredient": {"type": "mm:item", "item": "minecraft:copper_ingot", "count": 1}}
+  ]
+}

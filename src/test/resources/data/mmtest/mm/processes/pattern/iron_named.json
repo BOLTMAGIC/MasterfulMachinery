@@ -1,0 +1,6 @@
+{
+  "ticks": 1,
+  "structureId": "mmtest:pattern_match",
+  "inputs": [{"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:iron_ingot", "count": 1, "nbt": {"display": {"Name": "{\"text\":\"Key\"}"}}, "nbt_match": "strong"}}],
+  "outputs": [{"type": "mm:output/simple", "ingredient": {"type": "mm:item", "item": "minecraft:diamond", "count": 1}}]
+}

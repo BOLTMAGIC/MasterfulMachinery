@@ -1,0 +1,11 @@
+{
+  "id": "test_item_m",
+  "name": "Test Item M",
+  "controllerIds": "mm:assembly_test",
+  "type": "mm:item",
+  "config": {
+    "rows": 1,
+    "columns": 1,
+    "tierRank": 2
+  }
+}

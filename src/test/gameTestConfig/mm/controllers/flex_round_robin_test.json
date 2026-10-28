@@ -1,0 +1,6 @@
+{
+  "id": "flex_round_robin_test",
+  "name": "Flex Round Robin Test",
+  "type": "mm:machine",
+  "maxParallelRecipes": 0
+}

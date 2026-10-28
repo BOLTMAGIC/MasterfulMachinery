@@ -1,0 +1,33 @@
+{
+  "ticks": 40,
+  "structureId": "mmtest:flex_test",
+  "mode": "flex",
+  "inputs": [
+    {
+      "type": "mm:input/consume",
+      "ingredient": {
+        "type": "mm:item",
+        "item": "minecraft:bone_meal",
+        "count": 1
+      }
+    },
+    {
+      "type": "mm:input/flex",
+      "as": "sapling",
+      "ingredient": {
+        "type": "mm:item",
+        "tag": "minecraft:saplings",
+        "count": 1
+      }
+    }
+  ],
+  "outputs": [
+    {
+      "type": "mm:output/flex",
+      "from": "sapling",
+      "match": "(.+)_sapling",
+      "item": "{ns}:$1_leaves",
+      "count": 1
+    }
+  ]
+}

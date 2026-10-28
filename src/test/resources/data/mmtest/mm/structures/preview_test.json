@@ -1,0 +1,28 @@
+{
+  "name": "Preview Test",
+  "controllerIds": "mm:preview_test",
+  "layout": [
+    [
+      "ACBW"
+    ]
+  ],
+  "key": {
+    "A": {
+      "portType": "mm:item",
+      "input": true,
+      "anywhere": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "B": {
+      "portType": "mm:item",
+      "input": true,
+      "anywhere": true,
+      "minTier": 3,
+      "maxTier": 3
+    },
+    "W": {
+      "block": "minecraft:glass"
+    }
+  }
+}

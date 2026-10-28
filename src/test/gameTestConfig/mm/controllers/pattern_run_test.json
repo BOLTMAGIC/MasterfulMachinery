@@ -1,0 +1,7 @@
+{
+  "id": "pattern_run_test",
+  "name": "Pattern Run Test",
+  "type": "mm:machine",
+  "parallelProcessingDefault": true,
+  "maxParallelRecipes": 1
+}

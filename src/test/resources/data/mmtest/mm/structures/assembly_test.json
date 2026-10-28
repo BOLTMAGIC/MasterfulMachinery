@@ -1,0 +1,26 @@
+{
+  "name": "Assembly Test",
+  "controllerIds": "mm:assembly_test",
+  "layout": [
+    [
+      "FCGS"
+    ]
+  ],
+  "key": {
+    "F": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 3
+    },
+    "G": {
+      "block": "minecraft:glass"
+    },
+    "S": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 3,
+      "maxTier": 3
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "ticks": 1,
+  "structureId": "mmtest:pattern_match",
+  "inputs": [
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:prismarine_shard", "count": 16}},
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:prismarine_shard", "count": 16}},
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:prismarine_shard", "count": 16}},
+    {"type": "mm:input/consume", "ingredient": {"type": "mm:item", "item": "minecraft:cyan_dye", "count": 16}}
+  ],
+  "outputs": [{"type": "mm:output/simple", "ingredient": {"type": "mm:item", "item": "minecraft:sea_lantern", "count": 16}}]
+}
