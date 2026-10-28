@@ -101,7 +101,7 @@ public final class StructureCategories extends SavedData {
         return new Snapshot(List.copyOf(categories), Map.copyOf(assignments), 0);
     }
 
-    private static StructureCategories load(CompoundTag tag) {
+    public static StructureCategories load(CompoundTag tag) {
         StructureCategories data = new StructureCategories();
         ListTag names = tag.getListOrEmpty("Categories");
         for (int i = 0; i < names.size() && data.categories.size() < MAX_CATEGORIES; i++) {
@@ -123,7 +123,7 @@ public final class StructureCategories extends SavedData {
         return data;
     }
 
-    private CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag) {
         ListTag names = new ListTag();
         for (String name : categories) names.add(StringTag.valueOf(name));
         tag.put("Categories", names);

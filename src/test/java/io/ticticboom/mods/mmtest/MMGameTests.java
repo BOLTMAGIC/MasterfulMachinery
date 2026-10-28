@@ -29,7 +29,12 @@ public final class MMGameTests {
     /** The classes whose @GameTest methods run; a class is listed once its tests are ported to 26.1. */
     static final List<Class<?>> HOLDERS = List.of(
             ItemPortInsertionGameTests.class,
-            RegistrySmokeGameTests.class
+            RegistrySmokeGameTests.class,
+            RemovedRegistryGameTests.class,
+            StructureCategoriesGameTests.class,
+            ControllerAnimationGameTests.class,
+            ChunkReloadGameTests.class,
+            RecipePauseGameTests.class
     );
 
     private static final DeferredRegister<Consumer<GameTestHelper>> FUNCTIONS = DeferredRegister.create(Registries.TEST_FUNCTION, NAMESPACE);

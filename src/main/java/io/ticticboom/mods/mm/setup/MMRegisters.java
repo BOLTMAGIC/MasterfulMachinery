@@ -77,7 +77,7 @@ public class MMRegisters {
             .displayItems((p, o) -> o.acceptAll(StructureManager.STRUCTURE_BLUEPRINTS.values()))
             .build());
 
-    static List<ItemStack> registeredItemStacks(Collection<? extends DeferredHolder<Item, ? extends Item>> entries) {
+    public static List<ItemStack> registeredItemStacks(Collection<? extends DeferredHolder<Item, ? extends Item>> entries) {
         // Joining a world/server can leave a controller removed from the pack unbound.
         return entries.stream().filter(DeferredHolder::isBound).map(x -> x.get().getDefaultInstance()).toList();
     }
