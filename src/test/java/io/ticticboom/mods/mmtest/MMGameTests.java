@@ -47,7 +47,8 @@ public final class MMGameTests {
             ToolBuildGameTests.class,
             ToolGameTests.class,
             ToolPlacementGameTests.class,
-            ToolSettingsGameTests.class
+            ToolSettingsGameTests.class,
+            PortPriorityGameTests.class
     );
 
     /** Holders that need AE2, registered only when it is installed (they would not even load without it). */
