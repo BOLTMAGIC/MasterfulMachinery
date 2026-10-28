@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.NineSliceUtil;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.Ref;
@@ -275,33 +276,33 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         layer = -1;
         renderer().resetTransforms();
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SELECT_STRUCTURE, entry.id().toString(),
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SELECT_STRUCTURE, entry.id().toString(),
                 entry.builder() ? ToolSettingsPkt.BUILDER_STRUCTURE : 0));
     }
 
     private void setTier(String key, int tier) {
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_TIER, key, tier));
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_TIER, key, tier));
     }
 
     private void toggleUseMe(boolean value) {
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_USE_ME, "", value ? 1 : 0));
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_USE_ME, "", value ? 1 : 0));
     }
 
     private void toggleAutoCraft(boolean value) {
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_AUTOCRAFT, "", value ? 1 : 0));
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_AUTOCRAFT, "", value ? 1 : 0));
     }
 
     private void toggleInstantBuild(boolean value) {
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_INSTANT_BUILD, "", value ? 1 : 0));
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.SET_INSTANT_BUILD, "", value ? 1 : 0));
     }
 
     private void forgetNetwork() {
         playClick();
-        PacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.FORGET_NETWORK, "", 0));
+        ClientPacketDistributor.sendToServer(new ToolSettingsPkt(ToolSettingsPkt.Action.FORGET_NETWORK, "", 0));
     }
 
     private void playClick() {
@@ -506,18 +507,18 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         if (mouseY >= adminButtonY() && mouseY < adminButtonY() + 12) {
             String name = categoryNameBox.getValue().strip();
             if (mouseX >= x + width - 146 && mouseX < x + width - 104) {
-                PacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.CREATE, "", name));
+                ClientPacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.CREATE, "", name));
                 return true;
             }
             if (mouseX >= x + width - 100 && mouseX < x + width - 46) {
                 if (!adminSelectedCategory.equals(StructureCategories.DEFAULT)) {
-                    PacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.RENAME, adminSelectedCategory, name));
+                    ClientPacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.RENAME, adminSelectedCategory, name));
                 }
                 return true;
             }
             if (mouseX >= x + width - 42 && mouseX < x + width) {
                 if (!adminSelectedCategory.equals(StructureCategories.DEFAULT)) {
-                    PacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.DELETE, adminSelectedCategory, ""));
+                    ClientPacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.DELETE, adminSelectedCategory, ""));
                 }
                 return true;
             }
@@ -529,7 +530,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             adminSelectedCategory = categories.get(index);
             categoryNameBox.setValue(adminSelectedCategory.equals(StructureCategories.DEFAULT) ? "" : adminSelectedCategory);
             String key = selectedStructureKey();
-            if (key != null) PacketDistributor.sendToServer(new StructureCategoryEditPkt(
+            if (key != null) ClientPacketDistributor.sendToServer(new StructureCategoryEditPkt(
                     StructureCategories.Action.ASSIGN, key, adminSelectedCategory));
             return true;
         }
@@ -890,7 +891,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 int index = categoryPopupScroll + ((int) mouseY - categoryPopupY - 3) / 12;
                 List<String> categories = adminCategories();
                 if (index >= 0 && index < categories.size()) {
-                    PacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.ASSIGN,
+                    ClientPacketDistributor.sendToServer(new StructureCategoryEditPkt(StructureCategories.Action.ASSIGN,
                             StructureCategories.key(categoryPopupTarget.id(), categoryPopupTarget.builder()), categories.get(index)));
                     playClick();
                 }

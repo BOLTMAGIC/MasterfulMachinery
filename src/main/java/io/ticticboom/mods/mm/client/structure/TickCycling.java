@@ -2,7 +2,7 @@ package io.ticticboom.mods.mm.client.structure;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 import java.util.List;
 

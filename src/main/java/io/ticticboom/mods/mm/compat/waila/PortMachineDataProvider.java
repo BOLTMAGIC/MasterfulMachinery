@@ -50,7 +50,7 @@ public class PortMachineDataProvider implements IServerDataProvider<BlockAccesso
     public void appendTooltip(ITooltip tooltip, BlockAccessor blockAccessor, IPluginConfig iPluginConfig) {
         CompoundTag data = blockAccessor.getServerData();
         if (data.contains(MACHINE_KEY)) {
-            String status = data.getString(STATUS_KEY);
+            String status = data.getStringOr(STATUS_KEY, "");
             Component name = Component.Serializer.fromJson(data.getString(MACHINE_KEY), blockAccessor.getLevel().registryAccess());
             tooltip.add(Component.translatable("jade.mm.port.machine", name == null ? Component.empty() : name)
                     .append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
@@ -59,11 +59,11 @@ public class PortMachineDataProvider implements IServerDataProvider<BlockAccesso
             tooltip.add(Component.translatable("jade.mm.port.no_machine").withStyle(ChatFormatting.GRAY));
         }
         if (data.contains(AUTO_SIDES_KEY)) {
-            int sides = data.getInt(AUTO_SIDES_KEY);
+            int sides = data.getIntOr(AUTO_SIDES_KEY, 0);
             if (sides == 0) {
                 tooltip.add(Component.translatable("jade.mm.port.auto_io.off").withStyle(ChatFormatting.GRAY));
             } else {
-                tooltip.add(Component.translatable(data.getBoolean(AUTO_PULL_KEY) ? "jade.mm.port.auto_io.pull" : "jade.mm.port.auto_io.push", sides));
+                tooltip.add(Component.translatable(data.getBooleanOr(AUTO_PULL_KEY, false) ? "jade.mm.port.auto_io.pull" : "jade.mm.port.auto_io.push", sides));
             }
         }
     }

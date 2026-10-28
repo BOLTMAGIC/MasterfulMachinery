@@ -10,7 +10,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
 
-@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class BlueprintScreenEvents {
 
     @SubscribeEvent
@@ -24,7 +24,7 @@ public class BlueprintScreenEvents {
         }
 
         Level level = event.getLevel();
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             return;
         }
 

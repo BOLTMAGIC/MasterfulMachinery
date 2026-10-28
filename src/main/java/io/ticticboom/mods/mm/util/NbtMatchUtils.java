@@ -98,7 +98,7 @@ public class NbtMatchUtils {
     public static JsonElement toJson(CompoundTag tag) {
         if (tag == null) return JsonNull.INSTANCE;
         JsonObject obj = new JsonObject();
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             Tag t = tag.get(key);
             obj.add(key, tagToJson(t));
         }
@@ -142,7 +142,7 @@ public class NbtMatchUtils {
     public static boolean matchesWeak(CompoundTag subset, CompoundTag superset) {
         if (subset == null) return true;
         if (superset == null) return false;
-        for (String key : subset.getAllKeys()) {
+        for (String key : subset.keySet()) {
             if (!superset.contains(key)) return false;
             Tag a = subset.get(key);
             Tag b = superset.get(key);

@@ -58,17 +58,17 @@ public record AssemblyPkt(BlockPos pos, Action action, String key, int value) im
             structure = controller.getAssemblyStructure();
         }
         if (structure == null) {
-            player.displayClientMessage(Component.translatable("message.mm.assemble.no_structure"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.assemble.no_structure"));
             return;
         }
         BlockPos pos = controller.getBlockPos();
         var plan = AssemblyPlanner.planCompletion(player.level(), structure, pos, controller.getAssemblyTiers(), b -> PlayerMaterials.has(player, b));
         if (plan == null) {
-            player.displayClientMessage(Component.translatable("message.mm.assemble.already"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.assemble.already"));
             return;
         }
         if (!AssemblyJobs.start(player, pos, plan)) {
-            player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.assemble.busy"));
         }
     }
 

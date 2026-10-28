@@ -74,7 +74,7 @@ public class LinkerItem extends Item {
         }
         if (!level.isClientSide()) {
             setNetwork(stack, null);
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.network_cleared"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.network_cleared"));
         }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
@@ -83,7 +83,7 @@ public class LinkerItem extends Item {
         MachineControllerBlockEntity controller = NetworkLink.controllerAt(level, context.getClickedPos());
         LinkData link = controller == null ? null : controller.getNetworkLink();
         if (link == null) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.info.not_linked").withStyle(ChatFormatting.GRAY), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.info.not_linked").withStyle(ChatFormatting.GRAY));
             return;
         }
         if (!Permissions.canAccess(player, link.owner())) {
@@ -92,28 +92,28 @@ public class LinkerItem extends Item {
         }
         if (player.isShiftKeyDown()) {
             controller.setNetworkLink(null);
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.unlinked"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.unlinked"));
             return;
         }
         LinkData.NetworkPos network = link.network();
         boolean online = NetworkAccess.storage(level.getServer(), network) != null;
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.info.linked",
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.info.linked",
                         link.ownerName(), network.pos().toShortString(), network.dimension().location().getPath())
                 .append(" ")
                 .append(Component.translatable(online ? "message.mm.network_linker.info.online" : "message.mm.network_linker.info.offline")
                         .withStyle(online ? ChatFormatting.GREEN : ChatFormatting.RED))
                 .append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
-                .append(Component.translatable("message.mm.network_linker.info.unlink_hint").withStyle(ChatFormatting.GRAY)), true);
+                .append(Component.translatable("message.mm.network_linker.info.unlink_hint").withStyle(ChatFormatting.GRAY)));
     }
 
     private static void rememberNetwork(Level level, Player player, UseOnContext context, IInWorldGridNodeHost host) {
         var network = NetworkAccess.clicked(level, context.getClickedPos(), context.getClickedFace(), host);
         if (network == null) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.not_a_network").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.not_a_network").withStyle(ChatFormatting.RED));
             return;
         }
         setNetwork(context.getItemInHand(), network);
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.network_saved", context.getClickedPos().toShortString()), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.network_saved", context.getClickedPos().toShortString()));
     }
 
     private static void useOnController(Player player, ItemStack stack, MachineControllerBlockEntity controller) {
@@ -123,23 +123,23 @@ public class LinkerItem extends Item {
             return;
         }
         if (player.isShiftKeyDown()) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.use_info_mode").withStyle(ChatFormatting.GRAY), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.use_info_mode").withStyle(ChatFormatting.GRAY));
             return;
         }
         LinkData.NetworkPos network = getNetwork(stack);
         if (network == null) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.no_network").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.no_network").withStyle(ChatFormatting.RED));
             return;
         }
         var link = existing != null
                 ? new LinkData(existing.owner(), existing.ownerName(), network)
                 : new LinkData(player.getUUID(), player.getGameProfile().getName(), network);
         controller.setNetworkLink(link);
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.linked", link.ownerName(), network.pos().toShortString()), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.linked", link.ownerName(), network.pos().toShortString()));
     }
 
     private static void notOwner(Player player, LinkData link) {
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName()).withStyle(ChatFormatting.RED), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName()).withStyle(ChatFormatting.RED));
     }
 
     @Nullable
@@ -149,7 +149,7 @@ public class LinkerItem extends Item {
             return null;
         }
         var tag = data.copyTag();
-        return tag.contains(NETWORK_TAG) ? LinkData.NetworkPos.load(tag.getCompound(NETWORK_TAG)) : null;
+        return tag.contains(NETWORK_TAG) ? LinkData.NetworkPos.load(tag.getCompoundOrEmpty(NETWORK_TAG)) : null;
     }
 
     public static void setNetwork(ItemStack stack, @Nullable LinkData.NetworkPos network) {

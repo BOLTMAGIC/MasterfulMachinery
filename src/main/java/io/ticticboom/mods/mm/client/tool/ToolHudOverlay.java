@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureSync;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -23,7 +23,7 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import java.util.ArrayList;
 import java.util.List;
 
-@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ToolHudOverlay {
     public static final Identifier ID = Ref.id("tool_hud");
     public static final LayeredDraw.Layer OVERLAY = ToolHudOverlay::render;

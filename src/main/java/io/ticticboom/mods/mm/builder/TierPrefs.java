@@ -60,11 +60,11 @@ public final class TierPrefs {
 
     public static TierPrefs load(CompoundTag tag) {
         var result = new TierPrefs();
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             if (result.prefs.size() >= MAX_ENTRIES) {
                 break;
             }
-            result.set(key, tag.getInt(key));
+            result.set(key, tag.getIntOr(key, 0));
         }
         return result;
     }

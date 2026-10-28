@@ -28,7 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME, modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public class MMCommands {
 
     @SubscribeEvent

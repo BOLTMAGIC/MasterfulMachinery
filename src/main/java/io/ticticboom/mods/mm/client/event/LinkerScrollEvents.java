@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.event;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
@@ -27,6 +28,6 @@ public final class LinkerScrollEvents {
             return;
         }
         event.setCanceled(true);
-        PacketDistributor.sendToServer(new CycleLinkerModePkt(event.getScrollDeltaY() > 0 ? 1 : -1));
+        ClientPacketDistributor.sendToServer(new CycleLinkerModePkt(event.getScrollDeltaY() > 0 ? 1 : -1));
     }
 }

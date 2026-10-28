@@ -33,7 +33,7 @@ public class NbtNormalizer {
 
         CompoundTag normalized = new CompoundTag();
 
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             Tag value = tag.get(key);
 
             // Skip null or empty tags

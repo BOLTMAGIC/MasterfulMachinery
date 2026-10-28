@@ -27,7 +27,7 @@ public enum LinkerMode {
         if (data == null) {
             return LINK;
         }
-        int ordinal = data.copyTag().getInt(TAG);
+        int ordinal = data.copyTag().getIntOr(TAG, 0);
         return ordinal >= 0 && ordinal < values().length ? values()[ordinal] : LINK;
     }
 

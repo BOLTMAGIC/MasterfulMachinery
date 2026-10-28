@@ -205,7 +205,7 @@ public final class CraftTracker {
                     order.unseen.computeIfPresent(handle, (h, polls) -> polls + 1);
                 }
                 if (state == CraftHandle.State.FAILED && order.reported.add(handle)) {
-                    player.displayClientMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW), true);
+                    player.sendOverlayMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW));
                 }
             }
         }

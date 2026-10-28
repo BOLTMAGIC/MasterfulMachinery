@@ -121,33 +121,33 @@ public class MultiblockToolItem extends Item {
         player.getCooldowns().addCooldown(stack.getItem(), 4);
         // an MM structure or another mod's; the server checks it still exists
         if (ToolData.structure(stack) == null && ToolData.builderStructure(stack) == null) {
-            player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.no_structure"));
             return InteractionResult.FAIL;
         }
         ToolTarget target = ToolTarget.resolve(player, stack, MMConfigSetup.COMMON.toolBuildRange.get());
         if (target == null) {
-            player.displayClientMessage(Component.translatable("message.mm.tool.target_missing"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.target_missing"));
             return InteractionResult.FAIL;
         }
         // before any planning: a player runs one job at a time
         Component busy = AssemblyJobs.busyMessage(player);
         if (busy != null) {
-            player.displayClientMessage(busy, true);
+            player.sendOverlayMessage(busy);
             return InteractionResult.FAIL;
         }
         ToolBuilds.Result result = ToolBuilds.prepare(level, player, stack, target.pos(), target.face());
         if (result.notice() != null && noticeDue(player)) {
             // in chat: the action bar is soon taken by the result or the job's summary
-            player.displayClientMessage(result.notice(), false);
+            player.sendSystemMessage(result.notice());
         }
         if (result.prepared() == null) {
-            player.displayClientMessage(result.error(), true);
+            player.sendOverlayMessage(result.error());
             return InteractionResult.FAIL;
         }
         ToolBuilds.Prepared build = result.prepared();
         if (!AssemblyJobs.startTool(player, build.controllerPos(), build.plan(), build.source(), build.perBlockFe(),
                 build.requiresController(), target.pos(), ToolData.instantBuild(stack))) {
-            player.displayClientMessage(Component.translatable("message.mm.assemble.busy"), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.assemble.busy"));
             return InteractionResult.FAIL;
         }
         // The job owns its placement plan now; do not keep previewing it after building or dismantling.

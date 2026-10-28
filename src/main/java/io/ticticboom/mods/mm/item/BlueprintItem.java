@@ -65,19 +65,19 @@ public class BlueprintItem extends Item {
 
         StructureModel structure = getStructure(context.getItemInHand());
         if (structure == null) {
-            if (!level.isClientSide) {
-                player.displayClientMessage(Component.translatable("item.mm.blueprint.message.no_structure"), true);
+            if (!level.isClientSide()) {
+                player.sendOverlayMessage(Component.translatable("item.mm.blueprint.message.no_structure"));
             }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            return InteractionResult.sidedSuccess(level.isClientSide());
         }
 
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
 
         Rotation rotation = rotationFromPlayer(player);
         StructurePasteUtil.PasteResult result = StructurePasteUtil.paste((ServerLevel) level, player, structure, context.getClickedPos(), context.getClickedFace(), rotation, player.getDirection());
-        player.displayClientMessage(result.message(), true);
+        player.sendOverlayMessage(result.message());
         return result.success() ? InteractionResult.CONSUME : InteractionResult.FAIL;
     }
 
@@ -109,7 +109,7 @@ public class BlueprintItem extends Item {
         }
 
         assert ItemNbtUtil.getTag(stack) != null;
-        return Identifier.tryParse(ItemNbtUtil.getTag(stack).getString(TAG_STRUCTURE));
+        return Identifier.tryParse(ItemNbtUtil.getTag(stack).getStringOr(TAG_STRUCTURE, ""));
     }
 
     public static StructureModel getStructure(ItemStack stack) {
@@ -132,7 +132,7 @@ public class BlueprintItem extends Item {
         // stored value is shown literally rather than treated as a translation key.
         if (ItemNbtUtil.hasTag(stack)) {
             assert ItemNbtUtil.getTag(stack) != null;
-            String storedName = ItemNbtUtil.getTag(stack).getString(TAG_STRUCTURE_NAME);
+            String storedName = ItemNbtUtil.getTag(stack).getStringOr(TAG_STRUCTURE_NAME, "");
             if (!storedName.isBlank()) {
                 return Component.literal(storedName);
             }

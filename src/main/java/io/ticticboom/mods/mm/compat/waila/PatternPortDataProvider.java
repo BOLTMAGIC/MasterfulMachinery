@@ -65,17 +65,17 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
         if (data.contains(MACHINE_KEY)) {
             tooltip.add(Component.translatable("jade.mm.port.machine", data.getString(MACHINE_KEY)));
             tooltip.add(Component.translatable("jade.mm.pattern_port.runs", data.getInt(RUNS_KEY)));
-            if (data.getInt(RETURNING_KEY) > 0) {
+            if (data.getIntOr(RETURNING_KEY, 0) > 0) {
                 tooltip.add(Component.translatable("jade.mm.pattern_port.returning", data.getInt(RETURNING_KEY)).withStyle(ChatFormatting.GOLD));
             }
         } else {
             tooltip.add(Component.translatable("jade.mm.port.no_machine").withStyle(ChatFormatting.GRAY));
         }
-        String last = data.getString(LAST_KEY);
+        String last = data.getStringOr(LAST_KEY, "");
         if (!last.isEmpty() && !last.equals("started")) {
             tooltip.add(Component.translatable("jade.mm.pattern_port.last." + last).withStyle(ChatFormatting.GRAY));
         }
-        PatternMismatch why = data.contains(WHY_KEY) ? PatternMismatch.load(data.getCompound(WHY_KEY)) : null;
+        PatternMismatch why = data.contains(WHY_KEY) ? PatternMismatch.load(data.getCompoundOrEmpty(WHY_KEY)) : null;
         if (why != null) {
             tooltip.add(Component.translatable("jade.mm.pattern_port.why." + why.reason().name().toLowerCase(Locale.ROOT),
                     why.what().toString(), why.patternAmount(), why.recipeAmount()).withStyle(ChatFormatting.GRAY));

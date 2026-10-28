@@ -24,7 +24,7 @@ public record CycleLinkerModePkt(int direction) implements CustomPacketPayload {
             if (!NetworkLink.isLinker(stack)) return;
             var mode = LinkerMode.get(stack).cycle(Integer.signum(pkt.direction));
             mode.set(stack);
-            player.displayClientMessage(mode.displayName(), true);
+            player.sendOverlayMessage(mode.displayName());
         });
     }
 

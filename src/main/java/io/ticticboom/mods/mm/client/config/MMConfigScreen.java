@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.config;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigOptions;
 import io.ticticboom.mods.mm.config.WorkingEffectsConfig;
@@ -70,7 +71,7 @@ public final class MMConfigScreen extends Screen {
         x = (width - panelWidth) / 2;
         y = (height - panelHeight) / 2;
         page = canEditServer() ? Page.SERVER : Page.CLIENT;
-        if (canEditServer()) PacketDistributor.sendToServer(new MMConfigRequestPkt());
+        if (canEditServer()) ClientPacketDistributor.sendToServer(new MMConfigRequestPkt());
     }
 
     private List<MMConfigOptions.Option> options() {
@@ -360,7 +361,7 @@ public final class MMConfigScreen extends Screen {
         if (option.scope() == MMConfigOptions.Scope.CLIENT) {
             if (!option.set(value)) error = Component.translatable("config.mm.invalid", option.label());
         } else if (canEditServer()) {
-            PacketDistributor.sendToServer(new MMConfigEditPkt(option.key(), value));
+            ClientPacketDistributor.sendToServer(new MMConfigEditPkt(option.key(), value));
         }
     }
 

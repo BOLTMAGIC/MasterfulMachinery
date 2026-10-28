@@ -113,15 +113,15 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        getStorage().load(tag.getCompound(Ref.NBT_STORAGE_KEY), registries);
+        getStorage().load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
         if (autoIO != null) {
             autoIO.load(tag);
         }
-        machineFront = tag.contains(FRONT_KEY) ? Direction.from2DDataValue(tag.getByte(FRONT_KEY)) : null;
+        machineFront = tag.contains(FRONT_KEY) ? Direction.from2DDataValue(tag.getByteOr(FRONT_KEY, (byte) 0)) : null;
         var states = ControllerState.values();
-        int state = tag.getByte(STATE_KEY);
+        int state = tag.getByteOr(STATE_KEY, (byte) 0);
         machineState = state >= 0 && state < states.length ? states[state] : ControllerState.UNFORMED;
-        int[] colors = tag.getIntArray(COLORS_KEY);
+        int[] colors = tag.getIntArray(COLORS_KEY).orElse(new int[0]);
         machineColors = colors.length == states.length ? colors : null;
         super.loadAdditional(tag, registries);
     }

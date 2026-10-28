@@ -9,7 +9,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import java.util.Map;
 
 /** The server's Structure Builder range on this client, for the hologram; synced with the MM config. */
-@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ToolPlacementSettings {
     private static int range = 64;
 

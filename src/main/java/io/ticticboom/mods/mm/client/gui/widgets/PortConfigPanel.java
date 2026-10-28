@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.texture.GuiTextures;
 import io.ticticboom.mods.mm.client.util.NineSliceUtil;
@@ -232,7 +233,7 @@ public class PortConfigPanel {
 
     private void send(PortConfigPkt.Action action, int arg) {
         playClick();
-        PacketDistributor.sendToServer(new PortConfigPkt(be.getBlockPos(), action, arg));
+        ClientPacketDistributor.sendToServer(new PortConfigPkt(be.getBlockPos(), action, arg));
     }
 
     @Nullable

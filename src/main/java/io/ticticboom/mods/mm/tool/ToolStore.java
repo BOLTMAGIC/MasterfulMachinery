@@ -117,17 +117,17 @@ public class ToolStore extends ItemStackHandler {
 
     @Override
     public void deserializeNBT(HolderLookup.@NotNull Provider provider, @NotNull CompoundTag nbt) {
-        setSize(nbt.contains("Size", Tag.TAG_INT) ? nbt.getInt("Size") : SLOTS);
-        ListTag items = nbt.getList("Items", Tag.TAG_COMPOUND);
+        setSize(nbt.contains("Size") ? nbt.getIntOr("Size", 0) : SLOTS);
+        ListTag items = nbt.getListOrEmpty("Items");
         for (int i = 0; i < items.size(); i++) {
-            CompoundTag itemTag = items.getCompound(i);
-            int slot = itemTag.getInt("Slot");
+            CompoundTag itemTag = items.getCompoundOrEmpty(i);
+            int slot = itemTag.getIntOr("Slot", 0);
             if (slot < 0 || slot >= stacks.size()) {
                 continue;
             }
             ItemStack stack = ItemStack.parseOptional(provider, itemTag);
-            if (!stack.isEmpty() && itemTag.contains(COUNT_KEY, Tag.TAG_INT)) {
-                stack.setCount(itemTag.getInt(COUNT_KEY));
+            if (!stack.isEmpty() && itemTag.contains(COUNT_KEY)) {
+                stack.setCount(itemTag.getIntOr(COUNT_KEY, 0));
             }
             stacks.set(slot, stack);
         }

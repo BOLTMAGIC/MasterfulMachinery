@@ -23,7 +23,7 @@ public record LinkData(UUID owner, String ownerName, NetworkPos network) {
 
     @Nullable
     public static LinkData load(CompoundTag tag) {
-        NetworkPos network = NetworkPos.load(tag.getCompound("Network"));
+        NetworkPos network = NetworkPos.load(tag.getCompoundOrEmpty("Network"));
         if (!tag.hasUUID("Owner") || network == null) {
             return null;
         }
@@ -42,12 +42,12 @@ public record LinkData(UUID owner, String ownerName, NetworkPos network) {
 
         @Nullable
         public static NetworkPos load(CompoundTag tag) {
-            Identifier dim = Identifier.tryParse(tag.getString("Dim"));
+            Identifier dim = Identifier.tryParse(tag.getStringOr("Dim", ""));
             if (dim == null || !tag.contains("Pos")) {
                 return null;
             }
-            int face = tag.getInt("Face");
-            return new NetworkPos(ResourceKey.create(Registries.DIMENSION, dim), BlockPos.of(tag.getLong("Pos")),
+            int face = tag.getIntOr("Face", 0);
+            return new NetworkPos(ResourceKey.create(Registries.DIMENSION, dim), BlockPos.of(tag.getLongOr("Pos", 0L)),
                     face < 0 ? null : Direction.from3DDataValue(face));
         }
     }

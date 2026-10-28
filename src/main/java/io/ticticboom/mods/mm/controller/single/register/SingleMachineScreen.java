@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.controller.single.register;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
 import io.ticticboom.mods.mm.client.util.CountFormat;
@@ -244,7 +245,7 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isOnButton(mouseX, mouseY)) {
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1));
-            PacketDistributor.sendToServer(new OpenMachineScreenPkt(machine().getBlockPos(), true));
+            ClientPacketDistributor.sendToServer(new OpenMachineScreenPkt(machine().getBlockPos(), true));
             return true;
         }
         return super.mouseClicked(mouseX, mouseY, button);

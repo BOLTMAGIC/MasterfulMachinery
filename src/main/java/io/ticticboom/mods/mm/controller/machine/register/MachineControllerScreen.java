@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.controller.single.register.SingleMachineBlockEntity;
 import io.ticticboom.mods.mm.net.packet.OpenMachineScreenPkt;
 import io.ticticboom.mods.mm.client.builder.AssemblyScreen;
@@ -28,7 +29,7 @@ import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
@@ -745,7 +746,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         int next = Math.floorMod(index + 1 + step, recipes.size() + 1) - 1;
         String id = next < 0 ? "" : recipes.get(next).id().toString();
-        PacketDistributor.sendToServer(new SelectRecipePkt(be.getBlockPos(), id));
+        ClientPacketDistributor.sendToServer(new SelectRecipePkt(be.getBlockPos(), id));
     }
 
     private boolean showsDiagnosis() {
@@ -1008,7 +1009,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (isOnAssembleButton(mouseX, mouseY)) {
             playClick();
             if (single) {
-                PacketDistributor.sendToServer(new OpenMachineScreenPkt(be.getBlockPos(), false));
+                ClientPacketDistributor.sendToServer(new OpenMachineScreenPkt(be.getBlockPos(), false));
             } else {
                 Minecraft.getInstance().setScreen(new AssemblyScreen(this, be));
             }
@@ -1029,24 +1030,24 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 var modes = RecipeSelectionMode.values();
                 int step = button == 1 ? modes.length - 1 : 1;
                 var next = modes[(be.getRecipeSelectionMode().ordinal() + step) % modes.length];
-                PacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.RECIPE_ORDER, next.serializedName()));
+                ClientPacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.RECIPE_ORDER, next.serializedName()));
                 playClick();
                 return true;
             }
             if (isOnRow(Row.REDSTONE, mouseX, mouseY)) {
                 int next = (be.getRedstoneModeOrdinal() + (button == 1 ? 2 : 1)) % 3;
-                PacketDistributor.sendToServer(new ToggleRedstoneModePkt(be.getBlockPos(), next));
+                ClientPacketDistributor.sendToServer(new ToggleRedstoneModePkt(be.getBlockPos(), next));
                 playClick();
                 return true;
             }
             if (hasWorkingSound() && isOnRow(Row.SOUND, mouseX, mouseY)) {
-                PacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.SOUND_MUTED, Boolean.toString(!be.isSoundMuted())));
+                ClientPacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.SOUND_MUTED, Boolean.toString(!be.isSoundMuted())));
                 playClick();
                 return true;
             }
             if (hasModel() && isOnRow(Row.ANIMATION, mouseX, mouseY)) {
                 var next = be.getModelDisplay().next(hasAnimations());
-                PacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.MODEL_DISPLAY, next.serializedName()));
+                ClientPacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.MODEL_DISPLAY, next.serializedName()));
                 playClick();
                 return true;
             }
@@ -1077,7 +1078,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         if (keep) {
             String typed = nameBox.getValue().strip();
             String name = typed.equals(menu.getModel().displayName().getString()) ? "" : typed;
-            PacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.NAME, name));
+            ClientPacketDistributor.sendToServer(new ControllerSettingsPkt(be.getBlockPos(), ControllerSettingsPkt.Setting.NAME, name));
         }
         removeWidget(nameBox);
         nameBox = null;

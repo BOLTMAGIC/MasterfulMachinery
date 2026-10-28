@@ -35,7 +35,7 @@ public class MultiblockSaverItem extends Item {
     @Override
     public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, @NotNull InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResultHolder.pass(stack);
         }
 
@@ -45,14 +45,14 @@ public class MultiblockSaverItem extends Item {
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS1));
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS2));
             }
-            player.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.cleared"), true);
+            player.sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.cleared"));
             return InteractionResultHolder.success(stack);
         }
 
         // check if both corners exist
         var tag = ItemNbtUtil.getTag(stack);
         if (tag == null || !tag.contains(NBT_POS1) || !tag.contains(NBT_POS2)) {
-            player.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.mark_corners"), true);
+            player.sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.mark_corners"));
             return InteractionResultHolder.pass(stack);
         }
 
@@ -60,8 +60,8 @@ public class MultiblockSaverItem extends Item {
             return InteractionResultHolder.fail(stack);
         }
 
-        long p1l = ItemNbtUtil.getTagOrEmpty(stack).getLong(NBT_POS1);
-        long p2l = ItemNbtUtil.getTagOrEmpty(stack).getLong(NBT_POS2);
+        long p1l = ItemNbtUtil.getTagOrEmpty(stack).getLongOr(NBT_POS1, 0L);
+        long p2l = ItemNbtUtil.getTagOrEmpty(stack).getLongOr(NBT_POS2, 0L);
         BlockPos p1 = BlockPos.of(p1l);
         BlockPos p2 = BlockPos.of(p2l);
 
@@ -71,16 +71,16 @@ public class MultiblockSaverItem extends Item {
                 // clear positions
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS1));
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS2));
-                serverPlayer.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.saved", result.baseName).withStyle(net.minecraft.ChatFormatting.GREEN), false);
-                serverPlayer.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.files", result.jsonPath, result.jsPath), false);
+                serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.saved", result.baseName).withStyle(net.minecraft.ChatFormatting.GREEN));
+                serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.files", result.jsonPath, result.jsPath));
                 return InteractionResultHolder.success(stack);
             } else {
-                serverPlayer.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.failed", result.error).withStyle(net.minecraft.ChatFormatting.RED), false);
+                serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.failed", result.error).withStyle(net.minecraft.ChatFormatting.RED));
                 return InteractionResultHolder.fail(stack);
             }
         } catch (Exception e) {
             Ref.LOG.error("Error during multiblock save", e);
-            serverPlayer.displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.error", e.getMessage()).withStyle(net.minecraft.ChatFormatting.RED), false);
+            serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.error", e.getMessage()).withStyle(net.minecraft.ChatFormatting.RED));
             return InteractionResultHolder.fail(stack);
         }
     }
@@ -88,7 +88,7 @@ public class MultiblockSaverItem extends Item {
     @Override
     public @NotNull InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
-        if (level.isClientSide) return InteractionResult.PASS;
+        if (level.isClientSide()) return InteractionResult.PASS;
 
         if (!(context.getPlayer() instanceof ServerPlayer)) return InteractionResult.FAIL;
 
@@ -101,17 +101,17 @@ public class MultiblockSaverItem extends Item {
         if (context.getPlayer().isShiftKeyDown()) {
             tag.putLong(NBT_POS1, pos.asLong());
             ItemNbtUtil.setTag(stack, tag);
-            context.getPlayer().displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.corner1_set", pos.getX(), pos.getY(), pos.getZ()), true);
+            context.getPlayer().sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.corner1_set", pos.getX(), pos.getY(), pos.getZ()));
             return InteractionResult.SUCCESS;
         }
 
         // Normal click behavior: if no Corner1 set, set it; otherwise set Corner2
         if (!tag.contains(NBT_POS1)) {
             tag.putLong(NBT_POS1, pos.asLong());
-            context.getPlayer().displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.corner1_set", pos.getX(), pos.getY(), pos.getZ()), true);
+            context.getPlayer().sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.corner1_set", pos.getX(), pos.getY(), pos.getZ()));
         } else {
             tag.putLong(NBT_POS2, pos.asLong());
-            context.getPlayer().displayClientMessage(Component.translatable("item.mm.multiblock_saver.message.corner2_set", pos.getX(), pos.getY(), pos.getZ()), true);
+            context.getPlayer().sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.corner2_set", pos.getX(), pos.getY(), pos.getZ()));
         }
         ItemNbtUtil.setTag(stack, tag);
         return InteractionResult.SUCCESS;
@@ -122,12 +122,12 @@ public class MultiblockSaverItem extends Item {
         var tag = ItemNbtUtil.getTag(pStack);
         if (tag != null) {
             if (tag.contains(NBT_POS1)) {
-                long l = tag.getLong(NBT_POS1);
+                long l = tag.getLongOr(NBT_POS1, 0L);
                 BlockPos pos = BlockPos.of(l);
                 pTooltipComponents.add(Component.translatable("item.mm.multiblock_saver.tooltip.corner1", pos.getX(), pos.getY(), pos.getZ()));
             }
             if (tag.contains(NBT_POS2)) {
-                long l = tag.getLong(NBT_POS2);
+                long l = tag.getLongOr(NBT_POS2, 0L);
                 BlockPos pos = BlockPos.of(l);
                 pTooltipComponents.add(Component.translatable("item.mm.multiblock_saver.tooltip.corner2", pos.getX(), pos.getY(), pos.getZ()));
             }

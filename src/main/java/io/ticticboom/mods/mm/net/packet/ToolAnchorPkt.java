@@ -27,20 +27,20 @@ public record ToolAnchorPkt(InteractionHand hand) implements CustomPacketPayload
             if (!(stack.getItem() instanceof MultiblockToolItem)) return;
             if (ToolData.anchor(stack) != null) {
                 ToolData.setAnchor(stack, null);
-                player.displayClientMessage(Component.translatable("message.mm.tool.anchor.released"), true);
+                player.sendOverlayMessage(Component.translatable("message.mm.tool.anchor.released"));
                 return;
             }
             if (!ToolTarget.hasSelection(stack)) {
-                player.displayClientMessage(Component.translatable("message.mm.tool.no_structure"), true);
+                player.sendOverlayMessage(Component.translatable("message.mm.tool.no_structure"));
                 return;
             }
             ToolTarget target = ToolTarget.trace(player, MMConfigSetup.COMMON.toolBuildRange.get());
             if (target == null) {
-                player.displayClientMessage(Component.translatable("message.mm.tool.target_missing"), true);
+                player.sendOverlayMessage(Component.translatable("message.mm.tool.target_missing"));
                 return;
             }
             ToolData.setAnchor(stack, new ToolData.Anchor(player.level().dimension().location(), target.pos(), target.face(), target.facing()));
-            player.displayClientMessage(Component.translatable("message.mm.tool.anchor.set", target.pos().toShortString()), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.anchor.set", target.pos().toShortString()));
         });
     }
 

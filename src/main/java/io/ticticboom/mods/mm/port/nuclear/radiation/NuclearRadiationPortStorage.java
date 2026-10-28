@@ -450,7 +450,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         stored.clear();
         unresolved.clear();
         displayBq.clear();
-        var list = tag.getList("Isotopes", Tag.TAG_COMPOUND);
+        var list = tag.getListOrEmpty("Isotopes");
         for (int i = 0; i < list.size(); i++) {
             var entry = list.getCompound(i);
             var id = entry.getString("Isotope");
@@ -477,7 +477,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         } finally {
             loading = false;
         }
-        priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+        priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
     }
 
     @Override

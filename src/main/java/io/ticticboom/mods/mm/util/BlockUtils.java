@@ -40,7 +40,7 @@ public class BlockUtils {
                 }
             }
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
     public static final int PLAYER_INVENTORY_TOP = 141;

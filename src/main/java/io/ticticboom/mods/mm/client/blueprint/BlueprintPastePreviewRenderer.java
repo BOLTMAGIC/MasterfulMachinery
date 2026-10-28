@@ -33,7 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class BlueprintPastePreviewRenderer {
     private static final int REFRESH_TICKS = 10;
 

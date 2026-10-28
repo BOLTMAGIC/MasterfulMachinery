@@ -20,7 +20,7 @@ public final class Ae2ToolBinding {
         }
         var network = NetworkAccess.clicked(context.getLevel(), context.getClickedPos(), context.getClickedFace(), host);
         if (network == null) {
-            player.displayClientMessage(Component.translatable("message.mm.network_linker.not_a_network").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.network_linker.not_a_network").withStyle(ChatFormatting.RED));
             return true;
         }
         IGridNode node = NetworkAccess.nodeOf(host, context.getClickedFace());
@@ -29,12 +29,12 @@ public final class Ae2ToolBinding {
                 ? context.getLevel().mayInteract(player, context.getClickedPos())
                 : NetworkAccess.mayUse(player, grid));
         if (!allowed) {
-            player.displayClientMessage(Component.translatable("message.mm.tool.me_no_access").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.me_no_access").withStyle(ChatFormatting.RED));
             return true;
         }
         ToolData.setNetwork(context.getItemInHand(), network);
-        player.displayClientMessage(Component.translatable("message.mm.tool.me_bound",
-                network.pos().toShortString(), network.dimension().location().getPath()), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.tool.me_bound",
+                network.pos().toShortString(), network.dimension().location().getPath()));
         return true;
     }
 }

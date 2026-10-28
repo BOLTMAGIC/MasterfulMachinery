@@ -49,6 +49,6 @@ public final class NetworkLinkProtection {
     }
 
     static void denied(Player player, LinkData link) {
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName()).withStyle(ChatFormatting.RED), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName()).withStyle(ChatFormatting.RED));
     }
 }

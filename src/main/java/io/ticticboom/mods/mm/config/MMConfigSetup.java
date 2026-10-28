@@ -9,7 +9,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.event.config.ModConfigEvent;
 import org.apache.commons.lang3.tuple.Pair;
 
-@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD, modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public class MMConfigSetup {
     public static final MMCommonConfig COMMON;
     private static final ModConfigSpec commonSpec;

@@ -54,7 +54,7 @@ public class EnergyPortStorage implements IPortStorage {
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
         handler.deserialize(tag.get("handler"));
         if (tag.contains("Priority")) {
-            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+            this.priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         } else {
             this.priority = 0;
         }

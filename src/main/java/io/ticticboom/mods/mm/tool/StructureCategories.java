@@ -100,21 +100,21 @@ public final class StructureCategories extends SavedData {
 
     private static StructureCategories load(CompoundTag tag, HolderLookup.Provider registries) {
         StructureCategories data = new StructureCategories();
-        ListTag names = tag.getList("Categories", Tag.TAG_STRING);
+        ListTag names = tag.getListOrEmpty("Categories");
         for (int i = 0; i < names.size() && data.categories.size() < MAX_CATEGORIES; i++) {
-            String name = names.getString(i);
+            String name = names.getStringOr(i, "");
             if (validName(name) && !data.containsName(name)) data.categories.add(name);
         }
-        ListTag entries = tag.getList("Assignments", Tag.TAG_COMPOUND);
+        ListTag entries = tag.getListOrEmpty("Assignments");
         for (int i = 0; i < entries.size() && data.assignments.size() < MAX_ASSIGNMENTS; i++) {
-            CompoundTag entry = entries.getCompound(i);
-            String key = entry.getString("Structure");
-            String category = entry.getString("Category");
+            CompoundTag entry = entries.getCompoundOrEmpty(i);
+            String key = entry.getStringOr("Structure", "");
+            String category = entry.getStringOr("Category", "");
             if (validKey(key) && data.categories.contains(category)) data.assignments.put(key, category);
         }
-        ListTag imported = tag.getList("ImportedStructures", Tag.TAG_STRING);
+        ListTag imported = tag.getListOrEmpty("ImportedStructures");
         for (int i = 0; i < imported.size() && data.importedStructures.size() < MAX_ASSIGNMENTS; i++) {
-            String key = imported.getString(i);
+            String key = imported.getStringOr(i, "");
             if (validKey(key)) data.importedStructures.add(key);
         }
         return data;

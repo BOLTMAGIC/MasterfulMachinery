@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.builder;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.TierResolver;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -68,19 +69,19 @@ public class AssemblyScreen extends Screen {
         List<StructureModel> candidates = be.getAssemblyCandidates();
         int index = Math.max(0, candidates.indexOf(structure));
         structure = candidates.get(Math.floorMod(index + step, candidates.size()));
-        PacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.SET_STRUCTURE, structure.id().toString(), 0));
+        ClientPacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.SET_STRUCTURE, structure.id().toString(), 0));
         rebuildWidgets();
     }
 
     private void cycleTier(String key, int step) {
         int next = TierPrefs.cycle(prefs.get(key), tierRows.rows().get(key).keySet(), step);
         prefs.set(key, next);
-        PacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.SET_TIER, key, next));
+        ClientPacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.SET_TIER, key, next));
     }
 
     private void start() {
         String shown = structure == null ? "" : structure.id().toString();
-        PacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.START, shown, 0));
+        ClientPacketDistributor.sendToServer(new AssemblyPkt(be.getBlockPos(), AssemblyPkt.Action.START, shown, 0));
         onClose();
     }
 

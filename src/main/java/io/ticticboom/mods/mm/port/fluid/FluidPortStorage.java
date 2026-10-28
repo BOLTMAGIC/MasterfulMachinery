@@ -82,18 +82,18 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         var compoundTag = tag.get("handler");
         handler.deserializeNBT(compoundTag);
         if (tag.contains("Priority")) {
-            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+            this.priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         } else {
             this.priority = 0;
         }
-        var lockedList = tag.getList("LockedFluids", Tag.TAG_STRING);
+        var lockedList = tag.getListOrEmpty("LockedFluids");
         var lockedFluids = new Fluid[lockedList.size()];
         for (int i = 0; i < lockedList.size(); i++) {
             var id = Identifier.tryParse(lockedList.getString(i));
             var fluid = id == null ? Fluids.EMPTY : BuiltInRegistries.FLUID.get(id);
             lockedFluids[i] = fluid == Fluids.EMPTY ? null : fluid;
         }
-        handler.loadLock(tag.getBoolean("Locked"), lockedFluids);
+        handler.loadLock(tag.getBooleanOr("Locked", false), lockedFluids);
     }
 
     @Override

@@ -17,8 +17,8 @@ final class WrenchAccess {
         if (link == null || Permissions.canAccess(player, link.owner())) {
             return true;
         }
-        player.displayClientMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName())
-                .withStyle(ChatFormatting.RED), true);
+        player.sendOverlayMessage(Component.translatable("message.mm.network_linker.not_owner", link.ownerName())
+                .withStyle(ChatFormatting.RED));
         return false;
     }
 }

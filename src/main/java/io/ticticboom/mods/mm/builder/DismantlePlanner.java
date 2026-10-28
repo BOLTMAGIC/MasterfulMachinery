@@ -51,7 +51,7 @@ public final class DismantlePlanner {
     public static @Nullable BuilderMatch matchBuilder(Level level, BlockPos clicked, ItemStack tool) {
         var id = ToolData.builderStructure(tool);
         if (id == null || !level.isLoaded(clicked)) return null;
-        BuildableStructure structure = (level.isClientSide ? BuildableStructureRegistry.CLIENT : BuildableStructureRegistry.SERVER).get(id);
+        BuildableStructure structure = (level.isClientSide() ? BuildableStructureRegistry.CLIENT : BuildableStructureRegistry.SERVER).get(id);
         if (structure == null || structure.blocks().isEmpty()) return null;
         Block clickedBlock = level.getBlockState(clicked).getBlock();
         Map<Block, Integer> frequency = new HashMap<>();

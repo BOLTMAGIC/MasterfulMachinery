@@ -73,7 +73,7 @@ public class ItemPortStorage implements IPortStorage {
             handler.deserializeStacks(compoundTag, registries);
         }
         if (tag.contains("Priority")) {
-            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+            this.priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         } else {
             this.priority = 0;
         }

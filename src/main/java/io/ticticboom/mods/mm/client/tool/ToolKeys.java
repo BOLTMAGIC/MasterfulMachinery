@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.ticticboom.mods.mm.Ref;
@@ -12,7 +13,7 @@ import io.ticticboom.mods.mm.net.packet.ToolBuildPkt;
 import io.ticticboom.mods.mm.tool.ToolTarget;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -35,7 +36,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 import java.util.Objects;
 
-@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public class ToolKeys {
     public static final KeyMapping DISMANTLE = new KeyMapping("key.mm.dismantle", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.mm");
@@ -89,7 +90,7 @@ public class ToolKeys {
     /** Forgets the aimed-at machine and clears the progress bar if it was showing. */
     private static void loseTarget(Player player) {
         if (barShown) {
-            player.displayClientMessage(Component.empty(), true);
+            player.sendOverlayMessage(Component.empty());
             barShown = false;
         }
         holdAim = null;
@@ -98,7 +99,7 @@ public class ToolKeys {
         holdTicks = 0;
     }
 
-    @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+    @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
     public static final class Input {
         private Input() {
         }
@@ -127,7 +128,7 @@ public class ToolKeys {
                 if (mc.screen == null && !heldTool(player).isEmpty()) {
                     InteractionHand hand = player.getMainHandItem().getItem() instanceof MultiblockToolItem
                             ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-                    PacketDistributor.sendToServer(new ToolAnchorPkt(hand));
+                    ClientPacketDistributor.sendToServer(new ToolAnchorPkt(hand));
                 }
             }
             if (heldTool(player).isEmpty() || mc.screen != null || !DISMANTLE.isDown()) {
@@ -156,21 +157,21 @@ public class ToolKeys {
             }
             if (holdController == null) {
                 if (barShown) {
-                    player.displayClientMessage(Component.empty(), true);
+                    player.sendOverlayMessage(Component.empty());
                     barShown = false;
                 }
                 if (!noMachineShown) {
-                    player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.no_machine"), true);
+                    player.sendOverlayMessage(Component.translatable("message.mm.tool.dismantle.no_machine"));
                     noMachineShown = true;
                 }
                 return;
             }
             noMachineShown = false;
             holdTicks++;
-            player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)));
             barShown = true;
             if (holdTicks >= HOLD_TICKS) {
-                PacketDistributor.sendToServer(new ToolDismantlePkt(holdAim));
+                ClientPacketDistributor.sendToServer(new ToolDismantlePkt(holdAim));
                 holdLatched = true;
                 barShown = false;
                 holdAim = null;
@@ -197,7 +198,7 @@ public class ToolKeys {
             event.setCanceled(true);
             event.setSwingHand(false);
             if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool.getItem())) {
-                PacketDistributor.sendToServer(new ToolBuildPkt(hand));
+                ClientPacketDistributor.sendToServer(new ToolBuildPkt(hand));
             }
         }
 
@@ -248,7 +249,7 @@ public class ToolKeys {
             scrollAccum += delta;
             while (Math.abs(scrollAccum) >= 1) {
                 int step = scrollAccum > 0 ? 1 : -1;
-                PacketDistributor.sendToServer(new ToolRotatePkt(step));
+                ClientPacketDistributor.sendToServer(new ToolRotatePkt(step));
                 scrollAccum -= step;
             }
         }

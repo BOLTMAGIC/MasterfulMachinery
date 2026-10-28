@@ -134,7 +134,7 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements IPortBloc
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY), registries);
+        storage.load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
     }
 
     @Override

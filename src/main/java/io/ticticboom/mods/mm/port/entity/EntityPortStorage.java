@@ -374,7 +374,7 @@ public class EntityPortStorage implements IPortStorage {
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
         entities.clear();
-        var list = tag.getList("Entities", Tag.TAG_COMPOUND);
+        var list = tag.getListOrEmpty("Entities");
         for (int i = 0; i < list.size(); i++) {
             var entry = PortEntity.load(list.getCompound(i));
             if (entry != null) {

@@ -127,12 +127,12 @@ public class RecipeStateModel {
         model.setProgressCarry(tag.getDouble("progressCarry"));
         if (tag.contains(ROLL_TOKENS_KEY)) {
             var rolls = tag.getCompound(ROLL_TOKENS_KEY);
-            for (String key : rolls.getAllKeys()) {
+            for (String key : rolls.keySet()) {
                 model.rollTokens.put(key, rolls.getDouble(key));
             }
         }
         var capturesTag = tag.getCompound("captures");
-        for (String name : capturesTag.getAllKeys()) {
+        for (String name : capturesTag.keySet()) {
             var list = capturesTag.getList(name, Tag.TAG_COMPOUND);
             var stacks = new ArrayList<ItemStack>();
             for (int i = 0; i < list.size(); i++) {
@@ -147,7 +147,7 @@ public class RecipeStateModel {
             model.setCostMultiplier(tag.getDouble("costMultiplier"));
         }
         var countsTag = tag.getCompound("counts");
-        for (String name : countsTag.getAllKeys()) {
+        for (String name : countsTag.keySet()) {
             model.setCount(name, countsTag.getInt(name));
         }
         return model;

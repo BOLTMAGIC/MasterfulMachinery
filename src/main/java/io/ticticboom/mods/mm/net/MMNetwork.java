@@ -32,7 +32,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
  * mod constructor, and the direction is declared up front instead of being implied by the
  * sending code. The protocol version is still negotiated, so mismatched clients are rejected.
  */
-@EventBusSubscriber(modid = Ref.ID, bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Ref.ID)
 public class MMNetwork {
 
     private static final String PROTOCOL_VERSION = "1";

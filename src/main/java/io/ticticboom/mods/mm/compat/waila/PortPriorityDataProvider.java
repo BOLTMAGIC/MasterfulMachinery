@@ -43,7 +43,7 @@ public class PortPriorityDataProvider implements IServerDataProvider<BlockAccess
     public void appendTooltip(ITooltip tooltip, BlockAccessor blockAccessor, IPluginConfig iPluginConfig) {
         CompoundTag data = blockAccessor.getServerData();
         if (data.contains(KEY)) {
-            int prio = data.getInt(KEY);
+            int prio = data.getIntOr(KEY, 0);
             tooltip.add(Component.translatable("tooltip.mm.port_priority", prio));
         }
     }

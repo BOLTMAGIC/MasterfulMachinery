@@ -41,7 +41,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
-@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ToolHologramRenderer {
     private static final int REFRESH_TICKS = 10;
 

@@ -56,7 +56,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         if (!data.contains(STATUS_KEY)) {
             return;
         }
-        String status = data.getString(STATUS_KEY);
+        String status = data.getStringOr(STATUS_KEY, "");
         tooltip.add(Component.translatable("gui.mm.controller.status." + status).withStyle(statusColor(status)));
         if (data.contains(PROGRESS_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.progress", String.format("%.0f%%", data.getFloat(PROGRESS_KEY))));
@@ -64,7 +64,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         if (data.contains(LIMIT_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.parallel", data.getInt(RUNNING_KEY), data.getInt(LIMIT_KEY)));
         }
-        String redstone = data.getString(REDSTONE_KEY);
+        String redstone = data.getStringOr(REDSTONE_KEY, "");
         if (!redstone.isEmpty() && !"ignored".equals(redstone)) {
             tooltip.add(Component.translatable("jade.mm.controller.redstone",
                     Component.translatable("gui.mm.controller.redstone." + redstone)));

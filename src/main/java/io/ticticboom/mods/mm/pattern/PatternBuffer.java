@@ -100,7 +100,7 @@ public final class PatternBuffer {
     }
 
     public static PatternBuffer load(CompoundTag tag, HolderLookup.Provider registries) {
-        return new PatternBuffer(Side.load(tag.getCompound("In"), registries), Side.load(tag.getCompound("Out"), registries));
+        return new PatternBuffer(Side.load(tag.getCompoundOrEmpty("In"), registries), Side.load(tag.getCompoundOrEmpty("Out"), registries));
     }
 
     private static final class Side {
@@ -210,11 +210,11 @@ public final class PatternBuffer {
 
         static Side load(CompoundTag tag, HolderLookup.Provider registries) {
             var side = new Side();
-            side.items.load(tag.getCompound("Items"), registries);
-            side.fluids.load(tag.getCompound("Fluids"), registries);
+            side.items.load(tag.getCompoundOrEmpty("Items"), registries);
+            side.fluids.load(tag.getCompoundOrEmpty("Fluids"), registries);
             if (tag.contains("Chemicals") && side.chemicals != null) {
                 side.needs(Kind.CHEMICAL);
-                side.chemicals.load(tag.getCompound("Chemicals"), registries);
+                side.chemicals.load(tag.getCompoundOrEmpty("Chemicals"), registries);
             }
             return side;
         }

@@ -93,12 +93,12 @@ public final class ToolDismantles {
         }
         Result result = prepare(player.level(), player, tool, target);
         if (result.prepared() == null) {
-            player.displayClientMessage(result.error(), true);
+            player.sendOverlayMessage(result.error());
             return;
         }
         Prepared prepared = result.prepared();
         if (!confirm(player, player.level().dimension(), prepared.controllerPos(), player.level().getGameTime())) {
-            player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.confirm", prepared.positions().size()), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.dismantle.confirm", prepared.positions().size()));
             return;
         }
         start(player, prepared);
@@ -110,7 +110,7 @@ public final class ToolDismantles {
         }
         Result result = prepare(player.level(), player, tool, target);
         if (result.prepared() == null) {
-            player.displayClientMessage(result.error(), true);
+            player.sendOverlayMessage(result.error());
             return;
         }
         start(player, result.prepared());
@@ -125,7 +125,7 @@ public final class ToolDismantles {
     private static boolean refuseBusy(ServerPlayer player) {
         Component busy = AssemblyJobs.busyMessage(player);
         if (busy != null) {
-            player.displayClientMessage(busy, true);
+            player.sendOverlayMessage(busy);
         }
         return busy != null;
     }

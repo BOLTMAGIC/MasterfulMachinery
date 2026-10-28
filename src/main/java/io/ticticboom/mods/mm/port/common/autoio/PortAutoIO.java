@@ -83,7 +83,7 @@ public class PortAutoIO {
 
     public void load(CompoundTag tag) {
         if (tag.contains(NBT_KEY)) {
-            sides = (byte) (tag.getByte(NBT_KEY) & ALL_SIDES);
+            sides = (byte) (tag.getByteOr(NBT_KEY, (byte) 0) & ALL_SIDES);
         }
     }
 

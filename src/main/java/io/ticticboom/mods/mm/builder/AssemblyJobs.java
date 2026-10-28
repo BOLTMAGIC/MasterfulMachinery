@@ -211,20 +211,20 @@ public final class AssemblyJobs {
                         ? player.getEyePosition().distanceToSqr(job.center().getCenter())
                         : player.distanceToSqr(job.center().getCenter())) > distanceSqr) {
                 if (player != null) {
-                    player.displayClientMessage(job.tooFar(), true);
+                    player.sendOverlayMessage(job.tooFar());
                 }
                 it.remove();
                 continue;
             }
             Component stop = job.stopReason();
             if (stop != null) {
-                player.displayClientMessage(stop, true);
+                player.sendOverlayMessage(stop);
                 it.remove();
                 continue;
             }
             int jobBudget = job instanceof Build build && build.instant() ? Integer.MAX_VALUE : budget;
             if (job.tick(player, jobBudget)) {
-                player.displayClientMessage(job.summary(), true);
+                player.sendOverlayMessage(job.summary());
                 it.remove();
             }
         }

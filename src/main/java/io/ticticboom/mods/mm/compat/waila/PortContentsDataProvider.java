@@ -58,7 +58,7 @@ public class PortContentsDataProvider implements IServerDataProvider<BlockAccess
             return;
         }
         var registries = accessor.getLevel().registryAccess();
-        var list = data.getList(KEY, Tag.TAG_STRING);
+        var list = data.getListOrEmpty(KEY);
         var fill = data.contains(FILL_KEY) ? data.getFloat(FILL_KEY) : -1;
         for (int i = 0; i < list.size(); i++) {
             var line = Component.Serializer.fromJson(list.getString(i), registries);

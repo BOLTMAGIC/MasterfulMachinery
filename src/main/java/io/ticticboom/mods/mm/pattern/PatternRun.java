@@ -49,14 +49,14 @@ public final class PatternRun {
     /** @return null if the data is broken */
     @Nullable
     public static PatternRun load(CompoundTag tag, HolderLookup.Provider registries) {
-        Identifier recipeId = Identifier.tryParse(tag.getString("Recipe"));
-        Direction face = Direction.byName(tag.getString("ReturnFace"));
+        Identifier recipeId = Identifier.tryParse(tag.getStringOr("Recipe", ""));
+        Direction face = Direction.byName(tag.getStringOr("ReturnFace", ""));
         if (recipeId == null || face == null || !tag.contains("ReturnPos")) {
             return null;
         }
-        var run = new PatternRun(recipeId, RecipeStateModel.load(tag.getCompound("State"), registries),
-                PatternBuffer.load(tag.getCompound("Buffer"), registries), BlockPos.of(tag.getLong("ReturnPos")), face);
-        run.returning = tag.getBoolean("Returning");
+        var run = new PatternRun(recipeId, RecipeStateModel.load(tag.getCompoundOrEmpty("State"), registries),
+                PatternBuffer.load(tag.getCompoundOrEmpty("Buffer"), registries), BlockPos.of(tag.getLongOr("ReturnPos", 0L)), face);
+        run.returning = tag.getBooleanOr("Returning", false);
         return run;
     }
 }

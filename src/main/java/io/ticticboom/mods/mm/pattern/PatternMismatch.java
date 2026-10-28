@@ -40,7 +40,7 @@ public record PatternMismatch(Reason reason, Identifier what, long patternAmount
 
     @Nullable
     public static PatternMismatch load(CompoundTag tag) {
-        Identifier what = Identifier.tryParse(tag.getString("What"));
+        Identifier what = Identifier.tryParse(tag.getStringOr("What", ""));
         if (what == null) {
             return null;
         }

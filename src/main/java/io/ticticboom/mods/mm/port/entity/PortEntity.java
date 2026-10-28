@@ -47,14 +47,14 @@ public record PortEntity(
     }
 
     public static PortEntity load(CompoundTag tag) {
-        var type = Identifier.tryParse(tag.getString("Type"));
+        var type = Identifier.tryParse(tag.getStringOr("Type", ""));
         if (type == null) {
             return null;
         }
         var uuid = tag.hasUUID("Uuid") ? tag.getUUID("Uuid") : null;
         var data = tag.contains("Data") ? tag.getCompound("Data") : null;
         return new PortEntity(type, uuid, data,
-                !tag.contains("HadAi") || tag.getBoolean("HadAi"),
+                !tag.contains("HadAi") || tag.getBooleanOr("HadAi", false),
                 tag.getBoolean("WasInvulnerable"),
                 tag.getBoolean("WasSilent"));
     }

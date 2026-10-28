@@ -32,7 +32,7 @@ public class PrioritySetterItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResultHolder.pass(stack);
         }
 
@@ -41,7 +41,7 @@ public class PrioritySetterItem extends Item {
             HitResult trace = player.pick(10.0D, 0.0F, false);
             if (trace == null || trace.getType() == HitResult.Type.MISS) {
                 setPriorityInItem(stack, 0);
-                player.displayClientMessage(Component.translatable("item.mm.priority_setter.message.reset"), true);
+                player.sendOverlayMessage(Component.translatable("item.mm.priority_setter.message.reset"));
                 return InteractionResultHolder.success(stack);
             }
             // if targeting a block, don't reset here; useOn will handle applying to a port
@@ -52,14 +52,14 @@ public class PrioritySetterItem extends Item {
         int next = cur + 1;
         if (next > MAX_PRIORITY) next = 0;
         setPriorityInItem(stack, next);
-        player.displayClientMessage(Component.translatable("item.mm.priority_setter.message.set", next), true);
+        player.sendOverlayMessage(Component.translatable("item.mm.priority_setter.message.set", next));
         return InteractionResultHolder.success(stack);
     }
 
     @Override
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
-        if (level.isClientSide) return InteractionResult.PASS;
+        if (level.isClientSide()) return InteractionResult.PASS;
 
         Player player = context.getPlayer();
         if (!(player instanceof ServerPlayer serverPlayer)) {
@@ -86,14 +86,14 @@ public class PrioritySetterItem extends Item {
         // unless something else in that chunk changed
         be.setChanged();
 
-        serverPlayer.displayClientMessage(Component.translatable("item.mm.priority_setter.message.apply_success", prio), true);
+        serverPlayer.sendOverlayMessage(Component.translatable("item.mm.priority_setter.message.apply_success", prio));
         return InteractionResult.SUCCESS;
     }
 
     public static int getPriorityFromItem(ItemStack stack) {
         var tag = ItemNbtUtil.getTag(stack);
         if (tag != null && tag.contains(NBT_KEY)) {
-            return Math.max(0, Math.min(MAX_PRIORITY, tag.getInt(NBT_KEY)));
+            return Math.max(0, Math.min(MAX_PRIORITY, tag.getIntOr(NBT_KEY, 0)));
         }
         return 0;
     }

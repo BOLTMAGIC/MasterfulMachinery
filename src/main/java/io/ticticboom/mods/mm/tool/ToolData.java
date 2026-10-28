@@ -32,14 +32,14 @@ public final class ToolData {
     @Nullable
     public static Anchor anchor(ItemStack stack) {
         CompoundTag root = tag(stack);
-        if (!root.contains(ANCHOR_KEY, Tag.TAG_COMPOUND)) return null;
-        CompoundTag tag = root.getCompound(ANCHOR_KEY);
-        Identifier dimension = Identifier.tryParse(tag.getString("Dimension"));
-        Direction face = Direction.byName(tag.getString("Face"));
-        Direction facing = Direction.byName(tag.getString("Facing"));
+        if (!root.contains(ANCHOR_KEY)) return null;
+        CompoundTag tag = root.getCompoundOrEmpty(ANCHOR_KEY);
+        Identifier dimension = Identifier.tryParse(tag.getStringOr("Dimension", ""));
+        Direction face = Direction.byName(tag.getStringOr("Face", ""));
+        Direction facing = Direction.byName(tag.getStringOr("Facing", ""));
         if (dimension == null || face == null || facing == null || facing.getAxis().isVertical()
-                || !tag.contains("Pos", Tag.TAG_LONG)) return null;
-        return new Anchor(dimension, BlockPos.of(tag.getLong("Pos")), face, facing);
+                || !tag.contains("Pos")) return null;
+        return new Anchor(dimension, BlockPos.of(tag.getLongOr("Pos", 0L)), face, facing);
     }
 
     public static void setAnchor(ItemStack stack, @Nullable Anchor anchor) {
@@ -70,18 +70,18 @@ public final class ToolData {
 
     public static @Nullable Identifier structure(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        if (!tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || tag.getBoolean(BUILDER_KEY)) {
+        if (!tag.contains(STRUCTURE_KEY) || tag.getBooleanOr(BUILDER_KEY, false)) {
             return null;
         }
-        return Identifier.tryParse(tag.getString(STRUCTURE_KEY));
+        return Identifier.tryParse(tag.getStringOr(STRUCTURE_KEY, ""));
     }
 
     public static @Nullable Identifier builderStructure(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        if (!tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || !tag.getBoolean(BUILDER_KEY)) {
+        if (!tag.contains(STRUCTURE_KEY) || !tag.getBooleanOr(BUILDER_KEY, false)) {
             return null;
         }
-        return Identifier.tryParse(tag.getString(STRUCTURE_KEY));
+        return Identifier.tryParse(tag.getStringOr(STRUCTURE_KEY, ""));
     }
 
     public static void setStructure(ItemStack stack, @Nullable Identifier id) {
@@ -107,7 +107,7 @@ public final class ToolData {
     }
 
     public static int extraTurns(ItemStack stack) {
-        return Math.floorMod(tag(stack).getInt(TURNS_KEY), 4);
+        return Math.floorMod(tag(stack).getIntOr(TURNS_KEY, 0), 4);
     }
 
     public static void setExtraTurns(ItemStack stack, int turns) {
@@ -116,10 +116,10 @@ public final class ToolData {
 
     public static TierPrefs tiers(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        if (!tag.contains(TIERS_KEY, Tag.TAG_COMPOUND)) {
+        if (!tag.contains(TIERS_KEY)) {
             return new TierPrefs();
         }
-        return TierPrefs.load(tag.getCompound(TIERS_KEY));
+        return TierPrefs.load(tag.getCompoundOrEmpty(TIERS_KEY));
     }
 
     public static void setTiers(ItemStack stack, TierPrefs prefs) {
@@ -129,10 +129,10 @@ public final class ToolData {
     @Nullable
     public static LinkData.NetworkPos network(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        if (!tag.contains(NETWORK_KEY, Tag.TAG_COMPOUND)) {
+        if (!tag.contains(NETWORK_KEY)) {
             return null;
         }
-        return LinkData.NetworkPos.load(tag.getCompound(NETWORK_KEY));
+        return LinkData.NetworkPos.load(tag.getCompoundOrEmpty(NETWORK_KEY));
     }
 
     public static void setNetwork(ItemStack stack, @Nullable LinkData.NetworkPos network) {
@@ -147,7 +147,7 @@ public final class ToolData {
 
     public static boolean useMe(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        return !tag.contains(USE_ME_KEY, Tag.TAG_BYTE) || tag.getBoolean(USE_ME_KEY);
+        return !tag.contains(USE_ME_KEY) || tag.getBooleanOr(USE_ME_KEY, false);
     }
 
     public static void setUseMe(ItemStack stack, boolean value) {
@@ -156,7 +156,7 @@ public final class ToolData {
 
     public static boolean autoCraft(ItemStack stack) {
         CompoundTag tag = tag(stack);
-        return !tag.contains(AUTOCRAFT_KEY, Tag.TAG_BYTE) || tag.getBoolean(AUTOCRAFT_KEY);
+        return !tag.contains(AUTOCRAFT_KEY) || tag.getBooleanOr(AUTOCRAFT_KEY, false);
     }
 
     public static void setAutoCraft(ItemStack stack, boolean value) {
@@ -164,7 +164,7 @@ public final class ToolData {
     }
 
     public static boolean instantBuild(ItemStack stack) {
-        return tag(stack).getBoolean(INSTANT_BUILD_KEY);
+        return tag(stack).getBooleanOr(INSTANT_BUILD_KEY, false);
     }
 
     public static void setInstantBuild(ItemStack stack, boolean value) {

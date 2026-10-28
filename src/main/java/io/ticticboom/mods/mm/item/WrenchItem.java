@@ -47,18 +47,18 @@ public class WrenchItem extends Item {
         }
         PortAutoIO autoIO = port.getAutoIO();
         if (autoIO == null) {
-            player.displayClientMessage(Component.translatable("message.mm.wrench.no_autoio").withStyle(ChatFormatting.RED), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.wrench.no_autoio").withStyle(ChatFormatting.RED));
             return;
         }
         if (player.isShiftKeyDown()) {
-            player.displayClientMessage(summary(autoIO, port.getMachineFront()), true);
+            player.sendOverlayMessage(summary(autoIO, port.getMachineFront()));
             return;
         }
         Direction side = context.getClickedFace();
         autoIO.toggleSide(side);
         port.setChanged();
-        player.displayClientMessage(Component.translatable(PortSides.nameKey(side, port.getMachineFront()))
-                .append(": ").append(stateName(autoIO, side)), true);
+        player.sendOverlayMessage(Component.translatable(PortSides.nameKey(side, port.getMachineFront()))
+                .append(": ").append(stateName(autoIO, side)));
     }
 
     private static Component summary(PortAutoIO autoIO, @Nullable Direction front) {

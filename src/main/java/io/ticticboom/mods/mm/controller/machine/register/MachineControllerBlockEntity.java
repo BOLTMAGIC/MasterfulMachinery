@@ -259,7 +259,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     private void loadFluidVolumes(CompoundTag tag, HolderLookup.Provider registries) {
-        fluidVolumes = tag.contains("FluidVolumes") ? FluidVolumeState.loadAll(tag.getList("FluidVolumes", Tag.TAG_COMPOUND), registries) : List.of();
+        fluidVolumes = tag.contains("FluidVolumes") ? FluidVolumeState.loadAll(tag.getListOrEmpty("FluidVolumes"), registries) : List.of();
         AABB bounds = null;
         for (FluidVolumeState volume : fluidVolumes) {
             if (volume.getBounds() != null) {
@@ -1325,45 +1325,45 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         loadFluidVolumes(tag, registries);
         activeRecipes.clear();
         patternRuns.clear();
-        for (Tag element : tag.getList("PatternRuns", Tag.TAG_COMPOUND)) {
+        for (Tag element : tag.getListOrEmpty("PatternRuns")) {
             PatternRun run = PatternRun.load((CompoundTag) element, registries);
             if (run != null) {
                 patternRuns.add(run);
             }
         }
-        CompoundTag recipesTag = tag.getCompound("activeRecipes");
-        for (String key : recipesTag.getAllKeys()) {
+        CompoundTag recipesTag = tag.getCompoundOrEmpty("activeRecipes");
+        for (String key : recipesTag.keySet()) {
             Identifier recipeId = Identifier.tryParse(key);
             if (recipeId != null) {
-                activeRecipes.put(recipeId, RecipeStateModel.load(recipesTag.getCompound(key), registries));
+                activeRecipes.put(recipeId, RecipeStateModel.load(recipesTag.getCompoundOrEmpty(key), registries));
             }
         }
-        structure = tag.contains("structureId") ? StructureManager.STRUCTURES.get(Identifier.tryParse(tag.getString("structureId"))) : null;
-        isFormed = tag.contains("isFormed") ? tag.getBoolean("isFormed") : structure != null;
-        lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? Identifier.tryParse(tag.getString("lastStartedRecipeId")) : null;
-        lastRecipeStartTime = tag.contains("lastRecipeStartTime") ? tag.getLong("lastRecipeStartTime") : Long.MIN_VALUE;
-        lastProgressTime = tag.contains("lastProgressTime") ? tag.getLong("lastProgressTime") : Long.MIN_VALUE;
-        recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
-        customName = tag.contains("CustomName") ? tag.getString("CustomName") : null;
-        soundMuted = tag.getBoolean("SoundMuted");
-        ModelDisplay display = ModelDisplay.parse(tag.getString("ModelDisplay"));
+        structure = tag.contains("structureId") ? StructureManager.STRUCTURES.get(Identifier.tryParse(tag.getStringOr("structureId", ""))) : null;
+        isFormed = tag.contains("isFormed") ? tag.getBooleanOr("isFormed", false) : structure != null;
+        lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? Identifier.tryParse(tag.getStringOr("lastStartedRecipeId", "")) : null;
+        lastRecipeStartTime = tag.contains("lastRecipeStartTime") ? tag.getLongOr("lastRecipeStartTime", 0L) : Long.MIN_VALUE;
+        lastProgressTime = tag.contains("lastProgressTime") ? tag.getLongOr("lastProgressTime", 0L) : Long.MIN_VALUE;
+        recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getStringOr("RecipeSelectionMode", "")) : null;
+        customName = tag.contains("CustomName") ? tag.getStringOr("CustomName", "") : null;
+        soundMuted = tag.getBooleanOr("SoundMuted", false);
+        ModelDisplay display = ModelDisplay.parse(tag.getStringOr("ModelDisplay", ""));
         modelDisplay = display == null ? ModelDisplay.ON : display;
-        networkLink = tag.contains("NetworkLink") ? LinkData.load(tag.getCompound("NetworkLink")) : null;
-        lastLinkExport = tag.contains("LastLinkExport") ? tag.getLong("LastLinkExport") : -1L;
-        assemblyTiers.copyFrom(TierPrefs.load(tag.getCompound("AssemblyTiers")));
-        assemblyStructureId = tag.contains("AssemblyStructure") ? Identifier.tryParse(tag.getString("AssemblyStructure")) : null;
-        selectedRecipeId = tag.contains("selectedRecipe") ? Identifier.tryParse(tag.getString("selectedRecipe")) : null;
-        recipeSelectionSequence = tag.getLong("recipeSelectionSequence");
+        networkLink = tag.contains("NetworkLink") ? LinkData.load(tag.getCompoundOrEmpty("NetworkLink")) : null;
+        lastLinkExport = tag.contains("LastLinkExport") ? tag.getLongOr("LastLinkExport", 0L) : -1L;
+        assemblyTiers.copyFrom(TierPrefs.load(tag.getCompoundOrEmpty("AssemblyTiers")));
+        assemblyStructureId = tag.contains("AssemblyStructure") ? Identifier.tryParse(tag.getStringOr("AssemblyStructure", "")) : null;
+        selectedRecipeId = tag.contains("selectedRecipe") ? Identifier.tryParse(tag.getStringOr("selectedRecipe", "")) : null;
+        recipeSelectionSequence = tag.getLongOr("recipeSelectionSequence", 0L);
         inputItemLastStartedSequence.clear();
-        CompoundTag inputHistoryTag = tag.getCompound("inputItemLastStartedSequence");
-        for (String key : inputHistoryTag.getAllKeys()) {
+        CompoundTag inputHistoryTag = tag.getCompoundOrEmpty("inputItemLastStartedSequence");
+        for (String key : inputHistoryTag.keySet()) {
             Identifier itemId = Identifier.tryParse(key);
             if (itemId != null) {
-                inputItemLastStartedSequence.put(itemId, inputHistoryTag.getLong(key));
+                inputItemLastStartedSequence.put(itemId, inputHistoryTag.getLongOr(key, 0L));
             }
         }
         updateCurrentRecipe();
-        int mode = tag.getInt("redstoneMode");
+        int mode = tag.getIntOr("redstoneMode", 0);
         var modes = RedstoneMode.values();
         redstoneMode = mode >= 0 && mode < modes.length ? modes[mode] : RedstoneMode.IGNORED;
     }

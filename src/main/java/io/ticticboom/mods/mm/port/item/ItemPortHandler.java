@@ -108,7 +108,7 @@ public class ItemPortHandler extends ItemStackHandler {
         }
         // read counts
         if (ct.contains("counts")) {
-            int[] arr = ct.getIntArray("counts");
+            int[] arr = ct.getIntArray("counts").orElse(new int[0]);
             int len = Math.min(arr.length, actualCounts.length);
             System.arraycopy(arr, 0, actualCounts, 0, len);
         } else {
