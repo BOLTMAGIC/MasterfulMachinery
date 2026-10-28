@@ -48,9 +48,9 @@ public class MekanismHeatPortStorage implements IPortStorage {
 
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        handler.setStored(tag.getDouble("Heat"));
+        handler.setStored(tag.getDoubleOr("Heat", 0));
         if (tag.contains("Priority")) {
-            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+            this.priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         } else {
             this.priority = 0;
         }

@@ -117,12 +117,12 @@ public class MekanismChemicalPortStorage implements IPortStorage, ILockablePortS
 
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        locked = tag.getBoolean("Locked");
-        priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+        locked = tag.getBooleanOr("Locked", false);
+        priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         lockedType = null;
-        chemicalTank.deserializeNBT(registries, tag.getCompound("handler"));
+        chemicalTank.deserializeNBT(registries, tag.getCompoundOrEmpty("handler"));
         if (locked && tag.contains("LockedType")) {
-            var id = Identifier.tryParse(tag.getString("LockedType"));
+            var id = Identifier.tryParse(tag.getStringOr("LockedType", ""));
             var chemical = id == null ? null : MekanismAPI.CHEMICAL_REGISTRY.get(id);
             lockedType = chemical == null || chemical.isEmptyType() ? null : chemical;
         }

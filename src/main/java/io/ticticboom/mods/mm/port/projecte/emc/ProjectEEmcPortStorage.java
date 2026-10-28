@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.projecte.emc;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.cap.ProjectECapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
@@ -167,15 +168,15 @@ public class ProjectEEmcPortStorage implements IPortStorage {
     @Override
     public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLong("stored", stored);
-        tag.put("klein", klein.serializeNBT(registries));
+        tag.put("klein", LegacyNbt.save(klein, registries));
         return tag;
     }
 
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        stored = Math.min(capacity, tag.getLong("stored"));
+        stored = Math.min(capacity, tag.getLongOr("stored", 0L));
         if (tag.contains("klein")) {
-            klein.deserializeNBT(registries, tag.getCompound("klein"));
+            LegacyNbt.load(klein, registries, tag.getCompoundOrEmpty("klein"));
         }
     }
 

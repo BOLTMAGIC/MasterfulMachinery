@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -70,5 +71,13 @@ public class MekanismChemicalPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public boolean isInput() {
         return isInput;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            NetworkLink.beforePortRemoved(level, pos);
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

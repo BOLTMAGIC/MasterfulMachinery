@@ -138,7 +138,7 @@ public class ArsSourcePortStorage implements IPortStorage {
 
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        stored = tag.getInt("stored");
+        stored = tag.getIntOr("stored", 0);
     }
 
     @Override

@@ -73,14 +73,6 @@ public class MekanismChemicalPortBlock extends Block implements EntityBlock, IPo
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
-        if (!state.is(newState.getBlock())) {
-            NetworkLink.beforePortRemoved(level, pos);
-        }
-        super.onRemove(state, level, pos, newState, moved);
-    }
-
-    @Override
     public MutableComponent getName() {
         var name = model.displayName();
         return name != null ? name.copy() : super.getName();

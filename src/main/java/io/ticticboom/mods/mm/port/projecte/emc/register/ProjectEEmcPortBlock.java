@@ -75,17 +75,6 @@ public class ProjectEEmcPortBlock extends Block implements IPortBlock, EntityBlo
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof ProjectEEmcPortBlockEntity port) {
-            var stack = port.getEmcStorage().getKlein().getStackInSlot(0);
-            if (!stack.isEmpty()) {
-                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack.copy());
-            }
-        }
-        super.onRemove(state, level, pos, newState, movedByPiston);
-    }
-
-    @Override
     public MutableComponent getName() {
         var name = model.displayName();
         return name != null ? name.copy() : super.getName();

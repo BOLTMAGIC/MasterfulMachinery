@@ -48,7 +48,7 @@ public class CreateKineticPortStorage implements IPortStorage {
 
     @Override
     public void load(CompoundTag tag, HolderLookup.Provider registries) {
-        speed = tag.getFloat("speed");
+        speed = tag.getFloatOr("speed", 0f);
     }
 
     @Override

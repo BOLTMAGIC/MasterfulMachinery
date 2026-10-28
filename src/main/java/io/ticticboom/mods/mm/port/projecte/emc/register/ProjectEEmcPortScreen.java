@@ -1,10 +1,12 @@
 package io.ticticboom.mods.mm.port.projecte.emc.register;
 
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.projecte.emc.ProjectEEmcPortStorage;
 import io.ticticboom.mods.mm.util.NumberText;
 import io.ticticboom.mods.mm.util.WidgetUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -26,25 +28,25 @@ public class ProjectEEmcPortScreen extends AbstractContainerScreen<ProjectEEmcPo
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTicks);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
         ProjectEEmcPortBlockEntity be = menu.getBlockEntity();
         if (be.getEmcStorage().hasKleinSlot()) {
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + ProjectEEmcPortStorage.KLEIN_SLOT_X, this.topPos + ProjectEEmcPortStorage.KLEIN_SLOT_Y, 0, 26, 18, 18);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, this.leftPos + ProjectEEmcPortStorage.KLEIN_SLOT_X, this.topPos + ProjectEEmcPortStorage.KLEIN_SLOT_Y, 0, 26, 18, 18, 256, 256);
         }
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        gfx.textWithWordWrap(this.font, header, 8, 8, 150, TextColors.argb(0x404040));
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
-        super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
-        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        extractTooltip(gfx, mouseX, mouseY);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80, 256, 256);
         ProjectEEmcPortBlockEntity be = menu.getBlockEntity();
         ProjectEEmcPortStorage storage = be.getEmcStorage();
         var filledValue = (double) storage.getStored() / (double) storage.getCapacity();
@@ -55,7 +57,7 @@ public class ProjectEEmcPortScreen extends AbstractContainerScreen<ProjectEEmcPo
             var tooltip = new ArrayList<Component>();
             tooltip.add(Component.translatable("gui.mm.port.projecte_emc.storage",
                     NumberText.grouped(storage.getStored()), NumberText.grouped(storage.getCapacity())));
-            gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, tooltip, mouseX, mouseY);
         }
     }
 }

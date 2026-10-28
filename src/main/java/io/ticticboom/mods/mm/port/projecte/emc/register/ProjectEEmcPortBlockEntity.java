@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.projecte.emc.register;
 
+import net.minecraft.world.Containers;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.projecte.emc.ProjectEEmcPortStorage;
@@ -94,5 +95,16 @@ public class ProjectEEmcPortBlockEntity extends AbstractPortBlockEntity {
     public void onLoad() {
         super.onLoad();
         feature.onLoad();
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            var stack = getEmcStorage().getKlein().getStackInSlot(0);
+            if (!stack.isEmpty()) {
+                Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack.copy());
+            }
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }
