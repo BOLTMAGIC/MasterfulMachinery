@@ -1,12 +1,13 @@
 package io.ticticboom.mods.mm.compat.jei;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.inputs.IJeiInputHandler;
 import mezz.jei.api.gui.inputs.IJeiUserInput;
 import mezz.jei.api.gui.widgets.IRecipeWidget;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenPosition;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -48,7 +49,7 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
     }
 
     @Override
-    public void drawWidget(GuiGraphics gfx, double mouseX, double mouseY) {
+    public void drawWidget(GuiGraphicsExtractor gfx, double mouseX, double mouseY) {
         var font = Minecraft.getInstance().font;
         int width = area.width();
         gfx.fill(0, 0, width, HEIGHT, COLOR_BACKDROP);
@@ -56,11 +57,11 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
         boolean hovered = mouseY >= 0 && mouseY < HEIGHT && mouseX >= 0 && mouseX < width;
         int leftColor = hovered && mouseX < ARROW_WIDTH ? COLOR_ARROW_HOVER : COLOR_ARROW;
         int rightColor = hovered && mouseX >= width - ARROW_WIDTH ? COLOR_ARROW_HOVER : COLOR_ARROW;
-        gfx.drawString(font, "<", 2, 2, leftColor, false);
-        gfx.drawString(font, ">", width - ARROW_WIDTH + 2, 2, rightColor, false);
+        gfx.text(font, "<", 2, 2, TextColors.argb(leftColor), false);
+        gfx.text(font, ">", width - ARROW_WIDTH + 2, 2, TextColors.argb(rightColor), false);
 
         var label = font.plainSubstrByWidth(labelFor(layer.getAsInt()).getString(), width - 2 * ARROW_WIDTH);
-        gfx.drawString(font, label, (width - font.width(label)) / 2, 2, COLOR_TEXT, false);
+        gfx.text(font, label, (width - font.width(label)) / 2, 2, TextColors.argb(COLOR_TEXT), false);
     }
 
     @Override

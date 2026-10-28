@@ -1,8 +1,10 @@
 package io.ticticboom.mods.mm.port.entity.register;
 
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.entity.EntityPortMode;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -29,21 +31,21 @@ public class EntityPortScreen extends AbstractContainerScreen<EntityPortMenu> {
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTicks);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        gfx.textWithWordWrap(this.font, header, 8, 8, 150, TextColors.argb(0x404040));
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
-        super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
-        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        extractTooltip(gfx, mouseX, mouseY);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80, 256, 256);
 
         EntityPortBlockEntity be = menu.getBlockEntity();
         var storage = be.getPortStorage();
@@ -53,7 +55,7 @@ public class EntityPortScreen extends AbstractContainerScreen<EntityPortMenu> {
         var summary = Component.translatable(model.mode() == EntityPortMode.STORED
                 ? "gui.mm.port.entity.stored"
                 : "gui.mm.port.entity.standing", entities.size(), model.capacity());
-        gfx.drawString(this.font, summary, this.leftPos + LIST_X, this.topPos + 40, 0x404040, false);
+        gfx.text(this.font, summary, this.leftPos + LIST_X, this.topPos + 40, TextColors.argb(0x404040), false);
 
         var counts = new LinkedHashMap<Component, Integer>();
         for (var entry : entities) {
@@ -65,14 +67,11 @@ public class EntityPortScreen extends AbstractContainerScreen<EntityPortMenu> {
             if (line >= MAX_LINES) {
                 break;
             }
-            gfx.drawString(this.font,
-                    Component.translatable("gui.mm.port.entity.entry", entry.getValue(), entry.getKey()),
-                    this.leftPos + LIST_X, this.topPos + LIST_Y + line * LINE_HEIGHT, 0xFFFFFF, true);
+            gfx.text(this.font, Component.translatable("gui.mm.port.entity.entry", entry.getValue(), entry.getKey()), this.leftPos + LIST_X, this.topPos + LIST_Y + line * LINE_HEIGHT, TextColors.argb(0xFFFFFF), true);
             line++;
         }
         if (line == 0) {
-            gfx.drawString(this.font, Component.translatable("gui.mm.port.entity.empty"),
-                    this.leftPos + LIST_X, this.topPos + LIST_Y, 0xFFFFFF, true);
+            gfx.text(this.font, Component.translatable("gui.mm.port.entity.empty"), this.leftPos + LIST_X, this.topPos + LIST_Y, TextColors.argb(0xFFFFFF), true);
         }
     }
 }

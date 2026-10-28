@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.client.structure;
 import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -86,11 +86,11 @@ public class GuiBlockRenderer {
         return blockEntityModelData;
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, AutoTransform mouseTransform) {
-        render(gfx, mouseX, mouseY, mouseTransform, null, 0);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, AutoTransform mouseTransform) {
+        extractRenderState(gfx, mouseX, mouseY, mouseTransform, null, 0);
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, AutoTransform mouseTransform, @Nullable BlockAndTintGetter world, int generation) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, AutoTransform mouseTransform, @Nullable BlockAndTintGetter world, int generation) {
         PoseStack pose = gfx.pose();
         pose.pushPose();
         pose.mulPose(mouseTransform.getModelTransform());

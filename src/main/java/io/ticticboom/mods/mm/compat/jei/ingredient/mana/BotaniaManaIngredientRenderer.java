@@ -1,8 +1,9 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.mana;
 
+import net.minecraft.client.renderer.RenderPipelines;
 import io.ticticboom.mods.mm.Ref;
 import mezz.jei.api.ingredients.IIngredientRenderer;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
 import org.jetbrains.annotations.NotNull;
@@ -13,8 +14,8 @@ public class BotaniaManaIngredientRenderer implements IIngredientRenderer<Botani
 
 
     @Override
-    public void render(GuiGraphics guiGraphics, @NotNull BotaniaManaStack stack) {
-        guiGraphics.blit(Ref.UiTextures.SLOT_PARTS, 0, 0, 18, 79, 16, 16);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull BotaniaManaStack stack) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 18, 79, 16, 16, 256, 256);
     }
 
     @SuppressWarnings("removal")

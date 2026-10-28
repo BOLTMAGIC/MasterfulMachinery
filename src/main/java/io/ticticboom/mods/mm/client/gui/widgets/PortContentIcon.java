@@ -1,12 +1,14 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import io.ticticboom.mods.mm.client.FluidSprites;
+import net.minecraft.client.renderer.RenderPipelines;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.port.PortContent;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.inventory.InventoryMenu;
 
@@ -17,24 +19,22 @@ public final class PortContentIcon {
     private PortContentIcon() {
     }
 
-    public static void draw(GuiGraphics gfx, PortContent content, int slotX, int slotY) {
+    public static void draw(GuiGraphicsExtractor gfx, PortContent content, int slotX, int slotY) {
         int x = slotX + 1;
         int y = slotY + 1;
         switch (content.kind()) {
-            case ITEM -> gfx.renderItem(content.item(), x, y);
-            case FLUID -> FluidRenderer.INSTANCE.render(gfx, x, y, content.fluid(), 16);
+            case ITEM -> gfx.item(content.item(), x, y);
+            case FLUID -> FluidRenderer.INSTANCE.extractRenderState(gfx, x, y, content.fluid(), 16);
             case CHEMICAL -> {
                 if (content.sprite() != null) {
-                    var sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(content.sprite());
+                    var sprite = FluidSprites.block(content.sprite());
                     int tint = content.tint();
-                    gfx.setColor((tint >> 16 & 0xFF) / 255f, (tint >> 8 & 0xFF) / 255f, (tint & 0xFF) / 255f, 1);
-                    gfx.blit(x, y, 0, 16, 16, sprite);
-                    gfx.setColor(1, 1, 1, 1);
+                    gfx.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, 16, 16, 0xFF000000 | tint);
                 } else {
                     gfx.fill(x, y, x + 16, y + 16, 0xFF000000 | content.tint());
                 }
             }
-            case ENERGY -> gfx.blit(Ref.UiTextures.SLOT_PARTS, x, y, 90, 0, 16, 16);
+            case ENERGY -> gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x, y, 90, 0, 16, 16, 256, 256);
         }
         if (content.amount() > 1 || content.kind() != PortContent.Kind.ITEM) {
             CountFormat.drawSlotCount(gfx, slotX, slotY, content.amount());

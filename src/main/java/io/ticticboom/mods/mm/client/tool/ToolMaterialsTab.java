@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
 import io.ticticboom.mods.mm.builder.PlayerMaterials;
 import io.ticticboom.mods.mm.builder.TierPrefs;
@@ -10,7 +11,7 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.item.Item;
@@ -115,10 +116,10 @@ final class ToolMaterialsTab {
     private int maxScroll() { return Math.max(0, materials.size() * rowHeight() - (listBottom() - listTop())); }
     private void clampScroll() { scroll = Math.max(0, Math.min(scroll, maxScroll())); }
 
-    void render(GuiGraphics gfx, @Nullable StructureModel selected, @Nullable BuildableStructure builder) {
+    void extractRenderState(GuiGraphicsExtractor gfx, @Nullable StructureModel selected, @Nullable BuildableStructure builder) {
         refresh(selected, builder);
-        gfx.drawString(font, Component.translatable("gui.mm.tool.materials.title"), x + 4, y + 3, TEXT, false);
-        if (!compact) gfx.drawString(font, Component.translatable("gui.mm.tool.materials.source"), x + 4, y + 15, LABEL, false);
+        gfx.text(font, Component.translatable("gui.mm.tool.materials.title"), x + 4, y + 3, TextColors.argb(TEXT), false);
+        if (!compact) gfx.text(font, Component.translatable("gui.mm.tool.materials.source"), x + 4, y + 15, TextColors.argb(LABEL), false);
         if (selected == null && builder == null) {
             TextRenderUtil.drawClipped(gfx, font, Component.translatable("gui.mm.tool.materials.no_selection"),
                     x + 4, listTop() + 5, width - 8, LABEL);
@@ -131,13 +132,13 @@ final class ToolMaterialsTab {
             Material material = materials.get(i);
             int available = owned.getOrDefault(material.stack.getItem(), 0);
             boolean enough = available >= material.needed;
-            gfx.renderItem(material.stack, x + 4, rowY + 1);
+            gfx.item(material.stack, x + 4, rowY + 1);
             String count = compact ? CountFormat.compact(available) + "/" + CountFormat.compact(material.needed)
                     : available + "/" + material.needed;
             int countX = x + width - 20 - font.width(count);
             TextRenderUtil.drawClipped(gfx, font, material.stack.getHoverName(), x + 24, rowY + 4,
                     Math.max(0, countX - x - 27), TEXT);
-            gfx.drawString(font, count, countX, rowY + 4, enough ? GREEN : MISSING, false);
+            gfx.text(font, count, countX, rowY + 4, TextColors.argb(enough ? GREEN : MISSING), false);
             if (enough) drawCheck(gfx, x + width - 15, rowY + 5);
         }
         gfx.disableScissor();
@@ -150,7 +151,7 @@ final class ToolMaterialsTab {
         }
     }
 
-    private static void drawCheck(GuiGraphics gfx, int x, int y) {
+    private static void drawCheck(GuiGraphicsExtractor gfx, int x, int y) {
         gfx.fill(x, y + 4, x + 2, y + 6, GREEN);
         gfx.fill(x + 2, y + 6, x + 4, y + 8, GREEN);
         gfx.fill(x + 4, y + 4, x + 6, y + 6, GREEN);

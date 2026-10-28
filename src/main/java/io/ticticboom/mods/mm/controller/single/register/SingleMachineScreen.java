@@ -1,5 +1,9 @@
 package io.ticticboom.mods.mm.controller.single.register;
 
+import io.ticticboom.mods.mm.client.FluidSprites;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
@@ -10,7 +14,7 @@ import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -72,7 +76,8 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTick);
         var layout = layout();
         int x = leftPos;
         int y = topPos;
@@ -82,8 +87,7 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
         NineSliceUtil.blitNineSliced(gfx, Ref.UiTextures.GUI_LARGE, x + frame, y + frame, imageWidth - 2 * frame, layout.panelBottom() - frame + 1,
                 2, 2, 2, 2, 162, 121, 6, 6, 256, 256);
         gfx.fill(x + frame + 2, y + frame + 2, x + imageWidth - frame - 2, y + layout.panelBottom() - 1, PANEL);
-        gfx.blit(Ref.UiTextures.GUI_LARGE, x + layout.inventoryX(), y + layout.inventoryY(), 6, 139,
-                SingleMachineLayout.INVENTORY_W, SingleMachineLayout.INVENTORY_H);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.GUI_LARGE, x + layout.inventoryX(), y + layout.inventoryY(), 6, 139, SingleMachineLayout.INVENTORY_W, SingleMachineLayout.INVENTORY_H, 256, 256);
 
         int left = x + SingleMachineLayout.LEFT;
         gfx.fill(left, y + SingleMachineLayout.STATUS_Y + 1, left + 5, y + SingleMachineLayout.STATUS_Y + 6, 0xFF000000 | statusColor());
@@ -92,7 +96,7 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
         for (var group : layout.groups()) {
             if (group.items()) {
                 for (int cell = 0; cell < group.cells(); cell++) {
-                    gfx.blit(Ref.UiTextures.SLOT_PARTS, x + group.cellX(cell), y + group.cellY(cell), 0, 26, 18, 18);
+                    gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + group.cellX(cell), y + group.cellY(cell), 0, 26, 18, 18, 256, 256);
                 }
                 continue;
             }
@@ -115,14 +119,14 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
         var texture = isOnButton(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         NineSliceUtil.blitNineSliced(gfx, texture, bx, bty, BUTTON, BUTTON, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
         var pose = gfx.pose();
-        pose.pushPose();
-        pose.translate(bx + 1, bty + 1, 0);
-        pose.scale(10 / 16f, 10 / 16f, 1);
-        gfx.renderItem(new ItemStack(Items.COMPARATOR), 0, 0);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(bx + 1, bty + 1);
+        pose.scale(10 / 16f, 10 / 16f);
+        gfx.item(new ItemStack(Items.COMPARATOR), 0, 0);
+        pose.popMatrix();
     }
 
-    private void drawTank(GuiGraphics gfx, int x, int y, int h, @Nullable PortContent content, double ratio) {
+    private void drawTank(GuiGraphicsExtractor gfx, int x, int y, int h, @Nullable PortContent content, double ratio) {
         int w = SingleMachineLayout.GAUGE_W;
         gfx.fill(x, y, x + w - 1, y + 1, SHADOW);
         gfx.fill(x, y, x + 1, y + h - 1, SHADOW);
@@ -142,15 +146,15 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
             if (icon != null) {
                 int size = right - left - 2;
                 var pose = gfx.pose();
-                pose.pushPose();
-                pose.translate(left + 1, top + (bottom - top - size) / 2f, 0);
-                pose.scale(size / 16f, size / 16f, 1);
-                gfx.renderItem(new ItemStack(icon), 0, 0);
-                pose.popPose();
-                pose.pushPose();
-                pose.translate(0, 0, 200);
+                pose.pushMatrix();
+                pose.translate(left + 1, top + (bottom - top - size) / 2f);
+                pose.scale(size / 16f, size / 16f);
+                gfx.item(new ItemStack(icon), 0, 0);
+                pose.popMatrix();
+                pose.pushMatrix();
+                pose.translate(0, 0);
                 gfx.fill(left, top, right, bottom, FADE);
-                pose.popPose();
+                pose.popMatrix();
             }
         }
         for (int quarter = 1; quarter < 4; quarter++) {
@@ -170,33 +174,29 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
         };
     }
 
-    private void fillCell(GuiGraphics gfx, int left, int top, int right, int bottom, @Nullable PortContent content) {
+    private void fillCell(GuiGraphicsExtractor gfx, int left, int top, int right, int bottom, @Nullable PortContent content) {
         if (content == null || content.kind() == PortContent.Kind.ENERGY || content.kind() == PortContent.Kind.ITEM) {
             gfx.fill(left, top, right, bottom, content == null ? OTHER : ENERGY);
             return;
         }
         TextureAtlasSprite sprite = null;
         int tint = 0xFFFFFFFF;
-        var atlas = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS);
         if (content.kind() == PortContent.Kind.FLUID && !content.fluid().isEmpty()) {
-            var props = IClientFluidTypeExtensions.of(content.fluid().getFluid());
-            sprite = atlas.apply(props.getStillTexture(content.fluid()));
-            tint = props.getTintColor(content.fluid());
+            sprite = FluidSprites.still(content.fluid());
+            tint = FluidSprites.tint(content.fluid());
         } else if (content.kind() == PortContent.Kind.CHEMICAL && content.sprite() != null) {
-            sprite = atlas.apply(content.sprite());
+            sprite = FluidSprites.block(content.sprite());
             tint = content.tint();
         }
         if (sprite == null) {
             gfx.fill(left, top, right, bottom, OTHER);
             return;
         }
-        gfx.setColor((tint >> 16 & 0xFF) / 255f, (tint >> 8 & 0xFF) / 255f, (tint & 0xFF) / 255f, 1);
         gfx.enableScissor(left, top, right, bottom);
         for (int ty = bottom - 16; ty > top - 16; ty -= 16) {
-            gfx.blit(left, ty, 0, 16, 16, sprite);
+            gfx.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, left, ty, 16, 16, 0xFF000000 | tint);
         }
         gfx.disableScissor();
-        gfx.setColor(1, 1, 1, 1);
     }
 
     private double progress() {
@@ -218,13 +218,12 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         var layout = layout();
         int left = SingleMachineLayout.LEFT;
         if (machine().getRecipeState() != null) {
             var percent = Component.literal((int) Math.floor(progress() * 100) + "%");
-            gfx.drawString(font, percent, layout.barX() + SingleMachineLayout.BAR_W / 2 - font.width(percent) / 2,
-                    layout.barY() + SingleMachineLayout.BAR_H + 3, TEXT, false);
+            gfx.text(font, percent, layout.barX() + SingleMachineLayout.BAR_W / 2 - font.width(percent) / 2, layout.barY() + SingleMachineLayout.BAR_H + 3, TextColors.argb(TEXT), false);
         }
         drawClipped(gfx, machine().getName(), left, SingleMachineLayout.NAME_Y, buttonX() - left - 4, 0xFFFFFF);
         drawClipped(gfx, Component.translatable("gui.mm.controller.status." + statusKey()), left + 9, SingleMachineLayout.STATUS_Y,
@@ -232,9 +231,9 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
 
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int x, int y, int maxWidth, int color) {
         var clipped = font.ellipsize(text, Math.max(0, maxWidth));
-        gfx.drawString(font, Language.getInstance().getVisualOrder(clipped), x, y, color, false);
+        gfx.text(font, Language.getInstance().getVisualOrder(clipped), x, y, TextColors.argb(color), false);
     }
 
     private boolean isOnButton(double mouseX, double mouseY) {
@@ -242,19 +241,22 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (isOnButton(mouseX, mouseY)) {
             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1));
             ClientPacketDistributor.sendToServer(new OpenMachineScreenPkt(machine().getBlockPos(), true));
             return true;
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        extractTooltip(gfx, mouseX, mouseY);
         List<Component> tooltip = null;
         if (isOnButton(mouseX, mouseY)) {
             tooltip = List.of(Component.translatable("gui.mm.single.controller"));
@@ -266,7 +268,7 @@ public class SingleMachineScreen extends AbstractContainerScreen<SingleMachineMe
             tooltip = cellTooltip(mouseX, mouseY);
         }
         if (tooltip != null) {
-            gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(font, tooltip, mouseX, mouseY);
         }
     }
 

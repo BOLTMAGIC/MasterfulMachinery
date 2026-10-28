@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.function.Supplier;
 
@@ -20,8 +20,8 @@ public class StructureRenderWidget extends AbstractWidget {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        super.render(guiGraphics, mouseX, mouseY, partialTicks);
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
         guiGraphics.fill(position.x(), position.y(), position.x() + position.w(), position.y() + position.h(), 0x77777777);
         if (model == null) {
             Ref.LOG.fatal("Structure model is null in client renderer");
@@ -31,16 +31,16 @@ public class StructureRenderWidget extends AbstractWidget {
         renderStructure(model, guiGraphics, mouseX, mouseY);
     }
 
-    private void renderStructure(StructureModel model, GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().setIdentity();
+    private void renderStructure(StructureModel model, GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().identity();
 
         var guiRenderer = model.getGuiRenderer();
         guiRenderer.setViewport(position);
         guiRenderer.init();
         guiRenderer.setupViewState(viewState.get());
-        guiRenderer.render(guiGraphics, mouseX, mouseY, position.contains(mouseX, mouseY));
+        guiRenderer.extractRenderState(guiGraphics, mouseX, mouseY, position.contains(mouseX, mouseY));
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 }

@@ -1,10 +1,14 @@
 package io.ticticboom.mods.mm.client.gui;
 
+import io.ticticboom.mods.mm.client.util.InputEvents;
+import net.minecraft.client.input.CharacterEvent;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 
 import java.util.ArrayList;
@@ -29,9 +33,9 @@ public abstract class AbstractWidget implements IWidget {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
         for (IWidget child : children) {
-            child.render(guiGraphics, mouseX, mouseY, partialTicks);
+            child.extractRenderState(guiGraphics, mouseX, mouseY, partialTicks);
         }
     }
 
@@ -55,25 +59,34 @@ public abstract class AbstractWidget implements IWidget {
     }
 
     @Override
-    public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         for (IWidget child : children) {
-            child.mouseClicked(pMouseX, pMouseY, pButton);
+            child.mouseClicked(InputEvents.mouse(pMouseX, pMouseY, pButton), false);
         }
         return false;
     }
 
     @Override
-    public boolean mouseReleased(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         for (IWidget child : children) {
-            child.mouseReleased(pMouseX, pMouseY, pButton);
+            child.mouseReleased(InputEvents.mouse(pMouseX, pMouseY, pButton));
         }
         return false;
     }
 
     @Override
-    public boolean mouseDragged(double pMouseX, double pMouseY, int pButton, double pDragX, double pDragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double pDragX, double pDragY) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         for (IWidget child : children) {
-            child.mouseDragged(pMouseX, pMouseY, pButton, pDragX, pDragY);
+            child.mouseDragged(InputEvents.mouse(pMouseX, pMouseY, pButton), pDragX, pDragY);
         }
         return false;
     }
@@ -87,25 +100,33 @@ public abstract class AbstractWidget implements IWidget {
     }
 
     @Override
-    public boolean keyPressed(int pKeyCode, int pScanCode, int pModifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int pKeyCode = event.key();
+        int pScanCode = event.scancode();
+        int pModifiers = event.modifiers();
         for (IWidget child : children) {
-            child.keyPressed(pKeyCode, pScanCode, pModifiers);
+            child.keyPressed(new KeyEvent(pKeyCode, pScanCode, pModifiers));
         }
         return false;
     }
 
     @Override
-    public boolean keyReleased(int pKeyCode, int pScanCode, int pModifiers) {
+    public boolean keyReleased(KeyEvent event) {
+        int pKeyCode = event.key();
+        int pScanCode = event.scancode();
+        int pModifiers = event.modifiers();
         for (IWidget child : children) {
-            child.keyReleased(pKeyCode, pScanCode, pModifiers);
+            child.keyReleased(new KeyEvent(pKeyCode, pScanCode, pModifiers));
         }
         return false;
     }
 
     @Override
-    public boolean charTyped(char pCodePoint, int pModifiers) {
+    public boolean charTyped(CharacterEvent event) {
+        char pCodePoint = (char) event.codepoint();
+        int pModifiers = 0;
         for (IWidget child : children) {
-            child.charTyped(pCodePoint, pModifiers);
+            child.charTyped(new CharacterEvent(pCodePoint));
         }
         return false;
     }

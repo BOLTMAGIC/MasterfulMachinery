@@ -8,7 +8,7 @@ import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -156,11 +156,11 @@ public class GuiStructureRenderer {
         viewTransform.zoom(delta);
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY) {
-        render(gfx, mouseX, mouseY, true);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        extractRenderState(gfx, mouseX, mouseY, true);
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, boolean overView) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, boolean overView) {
         if (shouldEnsureValidated) {
             StructureManager.validateAllPieces();
             shouldEnsureValidated = false;
@@ -180,7 +180,7 @@ public class GuiStructureRenderer {
                 continue;
             }
             GuiBlockRenderer next = part.part.next();
-            next.render(gfx, mouseX, mouseY, viewTransform, previewWorld, worldGeneration);
+            next.extractRenderState(gfx, mouseX, mouseY, viewTransform, previewWorld, worldGeneration);
         }
         gfx.bufferSource().endBatch();
         renderSetup.postRender();

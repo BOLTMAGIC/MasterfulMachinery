@@ -1,9 +1,10 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.util.ValueChangeProcessor;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 import java.util.function.Supplier;
 
@@ -35,8 +36,8 @@ public class TextBarWidget extends AbstractWidget {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
         String text = this.textSupplier.get();
-        guiGraphics.drawString(mc.font, text, this.textX, this.position.y(), 0x474747, false);
+        guiGraphics.text(mc.font, text, this.textX, this.position.y(), TextColors.argb(0x474747), false);
     }
 }

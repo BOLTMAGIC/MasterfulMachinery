@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.builder;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.TierResolver;
@@ -7,7 +8,7 @@ import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockE
 import io.ticticboom.mods.mm.net.packet.AssemblyPkt;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.ChatFormatting;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -86,20 +87,20 @@ public class AssemblyScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
-        super.renderBackground(gfx, mouseX, mouseY, partial);
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partial) {
+        super.extractBackground(gfx, mouseX, mouseY, partial);
         int height = 44 + tierRows.rows().size() * ROW + 24;
         gfx.fill(left, top, left + WIDTH, top + height, PANEL);
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
-        super.render(gfx, mouseX, mouseY, partial);
-        gfx.drawString(font, this.title, left + 8, top + 7, 0xFFFFFF, false);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partial) {
+        super.extractRenderState(gfx, mouseX, mouseY, partial);
+        gfx.text(font, this.title, left + 8, top + 7, TextColors.argb(0xFFFFFF), false);
 
         int y = top + 22;
         Component name = structure == null ? Component.translatable("message.mm.assemble.no_structure") : structure.displayName();
-        gfx.drawString(font, name, left + 8, y + 1, 0xE0E0E0, false);
+        gfx.text(font, name, left + 8, y + 1, TextColors.argb(0xE0E0E0), false);
         y += ROW + 4;
         boolean anyAdjusted = false;
         for (String key : tierRows.rows().keySet()) {
@@ -111,12 +112,11 @@ public class AssemblyScreen extends Screen {
             }
             boolean adjusted = tierRows.adjusted(key, preferred);
             anyAdjusted |= adjusted;
-            gfx.drawString(font, font.plainSubstrByWidth(label.getString(), WIDTH - 60) + (adjusted ? " *" : ""),
-                    left + 8, y + 1, adjusted ? 0xFFD84D : 0xE0E0E0, false);
+            gfx.text(font, font.plainSubstrByWidth(label.getString(), WIDTH - 60) + (adjusted ? " *" : ""), left + 8, y + 1, TextColors.argb(adjusted ? 0xFFD84D : 0xE0E0E0), false);
             y += ROW;
         }
         if (anyAdjusted) {
-            gfx.drawString(font, Component.translatable("gui.mm.assemble.adjusted").withStyle(ChatFormatting.GRAY), left + 8, y - 2, 0x9A9A9A, false);
+            gfx.text(font, Component.translatable("gui.mm.assemble.adjusted").withStyle(ChatFormatting.GRAY), left + 8, y - 2, TextColors.argb(0x9A9A9A), false);
         }
     }
 

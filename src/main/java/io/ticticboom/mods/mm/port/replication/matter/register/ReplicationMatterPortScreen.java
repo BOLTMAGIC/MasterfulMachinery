@@ -1,11 +1,13 @@
 package io.ticticboom.mods.mm.port.replication.matter.register;
 
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.replication.matter.MatterTypes;
 import io.ticticboom.mods.mm.port.replication.matter.ReplicationMatterPortStorage;
 import io.ticticboom.mods.mm.port.replication.matter.ReplicationMatterPortTank;
 import io.ticticboom.mods.mm.util.WidgetUtils;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.FormattedText;
@@ -35,21 +37,21 @@ public class ReplicationMatterPortScreen extends AbstractContainerScreen<Replica
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTicks);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
-        gfx.drawWordWrap(this.font, header, 8, 8, 150, 0x404040);
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        gfx.textWithWordWrap(this.font, header, 8, 8, 150, TextColors.argb(0x404040));
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
-        super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
-        gfx.blit(Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        extractTooltip(gfx, mouseX, mouseY);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, this.leftPos + 7, this.topPos + 50, 89, 78, 162, 80, 256, 256);
 
         ReplicationMatterPortBlockEntity be = menu.getBlockEntity();
         var storage = (ReplicationMatterPortStorage) be.getStorage();
@@ -90,7 +92,7 @@ public class ReplicationMatterPortScreen extends AbstractContainerScreen<Replica
 
         if (hovered != null) {
             gfx.fill(hoveredLeft, top, hoveredRight, bottom, HOVER_COLOR);
-            gfx.renderComponentTooltip(this.font, tooltip(hovered), mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, tooltip(hovered), mouseX, mouseY);
         }
     }
 

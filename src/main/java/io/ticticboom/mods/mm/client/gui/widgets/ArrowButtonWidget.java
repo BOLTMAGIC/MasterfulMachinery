@@ -1,11 +1,12 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import net.minecraft.client.input.MouseButtonEvent;
 import io.ticticboom.mods.mm.client.gui.AbstractWidget;
 import io.ticticboom.mods.mm.client.gui.GuiEventHandler;
 import io.ticticboom.mods.mm.client.gui.event.GuiClickEvent;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.client.texture.GuiTextures;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 
 public class ArrowButtonWidget extends AbstractWidget {
     private final ArrowDirection direction;
@@ -18,7 +19,7 @@ public class ArrowButtonWidget extends AbstractWidget {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTicks) {
         if (pressed) {
             GuiTextures.BUTTON_PRESSED.blit(guiGraphics, position.x(), position.y());
         } else {
@@ -38,18 +39,24 @@ public class ArrowButtonWidget extends AbstractWidget {
     }
 
     @Override
-    public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         if (mouseOver(pMouseX, pMouseY)) {
             this.clickEmitter.fireEvent(new GuiClickEvent((int)pMouseX, (int)pMouseY));
             pressed = true;
             return true;
         }
-        return super.mouseClicked(pMouseX, pMouseY, pButton);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    public boolean mouseReleased(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         pressed = false;
-        return super.mouseReleased(pMouseX, pMouseY, pButton);
+        return super.mouseReleased(event);
     }
 }

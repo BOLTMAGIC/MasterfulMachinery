@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.minecraft.client.input.MouseButtonEvent;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.client.util.NineSliceUtil;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
@@ -8,7 +10,7 @@ import io.ticticboom.mods.mm.builder.TierResolver;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -151,7 +153,7 @@ public class ToolSettingsTab {
         return rightArrowX() - 4 - valueX();
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         drawClipped(gfx, Component.translatable("gui.mm.tool.settings.title"), x + 4, y + 3, width - 8, LABEL);
         int top = rowsTop();
         int bottom = rowsBottom();
@@ -180,12 +182,12 @@ public class ToolSettingsTab {
             footerY = meBottom + 4;
         }
         for (FormattedCharSequence line : footer) {
-            gfx.drawString(font, line, x + 4, footerY, LABEL, false);
+            gfx.text(font, line, x + 4, footerY, TextColors.argb(LABEL), false);
             footerY += 9;
         }
     }
 
-    private void drawMeSection(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawMeSection(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int rowY = meSectionTop();
         drawToggleRow(gfx, Component.translatable("gui.mm.tool.settings.use_me"), useMe, rowY, mouseX, mouseY);
         rowY += ROW;
@@ -196,14 +198,14 @@ public class ToolSettingsTab {
         }
     }
 
-    private void drawToggleRow(GuiGraphics gfx, Component label, boolean value, int rowY, int mouseX, int mouseY) {
+    private void drawToggleRow(GuiGraphicsExtractor gfx, Component label, boolean value, int rowY, int mouseX, int mouseY) {
         boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         drawClipped(gfx, label, x + 4, rowY + 3, labelWidth() - 4, hovered ? TEXT : LABEL);
         Component state = Component.translatable(value ? "options.on" : "options.off");
         drawClipped(gfx, state, valueX(), rowY + 3, valueWidth(), value ? VALUE : LABEL);
     }
 
-    private void drawForgetButton(GuiGraphics gfx, int rowY, int mouseX, int mouseY) {
+    private void drawForgetButton(GuiGraphicsExtractor gfx, int rowY, int mouseX, int mouseY) {
         boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         Component label = Component.translatable("gui.mm.tool.settings.forget_network");
         drawClipped(gfx, label, x + 4, rowY + 3, width - 8, hovered ? VALUE : TEXT);
@@ -213,7 +215,7 @@ public class ToolSettingsTab {
         return mouseX >= x + 2 && mouseX < x + width - 2 && mouseY >= rowY && mouseY < rowY + ROW;
     }
 
-    private void drawScrollBar(GuiGraphics gfx, int top, int bottom) {
+    private void drawScrollBar(GuiGraphicsExtractor gfx, int top, int bottom) {
         int max = maxScroll();
         if (max <= 0) {
             return;
@@ -226,7 +228,7 @@ public class ToolSettingsTab {
         gfx.fill(x + width - 3, barY, x + width - 1, barY + barHeight, 0xFF8A8A8A);
     }
 
-    private void drawRow(GuiGraphics gfx, String key, NavigableMap<Integer, Block> tiers, int rowY, int mouseX, int mouseY) {
+    private void drawRow(GuiGraphicsExtractor gfx, String key, NavigableMap<Integer, Block> tiers, int rowY, int mouseX, int mouseY) {
         gfx.fill(x + 2, rowY + ROW - 1, x + width - 2, rowY + ROW, DIVIDER);
         int textY = rowY + 3;
         drawClipped(gfx, rowName(key, tiers), x + 4, textY, labelWidth() - 4, TEXT);
@@ -235,12 +237,12 @@ public class ToolSettingsTab {
         drawArrow(gfx, rightArrowX(), rowY + 1, ">", mouseX, mouseY);
     }
 
-    private void drawArrow(GuiGraphics gfx, int bx, int by, String arrow, int mouseX, int mouseY) {
+    private void drawArrow(GuiGraphicsExtractor gfx, int bx, int by, String arrow, int mouseX, int mouseY) {
         boolean hovered = mouseX >= bx && mouseX < bx + BUTTON && mouseY >= by && mouseY < by + BUTTON
                 && mouseY >= rowsTop() && mouseY < rowsBottom();
         var texture = hovered ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         NineSliceUtil.blitNineSliced(gfx, texture, bx, by, BUTTON, BUTTON, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-        gfx.drawString(font, arrow, bx + (BUTTON - font.width(arrow)) / 2 + 1, by + 2, 0x3A3A3A, false);
+        gfx.text(font, arrow, bx + (BUTTON - font.width(arrow)) / 2 + 1, by + 2, TextColors.argb(0x3A3A3A), false);
     }
 
     static Component rowName(String key, NavigableMap<Integer, Block> tiers) {
@@ -266,7 +268,7 @@ public class ToolSettingsTab {
         return Component.translatable("gui.mm.tool.settings.tier", preferred, name);
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
@@ -282,7 +284,10 @@ public class ToolSettingsTab {
         return keys.get(index);
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button != 0) {
             return false;
         }

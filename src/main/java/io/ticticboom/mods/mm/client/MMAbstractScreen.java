@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.client;
 
+import io.ticticboom.mods.mm.client.util.InputEvents;
+import net.minecraft.client.input.MouseButtonEvent;
 import com.google.common.collect.Queues;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.screens.Screen;
@@ -35,9 +37,12 @@ public abstract class MMAbstractScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         for(GuiEventListener guieventlistener : this.children()) {
-            if (guieventlistener.mouseClicked(pMouseX, pMouseY, pButton)) {
+            if (guieventlistener.mouseClicked(InputEvents.mouse(pMouseX, pMouseY, pButton), false)) {
                 this.setFocused(guieventlistener);
                 if (pButton == 0) {
                     this.setDragging(true);
@@ -49,10 +54,13 @@ public abstract class MMAbstractScreen extends Screen {
     }
 
     @Override
-    public boolean mouseReleased(double pMouseX, double pMouseY, int pButton) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double pMouseX = event.x();
+        double pMouseY = event.y();
+        int pButton = event.button();
         this.setDragging(false);
         for (GuiEventListener child : children()) {
-            child.mouseReleased(pMouseX, pMouseY, pButton);
+            child.mouseReleased(InputEvents.mouse(pMouseX, pMouseY, pButton));
         }
         return true;
     }

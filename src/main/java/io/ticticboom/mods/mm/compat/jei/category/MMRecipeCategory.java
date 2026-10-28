@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import java.util.ArrayList;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
@@ -27,7 +29,7 @@ import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
@@ -126,7 +128,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     }
 
     /** "Tier 5" (and "1/2") above the arrow of a flex recipe's JEI page. */
-    private static void drawFlexPageLabel(RecipeModel recipe, GuiGraphics gfx) {
+    private static void drawFlexPageLabel(RecipeModel recipe, GuiGraphicsExtractor gfx) {
         if (recipe.config() == null || !recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
             return;
         }
@@ -140,11 +142,11 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
         var font = Minecraft.getInstance().font;
         var pose = gfx.pose();
-        pose.pushPose();
-        pose.translate(82, 2, 0);
-        pose.scale(0.6f, 0.6f, 1);
-        gfx.drawString(font, label, -font.width(label) / 2, 0, 0x404040, false);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(82, 2);
+        pose.scale(0.6f, 0.6f);
+        gfx.text(font, label, -font.width(label) / 2, 0, TextColors.argb(0x404040), false);
+        pose.popMatrix();
     }
 
     public static int rowsFor(int slotCount) {
@@ -174,7 +176,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     }
 
     @Override
-    public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics gfx, double mouseX, double mouseY) {
+    public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor gfx, double mouseX, double mouseY) {
         bgProgressBar.draw(gfx, 70, 12);
         fgProgressBar.draw(gfx, 70, 12);
         drawFlexPageLabel(recipe, gfx);
@@ -182,29 +184,29 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         var fmt = String.format("%.2f", seconds);
 
         if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 70, 12, 24, 17)) {
-            gfx.renderTooltip(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.duration", fmt), (int) mouseX, (int) mouseY);
+            gfx.setTooltipForNextFrame(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.duration", fmt), (int) mouseX, (int) mouseY);
         }
 
         if (structureModel == null) {
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9, 256, 256);
             if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 75, 28, 7, 9)) {
-                gfx.renderTooltip(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.structure", recipe.structureId().toString()), (int) mouseX, (int) mouseY);
+                gfx.setTooltipForNextFrame(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.structure", recipe.structureId().toString()), (int) mouseX, (int) mouseY);
             }
         }
 
         if (!recipe.conditions().isEmpty()) {
             int cx = structureModel == null ? 86 : 77;
             var pose = gfx.pose();
-            pose.pushPose();
-            pose.translate(cx, 29, 0);
-            pose.scale(10f / 16f, 10f / 16f, 1);
-            gfx.renderItem(new ItemStack(Items.CLOCK), 0, 0);
-            pose.popPose();
+            pose.pushMatrix();
+            pose.translate(cx, 29);
+            pose.scale(10f / 16f, 10f / 16f);
+            gfx.item(new ItemStack(Items.CLOCK), 0, 0);
+            pose.popMatrix();
             if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, cx, 29, 10, 10)) {
                 var lines = new ArrayList<Component>();
                 lines.add(Component.translatable("jei.mm.condition.title").withStyle(ChatFormatting.GOLD));
                 lines.addAll(recipe.conditions().describe());
-                gfx.renderComponentTooltip(Minecraft.getInstance().font, lines, (int) mouseX, (int) mouseY);
+                gfx.setComponentTooltipForNextFrame(Minecraft.getInstance().font, lines, (int) mouseX, (int) mouseY);
             }
         }
 
@@ -223,7 +225,7 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         for (SlotGridEntry inputSlot : recipe.inputSlots()) {
             boolean scrollSide = inputSlot.x < 100 ? scrollInputs : scrollOutputs;
             if (inputSlot.used() && !scrollSide) {
-                gfx.blit(Ref.UiTextures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18);
+                gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, inputSlot.x, inputSlot.y, 0, 26, 18, 18, 256, 256);
             }
         }
     }

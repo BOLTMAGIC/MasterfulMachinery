@@ -1,10 +1,11 @@
 package io.ticticboom.mods.mm.client.util;
 
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.resources.Identifier;
 
 /**
- * 1.21 removed GuiGraphics.blitNineSlicedSized. Its replacement, blitSprite, only nine-slices
+ * 1.21 removed GuiGraphicsExtractor.blitNineSlicedSized. Its replacement, blitSprite, only nine-slices
  * textures registered as GUI sprites with an accompanying .mcmeta, and MM's panel texture lives
  * under textures/gui/parts rather than the sprite atlas. Rather than move the texture and change
  * how the panel looks, this reproduces the original nine-slice with plain stretched blits:
@@ -15,7 +16,7 @@ public final class NineSliceUtil {
     private NineSliceUtil() {
     }
 
-    public static void blitNineSliced(GuiGraphics gfx, Identifier texture,
+    public static void blitNineSliced(GuiGraphicsExtractor gfx, Identifier texture,
                                       int x, int y, int width, int height,
                                       int sliceLeft, int sliceTop, int sliceRight, int sliceBottom,
                                       int uWidth, int vHeight, int uOffset, int vOffset,
@@ -51,11 +52,11 @@ public final class NineSliceUtil {
         }
     }
 
-    private static void blit(GuiGraphics gfx, Identifier texture, int x, int y, int w, int h,
+    private static void blit(GuiGraphicsExtractor gfx, Identifier texture, int x, int y, int w, int h,
                              int u, int v, int uw, int vh, int texW, int texH) {
         if (w <= 0 || h <= 0) {
             return;
         }
-        gfx.blit(texture, x, y, w, h, (float) u, (float) v, uw, vh, texW, texH);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, texture, x, y, (float) u, (float) v, w, h, uw, vh, texW, texH);
     }
 }

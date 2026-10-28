@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.minecraft.resources.Identifier;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
@@ -9,14 +10,14 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraft.client.DeltaTracker;
-import net.minecraft.client.gui.LayeredDraw;
+import net.neoforged.neoforge.client.gui.GuiLayer;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 
@@ -26,7 +27,7 @@ import java.util.List;
 @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ToolHudOverlay {
     public static final Identifier ID = Ref.id("tool_hud");
-    public static final LayeredDraw.Layer OVERLAY = ToolHudOverlay::render;
+    public static final GuiLayer OVERLAY = ToolHudOverlay::extractRenderState;
     private static final long SHOW_MS = 5000;
     private static final int BAR_SEGMENTS = 10;
     private static final int ACTION_BAR = 72;
@@ -102,7 +103,7 @@ public final class ToolHudOverlay {
         return "▓".repeat(filled) + "░".repeat(BAR_SEGMENTS - filled);
     }
 
-    private static void render(GuiGraphics gfx, DeltaTracker deltaTracker) {
+    private static void extractRenderState(GuiGraphicsExtractor gfx, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
         var gui = mc.gui;
         int width = gfx.guiWidth();
@@ -129,21 +130,21 @@ public final class ToolHudOverlay {
         }
         float scale = Math.min(1.0F, (float) room / (contentHeight + PAD));
         int center = width / 2;
-        gfx.pose().pushPose();
-        gfx.pose().translate(center, bottom, 0);
-        gfx.pose().scale(scale, scale, 1.0F);
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(center, bottom);
+        gfx.pose().scale(scale, scale);
         int top = -contentHeight;
         gfx.fill(-contentWidth / 2 - PAD, top - PAD, (contentWidth + 1) / 2 + PAD, PAD - 2, PANEL);
         int y = top;
         for (Component line : lines) {
-            gfx.drawString(font, line, -font.width(line) / 2, y + 1, TEXT, true);
+            gfx.text(font, line, -font.width(line) / 2, y + 1, TextColors.argb(TEXT), true);
             y += lineHeight;
         }
         int x = -(icons.size() * (ICON + 2) - 2) / 2;
         for (Item item : icons) {
-            gfx.renderItem(new ItemStack(item), x, y);
+            gfx.item(new ItemStack(item), x, y);
             x += ICON + 2;
         }
-        gfx.pose().popPose();
+        gfx.pose().popMatrix();
     }
 }

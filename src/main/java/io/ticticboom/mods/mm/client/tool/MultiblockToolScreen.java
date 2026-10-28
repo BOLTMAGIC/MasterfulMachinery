@@ -1,5 +1,10 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import io.ticticboom.mods.mm.client.util.InputEvents;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.NineSliceUtil;
@@ -28,7 +33,7 @@ import io.ticticboom.mods.mm.tool.ToolSlot;
 import io.ticticboom.mods.mm.tool.StructureCategories;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
@@ -345,7 +350,8 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     @Override
-    protected void renderBg(@NotNull GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTick);
         if (tab == Tab.ADMIN && !canManageCategories()) switchTab(Tab.STRUCTURES);
         int x = this.leftPos;
         int y = this.topPos;
@@ -356,39 +362,39 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
 
         if (tab == Tab.STRUCTURES) {
             drawPanel(gfx, x + INSET, y + TOP, galleryWidth, bandBottom - TOP);
-            gallery.render(gfx, mouseX, mouseY);
+            gallery.extractRenderState(gfx, mouseX, mouseY);
             drawPanel(gfx, x + previewX, y + TOP, previewWidth, previewHeight);
             drawPreview(gfx, mouseX, mouseY);
             drawPanel(gfx, x + previewX, y + infoY, previewWidth, INFO_HEIGHT);
             drawInfo(gfx);
             if (compactMaterialsVisible()) {
                 drawPanel(gfx, x + compactMaterialsX, y + storeTop, compactMaterialsWidth, STORE_HEIGHT);
-                compactMaterials.render(gfx, selected, selectedBuilder);
+                compactMaterials.extractRenderState(gfx, selected, selectedBuilder);
             }
         } else if (tab == Tab.MATERIALS) {
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
-            materials.render(gfx, selected, selectedBuilder);
+            materials.extractRenderState(gfx, selected, selectedBuilder);
         } else if (tab == Tab.ADMIN) {
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
             drawCategoryAdmin(gfx, mouseX, mouseY);
         } else {
             drawPanel(gfx, x + INSET, y + TOP, imageWidth - 2 * INSET, bandBottom - TOP);
-            settings.render(gfx, mouseX, mouseY);
+            settings.extractRenderState(gfx, mouseX, mouseY);
         }
         drawMeStatus(gfx);
 
         for (int i = 0; i < MultiblockToolMenu.STORE_SLOTS; i++) {
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + INSET + (i % COLUMNS) * SLOT, y + storeTop + (i / COLUMNS) * SLOT, 0, 26, SLOT, SLOT);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + INSET + (i % COLUMNS) * SLOT, y + storeTop + (i / COLUMNS) * SLOT, 0, 26, SLOT, SLOT, 256, 256);
         }
         drawEnergy(gfx);
-        gfx.blit(texture, x + inventoryX, y + inventoryY, 6, 139, GRID_WIDTH, INVENTORY_HEIGHT);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, texture, x + inventoryX, y + inventoryY, 6, 139, GRID_WIDTH, INVENTORY_HEIGHT, 256, 256);
         if (menu.slots.size() > MultiblockToolMenu.STORE_SLOTS + 36) {
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + offhandX(), y + inventoryY + 58, 0, 26, SLOT, SLOT);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + offhandX(), y + inventoryY + 58, 0, 26, SLOT, SLOT, 256, 256);
         }
         if (tab == Tab.STRUCTURES && categoryPopupTarget != null) drawCategoryPopup(gfx, mouseX, mouseY);
     }
 
-    private static void drawPanel(GuiGraphics gfx, int x, int y, int width, int height) {
+    private static void drawPanel(GuiGraphicsExtractor gfx, int x, int y, int width, int height) {
         NineSliceUtil.blitNineSliced(gfx, Ref.UiTextures.GUI_LARGE, x, y, width, height, 2, 2, 2, 2, 162, 121, 6, 6, 256, 256);
         gfx.fill(x + 2, y + 2, x + width - 2, y + height - 2, PANEL);
     }
@@ -410,7 +416,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private int adminListTop() { return topPos + TOP + 46; }
     private int adminListBottom() { return topPos + bandBottom - 4; }
 
-    private void drawCategoryAdmin(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawCategoryAdmin(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int x = adminX();
         int width = adminWidth();
         var snapshot = StructureCategories.clientSnapshot();
@@ -468,7 +474,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 && mouseY >= categoryPopupY && mouseY < categoryPopupY + popupHeight();
     }
 
-    private void drawCategoryPopup(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawCategoryPopup(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         List<String> categories = adminCategories();
         int visible = Math.min(8, categories.size());
         int x = categoryPopupX;
@@ -494,7 +500,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         }
     }
 
-    private void drawAdminButton(GuiGraphics gfx, int x, int y, int width, String key, int mouseX, int mouseY) {
+    private void drawAdminButton(GuiGraphicsExtractor gfx, int x, int y, int width, String key, int mouseX, int mouseY) {
         boolean hovered = mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + 12;
         NineSliceUtil.blitNineSliced(gfx, hovered ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE,
                 x, y, width, 12, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
@@ -546,15 +552,14 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return true;
     }
 
-    private void drawTabs(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawTabs(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         for (Tab each : Tab.values()) {
             if (each == Tab.ADMIN && !canManageCategories()) continue;
             Rect2i area = tabArea(each);
             boolean active = each == tab;
             var texture = active || area.contains(mouseX, mouseY) ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
             NineSliceUtil.blitNineSliced(gfx, texture, area.getX(), area.getY(), area.getWidth(), area.getHeight(), 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-            gfx.blit(each.icon, area.getX() + area.getWidth() - TAB + 3, area.getY() + 3,
-                    0, 0, 16, 16, 16, 16);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, each.icon, area.getX() + area.getWidth() - TAB + 3, area.getY() + 3, 0, 0, 16, 16, 16, 16);
         }
     }
 
@@ -631,26 +636,26 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 && !isOnLayerBar(mouseX, mouseY);
     }
 
-    private void drawPreview(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawPreview(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         GuiPos view = viewport();
         GuiStructureRenderer renderer = renderer();
         if (renderer == null) {
             Component hint = Component.translatable("gui.mm.tool.preview.none");
             int width = this.font.width(hint);
-            gfx.drawString(this.font, hint, view.x() + (view.w() - width) / 2, view.y() + view.h() / 2 - 4, LABEL, false);
+            gfx.text(this.font, hint, view.x() + (view.w() - width) / 2, view.y() + view.h() / 2 - 4, TextColors.argb(LABEL), false);
             return;
         }
-        gfx.pose().pushPose();
-        gfx.pose().setIdentity();
+        gfx.pose().pushMatrix();
+        gfx.pose().identity();
         renderer.setViewport(view);
         renderer.init();
         renderer.setYSlice(layer >= 0, renderer.getMinBound().y() + layer);
-        renderer.render(gfx, mouseX, mouseY, isOnView(mouseX, mouseY));
-        gfx.pose().popPose();
+        renderer.extractRenderState(gfx, mouseX, mouseY, isOnView(mouseX, mouseY));
+        gfx.pose().popMatrix();
         drawLayerBar(gfx, mouseX, mouseY);
     }
 
-    private void drawLayerBar(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawLayerBar(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int count = layerCount();
         if (count < 2) {
             return;
@@ -661,11 +666,11 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         int width = view.w();
         gfx.fill(x, y, x + width, y + LAYER_HEIGHT, 0x80000000);
         boolean hovered = isOnLayerBar(mouseX, mouseY);
-        gfx.drawString(this.font, "<", x + 2, y + 2, hovered && mouseX < x + LAYER_ARROW ? 0xFFFFFF55 : 0xFFA0A0A0, false);
-        gfx.drawString(this.font, ">", x + width - LAYER_ARROW + 2, y + 2, hovered && mouseX >= x + width - LAYER_ARROW ? 0xFFFFFF55 : 0xFFA0A0A0, false);
+        gfx.text(this.font, "<", x + 2, y + 2, TextColors.argb(hovered && mouseX < x + LAYER_ARROW ? 0xFFFFFF55 : 0xFFA0A0A0), false);
+        gfx.text(this.font, ">", x + width - LAYER_ARROW + 2, y + 2, TextColors.argb(hovered && mouseX >= x + width - LAYER_ARROW ? 0xFFFFFF55 : 0xFFA0A0A0), false);
         Component label = layer < 0 ? Component.translatable("jei.mm.structure.layer.all") : Component.translatable("jei.mm.structure.layer", layer + 1, count);
         String text = this.font.plainSubstrByWidth(label.getString(), width - 2 * LAYER_ARROW);
-        gfx.drawString(this.font, text, x + (width - this.font.width(text)) / 2, y + 2, 0xFFFFFFFF, false);
+        gfx.text(this.font, text, x + (width - this.font.width(text)) / 2, y + 2, 0xFFFFFFFF, false);
     }
 
     private void stepLayer(int direction) {
@@ -674,7 +679,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         playClick();
     }
 
-    private void drawInfo(GuiGraphics gfx) {
+    private void drawInfo(GuiGraphicsExtractor gfx) {
         int x = this.leftPos + previewX + 4;
         int y = this.topPos + infoY + 3;
         int width = previewWidth - 8;
@@ -762,7 +767,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return new ToolEnergy(tool(), MMConfig.TOOL_ENERGY_CAPACITY).getEnergyStored();
     }
 
-    private void drawEnergy(GuiGraphics gfx) {
+    private void drawEnergy(GuiGraphicsExtractor gfx) {
         int x = this.leftPos + feX;
         int y = this.topPos + storeTop;
         gfx.fill(x, y, x + FE_WIDTH, y + STORE_HEIGHT, 0xFF373737);
@@ -795,7 +800,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return inventoryY - ME_GAP - ME_HEIGHT;
     }
 
-    private void drawMeStatus(GuiGraphics gfx) {
+    private void drawMeStatus(GuiGraphicsExtractor gfx) {
         if (!NetworkLink.AVAILABLE) {
             return;
         }
@@ -813,32 +818,31 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         return mouseX >= x && mouseX < x + GRID_WIDTH && mouseY >= y && mouseY < y + ME_HEIGHT;
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int x, int y, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, this.font, text, x, y, maxWidth, color);
     }
 
     @Override
-    protected void renderLabels(@NotNull GuiGraphics gfx, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         drawClipped(gfx, this.title, INSET, 6, imageWidth - 2 * INSET, TITLE);
     }
 
     @Override
-    protected void renderSlot(@NotNull GuiGraphics gfx, @NotNull Slot slot) {
+    protected void extractSlot(GuiGraphicsExtractor gfx, Slot slot, int mouseX, int mouseY) {
         ItemStack stack = slot.getItem();
         if (!(slot instanceof ToolSlot) || stack.getCount() < 100) {
-            super.renderSlot(gfx, slot);
+            super.extractSlot(gfx, slot, mouseX, mouseY);
             return;
         }
-        gfx.renderItem(stack, slot.x, slot.y, slot.x + slot.y * this.imageWidth);
-        gfx.renderItemDecorations(this.font, stack, slot.x, slot.y, "");
+        gfx.item(stack, slot.x, slot.y, slot.x + slot.y * this.imageWidth);
+        gfx.itemDecorations(this.font, stack, slot.x, slot.y, "");
         CountFormat.drawSlotCount(gfx, slot.x - 1, slot.y - 1, stack.getCount());
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx, mouseX, mouseY, partialTick);
-        super.render(gfx, mouseX, mouseY, partialTick);
-        renderTooltip(gfx, mouseX, mouseY);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+        extractTooltip(gfx, mouseX, mouseY);
         if (this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
             return;
         }
@@ -880,12 +884,15 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             }
         }
         if (tooltip != null) {
-            gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, tooltip, mouseX, mouseY);
         }
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (categoryPopupTarget != null) {
             if (button == 0 && isOnCategoryPopup(mouseX, mouseY)
                     && mouseY >= categoryPopupY + 3 && mouseY < categoryPopupY + popupHeight() - 3) {
@@ -909,11 +916,11 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             return true;
         }
         if (tab == Tab.SETTINGS) {
-            if (settings.mouseClicked(mouseX, mouseY, button)) {
+            if (settings.mouseClicked(InputEvents.mouse(mouseX, mouseY, button), false)) {
                 return true;
             }
         } else if (tab == Tab.ADMIN) {
-            if (categoryNameBox.isMouseOver(mouseX, mouseY)) return super.mouseClicked(mouseX, mouseY, button);
+            if (categoryNameBox.isMouseOver(mouseX, mouseY)) return super.mouseClicked(event, doubleClick);
             unfocusCategoryName();
             if (adminMouseClicked(mouseX, mouseY, button)) return true;
         } else if (tab == Tab.STRUCTURES) {
@@ -928,16 +935,16 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
             }
             lastClickX = (int) mouseX;
             lastClickY = (int) mouseY;
-            if (gallery.mouseClicked(mouseX, mouseY, button)) {
+            if (gallery.mouseClicked(InputEvents.mouse(mouseX, mouseY, button), false)) {
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     @Override
-    protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop, int mouseButton) {
-        return super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop, mouseButton) && tabAt(mouseX, mouseY) == null;
+    protected boolean hasClickedOutside(double mouseX, double mouseY, int guiLeft, int guiTop) {
+        return super.hasClickedOutside(mouseX, mouseY, guiLeft, guiTop) && tabAt(mouseX, mouseY) == null;
     }
 
     @Override
@@ -977,25 +984,34 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     @Override
-    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+    public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (tab == Tab.STRUCTURES && gallery.mouseDragged(mouseX, mouseY, button)) return true;
-        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+        return super.mouseDragged(event, dragX, dragY);
     }
 
     @Override
-    public boolean mouseReleased(double mouseX, double mouseY, int button) {
+    public boolean mouseReleased(MouseButtonEvent event) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (gallery.mouseReleased(button)) return true;
-        return super.mouseReleased(mouseX, mouseY, button);
+        return super.mouseReleased(event);
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
+        int scanCode = event.scancode();
+        int modifiers = event.modifiers();
         if (categoryNameBox.visible && categoryNameBox.isFocused()) {
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 unfocusCategoryName();
                 return true;
             }
-            categoryNameBox.keyPressed(keyCode, scanCode, modifiers);
+            categoryNameBox.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
             return true;
         }
         if (search.visible && search.isFocused()) {
@@ -1003,9 +1019,9 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
                 unfocusSearch();
                 return true;
             }
-            search.keyPressed(keyCode, scanCode, modifiers);
+            search.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 }

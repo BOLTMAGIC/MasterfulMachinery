@@ -1,9 +1,11 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.matter;
 
+import io.ticticboom.mods.mm.client.FluidSprites;
+import net.minecraft.client.renderer.RenderPipelines;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
@@ -21,20 +23,16 @@ public class MatterIngredientRenderer implements IIngredientRenderer<MatterIngre
     private static final Map<Identifier, Optional<Identifier>> ICONS = new ConcurrentHashMap<>();
 
     @Override
-    public void render(GuiGraphics gfx, @NotNull MatterIngredient ingredient) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull MatterIngredient ingredient) {
         int color = ingredient.color();
         gfx.fill(0, 0, 16, 16, 0xFF1B1B1B);
-        RenderSystem.enableBlend();
-        RenderSystem.setShaderColor(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
+        int tint = 0xFF000000 | color;
         var icon = icon(ingredient.matter());
         if (icon.isPresent()) {
-            gfx.blit(icon.get(), 0, 0, 0, 0, 16, 16, 16, 16);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, icon.get(), 0, 0, 0, 0, 16, 16, 16, 16, tint);
         } else {
-            var sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MATTER_SPRITE);
-            gfx.blit(1, 1, 0, 14, 14, sprite);
+            gfx.blitSprite(RenderPipelines.GUI_TEXTURED, FluidSprites.block(MATTER_SPRITE), 1, 1, 14, 14, tint);
         }
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.disableBlend();
     }
 
     private static Optional<Identifier> icon(Identifier matter) {

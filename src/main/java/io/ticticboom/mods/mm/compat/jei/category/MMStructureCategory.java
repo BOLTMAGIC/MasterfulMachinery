@@ -27,7 +27,7 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
@@ -183,7 +183,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics guiGraphics, double mouseX, double mouseY) {
+    public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         background.draw(guiGraphics, 0, 0);
 
         renderStructure(recipe, guiGraphics, mouseX, mouseY);
@@ -215,20 +215,20 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             int lineHeight = Minecraft.getInstance().font.lineHeight;
             int subY = nameY + lineHeight;
             float scale = 0.65f; // smaller text for the max-parallel line
-            guiGraphics.pose().pushPose();
+            guiGraphics.pose().pushMatrix();
             // translate to desired position then scale down
-            guiGraphics.pose().translate(5f, (float) subY, 0f);
-            guiGraphics.pose().scale(scale, scale, 1f);
+            guiGraphics.pose().translate(5f, (float) subY);
+            guiGraphics.pose().scale(scale, scale);
             int wrapWidth = (int) ((RENDER_SIZE.x - 5) / scale);
             TextRenderUtil.renderWordWrapLimit(guiGraphics, line, 0, 0, wrapWidth, 1, 0xFFFFFFFF);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         } else {
             TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.displayName(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
         }
         drawMissingPorts(recipe, guiGraphics);
     }
 
-    private void drawMissingPorts(StructureModel recipe, GuiGraphics guiGraphics) {
+    private void drawMissingPorts(StructureModel recipe, GuiGraphicsExtractor guiGraphics) {
         var missing = StructureProblems.missingPorts(recipe.id());
         if (missing.isEmpty()) {
             return;
@@ -239,27 +239,27 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 : 5 + lineHeight;
         String warn = Component.translatable("jei.mm.structure.missing_port", missing.get(0).toString()).getString();
         float scale = 0.65f;
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(5f, (float) warnY, 0f);
-        guiGraphics.pose().scale(scale, scale, 1f);
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(5f, (float) warnY);
+        guiGraphics.pose().scale(scale, scale);
         TextRenderUtil.renderWordWrapLimit(guiGraphics, warn, 0, 0, (int) ((RENDER_SIZE.x - 5) / scale), 2, 0xFFFF5555);
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    private void renderStructure(StructureModel recipe, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+    private void renderStructure(StructureModel recipe, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         var pos = getGuiPosition(guiGraphics.pose());
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().setIdentity();
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().identity();
 
         var renderer = recipe.getGuiRenderer();
         int layer = selectedLayers.getOrDefault(recipe.id(), -1);
         renderer.setYSlice(layer >= 0, renderer.getMinBound().y() + layer);
         renderer.setViewport(GuiPos.of(pos.x + 1, pos.y + 1, RENDER_SIZE.x, RENDER_SIZE.y));
         renderer.setHoverBounds(null);
-        renderer.render(guiGraphics, (int) mouseX, (int) mouseY, isOverView(mouseX, mouseY));
+        renderer.extractRenderState(guiGraphics, (int) mouseX, (int) mouseY, isOverView(mouseX, mouseY));
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
     private static boolean isOverView(double mouseX, double mouseY) {

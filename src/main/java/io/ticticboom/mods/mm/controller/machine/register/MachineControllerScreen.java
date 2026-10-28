@@ -1,5 +1,10 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.client.util.InputEvents;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.controller.single.register.SingleMachineBlockEntity;
 import io.ticticboom.mods.mm.net.packet.OpenMachineScreenPkt;
@@ -31,7 +36,7 @@ import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.util.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -208,7 +213,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
     }
 
-    private void drawBackground(GuiGraphics gfx) {
+    private void drawBackground(GuiGraphicsExtractor gfx) {
         var texture = Ref.UiTextures.GUI_LARGE;
         int x = this.leftPos;
         int y = this.topPos;
@@ -216,7 +221,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(x + FRAME, y + FRAME, x + imageWidth - FRAME, y + imageHeight - FRAME_BOTTOM, GREY);
         NineSliceUtil.blitNineSliced(gfx, texture, x + FRAME, y + FRAME, imageWidth - 2 * FRAME, panelBottom - FRAME + 1, 2, 2, 2, 2, 162, 121, 6, 6, 256, 256);
         gfx.fill(x + FRAME + 2, y + FRAME + 2, x + imageWidth - FRAME - 2, y + panelBottom - 1, PANEL);
-        gfx.blit(texture, x + inventoryX, y + inventoryY, 6, 139, INVENTORY_WIDTH, INVENTORY_HEIGHT);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, texture, x + inventoryX, y + inventoryY, 6, 139, INVENTORY_WIDTH, INVENTORY_HEIGHT, 256, 256);
     }
 
     private List<ControllerPortList.Entry> slotEntries() {
@@ -236,7 +241,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return MMConfigSetup.CLIENT.bigControllerScreen.get();
     }
 
-    private void drawButtonFrame(GuiGraphics gfx, int bx, int by, int w, int h, boolean hovered) {
+    private void drawButtonFrame(GuiGraphicsExtractor gfx, int bx, int by, int w, int h, boolean hovered) {
         var texture = hovered ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
         NineSliceUtil.blitNineSliced(gfx, texture, bx, by, w, h, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
     }
@@ -245,7 +250,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + sizeBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
     }
 
-    private void drawSizeButton(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawSizeButton(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int bx = this.leftPos + sizeBtnX;
         int by = this.topPos + PAGE_BTN_Y;
         drawButtonFrame(gfx, bx, by, PAGE_BTN, PAGE_BTN, isOnSizeButton(mouseX, mouseY));
@@ -264,7 +269,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + assembleBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
     }
 
-    private void drawAssembleButton(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawAssembleButton(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int bx = this.leftPos + assembleBtnX;
         int by = this.topPos + PAGE_BTN_Y;
         drawButtonFrame(gfx, bx, by, PAGE_BTN, PAGE_BTN, isOnAssembleButton(mouseX, mouseY));
@@ -275,14 +280,14 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         MMConfigSetup.CLIENT.bigControllerScreen.set(!bigScreen());
         MMConfigSetup.CLIENT.bigControllerScreen.save();
         if (nameBox != null) finishRename(true);
-        init(this.minecraft, this.width, this.height);
+        init(this.width, this.height);
     }
 
     private boolean isOnPageButton(double mouseX, double mouseY) {
         return !wide && WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, this.leftPos + pageBtnX, this.topPos + PAGE_BTN_Y, PAGE_BTN, PAGE_BTN);
     }
 
-    private void drawPageButton(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawPageButton(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         if (wide) return;
         int bx = this.leftPos + pageBtnX;
         int by = this.topPos + PAGE_BTN_Y;
@@ -299,13 +304,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return !wide && page != 0;
     }
 
-    private static void drawSmallItem(GuiGraphics gfx, ItemStack stack, int x, int y, int size) {
+    private static void drawSmallItem(GuiGraphicsExtractor gfx, ItemStack stack, int x, int y, int size) {
         var pose = gfx.pose();
-        pose.pushPose();
-        pose.translate(x, y, 0);
-        pose.scale(size / 16f, size / 16f, 1);
-        gfx.renderItem(stack, 0, 0);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(x, y);
+        pose.scale(size / 16f, size / 16f);
+        gfx.item(stack, 0, 0);
+        pose.popMatrix();
     }
 
     private record Shown(int x, int y, PortContent content, boolean input, double chance) {
@@ -424,17 +429,17 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return new Preview(slots, top, height, arrowX, y + (lines * SLOT_STEP - 1 - 17) / 2);
     }
 
-    private void drawPreview(GuiGraphics gfx) {
+    private void drawPreview(GuiGraphicsExtractor gfx) {
         var preview = preview();
         if (preview.slots().isEmpty()) return;
         int x = this.leftPos;
         int y = this.topPos;
         gfx.fill(x + LEFT, y + preview.top(), x + infoRight, y + preview.top() + preview.height(), GREY);
         for (Shown s : preview.slots()) {
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18, 256, 256);
             PortContentIcon.draw(gfx, s.content(), x + s.x(), y + s.y());
         }
-        gfx.blit(Ref.UiTextures.SLOT_PARTS, x + preview.arrowX(), y + preview.arrowY(), 26, 0, 24, 17);
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + preview.arrowX(), y + preview.arrowY(), 26, 0, 24, 17, 256, 256);
     }
 
     private static int pages(int count, int perPage) {
@@ -452,7 +457,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
     }
 
-    private void drawPageTrack(GuiGraphics gfx, int x, int width, int pages) {
+    private void drawPageTrack(GuiGraphicsExtractor gfx, int x, int width, int pages) {
         if (pages <= 1) return;
         int y = this.topPos + RECIPE_Y + 20;
         gfx.fill(x, y, x + width, y + 1, 0xFF333333);
@@ -482,14 +487,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    protected void renderBg(GuiGraphics gfx, float partialTick, int mouseX, int mouseY) {
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTick);
         drawBackground(gfx);
         drawPageButton(gfx, mouseX, mouseY);
         drawSizeButton(gfx, mouseX, mouseY);
         drawAssembleButton(gfx, mouseX, mouseY);
         if (onPortsPage()) {
             portList.showInputs(page == 1);
-            portList.render(gfx, this.font, be.getLevel());
+            portList.extractRenderState(gfx, this.font, be.getLevel());
             return;
         }
         int x = this.leftPos;
@@ -501,25 +507,25 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
 
         if (showsDiagnosis()) {
             var first = menu.getDiagnosis().missing().get(0);
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + LEFT, y + RECIPE_Y, 0, 26, 18, 18);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + LEFT, y + RECIPE_Y, 0, 26, 18, 18, 256, 256);
             if (!first.icon().isEmpty()) {
-                gfx.renderItem(first.icon(), x + LEFT + 1, y + RECIPE_Y + 1);
+                gfx.item(first.icon(), x + LEFT + 1, y + RECIPE_Y + 1);
             }
         }
 
         var row = recipeRow();
         if (!row.slots().isEmpty()) {
             for (Shown s : row.slots()) {
-                gfx.blit(Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18);
+                gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, x + s.x(), y + s.y(), 0, 26, 18, 18, 256, 256);
                 PortContentIcon.draw(gfx, s.content(), x + s.x(), y + s.y());
             }
             drawPageTrack(gfx, x + LEFT, maxInputs * SLOT_STEP - 1, row.inputPages());
             drawPageTrack(gfx, x + row.outputX(), row.outputWidth(), row.outputPages());
             int ax = x + row.arrowX();
             int ay = y + RECIPE_Y;
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 0, 24, 17);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 0, 24, 17, 256, 256);
             int filled = (int) Math.round(24 * progress());
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 17, filled, 17);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, ax, ay, 26, 17, filled, 17, 256, 256);
         }
 
         int by = y + rowY(Row.REDSTONE) - 2;
@@ -555,8 +561,8 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             drawProgressBar(gfx);
             int lineX = x + infoRight + COLUMN_GAP / 2;
             gfx.fill(lineX, y + ROWS_Y - 3, lineX + 1, y + panelBottom - 3, DIVIDER);
-            portList.render(gfx, this.font, be.getLevel());
-            outputList.render(gfx, this.font, be.getLevel());
+            portList.extractRenderState(gfx, this.font, be.getLevel());
+            outputList.extractRenderState(gfx, this.font, be.getLevel());
         }
     }
 
@@ -570,7 +576,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return rowY(shown.get(shown.size() - 1)) + ROW_STEP + 8;
     }
 
-    private void drawProgressBar(GuiGraphics gfx) {
+    private void drawProgressBar(GuiGraphicsExtractor gfx) {
         if (shownRecipe() == null) return;
         int bx = this.leftPos + LEFT;
         int by = this.topPos + progressY() + 11;
@@ -580,7 +586,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         gfx.fill(bx + 1, by + 1, bx + 1 + (int) Math.round((bw - 2) * progress()), by + 5, 0xFF000000 | Status.RUNNING.color);
     }
 
-    private void drawProgressText(GuiGraphics gfx) {
+    private void drawProgressText(GuiGraphicsExtractor gfx) {
         RecipeModel recipe = shownRecipe();
         if (recipe == null) return;
         int y = progressY();
@@ -591,7 +597,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    protected void renderLabels(GuiGraphics gfx, int mouseX, int mouseY) {
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         if (nameBox == null) {
             drawClipped(gfx, be.getName(), LEFT, NAME_Y, nameWidth(), 0xFFFFFF);
         }
@@ -615,7 +621,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             drawClipped(gfx, first.required(), LEFT + 21, RECIPE_Y, right - LEFT - 21, TEXT);
             drawClipped(gfx, offsetText(first.pos()), LEFT + 21, RECIPE_Y + 10, right - LEFT - 21, LABEL);
         } else if (recipe.slots().isEmpty()) {
-            gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
+            gfx.text(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, TextColors.argb(LABEL), false);
         } else {
             int percent = (int) Math.floor(progress() * 100);
             drawClipped(gfx, Component.literal(percent + "%"), recipe.percentX(), RECIPE_Y + 5, right - recipe.percentX(), TEXT);
@@ -632,13 +638,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             boolean hasTier = tier.find();
             String baseName = hasTier ? (name.substring(0, tier.start()) + name.substring(tier.end())).trim() : name;
             drawClipped(gfx, Component.literal(baseName), VALUE_X, rowY(Row.STRUCTURE), valueRight - VALUE_X, TEXT);
-            gfx.drawString(this.font, hasTier ? tier.group(1) : "-", VALUE_X, rowY(Row.TIER), hasTier ? TEXT : LABEL, false);
+            gfx.text(this.font, hasTier ? tier.group(1) : "-", VALUE_X, rowY(Row.TIER), TextColors.argb(hasTier ? TEXT : LABEL), false);
             drawClipped(gfx, Component.translatable("gui.mm.controller.parallel.value", be.getActiveRecipeCount(), be.getDisplayedParallelLimit()),
                     VALUE_X, rowY(Row.PARALLEL), valueRight - VALUE_X, TEXT);
         } else {
             drawClipped(gfx, Component.translatable("gui.mm.controller.not_formed"), VALUE_X, rowY(Row.STRUCTURE), valueRight - VALUE_X, Status.NOT_FORMED.color);
-            gfx.drawString(this.font, "-", VALUE_X, rowY(Row.TIER), LABEL, false);
-            gfx.drawString(this.font, "-", VALUE_X, rowY(Row.PARALLEL), LABEL, false);
+            gfx.text(this.font, "-", VALUE_X, rowY(Row.TIER), TextColors.argb(LABEL), false);
+            gfx.text(this.font, "-", VALUE_X, rowY(Row.PARALLEL), TextColors.argb(LABEL), false);
         }
         drawClipped(gfx, Component.translatable("gui.mm.controller.redstone." + redstoneMode()),
                 VALUE_X + 12, rowY(Row.REDSTONE), valueRight - VALUE_X - 14, TEXT);
@@ -811,9 +817,9 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         return lines;
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int x, int y, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int x, int y, int maxWidth, int color) {
         var clipped = this.font.ellipsize(text, maxWidth);
-        gfx.drawString(this.font, Language.getInstance().getVisualOrder(clipped), x, y, color, false);
+        gfx.text(this.font, Language.getInstance().getVisualOrder(clipped), x, y, TextColors.argb(color), false);
     }
 
     private String redstoneMode() {
@@ -825,10 +831,10 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    public void render(@NotNull GuiGraphics gfx, int mouseX, int mouseY, float partial) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partial) {
         advanceCycle(mouseX, mouseY);
-        super.render(gfx, mouseX, mouseY, partial);
-        renderTooltip(gfx, mouseX, mouseY);
+        super.extractRenderState(gfx, mouseX, mouseY, partial);
+        extractTooltip(gfx, mouseX, mouseY);
 
         Shown hovered = hoveredSlot(mouseX, mouseY);
         if (hovered != null) {
@@ -843,16 +849,15 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             if (JEI && JeiRecipeLookup.canShow(content)) {
                 lines.add(Component.translatable("gui.mm.controller.recipe.jei").withStyle(ChatFormatting.YELLOW));
             }
-            gfx.renderComponentTooltip(this.font, lines, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, lines, mouseX, mouseY);
             return;
         }
         if (isOnAssembleButton(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(single ? "gui.mm.single.slots" : "gui.mm.controller.assemble")), mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, List.of(Component.translatable(single ? "gui.mm.single.slots" : "gui.mm.controller.assemble")), mouseX, mouseY);
             return;
         }
         if (isOnSizeButton(mouseX, mouseY)) {
-            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(bigScreen() ? "gui.mm.controller.size.small" : "gui.mm.controller.size.big")),
-                    mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, List.of(Component.translatable(bigScreen() ? "gui.mm.controller.size.small" : "gui.mm.controller.size.big")), mouseX, mouseY);
             return;
         }
         if (isOnPageButton(mouseX, mouseY)) {
@@ -861,7 +866,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 case 1 -> "gui.mm.controller.page.outputs";
                 default -> "gui.mm.controller.page.status";
             };
-            gfx.renderComponentTooltip(this.font, List.of(Component.translatable(next)), mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, List.of(Component.translatable(next)), mouseX, mouseY);
             return;
         }
         List<Component> tooltip = onPortsPage() ? portList.tooltip(this.font, be.getLevel(), mouseX, mouseY) : rowTooltip(mouseX, mouseY);
@@ -870,7 +875,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             if (tooltip == null) tooltip = outputList.tooltip(this.font, be.getLevel(), mouseX, mouseY);
         }
         if (tooltip != null) {
-            gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(this.font, tooltip, mouseX, mouseY);
         }
     }
 
@@ -991,10 +996,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (nameBox != null) {
             if (nameBox.isMouseOver(mouseX, mouseY)) {
-                return nameBox.mouseClicked(mouseX, mouseY, button);
+                return nameBox.mouseClicked(InputEvents.mouse(mouseX, mouseY, button), false);
             }
             finishRename(true);
         }
@@ -1057,7 +1065,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                 return true;
             }
         }
-        return super.mouseClicked(mouseX, mouseY, button);
+        return super.mouseClicked(event, doubleClick);
     }
 
     private boolean isOnName(double mouseX, double mouseY) {
@@ -1085,18 +1093,21 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
+        int scanCode = event.scancode();
+        int modifiers = event.modifiers();
         if (nameBox != null) {
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
                 finishRename(true);
             } else if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
                 finishRename(false);
             } else {
-                nameBox.keyPressed(keyCode, scanCode, modifiers);
+                nameBox.keyPressed(new KeyEvent(keyCode, scanCode, modifiers));
             }
             return true;
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override

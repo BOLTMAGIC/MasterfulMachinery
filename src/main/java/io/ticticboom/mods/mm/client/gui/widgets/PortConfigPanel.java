@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.texture.GuiTextures;
@@ -12,7 +14,7 @@ import io.ticticboom.mods.mm.port.common.autoio.PortSides;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.core.Direction;
@@ -62,9 +64,9 @@ public class PortConfigPanel {
         this.be = be;
     }
 
-    public static void drawTitle(GuiGraphics gfx, Font font, Component name, int guiWidth) {
+    public static void drawTitle(GuiGraphicsExtractor gfx, Font font, Component name, int guiWidth) {
         FormattedText title = font.ellipsize(name, guiWidth - TOGGLE_RIGHT - 11);
-        gfx.drawString(font, Language.getInstance().getVisualOrder(title), 8, 8, TEXT, false);
+        gfx.text(font, Language.getInstance().getVisualOrder(title), 8, 8, TextColors.argb(TEXT), false);
     }
 
     public boolean isVisible() {
@@ -83,27 +85,27 @@ public class PortConfigPanel {
         return open && mouseX >= panelX() && mouseX < panelX() + PANEL_W && mouseY >= panelY() && mouseY < panelY() + panelHeight();
     }
 
-    public void render(GuiGraphics gfx, Font font, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, Font font, int mouseX, int mouseY) {
         if (!isVisible()) return;
-        gfx.pose().pushPose();
-        gfx.pose().translate(0, 0, 300);
+        gfx.pose().pushMatrix();
+        gfx.pose().translate(0, 0);
         drawButton(gfx, font, toggleX(), toggleY(), open, Component.literal("="));
         if (!open) {
-            gfx.pose().popPose();
+            gfx.pose().popMatrix();
             return;
         }
 
         int h = panelHeight();
         NineSliceUtil.blitNineSliced(gfx, Ref.UiTextures.TILING_GUI, panelX(), panelY(), PANEL_W, h, 4, 4, 4, 4, 12, 12, 0, 0, 12, 12);
         gfx.fill(panelX() - 2, panelY() + 4, panelX() + 4, panelY() + h - 4, WINDOW_BG);
-        gfx.drawString(font, Component.translatable("gui.mm.port.panel.title"), panelX() + 6, panelY() + 6, TEXT, false);
+        gfx.text(font, Component.translatable("gui.mm.port.panel.title"), panelX() + 6, panelY() + 6, TextColors.argb(TEXT), false);
 
         PortAutoIO autoIO = be.getAutoIO();
         if (autoIO != null) {
             int cx = panelX() + CENTER_X;
             int cy = panelY() + CENTER_Y;
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, cx, cy, 0, 26, 18, 18);
-            gfx.renderItem(new ItemStack(be.getBlockState().getBlock()), cx + 1, cy + 1);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, cx, cy, 0, 26, 18, 18, 256, 256);
+            gfx.item(new ItemStack(be.getBlockState().getBlock()), cx + 1, cy + 1);
 
             int color = autoIO.isPull() ? PULL_COLOR : PUSH_COLOR;
             Direction[] sides = cubeSides();
@@ -116,37 +118,36 @@ public class PortConfigPanel {
 
             int ly = panelY() + CUBE_Y + 66;
             gfx.fill(panelX() + 6, ly + 1, panelX() + 12, ly + 7, color);
-            gfx.drawString(font, Component.translatable(autoIO.isPull() ? "gui.mm.port.side.legend.pull" : "gui.mm.port.side.legend.push"),
-                    panelX() + 15, ly, TEXT, false);
+            gfx.text(font, Component.translatable(autoIO.isPull() ? "gui.mm.port.side.legend.pull" : "gui.mm.port.side.legend.push"), panelX() + 15, ly, TextColors.argb(TEXT), false);
         }
 
         ILockablePortStorage lockable = lockable();
         if (lockable != null) {
             drawButton(gfx, font, actionX(), lockY(), lockable.isLocked(), Component.literal("L"));
-            gfx.drawString(font, Component.translatable("gui.mm.port.lock"), actionX() + BTN + 3, lockY() + 2, TEXT, false);
+            gfx.text(font, Component.translatable("gui.mm.port.lock"), actionX() + BTN + 3, lockY() + 2, TextColors.argb(TEXT), false);
             drawButton(gfx, font, actionX(), dumpY(), false, Component.literal("X"));
-            gfx.drawString(font, Component.translatable("gui.mm.port.dump.short"), actionX() + BTN + 3, dumpY() + 2, TEXT, false);
+            gfx.text(font, Component.translatable("gui.mm.port.dump.short"), actionX() + BTN + 3, dumpY() + 2, TextColors.argb(TEXT), false);
         }
-        gfx.pose().popPose();
+        gfx.pose().popMatrix();
     }
 
-    private static void drawSide(GuiGraphics gfx, Font font, int bx, int by, boolean on, boolean hovered, int color, Component label) {
+    private static void drawSide(GuiGraphicsExtractor gfx, Font font, int bx, int by, boolean on, boolean hovered, int color, Component label) {
         (hovered ? GuiTextures.BUTTON_PRESSED : GuiTextures.BUTTON_ACTIVE).blit(gfx, bx, by, SIDE, SIDE);
         if (on) {
             gfx.fill(bx + 1, by + 1, bx + SIDE - 1, by + SIDE - 1, color);
         }
         int textX = bx + (SIDE - font.width(label)) / 2 + 1;
-        gfx.drawString(font, label, textX, by + 3, on ? 0xFFFFFF : TEXT, on);
+        gfx.text(font, label, textX, by + 3, TextColors.argb(on ? 0xFFFFFF : TEXT), on);
     }
 
     private static boolean hitSide(double mouseX, double mouseY, int bx, int by) {
         return mouseX >= bx && mouseX < bx + SIDE && mouseY >= by && mouseY < by + SIDE;
     }
 
-    public void renderTooltip(GuiGraphics gfx, Font font, int mouseX, int mouseY) {
+    public void extractTooltip(GuiGraphicsExtractor gfx, Font font, int mouseX, int mouseY) {
         List<Component> tooltip = tooltipAt(mouseX, mouseY);
         if (tooltip != null) {
-            gfx.renderComponentTooltip(font, tooltip, mouseX, mouseY);
+            gfx.setComponentTooltipForNextFrame(font, tooltip, mouseX, mouseY);
         }
     }
 
@@ -173,7 +174,7 @@ public class PortConfigPanel {
         if (lockable() != null) {
             if (hit(mouseX, mouseY, actionX(), lockY())) {
                 send(PortConfigPkt.Action.TOGGLE_LOCK, 0);
-            } else if (hit(mouseX, mouseY, actionX(), dumpY()) && Screen.hasShiftDown()) {
+            } else if (hit(mouseX, mouseY, actionX(), dumpY()) && Minecraft.getInstance().hasShiftDown()) {
                 send(PortConfigPkt.Action.DUMP, 0);
             }
         }
@@ -221,10 +222,10 @@ public class PortConfigPanel {
         return null;
     }
 
-    private static void drawButton(GuiGraphics gfx, Font font, int bx, int by, boolean pressed, Component label) {
+    private static void drawButton(GuiGraphicsExtractor gfx, Font font, int bx, int by, boolean pressed, Component label) {
         (pressed ? GuiTextures.BUTTON_PRESSED : GuiTextures.BUTTON_ACTIVE).blit(gfx, bx, by, BTN, BTN);
         int textX = bx + (BTN - font.width(label)) / 2 + 1;
-        gfx.drawString(font, label, textX, by + 2, pressed ? 0xFFFFFF : TEXT, false);
+        gfx.text(font, label, textX, by + 2, TextColors.argb(pressed ? 0xFFFFFF : TEXT), false);
     }
 
     private static void playClick() {

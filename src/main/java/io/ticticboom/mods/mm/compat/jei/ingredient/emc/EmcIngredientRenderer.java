@@ -2,7 +2,7 @@ package io.ticticboom.mods.mm.compat.jei.ingredient.emc;
 
 import io.ticticboom.mods.mm.util.NumberText;
 import mezz.jei.api.ingredients.IIngredientRenderer;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -19,11 +19,11 @@ public class EmcIngredientRenderer implements IIngredientRenderer<EmcStack> {
     private ItemStack icon;
 
     @Override
-    public void render(GuiGraphics guiGraphics, @NotNull EmcStack stack) {
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull EmcStack stack) {
         if (icon == null) {
             icon = BuiltInRegistries.ITEM.getValue(ICON).getDefaultInstance();
         }
-        guiGraphics.renderFakeItem(icon, 0, 0);
+        guiGraphics.fakeItem(icon, 0, 0);
     }
 
     @SuppressWarnings("removal")

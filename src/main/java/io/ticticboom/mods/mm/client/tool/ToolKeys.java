@@ -38,10 +38,12 @@ import java.util.Objects;
 
 @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public class ToolKeys {
+    /** Key categories are objects since 1.21.9; shown as key.category.mm.main. */
+    public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Ref.id("main"));
     public static final KeyMapping DISMANTLE = new KeyMapping("key.mm.dismantle", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.mm");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY);
     public static final KeyMapping ANCHOR = new KeyMapping("key.mm.anchor", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.mm");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
     /** How long V must be held: 1 s. */
     public static final int HOLD_TICKS = 20;
     private static final int BAR_SEGMENTS = 10;
@@ -63,6 +65,7 @@ public class ToolKeys {
 
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
+        event.registerCategory(CATEGORY);
         event.register(DISMANTLE);
         event.register(ANCHOR);
     }
@@ -197,7 +200,7 @@ public class ToolKeys {
                     ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
             event.setCanceled(true);
             event.setSwingHand(false);
-            if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool.getItem())) {
+            if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool)) {
                 ClientPacketDistributor.sendToServer(new ToolBuildPkt(hand));
             }
         }

@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.entity;
 
 import mezz.jei.api.ingredients.IIngredientRenderer;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.TooltipFlag;
 import org.jetbrains.annotations.NotNull;
@@ -12,10 +12,10 @@ import java.util.List;
 public class EntityIngredientRenderer implements IIngredientRenderer<EntityIngredient> {
 
     @Override
-    public void render(GuiGraphics gfx, @NotNull EntityIngredient ingredient) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull EntityIngredient ingredient) {
         var icon = EntityIngredientNames.icon(ingredient);
         if (!icon.isEmpty()) {
-            gfx.renderItem(icon, 0, 0);
+            gfx.item(icon, 0, 0);
             return;
         }
         gfx.fill(0, 0, 16, 16, 0xFF1B1B1B);

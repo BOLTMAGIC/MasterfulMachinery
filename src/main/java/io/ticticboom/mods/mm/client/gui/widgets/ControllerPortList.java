@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.client.gui.widgets;
 
+import io.ticticboom.mods.mm.client.FluidSprites;
+import net.minecraft.client.renderer.RenderPipelines;
+import io.ticticboom.mods.mm.client.util.TextColors;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.util.CountFormat;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -11,7 +14,7 @@ import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
@@ -150,7 +153,7 @@ public class ControllerPortList {
         return true;
     }
 
-    public void render(GuiGraphics gfx, Font font, @Nullable Level level) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, Font font, @Nullable Level level) {
         var rows = rows(level);
         scroll = Math.min(scroll, maxScroll(rows));
         gfx.enableScissor(x, y, x + width, y + height);
@@ -158,7 +161,7 @@ public class ControllerPortList {
             int top = y + row.top() - (int) scroll;
             if (top + row.h() <= y || top >= y + height) continue;
             if (row.header() != null) {
-                gfx.drawString(font, row.header(), x, top + 2, LABEL, false);
+                gfx.text(font, row.header(), x, top + 2, TextColors.argb(LABEL), false);
                 continue;
             }
             drawPort(gfx, font, row, top);
@@ -180,15 +183,15 @@ public class ControllerPortList {
         return new ItemStack(be.getBlockState().getBlock());
     }
 
-    private void drawPort(GuiGraphics gfx, Font font, Row row, int top) {
+    private void drawPort(GuiGraphicsExtractor gfx, Font font, Row row, int top) {
         var pose = gfx.pose();
-        pose.pushPose();
-        pose.translate(x, top, 0);
-        pose.scale(9f / 16f, 9f / 16f, 1);
-        gfx.renderItem(row.port().icon(), 0, 0);
-        pose.popPose();
+        pose.pushMatrix();
+        pose.translate(x, top);
+        pose.scale(9f / 16f, 9f / 16f);
+        gfx.item(row.port().icon(), 0, 0);
+        pose.popMatrix();
         var name = font.ellipsize(row.port().name(), listWidth() - 12);
-        gfx.drawString(font, Language.getInstance().getVisualOrder(name), x + 12, top + 1, NAME, false);
+        gfx.text(font, Language.getInstance().getVisualOrder(name), x + 12, top + 1, TextColors.argb(NAME), false);
 
         int cy = top + NAME_H;
         var contents = row.contents();
@@ -196,7 +199,7 @@ public class ControllerPortList {
             List<Component> text = row.text().isEmpty() ? List.of(Component.translatable("gui.mm.port.tank.empty")) : row.text();
             for (int i = 0; i < text.size(); i++) {
                 var line = font.ellipsize(text.get(i), listWidth() - 2);
-                gfx.drawString(font, Language.getInstance().getVisualOrder(line), x + 2, cy + 1 + i * TEXT_H, LABEL, false);
+                gfx.text(font, Language.getInstance().getVisualOrder(line), x + 2, cy + 1 + i * TEXT_H, TextColors.argb(LABEL), false);
             }
             return;
         }
@@ -211,17 +214,17 @@ public class ControllerPortList {
         for (int i = 0; i < shown; i++) {
             int sx = x + (i % slotsPerLine()) * SLOT;
             int sy = cy + (i / slotsPerLine()) * SLOT;
-            gfx.blit(Ref.UiTextures.SLOT_PARTS, sx, sy, 0, 26, SLOT, SLOT);
+            gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, sx, sy, 0, 26, SLOT, SLOT, 256, 256);
             if (overflow && i == shown - 1) {
                 String more = "+" + (contents.size() - shown + 1);
-                gfx.drawString(font, more, sx + (SLOT - font.width(more)) / 2 + 1, sy + 5, 0xFFFFFF, true);
+                gfx.text(font, more, sx + (SLOT - font.width(more)) / 2 + 1, sy + 5, TextColors.argb(0xFFFFFF), true);
             } else {
                 PortContentIcon.draw(gfx, contents.get(i), sx, sy);
             }
         }
     }
 
-    private static void drawBar(GuiGraphics gfx, Font font, PortContent tank, int bx, int by, int bw, int bh) {
+    private static void drawBar(GuiGraphicsExtractor gfx, Font font, PortContent tank, int bx, int by, int bw, int bh) {
         gfx.fill(bx, by, bx + bw, by + bh, 0xFF555555);
         gfx.fill(bx + 1, by + 1, bx + bw - 1, by + bh - 1, 0xFF111111);
         int innerW = bw - 2;
@@ -233,29 +236,26 @@ public class ControllerPortList {
             int fy = by + 1;
             if (tank.kind() == PortContent.Kind.ENERGY) {
                 for (int tx = 0; tx < filled; tx += ENERGY_TEXTURE_W) {
-                    gfx.blit(Ref.UiTextures.SLOT_PARTS, fx + tx, fy, 90, 0, Math.min(ENERGY_TEXTURE_W, filled - tx), innerH);
+                    gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, fx + tx, fy, 90, 0, Math.min(ENERGY_TEXTURE_W, filled - tx), innerH, 256, 256);
                 }
             } else {
                 TextureAtlasSprite sprite = null;
                 int tint = tank.tint();
                 if (tank.kind() == PortContent.Kind.FLUID && !tank.fluid().isEmpty()) {
-                    var ext = IClientFluidTypeExtensions.of(tank.fluid().getFluid());
-                    sprite = atlas(ext.getStillTexture(tank.fluid()));
-                    tint = ext.getTintColor(tank.fluid());
+                    sprite = FluidSprites.still(tank.fluid());
+                    tint = FluidSprites.tint(tank.fluid());
                 } else if (tank.sprite() != null) {
                     sprite = atlas(tank.sprite());
                 }
                 if (sprite == null && tank.kind() != PortContent.Kind.FLUID) {
                     gfx.fill(fx, fy, fx + filled, fy + innerH, 0xFF000000 | tint);
                 } else if (sprite != null) {
-                    float alpha = ((tint >> 24) & 0xFF) / 255f;
-                    gfx.setColor((tint >> 16 & 0xFF) / 255f, (tint >> 8 & 0xFF) / 255f, (tint & 0xFF) / 255f, alpha == 0 ? 1 : alpha);
+                    int color = TextColors.argb(tint);
                     gfx.enableScissor(fx, fy, fx + filled, fy + innerH);
                     for (int tx = fx; tx < fx + filled; tx += 16) {
-                        gfx.blit(tx, fy, 0, 16, 16, sprite);
+                        gfx.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, tx, fy, 16, 16, color);
                     }
                     gfx.disableScissor();
-                    gfx.setColor(1, 1, 1, 1);
                 }
             }
         }
@@ -267,13 +267,13 @@ public class ControllerPortList {
                 label = named;
             }
         }
-        gfx.drawString(font, label, bx + (bw - font.width(label)) / 2, by + (bh - 8) / 2 + 1, 0xFFFFFF, true);
+        gfx.text(font, label, bx + (bw - font.width(label)) / 2, by + (bh - 8) / 2 + 1, TextColors.argb(0xFFFFFF), true);
     }
 
     @Nullable
     private static TextureAtlasSprite atlas(@Nullable Identifier id) {
         if (id == null) return null;
-        return Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(id);
+        return FluidSprites.block(id);
     }
 
     @Nullable

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.minecraft.client.input.MouseButtonEvent;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -7,7 +8,7 @@ import io.ticticboom.mods.mm.tool.StructureCategories;
 import io.ticticboom.mods.mm.util.TextMatch;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
@@ -218,7 +219,7 @@ public class GalleryList {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         refreshCategoriesIfNeeded();
         if (lines.isEmpty()) {
             String key = groups.isEmpty() ? "gui.mm.tool.gallery.empty" : "gui.mm.tool.gallery.no_match";
@@ -270,7 +271,7 @@ public class GalleryList {
                 .append(Component.literal(name.substring(end)));
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
@@ -293,7 +294,10 @@ public class GalleryList {
         return List.of(Component.literal(structure.name()), Component.literal(structure.id().toString()).withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 0 && hasScrollbar() && isMouseOver(mouseX, mouseY) && mouseX >= x + width - 5) {
             draggingScrollbar = true;
             scrollToThumb(mouseY);
