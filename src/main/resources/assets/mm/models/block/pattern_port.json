@@ -4,16 +4,24 @@
   "children": {
     "base": {
       "parent": "minecraft:block/cube_all",
-      "render_type": "minecraft:solid",
-      "textures": { "all": "mm:block/base_block" }
+      "textures": {
+        "all": "mm:block/base_block"
+      }
     },
     "overlay": {
       "parent": "minecraft:block/cube_all",
-      "render_type": "minecraft:translucent",
-      "textures": { "all": "mm:block/circuit_cutout" }
+      "textures": {
+        "all": {
+          "sprite": "mm:block/circuit_cutout",
+          "force_translucent": true
+        }
+      }
     }
   },
-  "item_render_order": ["base", "overlay"],
+  "item_render_order": [
+    "base",
+    "overlay"
+  ],
   "textures": {
     "all": "mm:block/base_block",
     "particle": "mm:block/base_block"
