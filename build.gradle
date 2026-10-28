@@ -199,6 +199,9 @@ dependencies {
     // plain JUnit tests of logic that needs no running game (src/test)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    // the AE2 and Jade GameTests compile against those mods (compileOnly is not inherited by the test source set)
+    testCompileOnly "maven.modrinth:ae2:${ae2_version}"
+    testCompileOnly "maven.modrinth:jade:${jade_version}"
     implementation "net.neoforged:neoforge:${neoforge_version}"
 
     compileOnly 'org.projectlombok:lombok:1.18.48'
@@ -218,6 +221,8 @@ dependencies {
     // AE2 in the dev runtime (and so the GameTest server), as in the 1.20.1 build; it needs GuideME
     runtimeOnly "maven.modrinth:ae2:${ae2_version}"
     runtimeOnly "maven.modrinth:guideme:${guideme_version}"
+    // Jade too: the pattern port and priority GameTests read its tooltip data
+    runtimeOnly "maven.modrinth:jade:${jade_version}"
     compileOnly "maven.modrinth:jade:${jade_version}"
     compileOnly "maven.modrinth:nuclear-radiation:${nuclear_radiation_version}"
     compileOnly "maven.modrinth:appflux:${appflux_version}"

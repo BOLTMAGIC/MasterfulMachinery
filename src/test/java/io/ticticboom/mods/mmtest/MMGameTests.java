@@ -50,6 +50,15 @@ public final class MMGameTests {
             ToolSettingsGameTests.class
     );
 
+    /** Holders that need AE2, registered only when it is installed (they would not even load without it). */
+    static final List<String> AE2_HOLDERS = List.of(
+            "io.ticticboom.mods.mmtest.PatternPortGameTests",
+            "io.ticticboom.mods.mmtest.PatternPortMeGameTests",
+            "io.ticticboom.mods.mmtest.MeItemPortGameTests",
+            "io.ticticboom.mods.mmtest.MeToolGameTests",
+            "io.ticticboom.mods.mmtest.ToolCraftGameTests"
+    );
+
     private static final DeferredRegister<Consumer<GameTestHelper>> FUNCTIONS = DeferredRegister.create(Registries.TEST_FUNCTION, NAMESPACE);
     private static final List<Registered> TESTS = new ArrayList<>();
 
@@ -60,7 +69,17 @@ public final class MMGameTests {
     }
 
     public static void register(IEventBus modBus) {
-        for (Class<?> holder : HOLDERS) {
+        var holders = new ArrayList<Class<?>>(HOLDERS);
+        if (net.neoforged.fml.ModList.get().isLoaded("ae2")) {
+            for (String name : AE2_HOLDERS) {
+                try {
+                    holders.add(Class.forName(name));
+                } catch (ClassNotFoundException e) {
+                    throw new IllegalStateException(e);
+                }
+            }
+        }
+        for (Class<?> holder : holders) {
             for (Method method : holder.getDeclaredMethods()) {
                 GameTest settings = method.getAnnotation(GameTest.class);
                 if (settings == null || !Modifier.isStatic(method.getModifiers())) {
@@ -97,7 +116,7 @@ public final class MMGameTests {
         Holder<TestEnvironmentDefinition<?>> environment = event.registerEnvironment(Identifier.fromNamespaceAndPath(NAMESPACE, "default"));
         for (Registered test : TESTS) {
             var function = ResourceKey.create(Registries.TEST_FUNCTION, test.id());
-            var structure = Identifier.fromNamespaceAndPath(NAMESPACE, test.settings().template());
+            var structure = Identifier.fromNamespaceAndPath(test.settings().templateNamespace(), test.settings().template());
             var data = new TestData<>(environment, structure, test.settings().timeoutTicks(), test.settings().setupTicks(), test.settings().required());
             event.registerTest(test.id(), new FunctionGameTestInstance(function, data));
         }

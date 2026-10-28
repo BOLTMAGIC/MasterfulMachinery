@@ -1,0 +1,309 @@
+package io.ticticboom.mods.mmtest;
+
+import java.util.Optional;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.core.registries.BuiltInRegistries;
+import appeng.api.implementations.blockentities.ICraftingMachine;
+import appeng.api.stacks.AEItemKey;
+import appeng.api.stacks.GenericStack;
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.compat.waila.PatternPortDataProvider;
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.pattern.PatternRun;
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
+import io.ticticboom.mods.mm.port.item.ItemPortStorage;
+import io.ticticboom.mods.mm.setup.MMRegisters;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+import snownee.jade.api.BlockAccessor;
+
+import java.lang.reflect.Proxy;
+
+/**
+ * AE2 pushing patterns into a Pattern Port (registered by MeGameTests only with AE2). mmtest:pattern_push_test is
+ * "ICO", iron in -> gold out, 40 ticks, 2 recipes at once; the Pattern Port touches the input port and a chest stands
+ * where the pattern provider would be.
+ */
+public class PatternPortGameTests {
+    static final String TEMPLATE = "empty";
+    static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
+    static final BlockPos INPUT = CONTROLLER.offset(-1, 0, 0);
+    static final BlockPos OUTPUT = CONTROLLER.offset(1, 0, 0);
+    static final BlockPos PORT = INPUT.offset(0, 0, -1);
+    /** The side of the port the "provider" (a chest) is on. */
+    static final Direction PROVIDER_SIDE = Direction.NORTH;
+    static final BlockPos PROVIDER = PORT.relative(PROVIDER_SIDE);
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void pushedPatternRunsWithoutInputPorts(GameTestHelper helper) {
+        var controller = build(helper);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern"))
+                .thenExecute(() -> check(helper, count(helper, INPUT, Items.IRON_INGOT) == 0, "the input port isn't used"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.GOLD_INGOT) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the gold should be given back to the pattern provider"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 300)
+    public static void outputsWaitWhileTheReceiverIsFull(GameTestHelper helper) {
+        var controller = build(helper);
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    var chest = chestHandler(helper);
+                    for (int slot = 0; slot < chest.getSlots(); slot++) {
+                        chest.insertItem(slot, new ItemStack(Items.DIRT, 64), false);
+                    }
+                })
+                .thenExecute(() -> check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern"))
+                .thenWaitUntil(() -> check(helper, finishedWith(controller, Items.GOLD_INGOT), "the pushed craft hasn't made its gold"))
+                .thenIdle(20)
+                .thenExecute(() -> check(helper, finishedWith(controller, Items.GOLD_INGOT) && chest(helper, Items.GOLD_INGOT) == 0,
+                        "the gold should wait in the buffer while the provider is full"))
+                .thenExecute(() -> chestHandler(helper).extractItem(0, 64, false))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.GOLD_INGOT) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the gold should be given back once there is room"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void byproductsGoBackToo(GameTestHelper helper) {
+        var controller = build(helper);
+        // mmtest:pattern_push_byproduct: 1 diamond -> 1 emerald + 1 copper ingot
+        var pattern = TestPattern.of("diamond", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIAMOND), 1)},
+                new GenericStack(AEItemKey.of(Items.EMERALD), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> check(helper, push(helper, pattern), "the pattern port should take the pattern"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.EMERALD) == 1 && chest(helper, Items.COPPER_INGOT) == 1,
+                        "the emerald and the copper byproduct should both be given back"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void unknownPatternIsRefused(GameTestHelper helper) {
+        var controller = build(helper);
+        var nothing = TestPattern.of("nothing", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIRT), 1)},
+                new GenericStack(AEItemKey.of(Items.DIAMOND), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, !push(helper, nothing), "no recipe makes a diamond from dirt: the port should refuse");
+                    check(helper, controller.getPatternRuns().isEmpty(), "nothing should run");
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void samePatternRunsUpToTheParallelLimit(GameTestHelper helper) {
+        var controller = build(helper);
+        var pattern = ironToGold("iron");
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, push(helper, pattern), "the first push should run");
+                    check(helper, push(helper, pattern), "the second push should run next to it (limit 2)");
+                    check(helper, !push(helper, pattern), "the third push should wait for a free slot");
+                    check(helper, controller.getPatternRuns().size() == 2, "two crafts should run, there are " + controller.getPatternRuns().size());
+                })
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void jadeShowsThePatternPortState(GameTestHelper helper) {
+        var controller = build(helper);
+        var nothing = TestPattern.of("nothing", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIRT), 1)},
+                new GenericStack(AEItemKey.of(Items.DIAMOND), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern");
+                    var data = jadeData(helper);
+                    check(helper, data.getIntOr("PatternRuns", 0) == 1, "Jade should get 1 running pattern, data " + data);
+                    check(helper, !data.getStringOr("PatternMachine", "").isEmpty(), "Jade should get the machine's name, data " + data);
+                    check(helper, !push(helper, nothing), "no recipe makes a diamond from dirt");
+                    check(helper, "no_recipe".equals(jadeData(helper).getStringOr("PatternLast", "")), "Jade should get why the last push was refused, data "
+                            + jadeData(helper));
+                })
+                .thenSucceed();
+    }
+
+    /** mmtest:pattern_push_catalyst: 1 redstone + a blaze rod that isn't consumed -> 1 lapis. JEI puts both in the pattern. */
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void catalystInThePatternComesBack(GameTestHelper helper) {
+        var controller = build(helper);
+        var pattern = TestPattern.of("catalyst", new GenericStack[]{new GenericStack(AEItemKey.of(Items.REDSTONE), 1),
+                new GenericStack(AEItemKey.of(Items.BLAZE_ROD), 1)}, new GenericStack(AEItemKey.of(Items.LAPIS_LAZULI), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> check(helper, push(helper, pattern), "a pattern carrying the catalyst should run"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.LAPIS_LAZULI) == 1 && chest(helper, Items.BLAZE_ROD) == 1
+                        && controller.getPatternRuns().isEmpty(), "the lapis and the unused blaze rod should be given back"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 200)
+    public static void catalystMayComeFromThePorts(GameTestHelper helper) {
+        var controller = build(helper);
+        var pattern = TestPattern.of("no_catalyst", new GenericStack[]{new GenericStack(AEItemKey.of(Items.REDSTONE), 1)},
+                new GenericStack(AEItemKey.of(Items.LAPIS_LAZULI), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, !push(helper, pattern), "without a blaze rod anywhere the pattern can't start");
+                    check(helper, "missing_inputs".equals(jadeData(helper).getStringOr("PatternLast", "")), "Jade should say inputs are missing, data "
+                            + jadeData(helper));
+                    var port = java.util.Objects.requireNonNull(MMCapabilities.item(helper.getLevel(), helper.absolutePos(INPUT), null));
+                    port.insertItem(0, new ItemStack(Items.BLAZE_ROD), false);
+                })
+                .thenExecute(() -> check(helper, push(helper, pattern), "with the blaze rod in the input port the pattern should run"))
+                .thenWaitUntil(() -> check(helper, chest(helper, Items.LAPIS_LAZULI) == 1 && controller.getPatternRuns().isEmpty(),
+                        "the lapis should be given back"))
+                .thenExecute(() -> check(helper, count(helper, INPUT, Items.BLAZE_ROD) == 1, "the catalyst should stay in the input port"))
+                .thenSucceed();
+    }
+
+    @GameTest(templateNamespace = "mmtest", template = TEMPLATE, timeoutTicks = 100)
+    public static void jadeShowsWhyNoRecipeFits(GameTestHelper helper) {
+        var controller = build(helper);
+        var twoIron = TestPattern.of("two_iron", new GenericStack[]{new GenericStack(AEItemKey.of(Items.IRON_INGOT), 2)},
+                new GenericStack(AEItemKey.of(Items.GOLD_INGOT), 1));
+        var dirt = TestPattern.of("dirt", new GenericStack[]{new GenericStack(AEItemKey.of(Items.DIRT), 1)},
+                new GenericStack(AEItemKey.of(Items.DIAMOND), 1));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    check(helper, !push(helper, twoIron), "the recipe takes 1 iron, not 2");
+                    var why = jadeData(helper).getCompoundOrEmpty("PatternWhy");
+                    check(helper, "amount".equals(why.getStringOr("Reason", "")) && "minecraft:iron_ingot".equals(why.getStringOr("What", ""))
+                            && why.getLongOr("Pattern", 0L) == 2 && why.getLongOr("Recipe", 0L) == 1, "Jade should say the iron amount differs, got " + why);
+                    check(helper, !push(helper, dirt), "nothing makes a diamond");
+                    why = jadeData(helper).getCompoundOrEmpty("PatternWhy");
+                    check(helper, "no_output".equals(why.getStringOr("Reason", "")) && "minecraft:diamond".equals(why.getStringOr("What", "")),
+                            "Jade should say no recipe makes a diamond, got " + why);
+                    check(helper, push(helper, ironToGold("iron")), "a fitting pattern should run");
+                    check(helper, !jadeData(helper).contains("PatternWhy"), "a pattern that ran leaves no reason behind");
+                })
+                .thenSucceed();
+    }
+
+    /** What PatternPortDataProvider sends to the client for the port. */
+    static CompoundTag jadeData(GameTestHelper helper) {
+        var be = helper.getBlockEntity(PORT, BlockEntity.class);
+        BlockPos pos = helper.absolutePos(PORT);
+        BlockAccessor accessor = (BlockAccessor) Proxy.newProxyInstance(BlockAccessor.class.getClassLoader(),
+                new Class<?>[]{BlockAccessor.class}, (proxy, method, args) -> switch (method.getName()) {
+                    case "getBlockEntity" -> be;
+                    case "getLevel" -> helper.getLevel();
+                    case "getPosition" -> pos;
+                    case "hashCode" -> System.identityHashCode(proxy);
+                    case "equals" -> proxy == args[0];
+                    default -> null;
+                });
+        var data = new CompoundTag();
+        PatternPortDataProvider.INSTANCE.appendServerData(data, accessor);
+        return data;
+    }
+
+    static TestPattern ironToGold(String name) {
+        return TestPattern.of(name, new GenericStack[]{new GenericStack(AEItemKey.of(Items.IRON_INGOT), 1)},
+                new GenericStack(AEItemKey.of(Items.GOLD_INGOT), 1));
+    }
+
+    static boolean push(GameTestHelper helper, TestPattern pattern) {
+        var machine = ICraftingMachine.of(helper.getBlockEntity(PORT, BlockEntity.class), PROVIDER_SIDE);
+        check(helper, machine != null, "the pattern port should be an AE2 crafting machine");
+        return machine.acceptsPlans() && machine.pushPattern(pattern, pattern.inputs(), PROVIDER_SIDE);
+    }
+
+    /** One craft that has finished and holds the item to give back. */
+    static boolean finishedWith(MachineControllerBlockEntity controller, Item item) {
+        for (PatternRun run : controller.getPatternRuns()) {
+            if (run.isReturning() && run.getBuffer().leftovers().stream()
+                    .anyMatch(left -> left.id().equals(BuiltInRegistries.ITEM.getKey(item)))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static IItemHandler chestHandler(GameTestHelper helper) {
+        return Optional.ofNullable(MMCapabilities.item(helper.getLevel(), helper.absolutePos(PROVIDER), PROVIDER_SIDE.getOpposite()))
+                .orElseThrow(IllegalStateException::new);
+    }
+
+    static int chest(GameTestHelper helper, Item item) {
+        var chest = chestHandler(helper);
+        int total = 0;
+        for (int slot = 0; slot < chest.getSlots(); slot++) {
+            if (chest.getStackInSlot(slot).is(item)) {
+                total += chest.getStackInSlot(slot).getCount();
+            }
+        }
+        return total;
+    }
+
+    static MachineControllerBlockEntity build(GameTestHelper helper) {
+        helper.setBlock(CONTROLLER, block("pattern_push_test").defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
+        helper.setBlock(INPUT, block("test_wait_item_input"));
+        helper.setBlock(OUTPUT, block("test_wait_item_output"));
+        helper.setBlock(PORT, MMRegisters.PATTERN_PORT.get());
+        helper.setBlock(PROVIDER, Blocks.CHEST);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
+    }
+
+    static void formed(GameTestHelper helper, MachineControllerBlockEntity controller) {
+        Identifier id = Identifier.tryBuild("mmtest", "pattern_push_test");
+        check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id)
+                && !"not_formed".equals(controller.statusKey()), "pattern_push_test not formed yet");
+    }
+
+    static int count(GameTestHelper helper, BlockPos port, Item item) {
+        if (!(helper.getBlockEntity(port, BlockEntity.class) instanceof AbstractPortBlockEntity be) || !(be.getStorage() instanceof ItemPortStorage items)) {
+            throw new IllegalStateException("no item port at " + port);
+        }
+        int total = 0;
+        for (int slot = 0; slot < items.getHandler().getSlots(); slot++) {
+            if (items.getHandler().getStackInSlot(slot).is(item)) {
+                total += items.getHandler().getActualCount(slot);
+            }
+        }
+        return total;
+    }
+
+    static Block block(String id) {
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
+        if (block == null || block == Blocks.AIR) {
+            throw new IllegalStateException("mm:" + id + " is not registered");
+        }
+        return block;
+    }
+
+    static void check(GameTestHelper helper, boolean ok, String message) {
+        if (!ok) {
+            helper.fail(message);
+        }
+    }
+}

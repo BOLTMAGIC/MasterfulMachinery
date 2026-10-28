@@ -13,6 +13,9 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
 public @interface GameTest {
+    /** The namespace of the structure; only mmtest's are shipped. */
+    String templateNamespace() default "mmtest";
+
     /** A structure under data/mmtest/structure. */
     String template() default "empty";
 
