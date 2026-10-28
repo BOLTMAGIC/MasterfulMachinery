@@ -510,5 +510,13 @@
   "config.mm.option.tool.buildMode": "Structure Builder placement mode",
   "config.mm.build_mode.SEQUENTIAL": "Sequential",
   "config.mm.build_mode.LAYER_BY_LAYER": "Layer by layer",
-  "config.mm.build_mode.INSTANT": "Instant"
+  "config.mm.build_mode.INSTANT": "Instant",
+  "gui.mm.controller.row.animation": "Animation",
+  "gui.mm.controller.animation.on": "On",
+  "gui.mm.controller.animation.off": "Off",
+  "gui.mm.controller.animation.hidden": "Hidden",
+  "gui.mm.controller.animation.on.hint": "The machine's model is shown and plays its animations",
+  "gui.mm.controller.animation.off.hint": "The machine's model is shown but stands still",
+  "gui.mm.controller.animation.hidden.hint": "The machine's model isn't drawn at all",
+  "gui.mm.controller.animation.hint": "Click to switch: On, Off (no animation), Hidden (no model). For every player"
 }

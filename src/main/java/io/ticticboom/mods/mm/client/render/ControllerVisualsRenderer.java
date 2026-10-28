@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import io.ticticboom.mods.mm.client.geo.GeoBridge;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
+import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.structure.attachment.visuals.FluidVolumeState;
@@ -49,7 +50,8 @@ public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineCon
         }
         GeoModelConfig config = be.geoModel();
         GeoBridge bridge = GeoBridge.get();
-        if (config == null || bridge == null) {
+        // the controller screen can hide the whole model
+        if (config == null || bridge == null || be.getModelDisplay() == ModelDisplay.HIDDEN) {
             return;
         }
         Direction facing = blockState.getValue(HorizontalDirectionalBlock.FACING);
