@@ -23,6 +23,9 @@ public class MMCommonConfig {
     public final ModConfigSpec.IntValue toolEnergyPerPlacedBlock;
     public final ModConfigSpec.IntValue toolEnergyPerDismantledBlock;
     public final ModConfigSpec.IntValue toolEnergyReceiveRate;
+    public final ModConfigSpec.IntValue toolBuildRange;
+    public final ModConfigSpec.IntValue toolBuildBlocksPerTick;
+    public final ModConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> toolBuildMode;
     public final ModConfigSpec.IntValue networkLinkOutputInterval;
     public final ModConfigSpec.BooleanValue networkLinkSendOnRemove;
     public final ModConfigSpec.BooleanValue networkLinkOpBypass;
@@ -65,6 +68,12 @@ public class MMCommonConfig {
                 .defineInRange("toolEnergyPerDismantledBlock", 25, 0, Integer.MAX_VALUE);
         toolEnergyReceiveRate = builder.comment("Max FE/t the Structure Builder accepts from an external charger. Default: 10,000")
                 .defineInRange("toolEnergyReceiveRate", 10_000, 1, Integer.MAX_VALUE);
+        toolBuildRange = builder.comment("Structure Builder targeting, anchor and placement distance in blocks. Loaded chunks only. Default: 64")
+                .defineInRange("buildRange", 64, 5, 128);
+        toolBuildBlocksPerTick = builder.comment("Structure Builder blocks placed per tick in sequential/layer mode. Default: 2")
+                .defineInRange("buildBlocksPerTick", 2, 1, 1024);
+        toolBuildMode = builder.comment("Structure Builder placement: SEQUENTIAL, LAYER_BY_LAYER (bottom up), INSTANT (one tick).")
+                .defineEnum("buildMode", io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL);
         builder.pop();
 
         builder.comment("Flex recipes (\"mode\": \"flex\"): one run takes several kinds of item at once (e.g. mixed seeds).")

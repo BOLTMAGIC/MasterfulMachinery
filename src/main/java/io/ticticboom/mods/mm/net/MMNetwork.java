@@ -7,6 +7,8 @@ import io.ticticboom.mods.mm.net.packet.BuildableStructureSyncPkt;
 import io.ticticboom.mods.mm.net.packet.ToolDismantlePkt;
 import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
 import io.ticticboom.mods.mm.net.packet.ToolRotatePkt;
+import io.ticticboom.mods.mm.net.packet.ToolAnchorPkt;
+import io.ticticboom.mods.mm.net.packet.ToolBuildPkt;
 import io.ticticboom.mods.mm.net.packet.ToolSettingsPkt;
 import io.ticticboom.mods.mm.net.packet.ControllerSettingsPkt;
 import io.ticticboom.mods.mm.net.packet.CycleLinkerModePkt;
@@ -57,5 +59,7 @@ public class MMNetwork {
         registrar.playToServer(MMConfigRequestPkt.TYPE, MMConfigRequestPkt.STREAM_CODEC, MMConfigRequestPkt::handle);
         registrar.playToServer(MMConfigEditPkt.TYPE, MMConfigEditPkt.STREAM_CODEC, MMConfigEditPkt::handle);
         registrar.playToClient(MMConfigSyncPkt.TYPE, MMConfigSyncPkt.STREAM_CODEC, MMConfigSyncPkt::handle);
+        registrar.playToServer(ToolBuildPkt.TYPE, ToolBuildPkt.STREAM_CODEC, ToolBuildPkt::handle);
+        registrar.playToServer(ToolAnchorPkt.TYPE, ToolAnchorPkt.STREAM_CODEC, ToolAnchorPkt::handle);
     }
 }

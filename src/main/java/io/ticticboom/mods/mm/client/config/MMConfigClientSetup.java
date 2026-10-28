@@ -9,6 +9,9 @@ public final class MMConfigClientSetup {
 
     public static void register(ModContainer container) {
         container.registerExtensionPoint(IConfigScreenFactory.class, (mod, parent) -> new MMConfigScreen(parent));
-        MMConfigSyncPkt.setClientHandler(MMConfigScreen::receive);
+        MMConfigSyncPkt.setClientHandler(values -> {
+            io.ticticboom.mods.mm.client.tool.ToolPlacementSettings.receive(values);
+            MMConfigScreen.receive(values);
+        });
     }
 }

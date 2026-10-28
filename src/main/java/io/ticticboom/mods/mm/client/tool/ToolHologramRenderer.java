@@ -14,6 +14,7 @@ import io.ticticboom.mods.mm.tool.FixedBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
 import io.ticticboom.mods.mm.tool.ToolData;
+import io.ticticboom.mods.mm.tool.ToolTarget;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -27,8 +28,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
@@ -52,6 +51,7 @@ public final class ToolHologramRenderer {
     private static int keyTurns;
     private static Object keyStructure;
     private static long keyBucket;
+    private static boolean planCached;
     private static List<AssemblyPlanner.Planned> ghosts = List.of();
     private static List<BlockPos> obstructed = List.of();
     private static AABB bounds;
@@ -74,19 +74,21 @@ public final class ToolHologramRenderer {
             ResourceLocation builderId = ToolData.builderStructure(tool);
             structure = builderId == null ? null : BuildableStructureRegistry.CLIENT.get(builderId);
         }
-        if (structure == null || !(mc.hitResult instanceof BlockHitResult hit) || hit.getType() != HitResult.Type.BLOCK
-                || (player.isShiftKeyDown() && !ToolKeys.recentlyRotated(level))
+        ToolTarget target = structure == null ? null : ToolTarget.resolve(player, tool, ToolPlacementSettings.range());
+        if (target == null
                 || !ToolKeys.dismantleHighlight(level).isEmpty()
-                || level.getBlockEntity(hit.getBlockPos()) instanceof MachineControllerBlockEntity) {
+                || (ToolData.anchor(tool) == null && structure instanceof StructureModel
+                    && level.getBlockEntity(target.pos()) instanceof MachineControllerBlockEntity)) {
+            // a controller is completed in place (or opened), not built next to
             clear();
             return;
         }
-        BlockPos pos = hit.getBlockPos();
-        Direction face = hit.getDirection();
-        Direction facing = player.getDirection();
+        BlockPos pos = target.pos();
+        Direction face = target.face();
+        Direction facing = target.facing();
         int turns = ToolData.extraTurns(tool);
         long bucket = level.getGameTime() / REFRESH_TICKS;
-        if (bounds != null && pos.equals(keyPos) && face == keyFace && facing == keyFacing && turns == keyTurns
+        if (planCached && pos.equals(keyPos) && face == keyFace && facing == keyFacing && turns == keyTurns
                 && structure == keyStructure && bucket == keyBucket) {
             return;
         }
@@ -126,6 +128,7 @@ public final class ToolHologramRenderer {
         for (AssemblyPlanner.Planned step : steps.steps()) {
             AABB cell = new AABB(step.pos());
             box = box == null ? cell : box.minmax(cell);
+            if (!ToolTarget.usablePosition(level, step.pos())) continue;
             BlockState existing = level.getBlockState(step.pos());
             if (!blocked.contains(step.pos()) && !existing.is(step.state().getBlock()) && !step.accepted().contains(existing.getBlock())) {
                 toDraw.add(step);
@@ -133,13 +136,15 @@ public final class ToolHologramRenderer {
         }
         ghosts = toDraw;
         obstructed = planObstructed;
-        bounds = box;
+        bounds = toDraw.isEmpty() && planObstructed.isEmpty() ? null : box;
+        planCached = true;
     }
 
     private static void clear() {
         ghosts = List.of();
         obstructed = List.of();
         bounds = null;
+        planCached = false;
     }
 
     @SubscribeEvent

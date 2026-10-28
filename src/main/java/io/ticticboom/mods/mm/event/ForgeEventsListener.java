@@ -41,6 +41,9 @@ public class ForgeEventsListener {
         
         var processPacket  = new ProcessesSyncPkt(MachineRecipeManager.RECIPES);
         PacketDistributor.sendToPlayer((ServerPlayer) event.getEntity(), processPacket);
+        // the Structure Builder's range and placement settings, before the player uses it
+        PacketDistributor.sendToPlayer((ServerPlayer) event.getEntity(),
+                new io.ticticboom.mods.mm.net.packet.MMConfigSyncPkt(io.ticticboom.mods.mm.config.MMConfigOptions.serverSnapshot()));
     }
 
     @SubscribeEvent

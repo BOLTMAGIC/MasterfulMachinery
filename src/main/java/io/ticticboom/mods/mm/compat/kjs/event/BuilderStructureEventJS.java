@@ -8,6 +8,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * MMEvents.builderStructures: change the multiblock tool's list of other mods' structures.
+ * <pre>
+ * MMEvents.builderStructures(event => {
+ *   event.remove('mm:woot/woot_tier_1_copper')   // one structure
+ *   event.removeNamespace('mm')                    // every structure of a namespace
+ *   event.add('pack:my_reactor', 'pack:structures/my_reactor.nbt')  // id, structure .nbt resource
+ * })
+ * </pre>
+ */
 public class BuilderStructureEventJS implements KubeEvent {
     @Getter
     private final List<String> removed = new ArrayList<>();
