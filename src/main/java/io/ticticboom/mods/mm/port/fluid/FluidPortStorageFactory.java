@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
@@ -27,6 +28,11 @@ public class FluidPortStorageFactory implements IPortStorageFactory {
         json.addProperty("columns", model.columns());
         json.addProperty("slotCapacity", model.slotCapacity());
         json.addProperty("tierRank", model.getTierRank());
+        if (!model.fluids().isEmpty()) {
+            var fluids = new JsonArray();
+            model.fluids().forEach(fluids::add);
+            json.add("fluids", fluids);
+        }
         return json;
     }
 

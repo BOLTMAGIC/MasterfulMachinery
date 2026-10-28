@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.util;
 
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -68,6 +69,14 @@ public class WorldUtil {
      * Finds MachineControllerBlockEntity block entities inside a cube with edge length 2*radius+1 around pos.
      * Scans the corresponding chunks and returns the found block entities.
      */
+    public static void scheduleNearbyValidation(ServerLevel level, BlockPos pos) {
+        for (var be : findControllerBlockEntitiesInRadius(pos, level, 6)) {
+            if (be instanceof MachineControllerBlockEntity controller) {
+                controller.scheduleValidation();
+            }
+        }
+    }
+
     public static java.util.List<net.minecraft.world.level.block.entity.BlockEntity> findControllerBlockEntitiesInRadius(BlockPos pos, ServerLevel level, int radius) {
         var result = new java.util.ArrayList<net.minecraft.world.level.block.entity.BlockEntity>();
         if (level == null) return result;
@@ -80,7 +89,7 @@ public class WorldUtil {
                 ChunkAccess chunk = getChunk(cx, cz, level);
                 if (chunk instanceof net.minecraft.world.level.chunk.LevelChunk lc) {
                     for (var be : lc.getBlockEntities().values()) {
-                        if (be instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity) {
+                        if (be instanceof MachineControllerBlockEntity) {
                             // simple distance check to limit false positives
                             var cpos = be.getBlockPos();
                             if (Math.abs(cpos.getX() - pos.getX()) <= radius && Math.abs(cpos.getY() - pos.getY()) <= radius && Math.abs(cpos.getZ() - pos.getZ()) <= radius) {

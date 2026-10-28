@@ -1,26 +1,22 @@
 package io.ticticboom.mods.mmtest;
 
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.minecraft.core.registries.Registries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
 import java.util.ArrayList;
 
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class RemovedRegistryGameTests {
     @GameTest(template = "empty")
     public static void creativeItemsSkipRemovedController(GameTestHelper helper) {
-        RegistryObject<Item> missing = RegistryObject.create(Ref.id("removed_test_controller"), ForgeRegistries.ITEMS);
-        check(helper, !missing.isPresent(), "fixture must refer to an absent item");
+        DeferredHolder<Item, Item> missing = DeferredHolder.create(Registries.ITEM, Ref.id("removed_test_controller"));
+        check(helper, !missing.isBound(), "fixture must refer to an absent item");
         var entries = new ArrayList<>(MMRegisters.ITEMS.getEntries());
         entries.add(0, missing);
         var stacks = MMRegisters.registeredItemStacks(entries);
@@ -32,8 +28,8 @@ public class RemovedRegistryGameTests {
     @GameTest(template = "empty")
     public static void controllerLookupSkipsRemovedEntries(GameTestHelper helper) {
         var missing = new RegistryGroupHolder();
-        missing.setItem(RegistryObject.create(Ref.id("removed_test_controller"), ForgeRegistries.ITEMS));
-        missing.setBlock(RegistryObject.create(Ref.id("removed_test_controller"), ForgeRegistries.BLOCKS));
+        missing.setItem(DeferredHolder.create(Registries.ITEM, Ref.id("removed_test_controller")));
+        missing.setBlock(DeferredHolder.create(Registries.BLOCK, Ref.id("removed_test_controller")));
         MMControllerRegistry.CONTROLLERS.add(0, missing);
         try {
             check(helper, MMControllerRegistry.getControllerItem(Ref.id("flex_test")) != null, "live controller item should still be found");

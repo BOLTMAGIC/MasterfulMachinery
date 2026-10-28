@@ -4,13 +4,10 @@ import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.widgets.IRecipeWidget;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenPosition;
 import net.minecraft.network.chat.Component;
 
-/**
- * A small blue "i" in a corner of the JEI structure view; hovering it explains the mouse controls.
- */
 public class StructureInfoWidget implements IRecipeWidget {
     public static final int SIZE = 10;
     private static final int COLOR_BORDER = 0xFF1E3F8A;
@@ -33,14 +30,13 @@ public class StructureInfoWidget implements IRecipeWidget {
     }
 
     @Override
-    public void drawWidget(GuiGraphics gfx, double mouseX, double mouseY) {
+    public void drawWidget(GuiGraphicsExtractor gfx, double mouseX, double mouseY) {
         gfx.fill(0, 0, SIZE, SIZE, COLOR_BORDER);
         gfx.fill(1, 1, SIZE - 1, SIZE - 1, isHovered(mouseX, mouseY) ? COLOR_FILL_HOVER : COLOR_FILL);
         var font = Minecraft.getInstance().font;
-        gfx.drawString(font, "i", (SIZE - font.width("i")) / 2 + 1, 1, 0xFFFFFFFF, false);
+        gfx.text(font, "i", (SIZE - font.width("i")) / 2 + 1, 1, 0xFFFFFFFF, false);
     }
 
-    // JEI asks every widget for a tooltip wherever the mouse is over the recipe, so check the bounds here
     @Override
     public void getTooltip(ITooltipBuilder tooltip, double mouseX, double mouseY) {
         if (!isHovered(mouseX, mouseY)) {

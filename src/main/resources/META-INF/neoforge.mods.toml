@@ -1,0 +1,75 @@
+# The name of the mod loader type to load - for regular FML @Mod mods it should be javafml
+modLoader="javafml" #mandatory
+# A version range to match for said mod loader - for regular FML @Mod it will be the FML version,
+# which is the major version of the NeoForge version
+loaderVersion="[4,)" #mandatory
+# The license for the mod. This is mandatory metadata and allows for easier comprehension of your redistributive properties.
+license="MIT"
+# A list of mods - how many allowed here is determined by the individual mod loader
+[[mods]] #mandatory
+# The modid of the mod
+modId="mm" #mandatory
+# The version number of the mod, substituted by processResources from gradle.properties
+version="${mod_version}" #mandatory
+# A display name for the mod
+displayName="Masterful Machinery" #mandatory
+# A file name (in the root of the mod JAR) containing a logo for display
+logoFile="logo.png" #optional
+# A URL for the "homepage" for this mod, displayed in the mod UI
+displayURL="https://frozengalaxy.github.io/masterful-machinery-wiki/" #optional
+# A URL to refer people to when problems occur with this mod
+issueTrackerURL="https://github.com/An0mz/MasterfulMachinery/issues" #optional
+# A text field displayed in the mod UI
+authors="${mod_authors}" #optional
+# The description text for the mod (multi line!) (#mandatory)
+description='''
+Masterful Machinery is a utility-tech mod for modern Minecraft.
+
+It lets modpack developers define custom multiblock machines entirely through data and config files, with integrations for popular tech and magic mods. Packs can declare their own machines, recipes, ports, structures, and progression without needing a bespoke machine mod for every use case.
+'''
+
+# Mixin configs are declared here on NeoForge, rather than through a Gradle plugin as on Forge.
+[[mixins]]
+config="mixins.mm.json"
+
+[[mixins]]
+config="mixins.mm.compat.json"
+
+# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
+[[dependencies.mm]] #optional
+    # the modid of the dependency
+    modId="neoforge" #mandatory
+    # The type of dependency: required, optional, incompatible or discouraged
+    type="required" #mandatory
+    # The version range of the dependency
+    versionRange="[26.1.2,)" #mandatory
+    # An ordering relationship for the dependency - BEFORE, AFTER or NONE
+    ordering="NONE"
+    # Side this dependency is applied on - BOTH, CLIENT or SERVER
+    side="BOTH"
+# Here's another dependency
+[[dependencies.mm]]
+    modId="minecraft"
+    type="required"
+# This version range declares a minimum of the current minecraft version up to but not including the next major version
+    versionRange="[26.1.2,26.2)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.mm]]
+    modId="jei"
+    type="required"
+    versionRange="[29,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.mm]]
+    modId="kubejs"
+    type="optional"
+    versionRange="[26.1.2-8,)"
+    ordering="BEFORE"
+    side="BOTH"
+[[dependencies.mm]]
+    modId="geckolib"
+    type="optional"
+    versionRange="[5,)"
+    ordering="NONE"
+    side="BOTH"

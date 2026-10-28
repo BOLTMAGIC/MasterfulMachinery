@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.pattern.PatternRun;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -18,7 +18,7 @@ import java.util.Locale;
 
 /** Jade tooltip of a Pattern Port: its machine, the patterns running, outputs waiting and why the last push was refused. */
 public class PatternPortDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("pattern_port");
+    public static final Identifier UID = Ref.id("pattern_port");
     private static final String MACHINE_KEY = "PatternMachine";
     private static final String RUNS_KEY = "PatternRuns";
     private static final String RETURNING_KEY = "PatternReturning";
@@ -55,7 +55,7 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 
@@ -65,17 +65,17 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
         if (data.contains(MACHINE_KEY)) {
             tooltip.add(Component.translatable("jade.mm.port.machine", data.getString(MACHINE_KEY)));
             tooltip.add(Component.translatable("jade.mm.pattern_port.runs", data.getInt(RUNS_KEY)));
-            if (data.getInt(RETURNING_KEY) > 0) {
+            if (data.getIntOr(RETURNING_KEY, 0) > 0) {
                 tooltip.add(Component.translatable("jade.mm.pattern_port.returning", data.getInt(RETURNING_KEY)).withStyle(ChatFormatting.GOLD));
             }
         } else {
             tooltip.add(Component.translatable("jade.mm.port.no_machine").withStyle(ChatFormatting.GRAY));
         }
-        String last = data.getString(LAST_KEY);
+        String last = data.getStringOr(LAST_KEY, "");
         if (!last.isEmpty() && !last.equals("started")) {
             tooltip.add(Component.translatable("jade.mm.pattern_port.last." + last).withStyle(ChatFormatting.GRAY));
         }
-        PatternMismatch why = data.contains(WHY_KEY) ? PatternMismatch.load(data.getCompound(WHY_KEY)) : null;
+        PatternMismatch why = data.contains(WHY_KEY) ? PatternMismatch.load(data.getCompoundOrEmpty(WHY_KEY)) : null;
         if (why != null) {
             tooltip.add(Component.translatable("jade.mm.pattern_port.why." + why.reason().name().toLowerCase(Locale.ROOT),
                     why.what().toString(), why.patternAmount(), why.recipeAmount()).withStyle(ChatFormatting.GRAY));

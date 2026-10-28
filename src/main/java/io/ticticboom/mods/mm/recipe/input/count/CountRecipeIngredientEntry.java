@@ -80,7 +80,7 @@ public class CountRecipeIngredientEntry implements IRecipeIngredientEntry {
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
-        var rSlot = builder.addSlot(RecipeIngredientRole.CATALYST, slot.getInnerX(), slot.getInnerY());
+        var rSlot = builder.addSlot(RecipeIngredientRole.CRAFTING_STATION, slot.getInnerX(), slot.getInnerY());
         int min = ingredient.getCount();
         slot.setBadgeCount(min);
         if (min > 1) {

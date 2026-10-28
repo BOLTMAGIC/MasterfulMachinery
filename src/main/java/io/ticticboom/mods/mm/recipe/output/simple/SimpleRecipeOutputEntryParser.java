@@ -1,11 +1,12 @@
 package io.ticticboom.mods.mm.recipe.output.simple;
 
+import io.ticticboom.mods.mm.port.IPortIngredient;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntryParser;
+import io.ticticboom.mods.mm.Ref;
 
 public class SimpleRecipeOutputEntryParser implements IRecipeOutputEntryParser {
     @Override
@@ -29,17 +30,12 @@ public class SimpleRecipeOutputEntryParser implements IRecipeOutputEntryParser {
         return new SimpleRecipeOutputEntry(ingredient, chance, perTick, scaleBy);
     }
 
-    /**
-     * Reads an output entry's "ingredient", or the item shorthand fields (item/count/nbt/nbt_snbt/nbt_match) next to it.
-     */
-    public static IPortIngredient parseIngredient(JsonObject json, String context) {
+    public static IPortIngredient parseIngredient(JsonObject json, String what) {
         JsonElement ingredientEl = json.get("ingredient");
-        // If ingredient is missing, allow shorthand fields (item/count/nbt/nbt_snbt/nbt_match)
         if (ingredientEl == null || ingredientEl.isJsonNull()) {
-            // look for direct item/count/nbt fields and normalize
             if (json.has("item") || json.has("nbt") || json.has("nbt_snbt") || json.has("nbt_match") || json.has("count")) {
                 JsonObject normalized = new JsonObject();
-                normalized.addProperty("type", io.ticticboom.mods.mm.Ref.Ports.ITEM.toString());
+                normalized.addProperty("type", Ref.Ports.ITEM.toString());
                 if (json.has("item")) normalized.add("item", json.get("item"));
                 if (json.has("count")) normalized.add("count", json.get("count"));
                 if (json.has("nbt")) normalized.add("nbt", json.get("nbt"));
@@ -47,10 +43,9 @@ public class SimpleRecipeOutputEntryParser implements IRecipeOutputEntryParser {
                 if (json.has("nbt_match")) normalized.add("nbt_match", json.get("nbt_match"));
                 ingredientEl = normalized;
             } else {
-                throw new RuntimeException("Missing or null 'ingredient' field in " + context + ": " + json);
+                throw new RuntimeException("Missing or null 'ingredient' field in " + what + ": " + json);
             }
         }
-
         return MMPortRegistry.parseIngredient(ingredientEl);
     }
 }

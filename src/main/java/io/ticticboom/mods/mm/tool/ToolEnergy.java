@@ -1,15 +1,10 @@
 package io.ticticboom.mods.mm.tool;
 
-import io.ticticboom.mods.mm.config.MMConfigSetup;
-import net.minecraft.nbt.CompoundTag;
+import io.ticticboom.mods.mm.config.MMConfig;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 
-/**
- * FE storage for a Multiblock Tool stack, backed by an int tag ({@value #KEY}) on the tool's own NBT.
- */
 public class ToolEnergy implements IEnergyStorage {
-    private static final String KEY = "Energy";
 
     private final ItemStack stack;
     private final int capacity;
@@ -19,10 +14,13 @@ public class ToolEnergy implements IEnergyStorage {
         this.capacity = capacity;
     }
 
+    public static ToolEnergy of(ItemStack stack) {
+        return new ToolEnergy(stack, MMConfig.TOOL_ENERGY_CAPACITY);
+    }
+
     @Override
     public int receiveEnergy(int maxReceive, boolean simulate) {
-        int rate = MMConfigSetup.COMMON.toolEnergyReceiveRate.get();
-        int received = Math.min(Math.min(maxReceive, rate), capacity - getEnergyStored());
+        int received = Math.min(Math.min(maxReceive, MMConfig.TOOL_ENERGY_RECEIVE_RATE), capacity - getEnergyStored());
         if (received <= 0) {
             return 0;
         }
@@ -44,7 +42,6 @@ public class ToolEnergy implements IEnergyStorage {
         return extracted;
     }
 
-    /** Gives back energy the tool paid for something that did not happen; not limited by the receive rate. */
     public void restore(int fe) {
         if (fe > 0) {
             setEnergy(getEnergyStored() + fe);
@@ -53,11 +50,7 @@ public class ToolEnergy implements IEnergyStorage {
 
     @Override
     public int getEnergyStored() {
-        CompoundTag tag = stack.getTag();
-        if (tag == null) {
-            return 0;
-        }
-        return Math.max(0, Math.min(capacity, tag.getInt(KEY)));
+        return Math.max(0, Math.min(capacity, stack.getOrDefault(ToolComponents.ENERGY.get(), 0)));
     }
 
     @Override
@@ -76,6 +69,6 @@ public class ToolEnergy implements IEnergyStorage {
     }
 
     private void setEnergy(int value) {
-        stack.getOrCreateTag().putInt(KEY, Math.max(0, Math.min(capacity, value)));
+        stack.set(ToolComponents.ENERGY.get(), Math.max(0, Math.min(capacity, value)));
     }
 }

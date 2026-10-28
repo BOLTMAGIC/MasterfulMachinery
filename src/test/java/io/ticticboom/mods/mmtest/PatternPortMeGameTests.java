@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.world.level.block.entity.BlockEntity;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
@@ -20,12 +21,10 @@ import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.me.helpers.IGridConnectedBlockEntity;
 import net.minecraft.core.BlockPos;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.gametest.framework.GameTestSequence;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.Future;
@@ -39,7 +38,6 @@ import static io.ticticboom.mods.mmtest.PatternPortGameTests.check;
  * craft is asked from the network; the CPU pushes the pattern through the provider and the outputs must come back
  * into the network. Registered by MeGameTests only with AE2.
  */
-@PrefixGameTestTemplate(false)
 public class PatternPortMeGameTests {
     static final BlockPos DRIVE = PROVIDER.west();
     static final BlockPos ENERGY = DRIVE.west();
@@ -130,16 +128,16 @@ public class PatternPortMeGameTests {
         helper.setBlock(DRIVE, AEBlocks.DRIVE.block());
         helper.setBlock(CPU, AEBlocks.CRAFTING_STORAGE_1K.block());
         helper.setBlock(PROVIDER, AEBlocks.PATTERN_PROVIDER.block());
-        var drive = (DriveBlockEntity) helper.getBlockEntity(DRIVE);
+        var drive = (DriveBlockEntity) helper.getBlockEntity(DRIVE, BlockEntity.class);
         for (int slot = 0; slot < cells.length; slot++) {
             drive.getInternalInventory().setItemDirect(slot, cells[slot]);
         }
-        ItemStack rest = ((PatternProviderBlockEntity) helper.getBlockEntity(PROVIDER)).getLogic().getPatternInv().addItems(pattern);
+        ItemStack rest = ((PatternProviderBlockEntity) helper.getBlockEntity(PROVIDER, BlockEntity.class)).getLogic().getPatternInv().addItems(pattern);
         check(helper, rest.isEmpty(), "the pattern provider did not take the pattern");
     }
 
     static ItemStack processing(GenericStack[] inputs, GenericStack... outputs) {
-        return PatternDetailsHelper.encodeProcessingPattern(inputs, outputs);
+        return PatternDetailsHelper.encodeProcessingPattern(java.util.List.of(inputs), java.util.List.of(outputs));
     }
 
     static ItemStack itemCell(GameTestHelper helper, AEKey what, long amount) {
@@ -159,7 +157,7 @@ public class PatternPortMeGameTests {
 
     @Nullable
     static IGrid grid(GameTestHelper helper) {
-        return ((IGridConnectedBlockEntity) helper.getBlockEntity(DRIVE)).getMainNode().getGrid();
+        return ((IGridConnectedBlockEntity) helper.getBlockEntity(DRIVE, BlockEntity.class)).getMainNode().getGrid();
     }
 
     /** How much of what the network holds, read now. */

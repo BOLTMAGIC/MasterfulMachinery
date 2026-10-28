@@ -16,6 +16,7 @@ import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.recipe.flex.FlexCost;
 import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import io.ticticboom.mods.mm.recipe.input.IRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
@@ -31,7 +32,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -222,7 +223,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         var iterator = candidates.iterator();
         while (picked.size() < maxTypes && iterator.hasNext()) {
             ItemStack stack = iterator.next();
-            if (tried.stream().anyMatch(t -> ItemStack.isSameItemSameTags(t, stack))) continue;
+            if (tried.stream().anyMatch(t -> ItemStack.isSameItemSameComponents(t, stack))) continue;
             tried.add(stack);
             if (!accepts(level, stack) || !enoughOf(itemStorages, stack) || !matchesAvailable(itemStorages, stack, reserved)) {
                 continue;
@@ -235,10 +236,10 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                 }
             }
             if (simulation == null) {
-                simulation = new OutputSimulation(storages);
+                simulation = new OutputSimulation(level, storages);
             }
             // a kind whose output doesn't fit next to the others waits for a later run
-            if (simulation.tryAdd(level, kindOutputs)) {
+            if (simulation.tryAdd(level, kindOutputs, state)) {
                 picked.add(stack.copyWithCount(1));
                 for (FlexMatchIngredientEntry match : matches) {
                     reserved.merge(match.requiredFor(stack).getItem(), match.getCount(), Integer::sum);
@@ -284,7 +285,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
 
     private static Predicate<ItemStack> exactly(ItemStack stack) {
         ItemStack copy = stack.copyWithCount(1);
-        return s -> ItemStack.isSameItemSameTags(s, copy);
+        return s -> ItemStack.isSameItemSameComponents(s, copy);
     }
 
     @Override
@@ -483,10 +484,11 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         var result = new ArrayList<PortContent>();
         for (ItemStack item : captured) {
             PortContent content = new SingleItemPortIngredient(
-                ForgeRegistries.ITEMS.getKey(item.getItem()),
-                ingredient.getCount(),
-                item.getTag(),
-                true
+                BuiltInRegistries.ITEM.getKey(item.getItem()),
+                AmountRange.of(ingredient.getCount()),
+                null,
+                false,
+                item.getComponentsPatch()
             ).display();
             if (content != null) {
                 result.add(content);

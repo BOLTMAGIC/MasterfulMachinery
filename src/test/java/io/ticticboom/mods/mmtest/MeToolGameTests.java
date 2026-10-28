@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.features.GridLinkables;
@@ -23,7 +25,7 @@ import io.ticticboom.mods.mm.builder.me.CraftHandle;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
 import io.ticticboom.mods.mm.builder.me.MeAccessFactory;
-import io.ticticboom.mods.mm.compat.ae2.NetworkAccess;
+import io.ticticboom.mods.mm.compat.ae2.linker.NetworkAccess;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.networklink.LinkData;
 import io.ticticboom.mods.mm.setup.MMRegisters;
@@ -37,11 +39,10 @@ import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
@@ -54,11 +55,9 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -75,11 +74,10 @@ import java.util.function.Consumer;
  * Not a {@code @GameTestHolder}: Forge loads every holder, and this class needs AE2. {@link MeGameTests} registers it
  * only when AE2 is installed, so each test names its template namespace itself.
  */
-@PrefixGameTestTemplate(false)
 public class MeToolGameTests {
     private static final String NAMESPACE = "mmtest";
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
     private static final int START_FE = 1000;
     /** Clicked on its top face, so the anchor is one block above; the structure runs along z = 3. */
     private static final BlockPos CLICKED = new BlockPos(3, 0, 3);
@@ -92,7 +90,7 @@ public class MeToolGameTests {
     /** Boot, then AE2 calculates, the provider pushes to the assembler, and the assembler crafts. */
     private static final int CRAFT_TIMEOUT = 900;
     /** Its controller and one oak planks block. */
-    private static final ResourceLocation CRAFT_STRUCTURE = ResourceLocation.tryBuild("mmtest", "craft_test");
+    private static final Identifier CRAFT_STRUCTURE = Identifier.tryBuild("mmtest", "craft_test");
 
     @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE)
     public static void wirelessAccessPointLinksStructureBuilder(GameTestHelper helper) {
@@ -154,7 +152,7 @@ public class MeToolGameTests {
         BlockPos energyCell = helper.absolutePos(ENERGY_CELL);
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(port("s")), false);
         store.insertItem(2, new ItemStack(Blocks.GLASS), false);
@@ -244,16 +242,16 @@ public class MeToolGameTests {
                             event.setCanceled(true);
                         }
                     };
-                    MinecraftForge.EVENT_BUS.addListener(claims);
+                    NeoForge.EVENT_BUS.addListener(claims);
                     AssemblyJob job;
                     try {
                         job = run(helper, player, result.prepared());
                     } finally {
-                        MinecraftForge.EVENT_BUS.unregister(claims);
+                        NeoForge.EVENT_BUS.unregister(claims);
                     }
 
                     check(helper, job.placed() == 3 && job.blocked() == 1, "expected 3 placed and 1 blocked, got " + job.placed() + "/" + job.blocked());
-                    check(helper, storeCount(tool) == 1 && new ToolStore(tool).getStackInSlot(0).is(Blocks.GLASS.asItem()),
+                    check(helper, storeCount(tool) == 1 && new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY).getStackInSlot(0).is(Blocks.GLASS.asItem()),
                             "the refused glass should be refunded into the store");
                     check(helper, liveStock(helper, drive).get(AEItemKey.of(Blocks.GLASS)) == EXTRA_GLASS,
                             "exactly one glass should have left ME, " + liveStock(helper, drive).get(AEItemKey.of(Blocks.GLASS)) + " left");
@@ -268,7 +266,7 @@ public class MeToolGameTests {
         BlockPos energyCell = helper.absolutePos(ENERGY_CELL);
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(Blocks.GLASS), false);
         store.insertItem(1, new ItemStack(port("l")), false);
 
@@ -525,12 +523,14 @@ public class MeToolGameTests {
         cell.persist();
         ((DriveBlockEntity) level.getBlockEntity(drive)).getInternalInventory().setItemDirect(0, cellStack);
 
-        CraftingRecipe recipe = (CraftingRecipe) level.getRecipeManager().byKey(ResourceLocation.tryBuild("minecraft", "oak_planks"))
+        @SuppressWarnings("unchecked")
+        var recipe = (net.minecraft.world.item.crafting.RecipeHolder<CraftingRecipe>) (Object) level.getServer().getRecipeManager()
+                .byKey(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.RECIPE, Identifier.tryBuild("minecraft", "oak_planks")))
                 .orElseThrow(() -> new IllegalStateException("no oak_planks recipe"));
         ItemStack[] inputs = new ItemStack[9];
         Arrays.fill(inputs, ItemStack.EMPTY);
         inputs[0] = new ItemStack(Items.OAK_LOG);
-        ItemStack pattern = PatternDetailsHelper.encodeCraftingPattern(recipe, inputs, recipe.getResultItem(level.registryAccess()), false, false);
+        ItemStack pattern = PatternDetailsHelper.encodeCraftingPattern(recipe, inputs, new ItemStack(Items.OAK_PLANKS, 4), false, false);
         ItemStack rest = ((PatternProviderBlockEntity) level.getBlockEntity(provider)).getLogic().getPatternInv().addItems(pattern);
         check(helper, rest.isEmpty(), "the pattern provider did not take the pattern");
         return drive;
@@ -642,7 +642,7 @@ public class MeToolGameTests {
     private static TestPlayer player(GameTestHelper helper) {
         TestPlayer player = new TestPlayer(helper.getLevel());
         BlockPos at = helper.absolutePos(new BlockPos(3, 1, 5));
-        player.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180, 0);
+        player.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180, 0);
         check(helper, player.getDirection() == Direction.NORTH, "the test player should face north, faces " + player.getDirection());
         check(helper, !player.getAbilities().instabuild, "the test player should not be instabuild");
         return player;
@@ -656,7 +656,12 @@ public class MeToolGameTests {
         }
 
         @Override
-        public void displayClientMessage(Component message, boolean actionBar) {
+        public void sendSystemMessage(Component message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void sendOverlayMessage(Component message) {
             messages.add(message);
         }
 
@@ -678,7 +683,7 @@ public class MeToolGameTests {
     }
 
     private static int storeCount(ItemStack tool) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         int total = 0;
         for (int i = 0; i < store.getSlots(); i++) {
             total += store.getStackInSlot(i).getCount();
@@ -705,7 +710,7 @@ public class MeToolGameTests {
     }
 
     private static Block registered(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("block mm:" + id + " is not registered");
         }

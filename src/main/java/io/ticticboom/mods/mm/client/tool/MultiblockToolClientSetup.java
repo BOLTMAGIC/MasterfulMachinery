@@ -5,18 +5,14 @@ import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
-import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.RegisterGuiLayersEvent;
+import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
 
-/**
- * Client-only registration for the tool's menu screen, the dismantle key's name in its tooltip and the craft HUD. Kept out of the common {@code SetupEventHandler}
- * (which loads on the dedicated server too) so no client class is ever referenced from common code.
- */
-@Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public class MultiblockToolClientSetup {
 
     @SubscribeEvent
@@ -27,9 +23,8 @@ public class MultiblockToolClientSetup {
         ToolHudPkt.setClientHandler(ToolHudOverlay::receive);
     }
 
-    /** The craft HUD draws after the action bar and the health/food rows, so it can sit above them. */
     @SubscribeEvent
-    public static void onRegisterOverlays(RegisterGuiOverlaysEvent event) {
-        event.registerAbove(VanillaGuiOverlay.RECORD_OVERLAY.id(), ToolHudOverlay.ID, ToolHudOverlay.OVERLAY);
+    public static void onRegisterLayers(RegisterGuiLayersEvent event) {
+        event.registerAbove(VanillaGuiLayers.OVERLAY_MESSAGE, ToolHudOverlay.ID, ToolHudOverlay.OVERLAY);
     }
 }

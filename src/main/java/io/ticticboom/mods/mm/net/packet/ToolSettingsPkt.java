@@ -1,5 +1,10 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
@@ -8,57 +13,45 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolData;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
-/**
- * Multiblock tool screen -> server: select a structure ({@code key} = its id), set a preferred port tier
- * ({@code key} = a {@link PortTiers#key}, {@code value} = the tier), toggle the ME network options
- * and instant-build options ({@code value} nonzero = on), or forget the bound network, on the held tool.
- */
-public record ToolSettingsPkt(Action action, String key, int value) {
+public record ToolSettingsPkt(Action action, String key, int value) implements CustomPacketPayload {
+    public static final Type<ToolSettingsPkt> TYPE = new Type<>(Ref.id("tool_settings"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, ToolSettingsPkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), ToolSettingsPkt::decode);
+
     public enum Action { SELECT_STRUCTURE, SET_TIER, SET_USE_ME, SET_AUTOCRAFT, FORGET_NETWORK, SET_INSTANT_BUILD }
 
-    /** {@link Action#SELECT_STRUCTURE} value for another mod's structure; 0 selects an MM structure. */
     public static final int BUILDER_STRUCTURE = 1;
 
-    public static void encode(ToolSettingsPkt pkt, FriendlyByteBuf buf) {
+    public static void encode(ToolSettingsPkt pkt, RegistryFriendlyByteBuf buf) {
         buf.writeEnum(pkt.action);
         buf.writeUtf(pkt.key, 256);
         buf.writeVarInt(pkt.value);
     }
 
-    public static ToolSettingsPkt decode(FriendlyByteBuf buf) {
+    public static ToolSettingsPkt decode(RegistryFriendlyByteBuf buf) {
         return new ToolSettingsPkt(buf.readEnum(Action.class), buf.readUtf(256), buf.readVarInt());
     }
 
-    public static void handle(ToolSettingsPkt pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer sender = ctx.get().getSender();
+    public static void handle(ToolSettingsPkt pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = (ctx.player() instanceof ServerPlayer player ? player : null);
             if (sender == null) {
                 return;
             }
-            // the tool whose screen is open, else whichever tool is held
             ItemStack tool = sender.containerMenu instanceof MultiblockToolMenu menu
                     ? sender.getItemInHand(menu.getHand()) : ToolRotatePkt.heldTool(sender);
             apply(sender, tool, pkt.action, pkt.key, pkt.value);
         });
-        ctx.get().setPacketHandled(true);
     }
 
-    /**
-     * {@link #apply(ItemStack, Action, String, int, Predicate, Map)} for player's tool, against the loaded structures and
-     * registered tiers. Forgetting the network or turning auto-craft off also forgets player's tracked crafts (and hides
-     * the HUD): the way out of a craft stuck on a network that is gone for good.
-     */
     public static boolean apply(ServerPlayer player, @Nullable ItemStack tool, Action action, String key, int value) {
         if (!apply(tool, action, key, value, StructureManager.STRUCTURES::containsKey,
                 id -> BuildableStructureRegistry.SERVER.get(id) != null, PortTiers.registeredMaxTiers())) {
@@ -70,31 +63,20 @@ public record ToolSettingsPkt(Action action, String key, int value) {
         return true;
     }
 
-    /**
-     * Checks a request and writes it to the tool.
-     *
-     * @param structureExists which structure ids may be selected
-     * @param maxTierByKey    the tier keys that may be set, with the highest tier each has
-     * @return true when the request was valid and stored
-     */
     public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
-                                Predicate<ResourceLocation> structureExists, Map<String, Integer> maxTierByKey) {
+                                Predicate<Identifier> structureExists, Map<String, Integer> maxTierByKey) {
         return apply(tool, action, key, value, structureExists, id -> false, maxTierByKey);
     }
 
-    /**
-     * As above; for {@link Action#SELECT_STRUCTURE} a {@code value} of {@link #BUILDER_STRUCTURE} selects another mod's
-     * structure (checked with {@code builderStructureExists}) instead of an MM one.
-     */
     public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
-                                Predicate<ResourceLocation> structureExists, Predicate<ResourceLocation> builderStructureExists,
+                                Predicate<Identifier> structureExists, Predicate<Identifier> builderStructureExists,
                                 Map<String, Integer> maxTierByKey) {
         if (tool == null || !(tool.getItem() instanceof MultiblockToolItem)) {
             return false;
         }
         switch (action) {
             case SELECT_STRUCTURE -> {
-                ResourceLocation id = ResourceLocation.tryParse(key);
+                Identifier id = Identifier.tryParse(key);
                 if (id == null) {
                     return false;
                 }
@@ -139,5 +121,10 @@ public record ToolSettingsPkt(Action action, String key, int value) {
             }
         }
         return false;
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -9,27 +9,27 @@ import io.ticticboom.mods.mm.util.WorldUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.List;
 import java.util.function.Supplier;
 
 public class BlockStructurePiece extends StructurePiece {
 
-    private final ResourceLocation blockId;
+    private final Identifier blockId;
     private Block block;
 
-    public BlockStructurePiece(ResourceLocation blockId) {
+    public BlockStructurePiece(Identifier blockId) {
         this.blockId = blockId;
     }
 
     @Override
     public void validateSetup(StructurePieceSetupMetadata meta) {
-        block = ForgeRegistries.BLOCKS.getValue(blockId);
+        block = BuiltInRegistries.BLOCK.getValue(blockId);
         if (block == null) {
             throw new RuntimeException(StructurePieceUtils.errorMessageFor("'block' field is not a valid block id", meta));
         }
@@ -40,7 +40,7 @@ public class BlockStructurePiece extends StructurePiece {
     public boolean formed(Level level, BlockPos pos, StructureModel model) {
         //just in case if block was not initialized yet
         if(block == null) {
-            block = ForgeRegistries.BLOCKS.getValue(blockId);
+            block = BuiltInRegistries.BLOCK.getValue(blockId);
         }
         return WorldUtil.getBlockState(pos, (ServerLevel) level).is(block);
     }
@@ -52,7 +52,7 @@ public class BlockStructurePiece extends StructurePiece {
 
     @Override
     public Component createDisplayComponent() {
-        return Component.translatable("mm.structure.piece.block").append(Component.literal(blockId.toString()).withStyle(ChatFormatting.DARK_AQUA));
+        return Component.translatable("piece.mm.block.description", Component.literal(blockId.toString()).withStyle(ChatFormatting.DARK_AQUA));
     }
 
     @Override
@@ -63,7 +63,7 @@ public class BlockStructurePiece extends StructurePiece {
 
     @Override
     public JsonObject debugFound(Level level, BlockPos pos, StructureModel model, JsonObject json) {
-        var foundId = ForgeRegistries.BLOCKS.getKey(level.getBlockState(pos).getBlock());
+        var foundId = BuiltInRegistries.BLOCK.getKey(level.getBlockState(pos).getBlock());
         json.addProperty("block", foundId.toString());
         return json;
     }

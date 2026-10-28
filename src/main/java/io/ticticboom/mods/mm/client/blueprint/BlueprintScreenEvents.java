@@ -4,13 +4,13 @@ import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class BlueprintScreenEvents {
 
     @SubscribeEvent
@@ -24,7 +24,7 @@ public class BlueprintScreenEvents {
         }
 
         Level level = event.getLevel();
-        if (!level.isClientSide) {
+        if (!level.isClientSide()) {
             return;
         }
 

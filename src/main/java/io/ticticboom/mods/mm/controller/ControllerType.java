@@ -6,17 +6,17 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public abstract class ControllerType {
 
-    public abstract RegistryObject<BlockEntityType<?>> registerBlockEntity(ControllerModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(ControllerModel model, RegistryGroupHolder groupHolder);
 
-    public abstract RegistryObject<Block> registerBlock(ControllerModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Block, Block> registerBlock(ControllerModel model, RegistryGroupHolder groupHolder);
 
-    public abstract RegistryObject<Item> registerItem(ControllerModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Item, Item> registerItem(ControllerModel model, RegistryGroupHolder groupHolder);
 
-    public abstract RegistryObject<MenuType<?>> registerMenu(ControllerModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<MenuType<?>, MenuType<?>> registerMenu(ControllerModel model, RegistryGroupHolder groupHolder);
 
     public abstract void registerScreen(RegistryGroupHolder groupHolder);
 

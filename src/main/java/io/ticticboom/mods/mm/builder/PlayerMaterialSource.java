@@ -4,7 +4,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 
-/** Draws assembly materials from a player's inventory; used by the controller's own Assemble (0 FE). */
 public final class PlayerMaterialSource implements MaterialSource {
     private final Player player;
 

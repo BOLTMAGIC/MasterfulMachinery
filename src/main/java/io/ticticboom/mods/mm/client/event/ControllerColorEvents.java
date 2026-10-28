@@ -1,33 +1,39 @@
 package io.ticticboom.mods.mm.client.event;
 
+import org.jetbrains.annotations.Nullable;
+import java.util.List;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.core.BlockPos;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.color.item.ItemTintSource;
+import net.minecraft.client.color.block.BlockTintSource;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.config.MMClientConfig;
+import io.ticticboom.mods.mm.client.render.ControllerVisualsRenderer;
+import io.ticticboom.mods.mm.client.render.PortStatusLightRenderer;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlock;
-import io.ticticboom.mods.mm.client.render.ControllerGeoRenderer;
-import io.ticticboom.mods.mm.client.render.PortStatusLightRenderer;
+import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
-import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.client.event.EntityRenderersEvent;
+import io.ticticboom.mods.mm.util.ColorUtil;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterColorHandlersEvent;
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 
-/**
- * Tints the controller's screen (tintindex 0 of its model) by machine state. Port lights: PortStatusLightRenderer,
- * machine models: ControllerGeoRenderer.
- */
-@Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ControllerColorEvents {
     private static final int NO_TINT = 0xFFFFFF;
-    // the screen texture is grayscale, so this is the controller's original green
     private static final int ORIGINAL_SCREEN_COLOR = 0x5CFF89;
 
     private ControllerColorEvents() {
@@ -36,63 +42,80 @@ public final class ControllerColorEvents {
     @SubscribeEvent
     @SuppressWarnings("unchecked")
     public static void onRenderers(EntityRenderersEvent.RegisterRenderers event) {
-        for (RegistryGroupHolder holder : MMPortRegistry.PORTS) {
-            // only ports with a status light
-            if (holder.getBlock().get().defaultBlockState().hasProperty(ControllerState.PROPERTY)) {
-                event.registerBlockEntityRenderer((BlockEntityType<BlockEntity>) holder.getBe().get(), ctx -> new PortStatusLightRenderer());
+        for (var holder : MMPortRegistry.PORTS) {
+            var type = holder.getBe().get();
+            if (type != null) {
+                event.registerBlockEntityRenderer((BlockEntityType<BlockEntity>) type, ctx -> new PortStatusLightRenderer());
             }
         }
-        // machine models (geoModel); draws nothing without GeckoLib or a geoModel
-        for (RegistryGroupHolder holder : MMControllerRegistry.CONTROLLERS) {
-            event.registerBlockEntityRenderer((BlockEntityType<BlockEntity>) holder.getBe().get(), ctx -> new ControllerGeoRenderer());
+        for (var holder : MMControllerRegistry.CONTROLLERS) {
+            var type = holder.getBe().get();
+            if (type != null) {
+                event.registerBlockEntityRenderer((BlockEntityType<MachineControllerBlockEntity>) type, ctx -> new ControllerVisualsRenderer());
+            }
         }
     }
 
     @SubscribeEvent
-    public static void onBlockColors(RegisterColorHandlersEvent.Block event) {
+    public static void onBlockColors(RegisterColorHandlersEvent.BlockTintSources event) {
         Block[] blocks = MMControllerRegistry.CONTROLLERS.stream()
                 .map(holder -> holder.getBlock().get())
                 .toArray(Block[]::new);
-        event.register((state, level, pos, tintIndex) -> {
-            if (tintIndex != 0 || !(state.getBlock() instanceof MachineControllerBlock block)) {
-                return NO_TINT;
+        // tint index 0 is the controller's screen
+        event.register(List.of(new BlockTintSource() {
+            @Override
+            public int color(BlockState state) {
+                return screenTint(state, ControllerState.IDLE);
             }
-            // outside the world (JEI, blueprint preview) show the normal look instead of "not built"
-            ControllerState machineState = level == null || pos == null
-                    ? ControllerState.IDLE
-                    : state.getValue(ControllerState.PROPERTY);
-            return screenColor(block, machineState);
-        }, blocks);
+
+            @Override
+            public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+                return screenTint(state, state.hasProperty(ControllerState.PROPERTY) ? state.getValue(ControllerState.PROPERTY) : ControllerState.IDLE);
+            }
+        }), blocks);
     }
 
+    private static int screenTint(BlockState state, ControllerState machineState) {
+        return state.getBlock() instanceof MachineControllerBlock block ? 0xFF000000 | screenColor(block, machineState) : -1;
+    }
+
+    /** Item tints are data driven since 1.21.4: controller item definitions name mm:controller_screen. */
     @SubscribeEvent
-    public static void onItemColors(RegisterColorHandlersEvent.Item event) {
-        for (RegistryGroupHolder holder : MMControllerRegistry.CONTROLLERS) {
-            if (holder.getBlock().get() instanceof MachineControllerBlock block) {
-                event.register((stack, tintIndex) -> tintIndex == 0 ? screenColor(block, ControllerState.IDLE) : NO_TINT,
-                        holder.getItem().get());
-            }
+    public static void onItemTints(RegisterColorHandlersEvent.ItemTintSources event) {
+        event.register(Ref.id("controller_screen"), ScreenTint.CODEC);
+    }
+
+    public record ScreenTint() implements ItemTintSource {
+        public static final MapCodec<ScreenTint> CODEC = MapCodec.unit(new ScreenTint());
+
+        @Override
+        public int calculate(ItemStack stack, @Nullable ClientLevel level, @Nullable LivingEntity owner) {
+            return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof MachineControllerBlock block
+                    ? 0xFF000000 | screenColor(block, ControllerState.IDLE) : -1;
+        }
+
+        @Override
+        public MapCodec<ScreenTint> type() {
+            return CODEC;
         }
     }
 
     private static int screenColor(MachineControllerBlock block, ControllerState state) {
-        var config = MMConfigSetup.CLIENT;
-        if (!config.tintControllerScreen.get()) {
+        if (!MMConfigSetup.CLIENT.tintControllerScreen.get()) {
             return ORIGINAL_SCREEN_COLOR;
         }
-        Integer override = MMClientConfig.parseColor(block.getModel().screenColor(state.getSerializedName()));
-        if (override != null) {
-            return override;
-        }
-        Integer configured = MMClientConfig.parseColor(configValue(config, state).get());
-        return configured != null ? configured : ORIGINAL_SCREEN_COLOR;
+        Integer override = ColorUtil.parse(block.getModel().screenColor(state.getSerializedName()));
+        return override != null ? override : configColor(state);
     }
 
-    private static ForgeConfigSpec.ConfigValue<String> configValue(MMClientConfig config, ControllerState state) {
-        return switch (state) {
+    public static int configColor(ControllerState state) {
+        var config = MMConfigSetup.CLIENT;
+        var value = switch (state) {
             case UNFORMED -> config.controllerUnformedColor;
             case IDLE -> config.controllerIdleColor;
             case WORKING -> config.controllerWorkingColor;
         };
+        Integer parsed = ColorUtil.parse(value.get());
+        return parsed != null ? parsed : ORIGINAL_SCREEN_COLOR;
     }
 }

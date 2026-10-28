@@ -1,52 +1,61 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.PortContent;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+
 import com.google.gson.JsonObject;
-import io.ticticboom.mods.mm.compat.jei.NoCountItemRenderer;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.ConditionalLazy;
-import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
+import io.ticticboom.mods.mm.util.NbtMatchUtils;
 
 public class TagItemPortIngredient extends BaseItemPortIngredient {
 
     private final TagKey<Item> tag;
     private final ConditionalLazy<List<ItemStack>> stacks;
 
-    public TagItemPortIngredient(ResourceLocation tagId, int count, CompoundTag requiredNbt, boolean nbtStrong) {
-        super(count, createPredicate(tagId), requiredNbt, nbtStrong);
+    public TagItemPortIngredient(Identifier tagId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
+        super(count, createPredicate(tagId), requiredNbt, nbtStrong, components);
         this.tag = ItemTags.create(tagId);
-        stacks = ConditionalLazy.create(() -> Objects.requireNonNull(ForgeRegistries.ITEMS.tags()).getTag(tag).stream().map(x -> {
-                // use display stacks with the real required count so external transfer/encode handlers
-                // that read the ItemStack count (rather than the JEI badge) get the correct amount.
-                var s = new ItemStack(x, count);
-            if (requiredNbt != null) s.setTag(requiredNbt.copy());
-            return s;
-        }).toList(),
-                () -> !Objects.requireNonNull(ForgeRegistries.ITEMS.tags()).getTag(tag).isEmpty(), List.of());
+        // Registry.getTag returns an Optional<HolderSet.Named<Item>> of holders rather than
+        // Forge's ITag of values, so an absent tag yields an empty list instead of a null.
+        stacks = ConditionalLazy.create(() -> BuiltInRegistries.ITEM.get(tag)
+                .map(holders -> holders.stream().map(holder -> {
+                    // use display stacks with the real required count so external transfer/encode handlers
+                    // that read the ItemStack count (rather than the JEI badge) get the correct amount.
+                    var s = new ItemStack(holder.value(), count.max());
+                    s.applyComponents(components);
+                    if (requiredNbt != null) ItemNbtUtil.setTag(s, requiredNbt.copy());
+                    return s;
+                }).toList())
+                .orElseGet(List::of),
+                () -> BuiltInRegistries.ITEM.get(tag).map(holders -> holders.size() > 0).orElse(false), List.of());
     }
 
     @Override
-    public ItemStack displayItem() {
-        var all = stacks.get();
-        return all.isEmpty() ? ItemStack.EMPTY : all.get(0).copy();
+    public IPortIngredient scaled(double factor) {
+        return new TagItemPortIngredient(tag.location(), count.scaled(factor), requiredNbt, nbtStrong, components);
     }
 
     @Override
@@ -54,7 +63,13 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
         return stacks.get();
     }
 
-    private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
+    @Override
+    public PortContent display() {
+        var all = stacks.get();
+        return all.isEmpty() ? null : PortContent.item(all.get(0).copyWithCount(1), all.get(0).getCount());
+    }
+
+    private static Predicate<ItemStack> createPredicate(Identifier id) {
         var key = ItemTags.create(id);
         return  i -> i.is(key);
     }
@@ -71,9 +86,6 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
         recipeSlot.addItemStacks(stacks.get());
-        // Suppress vanilla count rendering; MMRecipeCategory.draw() draws our AE2-style K/M count instead.
-        var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
-        recipeSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
     }
 
     @Override
@@ -82,7 +94,7 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
         json.addProperty("WILL_NEVER_WORK", true);
         if (requiredNbt != null) {
             json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
-            json.add("nbt", io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(requiredNbt));
+            json.add("nbt", NbtMatchUtils.toJson(requiredNbt));
         }
         return json;
     }

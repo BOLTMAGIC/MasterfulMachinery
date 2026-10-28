@@ -9,22 +9,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/** A controller-owned view of item ports, refreshed only after a handler changes. */
 public final class ItemPortIndex {
     private final List<ItemPortStorage> ports = new ArrayList<>();
     private final long[] revisions;
-    private final long[] observedRevisions;
     private final Map<Item, List<ItemPortStorage>> portsByItem = new HashMap<>();
     private List<ItemPortStorage> portsWithEmptySlots = List.of();
     private boolean initialized;
-    private boolean observed;
 
     public ItemPortIndex(List<IPortStorage> storages) {
         for (IPortStorage storage : storages) {
             if (storage instanceof ItemPortStorage itemPort) ports.add(itemPort);
         }
         revisions = new long[ports.size()];
-        observedRevisions = new long[ports.size()];
     }
 
     public List<ItemPortStorage> forItem(Item item) {
@@ -35,18 +31,6 @@ public final class ItemPortIndex {
     public List<ItemPortStorage> withEmptySlots() {
         refresh();
         return portsWithEmptySlots;
-    }
-
-    /** Poll the handlers' change counters without walking any item slots. */
-    public boolean changedSinceLastPoll() {
-        boolean changed = !observed;
-        observed = true;
-        for (int i = 0; i < ports.size(); i++) {
-            long revision = ports.get(i).getHandler().contentRevision();
-            if (observedRevisions[i] != revision) changed = true;
-            observedRevisions[i] = revision;
-        }
-        return changed;
     }
 
     private void refresh() {

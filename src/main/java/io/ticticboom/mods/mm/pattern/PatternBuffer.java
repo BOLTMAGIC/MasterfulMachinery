@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.pattern;
 
-import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
+// [26.1-pending] import: import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
@@ -10,32 +10,27 @@ import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.EnumMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 /**
  * What one pattern run holds: the inputs AE2 pushed (consumed from here instead of the input ports) and the outputs
- * the run made (given back to the pattern provider from here). Each side has an item storage, a fluid storage and a
- * storage per kind of Mekanism chemical it needs.
+ * the run made (given back to the pattern provider from here). Each side has an item storage, a fluid storage and,
+ * when it needs one, a Mekanism chemical storage.
  */
 public final class PatternBuffer {
     private static final int SLOTS = 9;
     private static final int ITEM_SLOT_CAPACITY = 16_384;
     private static final int FLUID_TANK_CAPACITY = 1_000_000;
     private static final long CHEMICAL_CAPACITY = 1_000_000;
-    private static final Set<Kind> CHEMICALS = Set.of(Kind.GAS, Kind.INFUSION, Kind.PIGMENT, Kind.SLURRY);
 
     private final Side in;
     private final Side out;
@@ -49,14 +44,14 @@ public final class PatternBuffer {
     public static PatternBuffer forRun(PatternSpec spec, RecipeModel recipe) {
         var in = new Side();
         for (PatternIngredient input : spec.inputs()) {
-            in.chemicalStorage(input.kind());
+            in.needs(input.kind());
         }
         var out = new Side();
         for (IRecipeOutputEntry entry : recipe.outputs().outputs()) {
             for (DisplayedOutput output : entry.displayedOutputs()) {
                 PatternIngredient made = output.ingredient().asPatternIngredient();
                 if (made != null) {
-                    out.chemicalStorage(made.kind());
+                    out.needs(made.kind());
                 }
             }
         }
@@ -97,37 +92,37 @@ public final class PatternBuffer {
         }
     }
 
-    public CompoundTag save() {
+    public CompoundTag save(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        tag.put("In", in.save());
-        tag.put("Out", out.save());
+        tag.put("In", in.save(registries));
+        tag.put("Out", out.save(registries));
         return tag;
     }
 
-    public static PatternBuffer load(CompoundTag tag) {
-        return new PatternBuffer(Side.load(tag.getCompound("In")), Side.load(tag.getCompound("Out")));
+    public static PatternBuffer load(CompoundTag tag, HolderLookup.Provider registries) {
+        return new PatternBuffer(Side.load(tag.getCompoundOrEmpty("In"), registries), Side.load(tag.getCompoundOrEmpty("Out"), registries));
     }
 
     private static final class Side {
         final ItemPortStorage items = new ItemPortStorage(new ItemPortStorageModel(1, SLOTS, () -> false, ITEM_SLOT_CAPACITY, 0), () -> {});
-        final FluidPortStorage fluids = new FluidPortStorage(new FluidPortStorageModel(1, SLOTS, FLUID_TANK_CAPACITY, () -> false, 0), () -> {});
-        final Map<Kind, IPortStorage> chemicals = new EnumMap<>(Kind.class);
+        final FluidPortStorage fluids = new FluidPortStorage(new FluidPortStorageModel(1, SLOTS, FLUID_TANK_CAPACITY, () -> false, 0, List.of()), () -> {});
+        // made when first needed, so Mekanism classes are only touched with a chemical in the pattern or recipe
+        @Nullable
+        IPortStorage chemicals;
 
-        /** The storage for this kind of chemical, made when first needed; null for items and fluids. */
-        IPortStorage chemicalStorage(Kind kind) {
-            if (!CHEMICALS.contains(kind)) {
-                return null;
+        void needs(Kind kind) {
+            if (kind == Kind.CHEMICAL && chemicals == null) {
+                // [26.1-pending] Mekanism has no 26.1.2 release yet: no chemical storage, chemicals aren't accepted
+                // chemicals = PatternChemicals.storageFor(CHEMICAL_CAPACITY);
             }
-            return chemicals.computeIfAbsent(kind, k -> PatternChemicals.storageFor(k, CHEMICAL_CAPACITY));
         }
 
         boolean insert(PatternIngredient stack) {
             int amount = (int) Math.min(Integer.MAX_VALUE, stack.amount());
             return switch (stack.kind()) {
                 case ITEM -> {
-                    var item = ForgeRegistries.ITEMS.getValue(stack.id());
-                    var probe = new ItemStack(item);
-                    probe.setTag(stack.nbt() == null ? null : stack.nbt().copy());
+                    var probe = new ItemStack(BuiltInRegistries.ITEM.getValue(stack.id()));
+                    probe.applyComponents(stack.components());
                     if (probe.isEmpty() || items.canInsert(probe, amount) > 0) {
                         yield false;
                     }
@@ -135,14 +130,15 @@ public final class PatternBuffer {
                     yield true;
                 }
                 case FLUID -> {
-                    var fluid = new FluidStack(ForgeRegistries.FLUIDS.getValue(stack.id()), amount);
+                    var fluid = new FluidStack(BuiltInRegistries.FLUID.getValue(stack.id()), amount);
                     if (fluid.isEmpty() || fluids.getHandler().fill(fluid, IFluidHandler.FluidAction.SIMULATE) < amount) {
                         yield false;
                     }
                     fluids.getHandler().fill(fluid, IFluidHandler.FluidAction.EXECUTE);
                     yield true;
                 }
-                default -> PatternChemicals.insert(chemicalStorage(stack.kind()), stack);
+                // [26.1-pending] Mekanism: needs(Kind.CHEMICAL); yield PatternChemicals.insert(chemicals, stack);
+                case CHEMICAL -> false;
             };
         }
 
@@ -155,10 +151,10 @@ public final class PatternBuffer {
             int taking = (int) Math.min(Math.min(has, amount), Integer.MAX_VALUE);
             if (taking > 0) {
                 switch (stack.kind()) {
-                    case ITEM -> items.getHandler().extractMatching(ForgeRegistries.ITEMS.getValue(stack.id()),
-                            s -> Objects.equals(s.getTag(), stack.nbt()), taking, false);
-                    case FLUID -> fluids.getHandler().drain(new FluidStack(ForgeRegistries.FLUIDS.getValue(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
-                    default -> PatternChemicals.remove(chemicals.get(stack.kind()), taking);
+                    case ITEM -> items.getHandler().extractMatching(BuiltInRegistries.ITEM.getValue(stack.id()),
+                            s -> s.getComponentsPatch().equals(stack.components()), taking, false);
+                    case FLUID -> fluids.getHandler().drain(new FluidStack(BuiltInRegistries.FLUID.getValue(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
+                    case CHEMICAL -> { } // [26.1-pending] Mekanism: PatternChemicals.remove(chemicals, taking);
                 }
             }
             return amount - taking;
@@ -168,7 +164,7 @@ public final class PatternBuffer {
             var all = new ArrayList<IPortStorage>();
             all.add(items);
             all.add(fluids);
-            all.addAll(chemicals.values());
+            if (chemicals != null) all.add(chemicals);
             return all;
         }
 
@@ -178,22 +174,17 @@ public final class PatternBuffer {
             for (int slot = 0; slot < handler.getSlots(); slot++) {
                 ItemStack stack = handler.getStackInSlot(slot);
                 if (!stack.isEmpty()) {
-                    add(found, new PatternIngredient(Kind.ITEM, ForgeRegistries.ITEMS.getKey(stack.getItem()), handler.getActualCount(slot),
-                            stack.getTag() == null ? null : stack.getTag().copy()));
+                    add(found, new PatternIngredient(Kind.ITEM, BuiltInRegistries.ITEM.getKey(stack.getItem()), handler.getActualCount(slot),
+                            stack.getComponentsPatch()));
                 }
             }
             for (int tank = 0; tank < fluids.getHandler().getTanks(); tank++) {
                 FluidStack stack = fluids.getHandler().getFluidInTank(tank);
                 if (!stack.isEmpty()) {
-                    add(found, new PatternIngredient(Kind.FLUID, ForgeRegistries.FLUIDS.getKey(stack.getFluid()), stack.getAmount(), null));
+                    add(found, new PatternIngredient(Kind.FLUID, BuiltInRegistries.FLUID.getKey(stack.getFluid()), stack.getAmount()));
                 }
             }
-            chemicals.forEach((kind, storage) -> {
-                PatternIngredient chemical = PatternChemicals.contents(storage, kind);
-                if (chemical != null) {
-                    found.add(chemical);
-                }
-            });
+            // [26.1-pending] Mekanism: chemicals is never made, PatternChemicals.contents(chemicals) would list it here
             return found;
         }
 
@@ -207,27 +198,23 @@ public final class PatternBuffer {
             found.add(stack);
         }
 
-        CompoundTag save() {
+        CompoundTag save(HolderLookup.Provider registries) {
             var tag = new CompoundTag();
-            tag.put("Items", items.save(new CompoundTag()));
-            tag.put("Fluids", fluids.save(new CompoundTag()));
-            var list = new ListTag();
-            chemicals.forEach((kind, storage) -> {
-                var entry = storage.save(new CompoundTag());
-                entry.putString("Kind", kind.name());
-                list.add(entry);
-            });
-            tag.put("Chemicals", list);
+            tag.put("Items", items.save(new CompoundTag(), registries));
+            tag.put("Fluids", fluids.save(new CompoundTag(), registries));
+            if (chemicals != null) {
+                tag.put("Chemicals", chemicals.save(new CompoundTag(), registries));
+            }
             return tag;
         }
 
-        static Side load(CompoundTag tag) {
+        static Side load(CompoundTag tag, HolderLookup.Provider registries) {
             var side = new Side();
-            side.items.load(tag.getCompound("Items"));
-            side.fluids.load(tag.getCompound("Fluids"));
-            for (Tag element : tag.getList("Chemicals", Tag.TAG_COMPOUND)) {
-                var entry = (CompoundTag) element;
-                side.chemicalStorage(Kind.valueOf(entry.getString("Kind"))).load(entry);
+            side.items.load(tag.getCompoundOrEmpty("Items"), registries);
+            side.fluids.load(tag.getCompoundOrEmpty("Fluids"), registries);
+            if (tag.contains("Chemicals") && side.chemicals != null) {
+                side.needs(Kind.CHEMICAL);
+                side.chemicals.load(tag.getCompoundOrEmpty("Chemicals"), registries);
             }
             return side;
         }

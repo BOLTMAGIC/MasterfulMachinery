@@ -7,13 +7,10 @@ import io.ticticboom.mods.mm.pattern.PatternRecipeMatcher;
 import io.ticticboom.mods.mm.pattern.PatternSpec;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,8 +19,7 @@ import java.util.List;
  * Matching an AE2 pattern (as MM sees it) to one of a machine's recipes. The recipes are in
  * data/mmtest/mm/processes/pattern/, all for the structure mmtest:pattern_match (no machine forms it).
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class PatternMatchGameTests {
     private static final String TEMPLATE = "empty";
 
@@ -44,12 +40,9 @@ public class PatternMatchGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void nbtInputsMatchOnlyTheirRecipe(GameTestHelper helper) {
-        CompoundTag named;
-        try {
-            named = TagParser.parseTag("{display:{Name:'{\"text\":\"Key\"}'}}");
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
+        // a pattern's ingredient carries data components since 1.20.5; a custom name stands for the old display NBT
+        var named = net.minecraft.core.component.DataComponentPatch.builder()
+                .set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, net.minecraft.network.chat.Component.literal("Key")).build();
         var namedIron = new PatternIngredient(Kind.ITEM, mc("iron_ingot"), 1, named);
         expect(helper, spec(List.of(namedIron), item("diamond", 1)), "pattern/iron_named");
         expect(helper, spec(List.of(item("iron_ingot", 1)), item("diamond", 1)), null);
@@ -118,7 +111,7 @@ public class PatternMatchGameTests {
         java.util.Collections.reverse(backward);
         for (var list : List.of(forward, backward)) {
             RecipeModel found = PatternRecipeMatcher.match(list, spec);
-            if (found == null || !found.id().equals(ResourceLocation.tryBuild("mmtest", "pattern/iron"))) {
+            if (found == null || !found.id().equals(Identifier.tryBuild("mmtest", "pattern/iron"))) {
                 helper.fail("the smallest matching id should win, got " + (found == null ? null : found.id()));
             }
         }
@@ -127,8 +120,8 @@ public class PatternMatchGameTests {
 
     private static void expect(GameTestHelper helper, PatternSpec spec, String recipePath) {
         RecipeModel found = PatternRecipeMatcher.match(candidates(), spec);
-        ResourceLocation got = found == null ? null : found.id();
-        ResourceLocation want = recipePath == null ? null : ResourceLocation.tryBuild("mmtest", recipePath);
+        Identifier got = found == null ? null : found.id();
+        Identifier want = recipePath == null ? null : Identifier.tryBuild("mmtest", recipePath);
         if (want == null ? got != null : !want.equals(got)) {
             helper.fail("pattern " + spec + " should match " + want + ", matched " + got);
         }
@@ -142,7 +135,7 @@ public class PatternMatchGameTests {
     }
 
     private static List<RecipeModel> candidates() {
-        return new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(ResourceLocation.tryBuild("mmtest", "pattern_match")));
+        return new ArrayList<>(MachineRecipeManager.getRecipesByStrucutreId(Identifier.tryBuild("mmtest", "pattern_match")));
     }
 
     private static PatternSpec spec(List<PatternIngredient> inputs, PatternIngredient output) {
@@ -157,7 +150,7 @@ public class PatternMatchGameTests {
         return new PatternIngredient(Kind.FLUID, mc(path), amount, null);
     }
 
-    private static ResourceLocation mc(String path) {
-        return ResourceLocation.tryBuild("minecraft", path);
+    private static Identifier mc(String path) {
+        return Identifier.tryBuild("minecraft", path);
     }
 }

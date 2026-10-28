@@ -1,71 +1,87 @@
 package io.ticticboom.mods.mm.port.mekanism.chemical;
 
-import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.pattern.PatternIngredient;
+import io.ticticboom.mods.mm.util.LongAmountRange;
 import io.ticticboom.mods.mm.port.PortContent;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.port.IPortIngredient;
-import io.ticticboom.mods.mm.port.PortPriority;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import mekanism.api.Action;
+import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.Chemical;
 import mekanism.api.chemical.ChemicalStack;
-import mekanism.client.jei.ChemicalStackRenderer;
+import mekanism.client.recipe_viewer.jei.MekanismJEI;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
-import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
+import io.ticticboom.mods.mm.Ref;
 
-public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<CHEMICAL>, STACK extends ChemicalStack<CHEMICAL>> implements IPortIngredient {
+public class MekanismChemicalPortIngredient implements IPortIngredient {
 
-    protected final ResourceLocation id;
+    protected final Identifier id;
     protected final long amount;
 
-    protected final STACK stack;
-    protected final CHEMICAL chemical;
+    protected final ChemicalStack stack;
+    protected final Chemical chemical;
 
-    public abstract STACK createStack(CHEMICAL id, long amount);
-    public abstract CHEMICAL findChemical(ResourceLocation id);
-    public abstract Class<? extends MekanismChemicalPortStorage<CHEMICAL, STACK>> getStorageClass();
-    public abstract ResourceLocation getTypeId();
-    /** Mekanism's JEI ingredient type for this kind of chemical. */
-    protected abstract IIngredientType<STACK> jeiType();
+    /** All four chemical kinds share one stack type and one registry on 1.21.1. */
+    public ChemicalStack createStack(Chemical id, long amount) {
+        return new ChemicalStack(id, amount);
+    }
 
-    public MekanismChemicalPortIngredient(ResourceLocation chemical, long amount) {
+    public Chemical findChemical(Identifier id) {
+        return MekanismAPI.CHEMICAL_REGISTRY.get(id);
+    }
+
+    public Class<? extends MekanismChemicalPortStorage> getStorageClass() {
+        return MekanismChemicalPortStorage.class;
+    }
+
+    public Identifier getTypeId() {
+        return Ref.Ports.MEK_CHEMICAL;
+    }
+
+    public MekanismChemicalPortIngredient(Identifier chemical, long amount) {
         this.id = chemical;
         this.amount = amount;
         this.chemical = findChemical(id);
+        if (this.chemical.isEmptyType()) {
+            Ref.LOG.error("Unknown Mekanism chemical '{}' in a recipe. Check the id, or that the mod adding it is installed.", id);
+        }
         stack = createStack(this.chemical, amount);
     }
 
     /**
-     * Returns the ResourceLocation id of the chemical this ingredient refers to.
+     * Returns the Identifier id of the chemical this ingredient refers to.
      * Used by controllers to perform lightweight pre-checks by id.
      */
+    public Identifier getChemicalId() {
+        return this.id;
+    }
+
+    @Override
+    public IPortIngredient scaled(double factor) {
+        return new MekanismChemicalPortIngredient(id, LongAmountRange.scaleAmount(amount, factor));
+    }
+
     @Override
     public PortContent display() {
         return PortContent.chemical(chemical.getTextComponent(), chemical.getIcon(), chemical.getTint(), amount, 0);
     }
 
-    public ResourceLocation getChemicalId() {
-        return this.id;
+    public Chemical getChemical() {
+        return chemical;
     }
 
-    /** The kind of chemical this is in an AE2 pattern (Applied Mekanistics). */
-    private PatternIngredient.Kind patternKind() {
-        ResourceLocation type = getTypeId();
-        if (type.equals(Ref.Ports.MEK_INFUSE)) return PatternIngredient.Kind.INFUSION;
-        if (type.equals(Ref.Ports.MEK_PIGMENT)) return PatternIngredient.Kind.PIGMENT;
-        if (type.equals(Ref.Ports.MEK_SLURRY)) return PatternIngredient.Kind.SLURRY;
-        return PatternIngredient.Kind.GAS;
+    public long getAmount() {
+        return amount;
     }
 
     @Override
@@ -73,10 +89,10 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         if (storages == null) return false;
         var inputStorages = storages.getInputStorages(getStorageClass());
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
+        for (MekanismChemicalPortStorage storage : inputStorages) {
             var stored = storage.chemicalTank.getStack();
             if (stored.isEmpty()) continue;
-            if (!stored.getType().equals(this.chemical)) continue;
+            if (!stored.getChemical().equals(this.chemical)) continue;
             long available = stored.getAmount();
             long toTake = Math.min(available, remaining);
             remaining -= toTake;
@@ -89,10 +105,10 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
         var inputStorages = storages.getInputStorages(getStorageClass());
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
+        for (MekanismChemicalPortStorage storage : inputStorages) {
             var stored = storage.chemicalTank.getStack();
             if (stored.isEmpty()) continue;
-            if (!stored.getType().equals(this.chemical)) continue;
+            if (!stored.getChemical().equals(this.chemical)) continue;
             long toExtract = Math.min(remaining, stored.getAmount());
             var extracted = storage.extract(toExtract, Action.EXECUTE);
             remaining -= extracted.getAmount();
@@ -101,20 +117,20 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
     }
 
     @Override
+    public io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        return new io.ticticboom.mods.mm.pattern.PatternIngredient(io.ticticboom.mods.mm.pattern.PatternIngredient.Kind.CHEMICAL, id, amount);
+    }
+
+    @Override
     public boolean canSimulateOutput() {
         return true;
     }
 
     @Override
-    public PatternIngredient asPatternIngredient() {
-        return new PatternIngredient(patternKind(), id, amount, null);
-    }
-
-    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
+        var outputStorages = storages.getOutputStoragesByPriority(getStorageClass());
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
+        for (MekanismChemicalPortStorage storage : outputStorages) {
             var inserted = storage.insert(createStack(this.chemical, remaining), Action.SIMULATE);
             remaining -= inserted.getAmount();
         }
@@ -123,9 +139,9 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
+        var outputStorages = storages.getOutputStoragesByPriority(getStorageClass());
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
+        for (MekanismChemicalPortStorage storage : outputStorages) {
             var inserted = storage.insert(createStack(this.chemical, remaining), Action.EXECUTE);
             remaining -= inserted.getAmount();
         }
@@ -140,9 +156,9 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         json.addProperty("amountToInsert", amount);
 
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : inputStorages) {
+        for (MekanismChemicalPortStorage storage : inputStorages) {
             var stored = storage.chemicalTank.getStack();
-            if (!stored.isEmpty() && stored.getType().equals(this.chemical)) {
+            if (!stored.isEmpty() && stored.getChemical().equals(this.chemical)) {
                 long avail = stored.getAmount();
                 long toTake = Math.min(avail, remaining);
                 remaining -= toTake;
@@ -156,16 +172,16 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
 
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
-        var outputStorages = PortPriority.orderedOutputs(storages.getOutputStorages(getStorageClass()));
+        var outputStorages = storages.getOutputStoragesByPriority(getStorageClass());
         var searchedStoragesJson = new JsonArray();
 
         json.addProperty("ingredientType", getTypeId().toString());
         json.addProperty("amountToInsert", amount);
 
         long remaining = amount;
-        for (MekanismChemicalPortStorage<CHEMICAL, STACK> storage : outputStorages) {
+        for (MekanismChemicalPortStorage storage : outputStorages) {
             var stored = storage.chemicalTank.getStack();
-            if (!stored.isEmpty() && stored.getType().equals(this.chemical)) {
+            if (!stored.isEmpty() && stored.getChemical().equals(this.chemical)) {
                 long avail = stored.getAmount();
                 long toTake = Math.min(avail, remaining);
                 remaining -= toTake;
@@ -177,13 +193,12 @@ public abstract class MekanismChemicalPortIngredient<CHEMICAL extends Chemical<C
         return json;
     }
 
-    /**
-     * The slot holds the recipe's real amount, so a JEI transfer (an AE2 pattern) carries it; the renderer's capacity
-     * is that amount, so the slot still draws full, and its tooltip shows the amount.
-     */
+    @SuppressWarnings("removal")
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
-        recipeSlot.addIngredient(jeiType(), createStack(chemical, amount));
-        recipeSlot.setCustomRenderer(jeiType(), new ChemicalStackRenderer<>(Math.max(1, amount), 16, 16));
+        if (!stack.isEmpty()) {
+            recipeSlot.addIngredient(MekanismJEI.TYPE_CHEMICAL, stack);
+        }
+        recipeSlot.addTooltipCallback((a, c) -> c.add(1, Component.translatable("jei.mm.ingredient.mekanism_chemical.amount", amount)));
     }
 }

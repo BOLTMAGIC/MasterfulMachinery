@@ -13,15 +13,6 @@ import net.minecraft.world.phys.AABB;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * What the multiblock tool builds for another mod's structure: its fixed blocks, rotated like an MM build (player
- * facing plus the tool's extra turns) and shifted so the block in front of the clicked face is the bottom-middle-front.
- * There is no controller and no tier choice. Common code: the server build and the client hologram share it.
- *
- * @param center     middle of the structure, for the job's distance check
- * @param plan       one step per block
- * @param obstructed planned positions holding something that is neither replaceable nor the planned block
- */
 public record FixedBuildPlan(BlockPos center, AssemblyPlanner.Plan plan, List<BlockPos> obstructed) {
 
     public static FixedBuildPlan create(Level level, BuildableStructure structure, BlockPos clickedPos, Direction clickedFace,

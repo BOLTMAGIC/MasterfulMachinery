@@ -27,8 +27,8 @@ public class CompoundTagCache {
         }
 
         // Calculate tag hash (simple but fast)
-        int hash = tag.getAllKeys().size() * 31;
-        for (String key : tag.getAllKeys()) {
+        int hash = tag.keySet().size() * 31;
+        for (String key : tag.keySet()) {
             hash = hash * 31 + key.hashCode();
         }
 

@@ -1,29 +1,34 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolData;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
 
-import java.util.function.Supplier;
 
-/** Client Shift+scroll while holding the multiblock tool -> server: turn the build by {@code delta} quarter turns. */
-public record ToolRotatePkt(int delta) {
+public record ToolRotatePkt(int delta) implements CustomPacketPayload {
+    public static final Type<ToolRotatePkt> TYPE = new Type<>(Ref.id("tool_rotate"));
 
-    public static void encode(ToolRotatePkt pkt, FriendlyByteBuf buf) {
+    public static final StreamCodec<RegistryFriendlyByteBuf, ToolRotatePkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), ToolRotatePkt::decode);
+
+
+    public static void encode(ToolRotatePkt pkt, RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(pkt.delta);
     }
 
-    public static ToolRotatePkt decode(FriendlyByteBuf buf) {
+    public static ToolRotatePkt decode(RegistryFriendlyByteBuf buf) {
         return new ToolRotatePkt(buf.readVarInt());
     }
 
-    public static void handle(ToolRotatePkt pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer sender = ctx.get().getSender();
+    public static void handle(ToolRotatePkt pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = (ctx.player() instanceof ServerPlayer player ? player : null);
             if (sender == null) {
                 return;
             }
@@ -32,10 +37,8 @@ public record ToolRotatePkt(int delta) {
                 ToolData.setExtraTurns(tool, ToolData.extraTurns(tool) + Math.floorMod(pkt.delta, 4));
             }
         });
-        ctx.get().setPacketHandled(true);
     }
 
-    /** The tool in the main hand, else the off hand; null when the player holds none. */
     static ItemStack heldTool(ServerPlayer player) {
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
@@ -44,5 +47,10 @@ public record ToolRotatePkt(int delta) {
             }
         }
         return null;
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -3,11 +3,11 @@ package io.ticticboom.mods.mm.extra;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public abstract class ExtraBlockType {
-    public abstract RegistryObject<Block> registerBlock(ExtraBlockModel model, RegistryGroupHolder groupHolder);
-    public abstract RegistryObject<Item> registerItem(ExtraBlockModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Block, Block> registerBlock(ExtraBlockModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Item, Item> registerItem(ExtraBlockModel model, RegistryGroupHolder groupHolder);
 
     public RegistryGroupHolder register(ExtraBlockModel model) {
         RegistryGroupHolder groupHolder = new RegistryGroupHolder();

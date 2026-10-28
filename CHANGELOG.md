@@ -4,632 +4,539 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
-## [0.1.36.2] - 2026-10-27
+## [1.21.1-0.15.0] - 2026-10-17
 
-### INFO:
-**Version 0.1.36.2** represents a performance optimization update with server tick reduction.
+### Added
+- **Controllers can look different while working.** Add `idleModel` and `workingModel`, or
+  `idleOverlay` and `workingOverlay`, to a controller. Without them, every state uses `model` or
+  `overlay`. From KubeJS, `.idleModel(...)`, `.workingModel(...)`, `.idleOverlay(...)` and
+  `.workingOverlay(...)`. This works for single-block machines too.
+- **Oritech support.** Machines can now contain an Oritech black hole: a black hole that is part of
+  a formed machine no longer pulls in blocks, and black holes nearby no longer pull blocks out of
+  formed machines.
 
-**Special Thanks:**
-- **Knozyy** – Performance optimization and tuning.
+## [1.21.1-0.14.0] - 2026-10-14
+
+### Added
+- **The controller shows the selected recipe's cost in Manual mode.** On the big controller screen,
+  picking a recipe shows its inputs and outputs under the settings. Hover them for details, or click
+  to open them in JEI.
+- **Fill bars for more ports in the controller.** Source, Mekanism heat, PneumaticCraft air,
+  Replication matter, nuclear radiation and entity ports now show a bar instead of plain text. Hover
+  the bar for temperature, pressure, isotopes or mob types.
+- **Recipe icons for every port type in the controller.** Source, EMC, mana, rotation, heat, air,
+  radiation, matter and entity costs now show up in the recipe preview and the running recipe, not
+  just items, fluids, energy and chemicals.
+- **Jade fill bars use the port's colour.** Source ports show purple and EMC ports show gold.
+
+### Fixed
+- **The Structure Builder** no longer crashes when previewing Extreme Reactors turbines.
+- **Void miner tiers** now show up in the Structure Builder.
+
+## [1.21.1-0.13.0] - 2026-10-12
+
+### Added
+- **Animated GeckoLib models** for machines (needs GeckoLib). Add a `geoModel` object to a
+  controller or structure with `model`, `texture` and optionally `animations`, plus `idle` and
+  `working` animation names. `offset`, `scale`, `rotate` and `glow` place and light it. A structure's
+  `geoModel` wins over the controller's; `"geoModel": "none"` turns it off for that structure. From
+  KubeJS, `.geoModel({...})` on controllers and structures.
+- **`components` on item ingredients** match items by their data components, like enchantments or a
+  custom name, and give outputs those components.
+- **Output priority for fluid, energy, chemical and heat ports.** The Priority Setter now works on
+  them like it does on item ports: higher-priority ports fill first.
+- **The missing blocks tooltip** lists every port tier that fits a spot, not just one.
+
+### Fixed
+- **Machines no longer lose outputs** when a port's chunk unloads and loads again.
+- **Item ports keep enchanted items** when saving, and no longer stack items with different
+  components together.
+- **Structure previews** no longer crash on blocks whose models need a world.
+- **Source, heat and EMC port screens** show their bar in the right color (purple, orange and gold)
+  instead of the red energy bar. The source JEI icon is purple too.
+
+## [1.21.1-0.12.0] - 2026-10-12
+
+### Added
+- **Fluid volumes** show a port's fluid inside the machine, filling up as the port fills. Add a
+  `visuals` list to a structure with `{ "type": "fluid_volume", "from": [x, y, z], "to": [x, y, z] }`,
+  or `"area": "K"` to fill every spot of layout key `K`. `"port": "K"` picks which fluid port it
+  shows; without it, any fluid port in the machine. From KubeJS, `.fluidVolume(from, to, port)` and
+  `.fluidArea(key, port)`.
+- **PneumaticCraft air ports show their pressure** on the controller screen.
+
+### Fixed
+- **`/reload` now updates placed controllers.** New or changed processes used to stay unused until
+  the controller was broken and placed again.
+- **The debug tool** no longer fails in singleplayer with `duplicate entry`.
+
+## [1.21.1-0.11.0] - 2026-10-09
+
+### Added
+- **Single-block machines** (`"type": "mm:single"`). A whole machine in one block, like a furnace,
+  with no structure or ports. List what it holds under `slots`: item, fluid, energy and Mekanism
+  chemical slots, each with the same options as a port of that type. Recipes use the controller id
+  as their `structureId`. See [`single-block.md`](docs/single-block.md).
+  - Its screen is built from the slots: energy on the outside, then tanks, then item slots around
+    the progress bar. A button opens the controller screen for its name, redstone mode and the rest.
+  - Pipes, hoppers and cables fill its inputs and take from its outputs, from any side.
+  - From KubeJS, `.type('mm:single')` and `.slot(id, type, input, config)`.
+  - Each fluid stays in one tank of a fluid slot, so one fluid can not fill them all.
+- **`fluids` on fluid ports and slots** limits them to certain fluids, as ids or tags
+  (`"fluids": ["minecraft:lava", "#c:oil"]`). From KubeJS, `.fluids(...)`.
+- **EMC ports show a bar** on the controller screen, like energy.
+
+### Fixed
+- **A typo in a KubeJS port or controller script** no longer crashes the game with
+  `Unknown port type 'null'`. The KubeJS error that names the file and line is shown instead.
+- **Shift-clicking into a port** no longer puts items into slots that do not take them.
+
+## [1.21.1-0.10.0] - 2026-10-07
+
+### Added
+- **ProjectE EMC ports** (`mm:projecte/emc`, needs ProjectE). Set `capacity` in the port config.
+  - Recipes consume or produce EMC with `{ "type": "mm:projecte/emc", "emc": 2048 }`. A `min`/`max`
+    range works too, and `per_tick` spreads the cost over the recipe like energy.
+  - Relays and collectors next to an input port fill it. An output port sends its EMC into the blocks
+    around it, such as relays.
+  - `kleinSlot: true` gives the port a Klein Star slot: the input port empties the star into the
+    machine, the output port charges it. `kleinRate` limits how much EMC moves per tick.
+  - EMC shows in JEI and Jade, and KubeJS ports use `capacity()`, `kleinSlot()` and `kleinRate()`.
+
+### Fixed
+- **`tierRank` was ignored on most port types**, including Mekanism chemical, PneumaticCraft air,
+  Create kinetic, Ars Source and Nuclear Radiation ports. Structures with `minTier`/`maxTier` on
+  those ports never formed. It now works on every port type, from KubeJS and from `config` in JSON.
+
+## [1.21.1-0.9.0] - 2026-10-01
+
+Most of this release is ported from
+[BOLTMAGIC's Masterful Machinery for 1.20.1](https://github.com/BOLTMAGIC/MasterfulMachinery),
+versions 0.1.35 to 0.1.35.4. Thanks to **BOLTMAGIC** for maintaining it and to **Knozyy** for
+building most of these features: the controller and port screens, Assemble and the Structure Builder,
+the Network Linker, Machine Wrench and Input Gateway, weighted outputs, the new conditions, working
+sounds and particles, comparator output, the KubeJS recipe events, the Jade and JEI improvements, the
+in-game config and the faster item ports.
+
+### Added
+- **A new controller screen.** Rename the machine, see its status (Running, Idle, Stuck, Paused or
+  Not formed) and what is missing when it is not built, switch redstone and recipe mode, mute its
+  sound, and page through every input and output port with their contents. It opens large or small;
+  the button in the corner switches it.
+- **Assemble.** A button in the controller screen places the machine's missing blocks from your
+  inventory, with a choice of tier for each part.
+- **Structure Builder.** A powered tool that builds a whole structure in one go and takes machines
+  apart again. Pick a structure in its screen, right-click to build, shift+right-click to dismantle.
+  - Takes blocks from its own store, your inventory, and an ME network it is bound to, and can order
+    missing blocks from AE2.
+  - A Materials tab lists what the structure needs against what you have.
+  - **Instant build** in its Settings tab places everything in one tick.
+  - Builds structure files from datapacks (`mm_builder_structures/`) as well as MM machines, and
+    `MMEvents.builderStructures` adds or removes them from KubeJS.
+  - Operators can sort the structure list into categories from the Admin tab.
+- **Network Linker** (with AE2). Links a machine to an ME network without cables: outputs go straight
+  into ME as soon as a recipe finishes, and broken ports empty into ME. Use it with a normal Pattern
+  Provider and encoded patterns to autocraft with MM machines. See [`ae2.md`](docs/ae2.md).
+- **Linked machines belong to their network's owner.** Only the owner, their FTB Teams team and
+  operators can open or break them.
+- **Port side panel.** Each port's screen sets auto input/output per side, locks fluid and chemical
+  tanks to what is in them, and empties the port with Shift+click on Dump.
+- **Machine Wrench.** Right-click a port's side to toggle its auto input/output.
+- **Input Gateway.** Build it into a machine, or place it next to an input port, and pipe items,
+  fluids, energy and Mekanism chemicals into it.
+- **Weighted outputs.** `mm:output/weighted` gives one of several outputs each craft, by weight.
+- **More recipe conditions:** `mm:biome`, `mm:time` (day or night), `mm:height`, `mm:redstone` and
+  `mm:tier`. Structures can set a `tier`, or it is read from their name. All conditions now work from
+  KubeJS too, and JEI lists them.
+- **`requestOnly` recipes** only run when ordered from the Replication Terminal or AE2, or picked in
+  manual mode.
+- **One recipe for several structures** with `structureIds`.
+- **Working sounds and particles.** Controllers can set `workingSound`, `workingSoundInterval` and
+  `workingParticle`. Players can mute a machine, turn them all off in the client config, or change
+  them per machine in `config/mm/working_effects.json`.
+- **Screen colours per controller** with `unformedColor`, `idleColor` and `workingColor`, and a
+  status light on ports in the same colours.
+- **Comparator output.** A comparator next to a working controller gives 1–15 by recipe progress.
+- **KubeJS recipe events.** `MMEvents.recipeStarted` (can be cancelled) and
+  `MMEvents.recipeFinished`.
+- **In-game config screen**, from the Mods menu or the Structure Builder. Operators can change server
+  settings while playing.
+- **ME connector patterns can carry more types** with the AE2 addons installed: energy (Applied
+  Flux), chemicals (Applied Mekanistics), Source (Ars Énergistique), air (Applied Pneumatics) and
+  matter (Replication AE2 Bridge). `exclude` leaves a type out.
+- **Item ports work as ME storage**, so a Pattern Provider fills them in whole batches and a Storage
+  Bus can read them.
+- **Jade** shows a controller's progress, running recipes, redstone mode and owner, and on ports their
+  machine and auto I/O.
+- **JEI structure preview:** view one layer at a time, connected textures join up, and a blue "i"
+  shows the controls. Big recipes scroll instead of running off the screen.
+- **JEI lookups** from the controller screen and the Structure Builder's materials.
+- **Blueprint paste preview** shows the structure as see-through blocks, with blocked spots in red,
+  like the Structure Builder.
 
 ### Changed
+- **Autocrafting with AE2:** the Network Linker with a Pattern Provider is now the normal way. The
+  ME Pattern Connector still works, for packs that want every recipe offered without encoding.
+- **Structure preview controls:** drag rotates, the scroll wheel or right-drag zooms, shift+drag
+  moves.
+- **Ports with more slots than fit on screen get pages** instead of drawing over the inventory.
+- **Outputs fill a port that already holds the item** before starting on an empty slot elsewhere.
+- **Item ports take items faster**, which helps machines with large ports.
 
-#### #98 – Performance Optimization (~4-5% Server Tick Reduction)
-- **Item port client sync**: ports now sync at most once per second while their screen is closed; still sync every tick while open; screen open sends contents immediately.
-- **Comparator updates optimized**: ports notify neighbors once per tick (not on every insert/extract); chunk dirty marking unchanged (saves unaffected).
-- **Recipe scan optimization**: controller skips scanning when every parallel slot is taken (limit of 0 means one recipe at a time, as before); recipe's own parallel rule checked before inputs/outputs.
-- **Flex output check optimization**: `OutputSimulation` copies item ports in-memory (`ItemPortHandler.copyContentsFrom`) instead of through NBT; tries each output set on fresh copy (no snapshot save/restore).
-- **Port lookup caching**: controllers cache port block entity lookups every 20 ticks (removed ports still noticed every tick).
-
-## [0.1.36.1] - 2026-10-26
-
-**Special Thanks:**
-- **Knozyy**
-
-### Fixed
-
-- **#96 – Fix Pattern Port Not Running Patterns**
-
-## [0.1.36.0] - 2026-10-23
-
-### INFO:
-**Version 0.1.36.0** represents a major update focused on recipe stability, the new Pattern Port for AE2 integration, and critical bug fixes.
-
-**Special Thanks:**
-- **Knozyy** – Lead developer of recipe stability fixes, Pattern Port system, and priority system restoration.
-
-### Added
-
-#### #92 – Fix Running Recipes Losing Inputs or Outputs (CRITICAL)
-- **Running recipes pause instead of being dropped** when structure unforms temporarily.
-  - Machine reforned after >10 seconds no longer ditches recipes; stall timers refresh while unformed.
-  - Recipes continue when structure forms again; only recipes not matching the new structure are dropped.
-- **Block break detection refined**: only blocks actually part of the machine unform it; breaking nearby cables/torches no longer clears running recipes.
-- **Output validation strengthened**: all outputs of a recipe must fit together before start and finish.
-  - New `IPortStorage.simulationCopy()` creates detached port copies for pre-flight output checks.
-  - Generic `OutputSimulation` validates all recipe outputs that support simulation (items, fluids, energy, Mekanism chemicals).
-  - Output entries report `plannedOutputs()` (post-chance-roll / weighted-pick amounts).
-- **Per-tick outputs wait for room** instead of being discarded; `RecipeOutputs.canProcessTick()` checks per-tick outputs and pauses recipe if they don't fit.
-- **Breaking controller still loses recipes** (unchanged); mana, kinetic, air outputs still checked one-by-one (non-copyable ports).
-
-#### #93 – Missing Controller Definitions & Flex Input Round-Robin
-- **Creative tab crash fix**: removed controller definitions no longer crash (`Registry Object not present` on FTB Quests icon lookups).
-  - Filter absent item entries and skip absent controller items/blocks during lookups.
-- **Flex input round-robin scheduling**: flex inputs now participate in controller scheduling (previously used slot order only).
-  - Reusable inputs (`chance: 0`) with `max_types` now rotate through kinds instead of selecting the first indefinitely.
-  - Controller usage order passed into flex probes; picked kinds recorded only for successful recipe runs.
-  - Default mode retains slot-order fallback; cost, matching-input, output-capacity checks unchanged.
-  - Example: Essence Forge with six seeds, `max_types: 3` now runs kinds 1–3, then 4–6, then 1–3 again.
-  - Parallel recipe limit does not multiply the flex batch.
-
-#### #94 – Fix Output Port Priority Being Lost & Jade Display
-- **Priority setter bug fixed**: `PrioritySetterItem.useOn` now calls `setChanged()` on block entity.
-  - Previously priority was only saved to disk on other changes; after restart/reload ports reverted to priority 0.
-  - Priorities now persist correctly across sessions.
-- **Jade priority line restored**: registered for all block types (previously only specific port blocks; Mekanism chemical ports were missing).
-  - Only MM output ports send priority data; other blocks show no change.
-
-#### #95 – Pattern Port: Run AE2 Patterns Without Input Ports
-- **New block `mm:pattern_port`**: AE2 Pattern Provider interface for direct pattern execution.
-  - Placed like Input Gateway: built into machine or next to input port; no crafting recipe.
-  - Pattern Provider pushes patterns without using input ports; MM runs patterns through `ICraftingMachine` capability.
-- **Pattern matching & validation**:
-  - Pattern cached per recipe until reload; matched on first push, reused for subsequent runs.
-  - Pattern's inputs must exactly match recipe's requirements (items with NBT, fluids, chemicals, amounts).
-  - Pattern's main output must be one of the recipe's sure (`chance: 1`) outputs.
-  - Flex recipes not matched; smallest recipe ID wins on multiple matches.
-- **Pattern execution**:
-  - Started only when machine is formed, redstone/recipe conditions met, parallel limit available, and non-pattern inputs (energy, catalysts, per-tick) present.
-  - Pushed items/fluids/chemicals go into run's own buffer (Input Gateway stays unused).
-  - Outputs AE2 can hold go back to Pattern Provider; others go to machine output ports or wait in buffer (never discarded).
-- **Persistence & UI**:
-  - Multiple patterns can run simultaneously up to parallel limit (pattern runs + normal recipes count together).
-  - Pattern runs pause with machine, survive chunk/world reloads, return held items on recipe removal.
-  - Jade shows running patterns, waiting outputs, last push refusal reason.
-  - Controller screen displays pattern progress.
-- **Dependencies**: AE2, Applied Mekanistics, Mekanism all optional; dev builds load Applied Mekanistics for GameTests.
+### Removed
+- **The built-in Pulverizer machine.** Packs that used it need to define their own.
+- **The `asyncValidation` config option.** Structures are now always checked on the main thread.
 
 ### Fixed
-- Creative tab population and controller lookups skip registry entries removed by a world/server registry remap instead of crashing on a removed controller.
-- Round Robin also rotates the kinds selected inside flex recipes, including reusable inputs and NBT variants. Only kinds in a successfully started run advance their turn; `max_types`, cost and output capacity checks still apply. The controller saves the history across reloads.
-  - With six reusable seeds and `max_types: 3`, the first three run together, then the other three; the controller's parallel recipe limit does not multiply that batch.
+- **Ordering from the Replication Terminal made items forever** when the machine was also connected
+  to AE2. It now makes exactly what was ordered.
+- **Cancelled Terminal orders** no longer keep the machine working on them.
+- **Machines losing crafts.** A finished recipe whose outputs do not fit now waits until they do.
+- **Crashes after making a port smaller** in its config, with items still inside.
+- **Chemicals in JEI** now show in their slot, and unknown chemical ids are named in the log.
+- **Replication matter in JEI** shows its type icon. Light matter like metallic looked like an empty
+  slot.
 
-## [0.1.35.10] - 2026-10-21
-
-### Added
-
-#### Controller: show, stop or hide a machine's model
-- Machines with a GeckoLib model get an "Animation" row in the controller screen: **On** (animated) -> **Off** (the model stands still in its rest pose) -> **Hidden** (the model isn't drawn). For every player, saved with the controller. A model without animations goes On -> Hidden; machines without a model (or without GeckoLib) don't show the row.
+## [1.21.1-0.8.1] - 2026-09-21
 
 ### Changed
-
-#### JEI: flex recipes show `max_types` kinds side by side
-- A flex recipe with `"max_types": 4` shows 4 input slots (and 4 matching / output slots), each on a different kind, turning together. Without `max_types`, or when JEI shows a focused item, one slot cycles through every kind as before. At most 9 slots.
-
-#### JEI: flex `max_types` slots show the same kind
-- 0.1.35.10 showed a different kind in each of the `max_types` slots, and also repeated the matching item and output slots. Now the input slot is repeated `max_types` times, all on the same kind, so players see they can put in up to that many kinds; matching items and outputs are one slot again. At most 9 copies.
-- Tooltip: "Up to 4 kinds per run, from tier 1 to tier 5 seeds" (tiers of the recipe's Mystical Agriculture seeds, left out without them) and "Mix them: they don't need to be the same kind".
-- `showJeiFlexInputCopies` in `mm-common.toml` (also in the in-game config screen) turns the copies off.
-
-#### JEI: thousands separator for energy
-- Energy amounts in JEI read "1 000 000 FE" instead of "1000000 FE", like the port screens.
-
-#### Structure Builder: one folder for other mods' structures
-
-### Fixed
-
-#### JEI: slot counts drawn over tooltips
-- The count badge of a JEI slot (e.g. "3.1K") showed through the tooltip of a neighbouring slot: JEI already draws slot overlays 200 higher, and the badge added another 200, the tooltip's depth.
-
-#### JEI: no empty slot frames under a scroll grid
-- With more slots than fit, the slot frames were drawn below the scroll grid too.
-
-## [0.1.35.9] - 2026-10-19
-### Fixed
-
-#### Flex Recipes Controller GUI Display & Cost Scaling
-- **Problem**: 
-  - Controller GUI showed wrong recipe outputs for flex recipes (e.g. "air_seed" when "slime_seed", "bronze_seed", "dirt_seed" were being processed)
-  - Consume inputs (energy/fluid) are now properly scaled.
-
-#### Energy Port Integer Overflow with Large Amounts
-- **Problem**: 
-  - Energy ports with MAX_INT capacity incorrectly allowed unlimited extraction in chunk-based operations (simulation state not tracked between chunks).
-  - **Fix**: Consistent energy state tracking across chunk iterations prevents phantom extraction.
-
-#### Flex Recipe JEI Display – max_types Tooltip
-- **Problem**: 
-  - When `max_types` > 1, it wasn't clear how many different recipe kinds the controller could process at once in flex mode.
-  - **Fix**: JEI tooltip now shows "Up to X kinds per run" when hovering over the flex input ingredient.
-
-## [0.1.35.8] - 2026-10-12
-
-### INFO:
-**Version 0.1.35.8** JEI Server Fix
-
-**Special Thanks:**
-- **Knozyy**
-
-### Fixed
-
-#### #86 – JEI Dedicated Server Bug Fix (CRITICAL)
-- **Problem**: Recipes and multiblock structures didn't show in JEI on dedicated servers (only worked after opening singleplayer first).
-- **Root cause**: `StructureSyncPkt` and `ProcessesSyncPkt` sent from `PlayerLoggedInEvent` (after JEI initialization); static maps remained empty on dedicated servers.
-- **Solution**: Send both packets from `OnDatapackSyncEvent` (before recipe/tag packets); fixes now apply on `/reload` as well.
-- **Packet handling**: moved to main thread with `enqueueWork`, registered as `PLAY_TO_CLIENT`, skip on memory connections.
-- **JEI plugin fix**: `MMJeiPlugin.recipeCategories` now cleared at start of `registerCategories` (was static and accumulated categories on reload).
-
-
-## [0.1.35.7] - 2026-10-11
-
-### INFO:
-**Version 0.1.35.7** adds flex recipes, count-scaled outputs and optional GeckoLib machine models, and fixes energy port overflow and machines spread over two chunks.
-
-**Special Thanks:**
-- **Knozyy** – Flex recipes, GeckoLib models, output port priority and the fixes below.
+- **The ME connector and the Replication link are one block each.** Both used to make an "Input"
+  and an "Output" block that did exactly the same thing, because neither has sides. Each config
+  file now makes a single block, `mm:<id>`, and the name is used as written with no "Input" or
+  "Output" added. The AE2 one is called **ME Pattern Connector**.
+  - A structure that names the port the usual way, `{ "port": "mm:my_connector" }`, needs no change.
+  - `"input"` is now ignored for these two, so an existing `"input": true` keeps working.
+  - A structure that names the block directly, `{ "block": "mm:my_connector_output" }`, must drop
+    the `_output`.
+  - Any of these two blocks already placed in a world need placing again.
 
 ### Added
+- Docs for everything added in 0.8.0: [`ars-nouveau.md`](docs/ars-nouveau.md) for the Source port,
+  [`ae2.md`](docs/ae2.md) for autocrafting, ordering from the Terminal in
+  [`replication.md`](docs/replication.md), and the new types, `connectGroup` and three more
+  troubleshooting entries in [`reference.md`](docs/reference.md).
 
-#### #79 – Flex Recipes & Count-Scaled Outputs
-- **Flex recipes** (`"mode": "flex"`): one recipe takes every kind of matching item (e.g. any seed) and makes an output named after each one (`seed -> its essence`), without one recipe per item. Mixed kinds run together.
-- **New entries**: `mm:input/flex` (`as`, `max_types`, `chance`, `exclude`), `mm:output/flex` (regex `match`, `{ns}` / `{path}` / `$1` templates, `copy_nbt`), `mm:input/flex_match` (an extra item per kind, e.g. its crux), `mm:input/count`.
-- **`scale_by`** on outputs: multiply the output by a counted amount, e.g. 10 solar panels in the port = 10M FE (works in fixed recipes too).
-- **Cost per kind**: the other inputs scale with the kinds per run (`LINEAR` / `ONCE` / `TABLE`, `[flex]` in `mm-common.toml`, or `flex_cost` per recipe); a run takes fewer kinds when it can't pay for all.
-- **Mystical Agriculture support** (optional): `{ma:essence}` / `{ma:crux}` templates, `min_tier` / `max_tier`, disabled crops skipped.
-- **`MMEvents.flexOutput`**: scripts can change or reject the output for single items.
-- **JEI**: flex recipes are split into pages (per MA tier, parts of 100) with linked input/output cycling.
-- **KubeJS**: `.mode()`, `.flexInput()`, `.flexOutput()`, `.flexMatch()`, `.flexCost()`, `.countInput()`.
-- Docs: `temp_docs/notes/FlexRecipes.md`, examples in `temp_docs/examples/flex/` and `temp_docs/examples/solar_array/`.
+## [1.21.1-0.8.0] - 2026-09-20
 
-#### #80 – Optional GeckoLib Models for Machines
-- **`geoModel`** on controllers and structures: a GeckoLib model drawn while the multiblock is formed, with an `idle` and a `working` animation.
-- **Options**: `offset`, `scale`, `rotate` (with the controller's facing), `glow`; a structure's `geoModel` replaces the controller's, `"none"` turns it off.
-- **GeckoLib is optional**: compile-only; without it nothing is drawn. Wrong file paths hide the model with one warning, no crash.
-- Docs: `temp_docs/notes/GeckoLibModels.md`, example in `temp_docs/examples/geckolib/`.
-
-#### #82 – Output Port Priority for All Types
-- **Fluid, energy and Mekanism chemical outputs** now follow port priority like item outputs: highest priority port first.
+### Added
+- **Order MM items from the Replication Terminal.** A `mm:replication/link` port puts a machine's
+  recipes in the Terminal next to everything else. Ask for an item and the machine makes it, and it
+  lands in the Terminal. Items Replication has no matter value for can be ordered too. Needs
+  [Replication](https://www.curseforge.com/minecraft/mc-mods/replication).
+- **Ars Nouveau Source port.** With [Ars Nouveau](https://www.curseforge.com/minecraft/mc-mods/ars-nouveau)
+  installed, `mm:ars_nouveau/source` ports hold Source, set with `capacity` and `range`.
+  - Input ports pull from nearby source jars, and sourcelinks can fill them directly.
+  - Output ports feed nearby jars and Ars machines such as the imbuement chamber.
+  - Source relays cannot be pointed at a port; use jars or sourcelinks.
+- **Autocraft MM recipes from AE2.** With [Applied Energistics 2](https://www.curseforge.com/minecraft/mc-mods/applied-energistics-2)
+  installed, a `mm:ae2/pattern` port joins an ME network and offers the machine's recipes in the
+  crafting terminal. Order one and the ingredients are taken from storage, the machine runs, and the
+  result comes back. `patternPriority` picks which machine wins when several can make the same item.
+  - Matter can be an ingredient when [Replication AE2 Bridge](https://www.curseforge.com/minecraft/mc-mods/replication-ae2-bridge)
+    is installed.
+  - Only recipes with an item or fluid on both sides can be ordered, since AE2 cannot carry energy,
+    Source or radiation.
+- **See how full a Source port is** three ways: the block itself brightens as it fills, its screen
+  has a bar, and Jade shows a bar when you look at it.
+- **Extra blocks join up.** Place them side by side and their frames merge into one panel, with each
+  block keeping its own face. `connectGroup` decides what merges with what; without it a block only
+  joins copies of itself.
 
 ### Fixed
+- **Machines no longer craft for free.** A recipe with a `per_tick` input kept running when the port
+  it draws from was empty. It now waits until there is enough, and carries on by itself. Affects
+  energy, fluid, matter, Source and radiation.
+- **Machines that stopped noticing their ports.** Filling a machine sometimes did nothing until a
+  block was broken next to it. Idle machines now find their ports again on their own.
+- **JEI no longer stacks copies** of a machine and its recipes every time resources are reloaded.
+- **Two config files claiming the same `id`.** Giving two ports, controllers or extra blocks the
+  same `id` has always stopped the game, but it never said where the clash was. It now names both
+  files. Using one block in as many structures as you like is unaffected.
+- **A missing port is reported.** A structure that uses a port no config defines now says so in
+  four places: a summary when the world loads, a message to operators joining the world, a red line
+  on the structure's JEI page, and the debug tool's dump. Before, the machine quietly never formed
+  and nothing said why.
 
-#### #81 – Machines Spread Over Two Chunks
-- **Lost outputs / stuck machines**: when a chunk holding some of a machine's ports reloaded, the controller kept using the old port storages, so outputs were voided and recipes stalled. Storages are now gathered again from the live ports (running recipes kept).
-- **No forced chunk loading**: while a chunk of the structure isn't loaded, the machine waits instead of loading it.
-
-#### #83 – Energy Port Overflow
-- **Overflow at ~2.1B FE**: a Gigantic Energy Port (2,147,483,647 FE) wrapped to a negative amount when a recipe output pushed it past the limit, and a full port didn't stop the machine. Outputs now stop at the capacity.
-- **Negative saves**: ports already saved with negative energy load as empty.
-
-#### #84 – Missing Blocks Tooltip
-- **Port tiers listed**: a missing `portType` position lists every port that fits (e.g. Tiny to Gigantic Energy Port) instead of only `Port Type: mm:energy` with a blank icon.
-
-
-## [0.1.35.5 + 6] - 2026-10-04
-
-### INFO:
-**Version 0.1.35.5 + 6** represents a feature expansion with remote structure placement and extended reach capabilities.
-
-**Special Thanks:**
-- **Knozyy** – Remote placement system, extended targeting reach, and layer-by-layer building modes.
+## [1.21.1-0.7.1] - 2026-09-14
 
 ### Added
-
-#### #77 – Structure Builder: Remote Placement & Extended Reach
-- **Extended reach**: preview and place multiblocks up to **64 blocks** away (configurable 5–128 blocks via server config).
-- **Anchor & place workflow**: press **G** to anchor preview's target and facing, walk around, right-click to build at saved target; **G** releases anchor; **Shift+scroll** still rotates.
-- **Server Config options** (operator-only):
-  - `targetingRange` (5–128 blocks)
-  - `placementSpeed` (1–1024 blocks/tick)
-  - Sequential, layer-by-layer (bottom-up, MM controller first), or instant placement modes
-- **Mode precedence**: per-tool instant preference effective in sequential; explicit server layer/instant take precedence; Controller Assemble & dismantling retain existing speeds.
-- **Gallery categories**: imported from first structure folder (matching MultiBuilderTool grouping); existing assignments, renames, deletions, Uncategorized choices survive reloads.
-- **Hologram improvements**: removed Shift rotation timeout hiding; fixed NBT previews allowed beside MM controllers; render stage, transforms, layers, buffers unchanged.
-- **Server-side resolution**: placement & anchor targets resolved on server; targeting stops at unloaded terrain; material, FE, obstruction, Forge place-protection checks in all modes.
-- **Persistence & sync**: anchors stored on tool, cleared on structure selection; range synced on login & config edits; English/Turkish labels & usage guide.
-- **Protocol & version**: network protocol bumped to 8; build version to 0.1.35.7; client and server versions must match.
+- **Pick the recipe from the controller.** Set `"recipeSelectionMode": "manual"` on a controller
+  (`.recipeSelectionMode('manual')` in KubeJS) and its screen gets arrows to choose which recipe
+  runs. The machine only runs that recipe, and waits when none is picked. Matter input ports with
+  free tanks only pull what the picked recipe uses.
 
 ### Fixed
+- Jade's settings screen was missing a name for MM's port contents option.
 
-#### #78 – Structure Builder: Anchor & Preview Management
-- **Anchor cleared** after successful build; retained on rejection.
-- **Preview outline hidden** when all planned blocks present and no obstructions.
-- **Completed structures** keep their preview outline.
-- Existing preview refresh interval maintained even with nothing to draw.
-
-## [0.1.35.4] - 2026-09-29
-### INFO:
-**Version 0.1.35.4** represents a minor update focused on bug fixes and performance improvements.
-
-**Special Thanks:**
-- **Knozyy**
+## [1.21.1-0.7.0] - 2026-09-12
 
 ### Added
-
-#### #73 – Structure Builder: Instant Build Toggle
-- **Instant build toggle** in Settings tab (off by default, saved per tool).
-- When enabled: prepared structure builds in one server tick through existing block, energy, and placement-protection checks.
-- **Motivation**: prevents crashes when controller ticks during structure placement (e.g., NuclearCraft fission reactors); opt-in mitigation mode.
-- **English & Turkish labels** + GameTests for per-tool persistence and one-tick resource consumption.
-
-#### #74 – JEI Process Recipe Views: Scrollable Input/Output Lists
-- **Capped visible rows**: process recipe views limited to 6 visible rows.
-- **Independent JEI scroll grids**: separate scrollable grids for long input and output lists (keep all ingredients available to JEI lookup).
-- **Count & badges**: unused badges follow slots when scrolling.
-- **Category sizing**: uses displayed outputs including weighted choices; accounts for recipes shared by multiple structures.
-
-#### #75 – Item Port Indexing & Exact-Item Extraction
-- **Slot indexing**: index empty, partially filled, and full item-port slots; track per-item totals and content revision.
-- **Content updates**: normal inventory changes update controller without periodic item-slot scan.
-- **Exact-item routing**: recipe extraction routed through item-to-port index, keeping NBT predicates.
-- **Output strategy**: for outputs, try compatible partial ports before empty ports within same configured priority.
-- **Candidate filtering**: filter recipe candidates by available exact-item quantities; keep existing final ingredient, condition, output-capacity, and round-robin checks.
-
-#### #76 – Output Capacity Pre-Check & Pending Recipe State
-- **Pre-start check**: verify output capacity before starting recipe (prevent full output port consuming inputs).
-- **Pending state**: completed recipes remain pending while output blocked (no repeated per-tick consumption or discard after stall timeout).
-- **State preservation**: recipe waits for output space without losing progress.
-
-
-## [0.1.35.2 + 3] - 2026-09-28
-
-### INFO:
-**Version 0.1.35.2 + 3** represents a major update focused on the Structure Builder tool and internationalization support.
-
-**Special Thanks:**
-- **Knozyy** – Lead developer of the Structure Builder tool suite, Locale fixes, and controller enhancements.
-
-### Added
-
-#### #66 – Locale.ROOT Enum Casing
-- Fixed Turkish/Azerbaijani locale issues where `toLowerCase()` transforms `I` → `ı` and `toUpperCase()` transforms `i` → `İ`.
-- All enum-name casing for lang keys and parsing now uses `Locale.ROOT` (linker item/mode, Jade controller provider, controller screen, port sides, weather recipe condition, ParserUtils).
-- Output unchanged on all other locales (enum names are plain ASCII); affects: Network Linker, controller screen, port configuration.
-
-#### #67 – Controller Assemble Button
-- **Assemble button** on controller screen (brick icon) opens structure assembly interface.
-- **Structure selector** (when controller has multiple structures).
-- **Tier picker** (one row per port type with < > controls; "Lowest" by default).
-- **Assembly process**: builds structure from player inventory (nothing needed in creative), with configurable block placement rate (`assemblyBlocksPerTick`, default 2).
-- **Tier clamping**: preference clamped to each position's [minTier, maxTier], nearest registered tier used (supports non-linear tier gaps like T1, T2, T5).
-- **Safety**: respects `mayBuild`, spawn protection, `BlockEvent.EntityPlaceEvent`; existing blocks not replaced; assembly reports placed/missing/blocked summary.
-- **Persistence**: tier choice + structure stored on controller; packets validated server-side.
-- **Blueprint compatibility**: blueprint paste now uses lowest fitting port tier (not first registered).
-
-#### #68 – Structure Builder Tool
-- **New Structure Builder item** (replaces concept of external multiblock builders) with dedicated texture and model.
-- **Structures tab**: searchable gallery grouped by mod, big 3D preview (drag/rotate, wheel/zoom, layer slider), size/block count display, port tier info.
-- **Settings tab**: preferred port size per port type (clamped per position).
-- **Tool store**: 54 slots, up to 512 per stackable slot, plus FE bar.
-- **Build & preview**: Shift+use opens tool screen; right-click block shows hologram preview (green outline, red obstacles), builds if clear; Shift+scroll rotates.
-- **Complete structure**: right-click controller to finish incomplete machine (same as controller's Assemble, but from tool).
-- **Dismantle**: hold V (rebindable) or Shift+right-click twice; breaks like normal breaking (contents drop), returns blocks to tool store → inventory → ground with Silk Touch loot rolling.
-- **Energy**: 50 FE/block placed, 25/block dismantled; common config: capacity 1M, receive 10K/tick; creative: free.
-- **Safety**: oversized stacks capped in store, inventory/tool binding checks, store refreshes per tick, refunds on failure/cancel, respects claim mods & place/break events.
-- **Server validation**: held tool, distance, loaded chunk, known structure, registered tier keys, clamped values.
-
-#### #69 – Structure Builder: ME Network & Auto-Craft
-- **Bind**: Shift+right-click any AE2 network block (WAP, cable, drive, etc.) to bind tool to network (stores position like Network Linker).
-- **Settings**: "Use ME network", "Auto-craft missing", "Forget ME network" toggles.
-- **Materials flow**: tool store → player inventory → ME network.
-- **All-or-nothing builds**: tool build starts only when all blocks available; network auto-crafts what has patterns, names missing items (e.g., "Titanium Plate ×3: not in ME and no pattern").
-- **Craft HUD**: above hotbar with progress bar (Crafting ▓▓▓░░ 5/8), network status ("Waiting…", "Ready — right-click to build"), failures shown once in yellow.
-- **Smart tracking**: item being crafted never reported missing, never requested twice; tracks via CPU and `getRequestedAmount`.
-- **AE2 access control**: enforces network ownership (player/FTB team/operator; checked at bind, use, craft submit).
-- **Refunds**: never go back to ME; return to player inventory.
-
-#### #70 – Structure Builder: Other Mods' Multiblocks
-- **Gallery integration**: now lists multiblocks from other mods (Mekanism, NuclearCraft, Blood Magic, etc.) defined as vanilla structure .nbt files in datapacks (Multi Builder Tool format).
-- **Paths**: loads `data/<ns>/mm_builder_structures/**.nbt`; legacy support for `mbtool_structures/**` and `spatial_structures/**`.
-- **Compatibility**: skips structures with unregistered blocks (mod not installed).
-- **Multi Builder Tool bundles**: MIT licensed .nbt files included under `data/mbtool/mbtool_structures/` (same paths → no duplicates in packs still using MBT).
-- **Naming**: from lang key `structure.<ns>.<path>` or title-cased file name; grouped by owning mod.
-- **Sync**: synced to clients on login & `/reload` (palette-compressed, split <512KB packets).
-- **Building**: gallery, 3D preview, hologram, building work like MM structures; rotation from facing + Shift+scroll; all-or-nothing materials from store → inventory → ME with auto-craft.
-- **Limitations**: no controller, no tier choice, block entity data ignored; structures with no-item blocks (fire, fluids) listed but can't build.
-- **KubeJS API**: `MMEvents.builderStructures(event => { event.remove(id); event.removeNamespace(ns); event.add(id, 'ns:path/file.nbt') })`.
-- **Dismantling**: MM-machines-only (no controller to locate others).
-
-#### #71 – Structure Builder: Polish, Materials Tab & AE2 ME Storage
-- **Renamed**: "Multiblock Tool" → **"Structure Builder"** (item, recipes, models, lang entries, registry).
-- **New item texture & model**.
-- **Bind via WAP**: now supports binding directly to AE2 Wireless Access Points.
-- **Materials tab**: displays every required block with real item icons; compares counts across Player Inventory + Tool Storage + connected ME network; tooltips show breakdown (Available: X / Required: Y).
-- **Compact materials strip**: in Structures tab for quick reference during selection.
-- **Admin Categories tab** (server operators/admins): create, rename, delete custom gallery categories; assign structures via right-click context menu.
-- **Sync**: `StructureCategoriesSyncPkt` & `StructureCategoryEditPkt` between server/client; persists across restarts and datapack reloads.
-- **In-game config GUI** (`MMConfigScreen`): accessible from tool's Config tab or client commands; live editing of server settings, visual/client options, per-machine working effects.
-- **Server config editing**: operators modify server config with immediate sync & validation (`MMConfigEditPkt`, `MMConfigSyncPkt`, `MMConfigRequestPkt`).
-- **AE2 ME Storage Bus on Item Ports**: `Ae2ItemPortStorage` allows AE2 Storage Buses to attach directly to MM Item Ports; exposes inventory to ME network with accurate channel & capacity handling.
-- **Item port improvements**: improved stack insertion to prevent loss on oversized stacks; respect slot limits.
-- **Controller-free dismantling**: extended DismantlePlanner & ToolDismantles to dismantle non-MM builder structures (datapack .nbt files matching tool template).
-- **Void Miner relocations**: corrected .nbt structures to `data/mbtool/mm_builder_structures/voidminer/` (overrides broken legacy palette entries).
-- **UI polish**: JEI ingredient hovering in ControllerPortList; fixed 3D layer preview for connected textures (GuiStructureRenderer); formatted multi-line tooltips for Machine Wrench, Network Linker, Input Gateway.
-
-#### #72 – Item Port Capacity & Rendering Optimization
-- **Per-slot capacity limit**: raised to 16,384 (from 64) while preserving configured rows/columns in JSON or KubeJS.
-- **Client update batching**: item port block-entity updates batched to once per tick when contents change (reduced sync overhead).
-- **Window background rendering**: large port windows now render with at most nine textured patches instead of thousands of tiled GUI blits per frame (major performance improvement for large item ports).
+- **Nuclear Radiation port.** With [Nuclear Radiation](https://www.curseforge.com/minecraft/mc-mods/nuclear-radiation)
+  installed, `mm:nuclear_radiation/radiation` ports store radioactive isotopes, measured in Bq.
+  - Put radioactive items in an input port and it absorbs their radiation.
+  - Recipes can use a specific isotope (`"isotope": "nr:u_235"`) or any radiation, and can make
+    radiation as an output.
+  - Output ports load radiation onto items, so it can travel from one machine to the next.
+  - Stored radiation decays at its real half-life unless `"decay": false`.
+  - Ports are sealed by default; `"shielded": false` makes a port irradiate the area around it.
+  - `isotopes`, `carriers` and `loadPerItem` limit what a port accepts and loads.
+  - See `docs/radiation.md`.
+- **Energy past 2.1 billion FE.** Energy port `capacity`, `maxReceive` and `maxExtract`, and energy
+  amounts in recipes, can now go above 2,147,483,647 FE. Other mods still move at most that much per
+  transfer.
+- **`anyOf` structure key.** One spot can accept any of several keys, each with its own settings:
+  `{ "anyOf": [ { "portType": "mm:item", "maxTier": 8 }, { "block": "minecraft:iron_block" } ] }`.
+  Works the same from KubeJS.
 
 ### Fixed
+- **Free matter tanks now fill.** Matter input ports set up with `tanks` and no `matter` never took
+  anything from the network. Each free tank now pulls one of the matter types the machine's recipes
+  use.
+- The docs said a `per_tick` energy amount is taken every tick. It is the total for the whole
+  recipe, spread across it. The docs and examples now say so.
 
-#### #66 – Locale Fixes
-- Enum names no longer transform incorrectly in Turkish/Azerbaijani locales; all comparisons now use Locale.ROOT.
-
-
-## [0.1.35.1] - 2026-09-26
-
-### INFO:
-**Version 0.1.35.1** represents a minor update with bug fixes and performance improvements.
-**Special Thanks:**
-- **Knozyy**
+## [1.21.1-0.6.2] - 2026-09-10
 
 ### Added
+- **Rainbows with your own colours.** Add `colors` to a rainbow name to cycle through just those
+  colours: `{ "text": "My Port", "rainbow": true, "colors": ["#00FFFF", "#0000FF"], "spread": 0 }`
+  fades the whole name between cyan and blue. Works from KubeJS too.
+- `docs/example.md` builds a complete machine step by step, and `docs/reference.md` lists every key
+  and option.
 
-#### #63 – Recipe Candidate Indexing & Requirement Caching
-- **RecipeRequirements**: Recipe input needs (port types, item/fluid/chemical IDs, energy/mana/kinetic) now cached on structure load instead of recalculated every tick.
-- **RecipeCandidateIndex**: Recipes grouped by item consumed; candidate list rebuilt only when port contents change, drastically reducing scan iterations.
-  - Only visits recipes whose inputs are actually present
-  - Recipes without specific item input (tags, fluids, energy) always candidate
-- **Scan behavior**: Maintains structure recipe order, resumes where stopped (preserves recipe selection modes and parallel rules).
-- **Skip wait**: Recipes that fail input checks now wait 20 ticks like other skip reasons; port changes clear wait.
-- **Performance**: Eliminates thousands of per-tick allocations and checks in structures with hundreds/thousands of recipes.
-
-#### #64 – Big/Small Controller Screen Toggle
-- **Screen size toggle** (top-right button): switch between big screen (up to 500x380, sized to window) and small screen (classic view).
-- Choice saved in client config (`controller.bigScreen`), applies to all controllers, survives restarts.
-- **Big screen layout** (400px+ wide): machine info & settings on left, scrollable input/output port columns on right; narrower screens keep pages.
-- **Recipe row improvements**:
-  - Shows all outputs including weighted outputs (weren't shown before)
-  - Rotates every 1.2s when more items than fit; thin track shows current position
-  - Stays still while hovered
-  - Left click opens JEI recipes, right click uses (JEI optional)
-  - New `IRecipeOutputEntry#displayedOutputs()` for custom output types
-- **Sound mute button**: toggles working sound (per controller, NBT saved, synced, mutes for everyone; particles unaffected).
-  - Machines without sound show "No sound"
-- **Fixes**: button overlap fixed; energy bars now repeat texture correctly (no read-past).
-
-#### #65 – Input Gateway: Full Energy & Mekanism Support
-- Input Gateway now accepts and routes:
-  - **FE**: passed to machine's energy input ports in order
-  - **Mekanism gas, infusion, pigment, slurry**: routed to matching chemical input ports in order
-- Display shows read-only tank list + one entry tank (AE2 Pattern Provider in blocking mode sees machine contents).
-- **Implementation**: ChemicalHandlers created only when Mekanism is loaded; no hard dependency.
-- **Tooltips**: block tooltip lists all supported types (en_us, tr_tr).
-
-## [0.1.35.0] - 2026-09-25
-
-### INFO:
-**Version 0.1.35.0** represents a major update with substantial feature additions and improvements.
-
-**Special Thanks:**
-- **Knozyy** – Lead architect and primary developer of this entire version.
-- Single-handedly implemented all major features:
-  - Per-side Auto I/O,
-  - complete Port & Controller GUI Redesign,
-  - Input Gateway with full energy & Mekanism chemical support,
-  - Machine Network Linker with dual modes,
-  - Controller Sync Optimization,
-  - massive Localization overhaul,
-  - JEI Structure Preview with complete freeze fix and new controls,
-  - Controller States & Status Lights,
-  - Machine Wrench tool,
-  - comprehensive Controller Screen enhancements (big/small toggle, sound mute, recipe rotation),
-  - full Recipe Conditions system,
-  - KubeJS Event system,
-  - Input Gateway Storage for AE2 integration,
-  - Redstone Comparator support,
-  - Weighted output entries,
-  - Working effects (sounds & particles),
-  - Recipe candidate indexing & requirement caching, and
-  - critical fluid transfer bug fix.
-
-Without his contribution, this update would not have been possible!
+## [1.21.1-0.6.1] - 2026-09-10
 
 ### Added
-#### #42 – Per-side auto I/O for ports (updated)
-- **Per-side auto input/output for ports** (item, fluid, energy and Mekanism gas/infuse/pigment/slurry)
-  - Port GUIs have a side panel with toggles for each side (Top/Bottom/Front/Back/Left/Right), named relative to the machine's controller.
-  - Output ports push into any neighboring inventory, tank or energy storage on enabled sides, and into neighboring MM input ports (machine chaining). Priority setter values are respected.
-  - Input ports pull from neighboring non-MM blocks on enabled sides.
-  - Settings are saved per port. `autoPush` / `portsAutoExtractByDefault` now decide whether new output ports start with all sides enabled.
-  - New common config `portAutoIOInterval` (default 10 ticks).
-- **Lock and dump for fluid and Mekanism chemical ports**
-  - Lock: each tank is locked to its current contents; empty tanks lock to the first type that enters them.
-  - Dump: Shift+Click deletes the port's contents.
-- Turkish (`tr_tr`) translation for the new GUI texts (full translation).
+- **Jade shows what's inside more ports.** Chemical, heat, matter and entity ports now show their
+  contents when you look at them, like fluid ports already did.
+- **Coloured names from KubeJS.** `.name()`, `.inputName()` and `.outputName()` take the same
+  objects as the JSON configs, so colours, gradients and rainbows work from scripts too:
+  `.inputName({ text: 'My Input Port', rainbow: true })`.
 
-#### #44 – Port & controller screen rework
-- **Port GUI redesign** with clearer layout (same MM textures and colors):
-  - Fluid, gas and energy ports: one big gauge with the amount written on it.
-  - Big item ports (larger than 9x6) get a bigger window, so slots no longer overlap the title or the inventory.
-  - Auto I/O panel redone Mekanism-style: the port block in the middle, color-coded side buttons around it.
-- **Controller GUI improvements**:
-  - Colored status line (not formed / paused by redstone / running / idle).
-  - Current recipe display with items, fluids, gases, energy and their amounts.
-  - Rows for tier, parallel, redstone and recipe order, each with a tooltip.
-  - Second page: lists every port of the machine and what's inside (live updates).
+## [1.21.1-0.6.0] - 2026-09-10
 
-#### #45 – Input Gateway block
-- **Input Gateway block**: One block to pipe items and fluids into a machine, instead of connecting a pipe to every input port.
-  - Can replace any casing/glass block in the structure (the structure still forms), or be placed next to an input port.
-  - Stores nothing and has no GUI; it hands everything to the machine's input ports.
-  - No crafting recipe included, same as ports (packs add one with KubeJS).
+### Added
+- **A port can register just one side.** `only` takes `input`, `output` or `both` (the default), so
+  a hatch that only ever takes things in no longer registers an output block nobody uses. Available
+  from KubeJS as `.only('input')`.
+- **Ports can name each side themselves.** `inputName` and `outputName` replace the whole name for
+  that side, suffix included, so "Basic Chemical Port Input" can be written as "Basic Chemical
+  Input Port". `name` on its own still appends " Input" / " Output" as before.
+- **Names can be coloured.** Any name field now takes a full text component, so ports and
+  controllers can use colour and formatting: `{ "text": "Fry Basket", "color": "#FFC72C",
+  "bold": true }`.
+- **Gradients and rainbows.** `{ "text": "...", "gradient": ["#FF0000", "#00FFFF"] }` spreads
+  colours across the letters, and `{ "text": "...", "rainbow": true }` cycles by itself. `speed` is
+  colour cycles per second and `spread` is the hue shift per character, so `spread: 0` makes the
+  whole name one colour that cycles together while a larger value sends the colour travelling along
+  it.
+- **The structure preview rotates with left click and zooms with the scroll wheel.** The old
+  middle-drag rotate, right-drag zoom and shift-drag pan still work.
 
-#### #46 – Machine Network Linker
-- **Machine Network Linker**: Links a machine to its owner (shared with their FTB team) and to an AE2 network.
-  - Only the owner/team can open or break the machine's parts; OPs bypass this.
-  - When a port breaks, its contents go into the AE2 network instead of dropping on the ground (Mekanism gases go through Applied Mekanistics).
-  - Network Linker modes: *Linking* (pairs machine to owner/AE2) and *Info* (view owner, position, online status; sneak+right-click to unlink).
-  - AE2, FTB Teams and Applied Mekanism are all optional dependencies.
+## [1.21.1-0.5.1] - 2026-09-08
 
-#### #47 – Controller: Optimized Sync
-- Block entity sync only on GUI open or relevant changes (formed, structure, recipes, redstone, link).
-- `detectExternalStorageChanges()` now runs every 5 ticks instead of every tick (matches idle scan interval).
-
-#### #48 – Localization Overhaul
-- 58 hardcoded UI texts moved to lang keys (JEI titles, tooltips, blueprint messages, debug tools, port labels).
-- Full en_us and tr_tr translations; removed duplicate block.mm.input_gateway keys.
-
-#### #49 – JEI Structure Preview: Freeze Fix & Controls
-- Fixed freeze on large structures by optimizing buffer flushing and skipping enclosed blocks.
-- **Layer view**: Cycles through layers from bottom up with < All layers > selector.
-- **Camera improvements**: Auto-positioned from bounding sphere, rotates around structure center, fills screen view.
-- **Mouse controls**: Left/middle drag rotates, right drag/wheel zooms, Shift+drag pans; on-screen i icon explains controls.
-- **Connected textures**: Preview blocks see neighbors, so AE2 quartz glass, CTM, and modded textures render correctly.
-
-#### #50 – Controller State & Port Status Lights
-- Controller block state: `unformed` / `idle` / `working` (tints screen red/green/yellow).
-- All port types show matching status light (block entity renderer, always bright).
-- **Client config** (`mm-client.toml`): customize controller/port colors and status light visibility.
-- **Per-machine customization**: `unformedColor`, `idleColor`, `workingColor` in KubeJS controller builder or JSON.
-- Per-state model variants (`<id>`, `<id>_idle`, `<id>_working`) and screen textures for full resource pack support.
-
-#### #51 – Machine Wrench & Network Linker Modes
-- **mm:wrench** item (3 iron + green dye): right-click a port side to toggle auto I/O; sneak+right-click shows all six sides.
-- Controller screen shows "Linked to" row (AE2 only) with tooltip for owner and unlink info.
-- New Network Linker texture (ME remote style).
-
-#### #52 – Controller Screen: Recipe Order, Rename & Pages
-- **Recipe order button** (Default / Avoid Same Recipe / Round Robin) saved per controller.
-- **Machine renaming**: click the controller name to edit; Enter saves, Esc cancels, empty restores original. Names are preserved in anvil and on drop (copy_name).
-- **Port page split**: cycles through Status → Input Ports → Output Ports.
-- Settings sync via `ControllerSettingsPkt` with server-side permission checks.
-
-#### #53 – Missing Blocks Detection
-- Server finds best-fit structure rotation and sends with screen preview.
-- Shows "Missing blocks: N" with item name and relative position (e.g., "2 up, 1 left").
-- Tooltip lists up to ten wrong positions with what's there instead.
-
-#### #54 – Jade: Fuller Controller & Port Tooltips
-- **Controller**: state (translated), progress, running recipes count, parallel limit, redstone mode, owner.
-- **Ports**: parent machine, current activity, auto I/O status.
-- **Parallel limit fix**: `getDisplayedParallelLimit()` shows 1 (serial) or the structure/controller/config limit (parallel).
-- Texts use "different recipes" (same recipe never runs twice).
-
-#### #55 – Recipe Conditions System
-- Dimension, weather, biome, time, height, and redstone conditions now actually work (were parsed but ignored).
-- Running recipes pause when conditions fail; not counted as stalled.
-- **New conditions**: `mm:biome` (id or #tag), `mm:time` (day/night), `mm:height` (minY/maxY), `mm:redstone` (powered/unpowered), `mm:tier` (minTier/maxTier).
-- **Multi-structure recipes**: `structureIds` in JSON, `.structureIds(...)` in KubeJS. JEI shows recipe in all categories.
-- **KubeJS API**: `.dimension()`, `.biome()`, `.time()`, `.weather()`, `.minY()`, `.maxY()`, `.redstone()`, `.minTier()`, `.maxTier()`.
-- **JEI**: condition clock icon under recipe arrow.
-
-#### #56 – KubeJS Server Events
-- `MMEvents.recipeStarted(recipeId, event => {...})` – cancellable event before recipe starts.
-- `MMEvents.recipeFinished(recipeId, event => {...})` – event after recipe completes.
-- Event object includes: recipeId, controller, controllerId, structureId, level, pos, block.
-- No overhead if no scripts listen.
-
-#### #57 – Input Gateway: Storage Display
-- Input Gateway now displays read-only list of machine's input port slots and tanks.
-- Shows one always-empty slot/tank for AE2 Pattern Provider interaction.
-- Pattern Provider in blocking mode now correctly waits for inputs to be consumed.
-- With Network Linker, outputs return to AE2 network.
-
-#### #60 – Comparator Support for Controllers
-- **Redstone comparator** placed against a machine controller now reads the machine's state:
-  - Unformed or idle: signal 0
-  - Working: signal 1–15, following recipe progress (furthest running recipe)
-  - Recipes finishing within a tick read 15
-- Works with every controller, no setup needed.
-- Use cases: "working" lamp, trigger automation on idle, chain machines, simple progress indicator.
-- **Implementation**: MachineControllerBlock has `hasAnalogOutputSignal` / `getAnalogOutputSignal`; updates only trigger when signal value changes.
-
-#### #61 – Weighted Output Entry Type
-- New output entry type `mm:output/weighted`: picks exactly one option by weight each recipe finish (loot table style).
-- **Syntax** (KubeJS):
-  ```javascript
-'.output({
-    type: 'mm:output/weighted',
-    options: [
-      { weight: 70, item: 'minecraft:iron_nugget', count: 3 },
-      { weight: 20, item: 'minecraft:gold_nugget', count: 3 },
-      { weight: 5, item: 'minecraft:diamond' },
-      { weight: 5 }   // outputs nothing
-    ],
-'  })
-  ```
-- Each option takes an ingredient (any port type) or item shorthand (item, count, nbt, etc.); option without both outputs nothing.
-- Weights don't need to sum to 100; optional `chance` applies to whole entry.
-- **JEI**: shows every possible output with its chance, plus no-output chance.
-- **Bonus**: missing count on `mm:item` ingredient now defaults to 1 (was NullPointerException).
-
-#### #62 – Working Effects (Sound & Particles)
-- Machines can play sound and show particles while working (pack configurable, nothing hardcoded).
-- **Global config** (`config/mm/working_effects.json`, keyed by controller block id):
-  ```json
-  {
-    "mm:auto_crusher_controller": {
-      "sound": "minecraft:block.grindstone.use",
-      "interval": 25,
-      "particle": "minecraft:smoke"
-    }
-  }
-  ```
-  - `sound`: sound while working
-  - `particle`: particle from controller's screen side
-  - `interval`: ticks between sounds (default 40)
-  - All fields optional; `""` disables effect
-  - Auto-created on first run, re-read on F3+T for live tuning
-- **Per-controller** (KubeJS / JSON): `.workingSound()`, `.workingSoundInterval()`, `.workingParticle()`; global config overrides.
-- **Client-side**: runs from controller's client tick only while `working` state active, no networking overhead.
-- **Sound offset**: by position so neighboring machines don't play in unison.
-- **Player opt-out**: `[controller] workingEffects` in `mm-client.toml`.
-
-### Fixed
-
-#### #42 – Per-side auto I/O
-- `autoPush` only pushed into neighboring MM input ports, never into chests, tanks, pipes or cables.
-
-#### #43 – Bug fixes
-- Gas ports now accept radioactive gases (polonium, plutonium, nuclear waste, etc.). Mekanisms default validator was rejecting them.
-- An emptied (dumped) gas tank no longer keeps showing its old contents on the client.
-- Item ports now stack up to their slot capacity (512 / 16384) when you place items by hand or shift-click. Before, they stopped at 64 and shift-click only filled empty slots.
-- Item counts above 127 now show correctly in the port GUI (vanilla sends slot counts as a single byte).
-- Fluid ports never drain more than requested.
-- `mods.toml`: replaced the example-mod placeholder text.
-
-#### #49 – Structure Preview Fixes
-- Fixed freeze on big structures with optimized buffer flushing.
-
-#### #50 – Port State & Network Updates
-- Port on-remove side effects only trigger on actual block change, not block state changes.
-- State changes skip neighbor shape updates (UPDATE_KNOWN_SHAPE).
-
-#### #59 – Fluid Port Auto-Transfer Bug Fix
-- **CRITICAL FIX**: Fluid ports stopped auto-transferring due to swapped source/destination in `FluidUtil.tryFluidTransfer()` call.
-  - Input ports no longer pull from neighboring tanks (Mekanism, etc.)
-  - Output ports no longer push into them
-  - Root cause: recent commit swapped from/to parameters and set `doTransfer = false` (simulation mode)
-  - **Fixed**: restored correct parameter order and `doTransfer = true`
-
-#### #58 – Build & Localization Fixes
-- MachineControllerScreen: restored missing imports (EditBox, GLFW, ControllerSettingsPkt, RecipeSelectionMode).
-- MachineControllerScreen: restored recipe order text position and tooltip.
-- Lang files: restored ten missing `jei.mm.structure.*` keys (structure view title, max parallel line, layer selector, controls).
-- Removed duplicate `config.jade.plugin_mm.controller_progress` key.
+### Added
+- `docs/mekanism.md` covers the chemical and heat ports, custom chemicals from KubeJS, and how to
+  migrate off the old port types.
 
 ### Changed
-- Network protocol version bumped to 2 (new port config packet).
+- **The four Mekanism port types are now one.** `mm:mekanism/gas`, `/slurry`, `/pigment`
+  and `/infuse` are gone; use `mm:mekanism/chemical`. Mekanism merged those registries into a
+  single chemical type in 1.21.1, so the four ports had become the same port wearing four names.
+  A pack has to change the `type` on its Mekanism ports and recipes — a config naming a removed
+  type stops the game with a message saying so. Recipes still accept the old `gas`, `slurry`,
+  `pigment` and `infuse` keys for naming the chemical, so only the type needs changing.
 
-## [0.1.34.7] - 2026-09-03
+### Fixed
+- The Mekanism chemical port had no auto push at all — no `autoPush` in its config, nothing on its
+  KubeJS builder, and no code to move chemicals. Calling `.autoPush(true)` on one from KubeJS took
+  the game down on startup, and setting it in JSON did nothing. It now works the way the energy,
+  fluid, item and heat ports do.
+- Auto push on the energy port only ever moved energy between MM ports, so an output bus sitting
+  against a cable or a machine never emptied. It now pushes into anything that accepts energy.
+  Auto push is still off unless the port or the config turns it on.
+
+## [1.21.1-0.5.0] - 2026-09-05
+
 ### Added
-- **Major Performance Optimization - Machine Controller Recipe Processing**
-  - Aggressive recipe scanning: Controllers now scan all recipes per tick when recipe count < 300 (DEFAULT mode), or 50% per tick in fair-scheduling mode. Previously only scanned 5 recipes/tick, causing massive idle latency.
-  - Recipe metadata caching: Port type requirements and resource IDs are now cached in `RecipeMetadata` record, eliminating expensive repeated extraction from recipe definitions.
-  - Storage cache throttling: Cache rebuilds reduced from every tick to every 2 ticks during active recipes (5 ticks when idle), preventing unnecessary full inventory scans.
-  - NBT hash caching: CompoundTag hashes are cached in IdentityHashMap to avoid expensive JSON conversions during stack fingerprinting.
-### Fixed
-- Machine controller recipe processing bottleneck that caused excessive idle time between recipe matches when recipe registry contained 150+ recipes.
+- **Replication matter ports.** `mm:replication/matter` joins Replication's matter network, so a
+  machine can spend matter or produce it. An output port behaves like a Disintegrator: the
+  network empties it into your matter tanks on its own. An input port goes and takes what it is
+  short of, the way a Replicator does, so it fills from anywhere on the network rather than only
+  from what a pipe happens to push at it.
+- Port config takes `capacity` for how much each tank holds, `matter` for the type each tank is
+  reserved for (one string, or a list for several tanks), `tanks` for unreserved tanks that lock
+  to whatever arrives first, `priority` for MM's own output ordering, and `network` to keep the
+  port off the matter network entirely.
+- Recipes name the type and the amount: `{ "type": "mm:replication/matter", "matter":
+  "replication:metallic", "amount": 64 }`. Ranges and `rollGroup` work on it like everywhere else.
+- Matter pipes connect to the port and draw the connection, the same as they do to
+  Replication's own blocks.
+- The port answers Replication's matter capability too, so other mods' pipes can see it.
+- **Entity ports.** `mm:entity` lets a machine work with mobs. A mob that walks onto the port is
+  picked up on its own — `stored` swallows it into the block, `standing` leaves it on top where you
+  can still see it. A recipe can spend a mob or keep it as a catalyst, ask for one type or a whole
+  entity tag, and an output port produces mobs instead of consuming them. Break the port and you
+  get every mob back. Config: `capacity`, `mode`, `invulnerable`, `immobile`, `silent`,
+  `persistent`, `zone`, `speedPerEntity`, `consume`, `entities` / `tags`.
+- `zone` sets how much space above a port it watches — a flat 3x3 pad, a tall chimney, or a cube up
+  to 16 on a side. `speedPerEntity` makes a crowd worth having: every mob past the first speeds the
+  recipe up, so three on a pedestal can run it three times as fast.
+- Machine recipes can run faster than one tick of progress per tick. Nothing changes unless a port
+  asks for it, and today only `speedPerEntity` does.
+- Both ports take their options from KubeJS under the same names.
 
-## [0.1.34.6-fix1] - 2026-08-13
-### Fixed
-- Item port priority setter now correctly applies priority to output ports.
-- Energy consumption was doubled for multi-tick recipes.
-
-## [0.1.34.6] - 2026-08-11
 ### Changed
-- JEI recipe slots now render item counts in AE2 style (1K / 1.5M / 2B) instead of vanilla number. Exact count shown in tooltip on hover.
+- The Replication matter port screen puts a divider between its tanks, tints an empty tank with the
+  matter it is reserved for, and highlights the one under your cursor. It used to be a flat grey
+  slab you had to hover over to read.
+
+## [1.21.1-0.4.0] - 2026-09-02
+
+### Added
+- **Mekanism heat ports.** `mm:mekanism/heat` stores heat and lets recipes spend it, the same
+  way the energy port handles FE. Thermodynamic Conductors, Resistive Heaters and Fuelwood
+  Heaters feed an input port; an output port pushes its heat back out into anything Mekanism
+  will take it. Recipes use `"amount"`, and ranges and `rollGroup` work on it like everywhere
+  else.
+- Port config takes `capacity` for how much heat it holds, plus optional `heatCapacity` for
+  how much the temperature moves per unit stored, and `inverseConduction` for how fast heat
+  crosses the boundary. Both have sensible defaults.
+- Available from KubeJS as `.capacity(...)`, `.heatCapacity(...)` and `.inverseConduction(...)`.
+
+### Fixed
+- **Recipes no longer drain a port every tick.** An energy or heat input written as a plain
+  `mm:input/consume` was consumed once per tick instead of once per craft, so a recipe asking
+  for 2000 could quietly take many times that. Inputs marked `per_tick: true` were always
+  handled correctly and are unchanged.
+- **Jammed machines stop consuming.** A machine sitting at 100% because its output is full no
+  longer eats energy or heat while it waits for room, and no longer produces per-tick outputs.
+
+## [1.21.1-0.3.0] - 2026-08-28
+
+### Added
+- **Custom textures for controllers and ports.** `texture` changes the casing, `overlay`
+  changes the symbol on it. Ports also take `inputTexture` / `outputTexture` and
+  `inputOverlay` / `outputOverlay`. The casing is drawn solid, so use `overlay` for anything
+  that needs transparency.
+- **Custom block models.** `model` points a controller or port at any block model, for real
+  3D shapes instead of the plain cube. Ports also take `inputModel` / `outputModel`. Give
+  your model a vanilla parent such as `minecraft:block/block`, and keep the outside of the
+  cube filled in or you will see gaps against neighbouring blocks.
+- **Both work from KubeJS**, as `.texture(...)`, `.overlay(...)` and `.model(...)` on
+  controller and port builders, plus the input and output variants on ports.
+- **Recipes can use a range instead of a fixed amount.** Item `count`, fluid `amount` and
+  energy `amount` accept `{ "min": 1, "max": 5 }`, and the machine rolls a value each craft.
+  Plain numbers behave exactly as before.
+- **`rollGroup` links ranges so they roll together**, so a cheap craft gives a small output
+  and an expensive one gives a big output.
+- JEI shows the range in the slot tooltip and names the roll group. Slots show the maximum,
+  so AE2 patterns request enough to cover the worst roll.
+- **The mod now comes with a new machine.** A Pulverizer that doubles raw iron, gold and copper
+    for 400 FE. Build a 3x3x3 shell of smooth stone with a hollow middle, controller on one
+    face, energy port opposite, item input and output on the sides.
+- Its config files are written to `config/mm` on first run. Edit them to make the machine
+  your own, or delete them to remove it — deleted files stay deleted.
+
+### Fixed
+- **`slotCapacity` now works when you place items by hand.** Slots stayed capped at 64 in
+  the GUI no matter what the config said.
+- **Item ports holding more than 99 of something in one slot no longer break on save.**
+  Only affected ports with a `slotCapacity` above 99.
+- **Shift-clicking into an item port tops up stacks already there** instead of spreading one
+  per slot and then refusing to accept anything.
+- `slotCapacity` has one maximum again, whether it comes from a config file, from KubeJS, or
+  from the port itself.
+- Clearing an item port now also clears its per-slot counts.
+- **A recipe's `chance` roll no longer leaks between machines.** Each machine now rolls for
+  itself. Per-tick entries still re-roll every tick.
+- **One broken structure no longer wipes every machine out of JEI.** MM stopped setting up
+  JEI at the first structure naming a controller that did not exist, taking every machine
+  after it with it. Broken structures are now skipped and named in the log.
+
+
+## [1.21.1-0.2.0] - 2026-08-23
+
+### Fixed
+- **Mekanism and PneumaticCraft ports can be piped into and out of again.** NeoForge
+  requires a capability to be registered against a block entity type before anything
+  can query it, and only the item, fluid and energy capabilities were being
+  registered. The chemical and compressed-air ports answered their capability
+  correctly but were never asked, so they worked inside a machine while being
+  invisible to every pipe, tube and machine outside it.
+- A pack naming a port type that is misspelled, or whose mod is not installed, now
+  fails with a message naming the type and listing the ones that are registered.
+  It used to be a bare `NullPointerException` during mod construction, which took
+  every port down with it.
+- Any error while loading a controller, port or extra block config now names the
+  file it came from. Malformed JSON and a top-level value that is not an object are
+  both reported the same way.
+
+
+## [1.21.1-0.1.2] - 2026-08-12
+
+### Fixed
+- Port screens no longer draw the port's name on top of the slots. Slot grids were
+  centred in a fixed height budget, which worked up to four rows but placed a
+  five-row grid one pixel under the title and a six-row grid exactly on it. Grids
+  of four rows and smaller are positioned exactly as before.
+- A port name long enough to wrap no longer spills onto the first row of slots.
+  The name is drawn on a single line and clipped if it does not fit.
+- Grids too large for the window are now kept inside it rather than drawn off the
+  top or side. Note that the port window is a fixed-size background, so six rows
+  by nine columns is the largest grid that genuinely fits; taller grids are
+  clamped but will still overlap the player inventory.
+
+## [1.21.1-0.1.1] - 2026-08-07 — Minecraft 1.21.1 / NeoForge port
+Port of the 1.20.1 Forge codebase to Minecraft 1.21.1 on NeoForge, starting a
+fresh version line for this fork. Continues from 0.1.34.5-fix2 below; the version
+number restarts because this is a separately published fork, not a regression.
+
+Requires NeoForge 21.1.0+ and Java 21.
+
+### Changed — read before updating a pack
+- **Mekanism chemical types are no longer distinct.** Mekanism 1.21.1 merged gas,
+  slurry, pigment and infusion into a single `Chemical` with no discriminator.
+  All four port ids (`mm:mekanism/gas`, `/slurry`, `/pigment`, `/infuse`) still
+  load and no pack file needs editing, but the distinction is now cosmetic: a
+  port declared as gas will accept a pigment. Recipes relying on a gas port
+  rejecting slurry no longer behave that way.
+- **Item nbt matching is narrower.** 1.20.5 replaced the single item tag with
+  typed data components; MM now matches against `minecraft:custom_data`. Existing
+  items keep their data, but nbt that matched `Damage` or enchantments will not
+  match, as those are separate components now.
+- **Botania support is disabled.** Botania has no 1.21.1 release, so
+  `mm:botania/mana` is not registered and recipes using it are skipped with a
+  message naming the recipe. The port code is stubbed, not deleted.
+
+### Fixed
+- A pack referencing a port from an uninstalled mod no longer makes the world
+  unloadable. This previously surfaced as a `NullPointerException` during recipe
+  parsing that killed world creation. Recipes and structures now parse
+  independently — a failing one is logged with its id and skipped — and unknown
+  port types report which types *are* registered.
+- Datapack-supplied translation keys now work for port and controller names. The
+  `{ "translation": "..." }` form worked for structures but produced raw key text
+  for blocks a pack registers.
+- Port names no longer hardcode the English `Input`/`Output` suffix, so it
+  translates with the rest of the name.
+- The blueprint item's name is translatable. It was generated as hardcoded
+  English and was the only item name no resource pack could override.
+- `StructureManager` no longer carries an `@EventBusSubscriber` with no
+  subscribers, which NeoForge rejects outright.
+
+### Notes
+- Pack configs, datapacks, KubeJS scripts and existing worlds work unchanged.
+  Machine, port, structure and recipe JSON is untouched, and the KubeJS builders
+  keep the same signatures.
+- Sample data now uses the `c:` common tag namespace instead of `forge:`, which
+  NeoForge no longer provides.
+- **Verified:** structure forming, recipe processing, item and energy ports,
+  capabilities to and from other mods, GUIs, save/load, dedicated server, Jade,
+  KubeJS.
+  **Not yet verified:** fluid, Mekanism, PneumaticCraft and Create ports,
+  blueprint pasting, JEI integration, and the debug tool, multiblock saver and
+  priority setter.
 
 ## [0.1.34.5-fix2] - 2026-08-03
 ### Fixed

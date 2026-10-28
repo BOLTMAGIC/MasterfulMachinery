@@ -5,28 +5,30 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class RecipeBuilderJS {
     private final List<JsonObject> inputs = new ArrayList<>();
     private final List<JsonObject> outputs = new ArrayList<>();
     private int ticks;
-    private ResourceLocation structureId;
+    private Identifier structureId;
     private boolean parallelProcessing = false;
+    private boolean requestOnly = false;
     private String mode;
     private JsonElement flexCost;
-    private final List<ResourceLocation> extraStructureIds = new ArrayList<>();
+    private final List<Identifier> extraStructureIds = new ArrayList<>();
     private final JsonArray conditions = new JsonArray();
     @Getter
-    private final ResourceLocation id;
+    private final Identifier id;
 
     @SuppressWarnings("removal")
     public RecipeBuilderJS(String id) {
         //noinspection removal
-        this.id = new ResourceLocation(id);
+        this.id = Identifier.parse(id);
     }
 
     public RecipeBuilderJS input(JsonObject entry) {
@@ -137,16 +139,27 @@ public class RecipeBuilderJS {
         return this;
     }
 
-    public RecipeBuilderJS structureId(ResourceLocation id) {
+    public RecipeBuilderJS structureId(Identifier id) {
         this.structureId = id;
         return this;
     }
 
-    /** Lets the recipe run in more structures than structureId (e.g. every tier of a machine). */
+    @SuppressWarnings("unused")
+    public RecipeBuilderJS parallelProcessing(boolean parallelProcessing) {
+        this.parallelProcessing = parallelProcessing;
+        return this;
+    }
+
+    @SuppressWarnings("unused")
+    public RecipeBuilderJS requestOnly(boolean requestOnly) {
+        this.requestOnly = requestOnly;
+        return this;
+    }
+
     @SuppressWarnings("unused")
     public RecipeBuilderJS structureIds(String... ids) {
         for (String id : ids) {
-            var rl = ResourceLocation.tryParse(id);
+            var rl = Identifier.tryParse(id);
             if (rl == null) throw new IllegalArgumentException("Invalid structure id: " + id);
             if (structureId == null) structureId = rl;
             else if (!rl.equals(structureId) && !extraStructureIds.contains(rl)) extraStructureIds.add(rl);
@@ -154,55 +167,46 @@ public class RecipeBuilderJS {
         return this;
     }
 
-    /** Only in this dimension, e.g. "minecraft:the_nether". */
     @SuppressWarnings("unused")
     public RecipeBuilderJS dimension(String dimension) {
         return condition("dimension", "dimension", dimension);
     }
 
-    /** Only in this biome, or a biome tag with a leading '#', e.g. "#minecraft:is_ocean". */
     @SuppressWarnings("unused")
     public RecipeBuilderJS biome(String biome) {
         return condition("biome", "biome", biome);
     }
 
-    /** "day" or "night". */
     @SuppressWarnings("unused")
     public RecipeBuilderJS time(String time) {
         return condition("time", "time", time);
     }
 
-    /** "rain", "thunder" or "clear". */
     @SuppressWarnings("unused")
     public RecipeBuilderJS weather(String weather) {
-        return condition("weather", "weather", weather.toUpperCase(java.util.Locale.ROOT));
+        return condition("weather", "weather", weather.toUpperCase(Locale.ROOT));
     }
 
-    /** The controller must be at this Y or higher. */
     @SuppressWarnings("unused")
     public RecipeBuilderJS minY(int y) {
         return rangeCondition("height", "minY", y);
     }
 
-    /** The controller must be at this Y or lower. */
     @SuppressWarnings("unused")
     public RecipeBuilderJS maxY(int y) {
         return rangeCondition("height", "maxY", y);
     }
 
-    /** "powered" or "unpowered": the controller must (not) get a redstone signal. */
     @SuppressWarnings("unused")
     public RecipeBuilderJS redstone(String redstone) {
         return condition("redstone", "redstone", redstone);
     }
 
-    /** The formed structure must be at least this tier. */
     @SuppressWarnings("unused")
     public RecipeBuilderJS minTier(double tier) {
         return rangeCondition("tier", "minTier", tier);
     }
 
-    /** The formed structure must be at most this tier. */
     @SuppressWarnings("unused")
     public RecipeBuilderJS maxTier(double tier) {
         return rangeCondition("tier", "maxTier", tier);
@@ -216,7 +220,6 @@ public class RecipeBuilderJS {
         return this;
     }
 
-    /** min and max of one kind go into the same condition. */
     private RecipeBuilderJS rangeCondition(String type, String key, Number value) {
         for (var element : conditions) {
             var json = element.getAsJsonObject();
@@ -232,18 +235,13 @@ public class RecipeBuilderJS {
         return this;
     }
 
-    @SuppressWarnings("unused")
-    public RecipeBuilderJS parallelProcessing(boolean parallelProcessing) {
-        this.parallelProcessing = parallelProcessing;
-        return this;
-    }
-
     public RecipeModel build() {
         JsonObject json = new JsonObject();
         json.addProperty("id", id.toString());
         json.addProperty("ticks", ticks);
         json.addProperty("structureId", structureId.toString());
         json.addProperty("parallelProcessing", parallelProcessing);
+        json.addProperty("requestOnly", requestOnly);
         if (mode != null) {
             json.addProperty("mode", mode);
         }
@@ -265,7 +263,7 @@ public class RecipeBuilderJS {
         }
         if (!extraStructureIds.isEmpty()) {
             var ids = new JsonArray();
-            extraStructureIds.forEach(id -> ids.add(id.toString()));
+            extraStructureIds.forEach(structure -> ids.add(structure.toString()));
             json.add("structureIds", ids);
         }
         return RecipeModel.parse(json, id);

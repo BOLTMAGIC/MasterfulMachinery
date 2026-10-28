@@ -1,14 +1,15 @@
 package io.ticticboom.mods.mm.client.tool;
 
 import io.ticticboom.mods.mm.Ref;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 
 import java.util.Map;
 
-@Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+/** The server's Structure Builder range on this client, for the hologram; synced with the MM config. */
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public final class ToolPlacementSettings {
     private static int range = 64;
 

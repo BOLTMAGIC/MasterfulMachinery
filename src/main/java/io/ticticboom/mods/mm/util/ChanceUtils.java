@@ -1,7 +1,5 @@
 package io.ticticboom.mods.mm.util;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.Random;
 
 public class ChanceUtils {
@@ -11,11 +9,7 @@ public class ChanceUtils {
         return chance >= rnd;
     }
 
-    /**
-     * @param fraction 0-1
-     * @return the percentage with at most two decimals, e.g. "12.5"
-     */
     public static String formatPercent(double fraction) {
-        return new BigDecimal(Double.toString(fraction * 100)).setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
+        return new java.math.BigDecimal(Double.toString(fraction * 100)).setScale(2, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
     }
 }

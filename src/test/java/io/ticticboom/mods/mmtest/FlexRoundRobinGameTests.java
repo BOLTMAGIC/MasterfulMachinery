@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
@@ -7,7 +9,6 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.Item;
@@ -15,12 +16,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
 
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class FlexRoundRobinGameTests {
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos INPUT = CONTROLLER.offset(-1, 0, 0);
@@ -97,7 +94,8 @@ public class FlexRoundRobinGameTests {
         helper.startSequence().thenWaitUntil(() -> formed(helper)).thenExecute(() -> {
                     for (int variant = 1; variant <= 2; variant++) {
                         var stack = new ItemStack(Items.WHITE_WOOL);
-                        stack.getOrCreateTag().putInt("variant", variant);
+                        int value = variant;
+                        ItemNbtUtil.mutate(stack, tag -> tag.putInt("variant", value));
                         storage(helper, INPUT).insert(stack, 1);
                     }
                 })
@@ -142,24 +140,24 @@ public class FlexRoundRobinGameTests {
     private static int pickedVariant(GameTestHelper helper) {
         var state = controller(helper).getRecipeState();
         if (state == null || state.getCaptured("kind").isEmpty()) return 0;
-        CompoundTag tag = state.getCaptured("kind").get(0).getTag();
-        return tag == null ? 0 : tag.getInt("variant");
+        CompoundTag tag = state.getCaptured("kind").get(0).get(net.minecraft.core.component.DataComponents.CUSTOM_DATA).copyTag();
+        return tag == null ? 0 : tag.getIntOr("variant", 0);
     }
 
     private static void build(GameTestHelper helper, RecipeSelectionMode mode) {
-        helper.setBlock(CONTROLLER, ForgeRegistries.BLOCKS.getValue(Ref.id("flex_round_robin_test"))
+        helper.setBlock(CONTROLLER, BuiltInRegistries.BLOCK.getValue(Ref.id("flex_round_robin_test"))
                 .defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
-        helper.setBlock(INPUT, ForgeRegistries.BLOCKS.getValue(Ref.id("test_port_flex_round_robin_input")));
-        helper.setBlock(OUTPUT, ForgeRegistries.BLOCKS.getValue(Ref.id("test_port_flex_round_robin_output")));
+        helper.setBlock(INPUT, BuiltInRegistries.BLOCK.getValue(Ref.id("test_port_flex_round_robin_input")));
+        helper.setBlock(OUTPUT, BuiltInRegistries.BLOCK.getValue(Ref.id("test_port_flex_round_robin_output")));
         controller(helper).setRecipeSelectionMode(mode);
     }
 
     private static MachineControllerBlockEntity controller(GameTestHelper helper) {
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static void formed(GameTestHelper helper) {
-        check(helper, controller(helper).isFormed() && controller(helper).getCachedPortStorages() != null, "machine not formed yet");
+        check(helper, controller(helper).isFormed() && controller(helper).getPortStorages() != null, "machine not formed yet");
     }
 
     private static void insert(GameTestHelper helper, Item item, int count) {
@@ -176,15 +174,15 @@ public class FlexRoundRobinGameTests {
     }
 
     private static ItemPortStorage storage(GameTestHelper helper, BlockPos pos) {
-        return (ItemPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(pos)).getStorage();
+        return (ItemPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(pos, BlockEntity.class)).getStorage();
     }
 
     private static void reload(GameTestHelper helper) {
         var level = helper.getLevel();
         BlockPos pos = helper.absolutePos(CONTROLLER);
-        var tag = controller(helper).saveWithFullMetadata();
+        var tag = controller(helper).saveWithFullMetadata(helper.getLevel().registryAccess());
         level.removeBlockEntity(pos);
-        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag);
+        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag, net.minecraft.core.RegistryAccess.EMPTY);
         check(helper, fresh != null, "controller must reload");
         level.setBlockEntity(fresh);
     }

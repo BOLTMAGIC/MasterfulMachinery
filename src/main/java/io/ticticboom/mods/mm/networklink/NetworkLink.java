@@ -1,80 +1,84 @@
 package io.ticticboom.mods.mm.networklink;
 
-import io.ticticboom.mods.mm.compat.ae2.Ae2NetworkLink;
+import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.server.level.ServerPlayer;
 import io.ticticboom.mods.mm.compat.ae2.Ae2ToolBinding;
+import io.ticticboom.mods.mm.compat.ae2.linker.Ae2NetworkLink;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.port.IPortBlockEntity;
+import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Network linking: a multiblock linked to an owner (and their FTB team) and an AE2 network.
- * Linked machines send their outputs to the network, a removed port's contents go to the network
- * instead of dropping, and only the owner's team may open or break the machine.
- * <p>
- * Everything here is safe to load without AE2; AE2 code lives in {@code compat.ae2} and is only
- * touched when {@link #AVAILABLE} is true.
- */
 public final class NetworkLink {
     public static final boolean AVAILABLE = ModList.get().isLoaded("ae2");
 
-    /** The linker item, or null when AE2 isn't installed. */
     @Nullable
-    public static RegistryObject<Item> LINKER;
+    public static DeferredHolder<Item, Item> LINKER;
 
     private NetworkLink() {
     }
 
-    /** Called during mod construction, before the registers are attached to the bus. */
-    public static void init() {
+    public static void init(IEventBus modBus) {
         if (AVAILABLE) {
-            LINKER = Ae2NetworkLink.init();
+            LINKER = Ae2NetworkLink.init(modBus);
         }
     }
 
-    public static boolean isLinker(net.minecraft.world.item.ItemStack stack) {
+    public static boolean isLinker(ItemStack stack) {
         return LINKER != null && stack.is(LINKER.get());
     }
 
-    /**
-     * Shift+right-click with the Multiblock Tool: binds it to the clicked AE2 block's network.
-     *
-     * @return true when the click was on an AE2 network block and has been handled
-     */
     public static boolean bindTool(ServerPlayer player, UseOnContext context) {
         return AVAILABLE && Ae2ToolBinding.tryBind(player, context);
     }
 
-    /** Controller tick: periodically sends the outputs of a linked machine to its network. */
-    public static void tickController(Level level, MachineControllerBlockEntity controller) {
-        if (!AVAILABLE || !(level instanceof ServerLevel serverLevel) || controller.getNetworkLink() == null) {
+    @Nullable
+    public static MachineControllerBlockEntity controllerAt(Level level, BlockPos pos) {
+        var be = level.getBlockEntity(pos);
+        if (be instanceof MachineControllerBlockEntity controller) {
+            return controller;
+        }
+        if (be instanceof AbstractPortBlockEntity port && port.getControllerPos() != null
+                && level.isLoaded(port.getControllerPos())
+                && level.getBlockEntity(port.getControllerPos()) instanceof MachineControllerBlockEntity controller) {
+            return controller;
+        }
+        return null;
+    }
+
+    @Nullable
+    public static LinkData linkAt(Level level, BlockPos pos) {
+        var controller = controllerAt(level, pos);
+        return controller == null ? null : controller.getNetworkLink();
+    }
+
+    public static void tickController(ServerLevel level, MachineControllerBlockEntity controller) {
+        if (!AVAILABLE || controller.getNetworkLink() == null) {
             return;
         }
-        if (level.getGameTime() % MMConfig.NETWORK_LINK_OUTPUT_INTERVAL == 0) {
-            Ae2NetworkLink.exportOutputs(serverLevel, controller, controller.getNetworkLink());
+        boolean finished = controller.takeLinkExportRequest();
+        if (finished || level.getGameTime() % MMConfig.NETWORK_LINK_OUTPUT_INTERVAL == 0) {
+            if (Ae2NetworkLink.exportOutputs(level, controller, controller.getNetworkLink())) {
+                controller.markLinkExported(level.getGameTime());
+            }
         }
     }
 
-    /**
-     * Port block removal (player, explosion, commands...): send the port's contents to the linked
-     * network before the block drops them.
-     */
     public static void beforePortRemoved(Level level, BlockPos pos) {
         if (!AVAILABLE || !MMConfig.NETWORK_LINK_SEND_ON_REMOVE || !(level instanceof ServerLevel serverLevel)) {
             return;
         }
-        BlockEntity be = level.getBlockEntity(pos);
-        if (be instanceof IPortBlockEntity port) {
-            Ae2NetworkLink.sendPortContents(serverLevel, pos, port);
+        var controller = controllerAt(level, pos);
+        if (controller != null && controller.getNetworkLink() != null && level.getBlockEntity(pos) instanceof AbstractPortBlockEntity port) {
+            Ae2NetworkLink.sendPortContents(serverLevel, pos, port, controller.getNetworkLink());
         }
     }
 }

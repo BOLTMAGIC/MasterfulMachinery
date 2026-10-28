@@ -1,12 +1,12 @@
 package io.ticticboom.mods.mm.debug.output.model;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class DebugPortBlockState {
-    private final ResourceLocation portId;
-    private final ResourceLocation portType;
+    private final Identifier portId;
+    private final Identifier portType;
 
-    public DebugPortBlockState(ResourceLocation portId, ResourceLocation portType /*, state & contents data*/) {
+    public DebugPortBlockState(Identifier portId, Identifier portType /*, state & contents data*/) {
 
         this.portId = portId;
         this.portType = portType;

@@ -1,10 +1,14 @@
 package io.ticticboom.mods.mm.item;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -23,30 +27,30 @@ public class BlueprintItem extends Item {
     public static final String TAG_STRUCTURE = "MMStructure";
     public static final String TAG_STRUCTURE_NAME = "MMStructureName";
 
-    public BlueprintItem() {
-        super(new Properties());
+    public BlueprintItem(Properties properties) {
+        super(properties);
     }
 
     @Override
     public @NotNull Component getName(@NotNull ItemStack stack) {
-        String structureName = getStructureDisplayName(stack);
-        if (structureName == null || structureName.isBlank()) {
+        Component structureName = getStructureDisplayName(stack);
+        if (structureName == null || structureName.getString().isBlank()) {
             return super.getName(stack);
         }
 
-        return Component.literal(structureName).append(" - ").append(super.getName(stack));
+        return Component.translatable("item.mm.blueprint.name_format", structureName, super.getName(stack));
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, @Nullable Level level, @NotNull List<Component> texts, @NotNull TooltipFlag tipFlag) {
-        super.appendHoverText(stack, level, texts, tipFlag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> texts, TooltipFlag tipFlag) {
+        super.appendHoverText(stack, context, display, texts, tipFlag);
         var structure = getStructure(stack);
         if (structure == null) {
             return;
         }
 
-        texts.add(Component.translatable("tooltip.mm.blueprint.structure", structure.name()));
-        texts.add(Component.translatable("tooltip.mm.blueprint.creative"));
+        texts.accept(Component.translatable("item.mm.blueprint.tooltip.structure", structure.displayName()));
+        texts.accept(Component.translatable("item.mm.blueprint.tooltip.creative"));
     }
 
     @Override
@@ -63,19 +67,19 @@ public class BlueprintItem extends Item {
 
         StructureModel structure = getStructure(context.getItemInHand());
         if (structure == null) {
-            if (!level.isClientSide) {
-                player.displayClientMessage(Component.translatable("message.mm.blueprint.no_structure"), true);
+            if (!level.isClientSide()) {
+                player.sendOverlayMessage(Component.translatable("item.mm.blueprint.message.no_structure"));
             }
-            return InteractionResult.sidedSuccess(level.isClientSide);
+            return InteractionResult.SUCCESS;
         }
 
-        if (level.isClientSide) {
+        if (level.isClientSide()) {
             return InteractionResult.SUCCESS;
         }
 
         Rotation rotation = rotationFromPlayer(player);
         StructurePasteUtil.PasteResult result = StructurePasteUtil.paste((ServerLevel) level, player, structure, context.getClickedPos(), context.getClickedFace(), rotation, player.getDirection());
-        player.displayClientMessage(result.message(), true);
+        player.sendOverlayMessage(result.message());
         return result.success() ? InteractionResult.CONSUME : InteractionResult.FAIL;
     }
 
@@ -88,30 +92,30 @@ public class BlueprintItem extends Item {
         };
     }
 
-    public ItemStack getStructureInstance(ResourceLocation structureId) {
+    public ItemStack getStructureInstance(Identifier structureId) {
         ItemStack defaultInstance = getDefaultInstance();
-        defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE, structureId.toString());
+        ItemNbtUtil.mutate(defaultInstance, __t -> __t.putString(TAG_STRUCTURE, structureId.toString()));
 
         StructureModel structure = StructureManager.STRUCTURES.get(structureId);
         if (structure != null && structure.name() != null && !structure.name().isBlank()) {
-            defaultInstance.getOrCreateTag().putString(TAG_STRUCTURE_NAME, structure.name());
+            ItemNbtUtil.mutate(defaultInstance, __t -> __t.putString(TAG_STRUCTURE_NAME, structure.name()));
         }
 
         return defaultInstance;
     }
 
     @Nullable
-    public static ResourceLocation getStructureId(ItemStack stack) {
-        if (!stack.hasTag()) {
+    public static Identifier getStructureId(ItemStack stack) {
+        if (!ItemNbtUtil.hasTag(stack)) {
             return null;
         }
 
-        assert stack.getTag() != null;
-        return ResourceLocation.tryParse(stack.getTag().getString(TAG_STRUCTURE));
+        assert ItemNbtUtil.getTag(stack) != null;
+        return Identifier.tryParse(ItemNbtUtil.getTag(stack).getStringOr(TAG_STRUCTURE, ""));
     }
 
     public static StructureModel getStructure(ItemStack stack) {
-        ResourceLocation id = getStructureId(stack);
+        Identifier id = getStructureId(stack);
         if (id == null) {
             return null;
         }
@@ -120,21 +124,23 @@ public class BlueprintItem extends Item {
     }
 
     @Nullable
-    private static String getStructureDisplayName(ItemStack stack) {
+    private static Component getStructureDisplayName(ItemStack stack) {
         StructureModel structure = getStructure(stack);
         if (structure != null && structure.name() != null && !structure.name().isBlank()) {
-            return structure.name();
+            return structure.displayName();
         }
 
-        if (stack.hasTag()) {
-            assert stack.getTag() != null;
-            String storedName = stack.getTag().getString(TAG_STRUCTURE_NAME);
+        // Fallbacks only apply once the structure no longer resolves (removed from the pack), so the
+        // stored value is shown literally rather than treated as a translation key.
+        if (ItemNbtUtil.hasTag(stack)) {
+            assert ItemNbtUtil.getTag(stack) != null;
+            String storedName = ItemNbtUtil.getTag(stack).getStringOr(TAG_STRUCTURE_NAME, "");
             if (!storedName.isBlank()) {
-                return storedName;
+                return Component.literal(storedName);
             }
         }
 
-        ResourceLocation id = getStructureId(stack);
-        return id == null ? null : id.toString();
+        Identifier id = getStructureId(stack);
+        return id == null ? null : Component.literal(id.toString());
     }
 }

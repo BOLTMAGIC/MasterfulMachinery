@@ -7,17 +7,22 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.function.Consumer;
 
 public abstract class PortType {
+
+    public boolean hasSides() {
+        return true;
+    }
+
     public abstract IPortParser getParser();
 
-    public abstract RegistryObject<BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder);
-    public abstract RegistryObject<Block> registerBlock(PortModel model, RegistryGroupHolder groupHolder);
-    public abstract RegistryObject<Item> registerItem(PortModel model, RegistryGroupHolder groupHolder);
-    public abstract RegistryObject<MenuType<?>> registerMenu(PortModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Block, Block> registerBlock(PortModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<Item, Item> registerItem(PortModel model, RegistryGroupHolder groupHolder);
+    public abstract DeferredHolder<MenuType<?>, MenuType<?>> registerMenu(PortModel model, RegistryGroupHolder groupHolder);
     public abstract void registerScreen(RegistryGroupHolder groupHolder);
     public abstract IPortStorageFactory createStorageFactory(Consumer<PortConfigBuilderJS> consumer);
 

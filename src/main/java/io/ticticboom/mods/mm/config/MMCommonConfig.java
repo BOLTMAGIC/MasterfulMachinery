@@ -1,53 +1,44 @@
 package io.ticticboom.mods.mm.config;
 
 import io.ticticboom.mods.mm.recipe.flex.FlexCost;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.List;
 
 public class MMCommonConfig {
-    public final ForgeConfigSpec.BooleanValue debugTool;
-    public final ForgeConfigSpec.BooleanValue splitRecipesJei;
-    public final ForgeConfigSpec.BooleanValue portsAutoExtractByDefault;
-    public final ForgeConfigSpec.IntValue portAutoIOInterval;
-    public final ForgeConfigSpec.IntValue assemblyBlocksPerTick;
-    public final ForgeConfigSpec.IntValue networkLinkOutputInterval;
-    public final ForgeConfigSpec.BooleanValue networkLinkOpBypass;
-    public final ForgeConfigSpec.BooleanValue networkLinkSendOnRemove;
-    public final ForgeConfigSpec.IntValue networkLinkSearchRadius;
-    public final ForgeConfigSpec.BooleanValue asyncStructureValidation;
-    public final ForgeConfigSpec.IntValue structureValidationRate;
-    public final ForgeConfigSpec.BooleanValue previewBlueprintScreen;
-    public final ForgeConfigSpec.BooleanValue parallelProcessingDefault;
-    public final ForgeConfigSpec.IntValue maxParallelRecipes;
-    public final ForgeConfigSpec.BooleanValue showJeiMaxParallel;
-    public final ForgeConfigSpec.BooleanValue showJeiFlexInputCopies;
-    public final ForgeConfigSpec.IntValue toolEnergyCapacity;
-    public final ForgeConfigSpec.IntValue toolEnergyPerPlacedBlock;
-    public final ForgeConfigSpec.IntValue toolEnergyPerDismantledBlock;
-    public final ForgeConfigSpec.IntValue toolEnergyReceiveRate;
-    public final ForgeConfigSpec.IntValue toolBuildRange;
-    public final ForgeConfigSpec.IntValue toolBuildBlocksPerTick;
-    public final ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> toolBuildMode;
-    public final ForgeConfigSpec.EnumValue<FlexCost.Mode> flexCostScaling;
-    public final ForgeConfigSpec.ConfigValue<List<? extends String>> flexCostTable;
+    public final ModConfigSpec.BooleanValue debugTool;
+    public final ModConfigSpec.BooleanValue splitRecipesJei;
+    public final ModConfigSpec.BooleanValue portsAutoExtractByDefault;
+    public final ModConfigSpec.IntValue structureValidationRate;
+    public final ModConfigSpec.BooleanValue previewBlueprintScreen;
+    public final ModConfigSpec.BooleanValue parallelProcessingDefault;
+    public final ModConfigSpec.IntValue maxParallelRecipes;
+    public final ModConfigSpec.BooleanValue showJeiMaxParallel;
+    public final ModConfigSpec.BooleanValue showJeiFlexInputCopies;
+    public final ModConfigSpec.EnumValue<FlexCost.Mode> flexCostScaling;
+    public final ModConfigSpec.ConfigValue<List<? extends String>> flexCostTable;
+    public final ModConfigSpec.IntValue portAutoIOInterval;
+    public final ModConfigSpec.IntValue assemblyBlocksPerTick;
+    public final ModConfigSpec.IntValue toolEnergyCapacity;
+    public final ModConfigSpec.IntValue toolEnergyPerPlacedBlock;
+    public final ModConfigSpec.IntValue toolEnergyPerDismantledBlock;
+    public final ModConfigSpec.IntValue toolEnergyReceiveRate;
+    public final ModConfigSpec.IntValue toolBuildRange;
+    public final ModConfigSpec.IntValue toolBuildBlocksPerTick;
+    public final ModConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> toolBuildMode;
+    public final ModConfigSpec.IntValue networkLinkOutputInterval;
+    public final ModConfigSpec.BooleanValue networkLinkSendOnRemove;
+    public final ModConfigSpec.BooleanValue networkLinkOpBypass;
 
-    public MMCommonConfig(ForgeConfigSpec.Builder builder) {
-        asyncStructureValidation = builder.comment("Enables async structure validation to improve TPS. Disable in case of issues. Default: true")
-                .define("asyncValidation", true);
+    public MMCommonConfig(ModConfigSpec.Builder builder) {
         structureValidationRate = builder.comment("How often controller will check structure. 1 means every tick, 20 means every second. Default: 10")
                 .defineInRange("structureValidationRate", 10, 1, 100);
         debugTool = builder.comment("Enables the Debug Tool Item's functionality (Disable when on server). Default: true")
                 .define("debugTool", true);
         splitRecipesJei = builder.comment("Splits JEI recipe viewer categories by the structure they belong to. Default: true")
                 .define("splitRecipesJei", true);
-        portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages.",
-                        "When true, newly placed output ports start with all sides pushing. Sides can be changed per port in its GUI. Default: false")
+        portsAutoExtractByDefault = builder.comment("The default value of 'autoPush' (when not set) on ports that support automatic extract to nearby storages. Default: false")
                 .define("portsAutoExtractByDefault", false);
-        portAutoIOInterval = builder.comment("How often ports with enabled auto push/pull sides transfer, in ticks. Default: 10")
-                .defineInRange("portAutoIOInterval", 10, 1, 200);
-        assemblyBlocksPerTick = builder.comment("How many blocks the controller's Assemble places per tick. Default: 2")
-                .defineInRange("assemblyBlocksPerTick", 2, 1, 64);
         parallelProcessingDefault = builder.comment("The default value of 'parallelProcessing' (when not set) on structures that support parallel processing. Default: false")
                 .define("parallelProcessingDefault", false);
         maxParallelRecipes = builder.comment("The max Parallel Recipes per controller. Default: 5")
@@ -57,29 +48,26 @@ public class MMCommonConfig {
         showJeiFlexInputCopies = builder.comment("In JEI, show a flex recipe's input slot once per kind a run can take (\"max_types\", up to 9),",
                         "so players see how many kinds they can put in. When false, one slot. Default: true")
                 .define("showJeiFlexInputCopies", true);
+        portAutoIOInterval = builder.comment("How often ports with enabled auto push/pull sides transfer, in ticks. Default: 10")
+                .defineInRange("portAutoIOInterval", 10, 1, 200);
+        assemblyBlocksPerTick = builder.comment("How many blocks Assemble places per tick. Default: 2")
+                .defineInRange("assemblyBlocksPerTick", 2, 1, 64);
+        networkLinkOutputInterval = builder.comment("How often a machine linked to an AE2 network sends its outputs to it, in ticks. Default: 20")
+                .defineInRange("networkLinkOutputInterval", 20, 1, 1200);
+        networkLinkSendOnRemove = builder.comment("When a port of a linked machine is removed, send its contents to the AE2 network instead of dropping them. Default: true")
+                .define("networkLinkSendOnRemove", true);
+        networkLinkOpBypass = builder.comment("Operators may open and break machines linked to other players. Default: true")
+                .define("networkLinkOpBypass", true);
 
-        builder.comment("Network linker (needs AE2): links a multiblock to an owner and an AE2 network.")
-                .push("network_link");
-        networkLinkOutputInterval = builder.comment("How often linked machines send their output port contents to the AE2 network, in ticks. Default: 20")
-                .defineInRange("outputInterval", 20, 1, 1200);
-        networkLinkOpBypass = builder.comment("Operators (permission level 2+) can open and break any linked machine. Default: true")
-                .define("opBypass", true);
-        networkLinkSendOnRemove = builder.comment("When a port of a linked machine is removed (broken, exploded...), send its contents to the AE2 network instead of dropping them. Default: true")
-                .define("sendContentsOnRemove", true);
-        networkLinkSearchRadius = builder.comment("How far from a port to look for the controller it belongs to. Must cover your largest multiblock. Default: 16")
-                .defineInRange("controllerSearchRadius", 16, 4, 64);
-        builder.pop();
-
-        builder.comment("Multiblock Tool: item block store energy.")
-                .push("tool");
-        toolEnergyCapacity = builder.comment("Max FE the Multiblock Tool can store. Default: 1,000,000")
-                .defineInRange("energyCapacity", 1_000_000, 1, Integer.MAX_VALUE);
-        toolEnergyPerPlacedBlock = builder.comment("FE cost per block placed by the Multiblock Tool. Default: 50")
-                .defineInRange("energyPerPlacedBlock", 50, 0, Integer.MAX_VALUE);
-        toolEnergyPerDismantledBlock = builder.comment("FE cost per block dismantled by the Multiblock Tool. Default: 25")
-                .defineInRange("energyPerDismantledBlock", 25, 0, Integer.MAX_VALUE);
-        toolEnergyReceiveRate = builder.comment("Max FE/t the Multiblock Tool accepts from an external charger. Default: 10,000")
-                .defineInRange("energyReceiveRate", 10_000, 1, Integer.MAX_VALUE);
+        builder.push("tool");
+        toolEnergyCapacity = builder.comment("Max FE the Structure Builder can store. Default: 1,000,000")
+                .defineInRange("toolEnergyCapacity", 1_000_000, 1, Integer.MAX_VALUE);
+        toolEnergyPerPlacedBlock = builder.comment("FE cost per block placed by the Structure Builder. Default: 50")
+                .defineInRange("toolEnergyPerPlacedBlock", 50, 0, Integer.MAX_VALUE);
+        toolEnergyPerDismantledBlock = builder.comment("FE cost per block dismantled by the Structure Builder. Default: 25")
+                .defineInRange("toolEnergyPerDismantledBlock", 25, 0, Integer.MAX_VALUE);
+        toolEnergyReceiveRate = builder.comment("Max FE/t the Structure Builder accepts from an external charger. Default: 10,000")
+                .defineInRange("toolEnergyReceiveRate", 10_000, 1, Integer.MAX_VALUE);
         toolBuildRange = builder.comment("Structure Builder targeting, anchor and placement distance in blocks. Loaded chunks only. Default: 64")
                 .defineInRange("buildRange", 64, 5, 128);
         toolBuildBlocksPerTick = builder.comment("Structure Builder blocks placed per tick in sequential/layer mode. Default: 2")
@@ -96,7 +84,7 @@ public class MMCommonConfig {
                 .defineEnum("costScaling", FlexCost.Mode.LINEAR);
         flexCostTable = builder.comment("For costScaling = TABLE: \"kinds=multiplier\" steps; a run uses the step with the most kinds not above its own.",
                         "Example: [\"1=1\", \"4=2\", \"7=3.5\"] means 1-3 kinds x1, 4-6 kinds x2, 7 or more x3.5. Default: [\"1=1\"]")
-                .defineListAllowEmpty(List.of("costTable"), () -> List.of("1=1"), o -> o instanceof String step && FlexCost.isStep(step));
+                .defineListAllowEmpty(List.of("costTable"), () -> List.of("1=1"), () -> "1=1", o -> o instanceof String step && FlexCost.isStep(step));
         builder.pop();
 
         builder.comment("Preview features that are not yet stable or ready for use.")

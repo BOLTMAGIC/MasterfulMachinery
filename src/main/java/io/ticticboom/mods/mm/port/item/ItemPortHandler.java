@@ -1,29 +1,43 @@
 package io.ticticboom.mods.mm.port.item;
 
-import java.util.List;
+
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.Map;
+import java.util.List;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DynamicOps;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public class ItemPortHandler extends ItemStackHandler {
+public class ItemPortHandler extends ItemStackHandler implements TransferSnapshot {
 
-    public static Codec<List<ItemStack>> STACKS_CODEC = Codec.list(ItemStack.CODEC);
+    // OPTIONAL_CODEC, not CODEC: 1.20.5 split these, and the strict one rejects empty stacks
+    // ("Value must be within range [1;99]", "Item must not be minecraft:air"). Port slots are
+    // empty most of the time, and every slot is serialised on each block update.
+    public static Codec<List<ItemStack>> STACKS_CODEC = Codec.list(ItemStack.OPTIONAL_CODEC);
     private final INotifyChangeFunction changed;
     private final int slotCapacity; // 0 = use item default
-    private static final int HARD_MAX = 16384;
+    public static final int MAX_SLOT_CAPACITY = 16384;
+    private static final int HARD_MAX = MAX_SLOT_CAPACITY;
+    private static final int CODEC_MAX_COUNT = 99;
 
     private final int[] actualCounts;
     private final BitSet emptySlots = new BitSet();
@@ -44,54 +58,74 @@ public class ItemPortHandler extends ItemStackHandler {
             this.slotCapacity = Math.min(HARD_MAX, slotCapacity);
         }
         this.actualCounts = new int[size];
+        for (int i = 0; i < size; i++) this.actualCounts[i] = 0;
         this.indexedItems = new Item[size];
         this.indexedCounts = new int[size];
         this.emptySlots.set(0, size);
-        for (int i = 0; i < size; i++) this.actualCounts[i] = 0;
     }
 
     public NonNullList<ItemStack> getStacks() {
         return stacks;
     }
 
-    public Tag serializeStacks() {
+    public int getConfiguredSlotCapacity() {
+        return slotCapacity;
+    }
+
+    public Tag serializeStacks(@Nullable HolderLookup.Provider registries) {
         // store both display stacks and actualCounts into a compound
         var compound = new CompoundTag();
-        var tag = NbtOps.INSTANCE.withEncoder(STACKS_CODEC).apply(stacks);
-        compound.put("stacks", tag.getOrThrow(false, Ref.LOG::error));
+        var encodable = new ArrayList<ItemStack>(stacks.size());
+        for (ItemStack stack : stacks) {
+            if (!stack.isEmpty() && stack.getCount() > CODEC_MAX_COUNT) {
+                ItemStack clamped = stack.copy();
+                clamped.setCount(CODEC_MAX_COUNT);
+                encodable.add(clamped);
+            } else {
+                encodable.add(stack);
+            }
+        }
+        var tag = ops(registries).withEncoder(STACKS_CODEC).apply(encodable);
+        compound.put("stacks", tag.getOrThrow(__msg -> { Ref.LOG.error(__msg); return new IllegalStateException(__msg); }));
         compound.putIntArray("counts", actualCounts);
         return compound;
     }
 
-    public void deserializeStacks(Tag nbt) {
+    public void deserializeStacks(Tag nbt, @Nullable HolderLookup.Provider registries) {
         if (!(nbt instanceof CompoundTag ct)) return;
         // read stacks
         Tag stacksTag = ct.get("stacks");
         if (stacksTag != null) {
-            var res = NbtOps.INSTANCE.withDecoder(STACKS_CODEC).apply(stacksTag);
-            var pair = res.getOrThrow(false, Ref.LOG::error);
+            var res = ops(registries).withDecoder(STACKS_CODEC).apply(stacksTag);
+            var pair = res.getOrThrow(__msg -> { Ref.LOG.error(__msg); return new IllegalStateException(__msg); });
+            this.stacks.clear();
             List<ItemStack> list = pair.getFirst();
-            for (int i = 0; i < stacks.size(); i++) {
-                stacks.set(i, i < list.size() ? list.get(i) : ItemStack.EMPTY);
+            for (int i = 0; i < Math.min(list.size(), stacks.size()); i++) {
+                stacks.set(i, list.get(i));
+            }
+            if (list.size() > stacks.size()) {
+                Ref.LOG.warn("A port lost {} slots after its config was made smaller; items in them were removed", list.size() - stacks.size());
             }
         }
         // read counts
         if (ct.contains("counts")) {
-            int[] arr = ct.getIntArray("counts");
+            int[] arr = ct.getIntArray("counts").orElse(new int[0]);
             int len = Math.min(arr.length, actualCounts.length);
             System.arraycopy(arr, 0, actualCounts, 0, len);
-        }
-        for (int i = 0; i < stacks.size(); i++) {
-            if (!ct.contains("counts") || i >= ct.getIntArray("counts").length) {
+        } else {
+            for (int i = 0; i < stacks.size() && i < actualCounts.length; i++) {
                 actualCounts[i] = stacks.get(i).getCount();
             }
+        }
+        restoreDisplayCounts();
+        for (int i = 0; i < stacks.size(); i++) {
             reindexSlot(i);
         }
         contentRevision++;
     }
 
     /**
-     * Copies the stacks and actual counts of a handler of the same size, without going through NBT
+     * Copies the stacks and actual counts of a handler of the same size, without going through the codecs
      * (used for simulation copies, which are made several times per recipe scan).
      */
     public void copyContentsFrom(ItemPortHandler other) {
@@ -102,6 +136,52 @@ public class ItemPortHandler extends ItemStackHandler {
             reindexSlot(i);
         }
         contentRevision++;
+    }
+
+    private record Snapshot(ItemStack[] stacks, int[] actualCounts) {
+    }
+
+    @Override
+    public Object createSnapshot() {
+        var copies = new ItemStack[stacks.size()];
+        for (int i = 0; i < copies.length; i++) {
+            copies[i] = stacks.get(i).copy();
+        }
+        return new Snapshot(copies, actualCounts.clone());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        var saved = (Snapshot) snapshot;
+        int size = Math.min(stacks.size(), saved.stacks().length);
+        for (int i = 0; i < size; i++) {
+            stacks.set(i, saved.stacks()[i].copy());
+            actualCounts[i] = saved.actualCounts()[i];
+            reindexSlot(i);
+        }
+        contentRevision++;
+        changed.call();
+    }
+
+    private static DynamicOps<Tag> ops(@Nullable HolderLookup.Provider registries) {
+        return registries == null ? NbtOps.INSTANCE : registries.createSerializationContext(NbtOps.INSTANCE);
+    }
+
+    private void restoreDisplayCounts() {
+        for (int i = 0; i < stacks.size() && i < actualCounts.length; i++) {
+            ItemStack stack = stacks.get(i);
+            if (stack.isEmpty()) {
+                actualCounts[i] = 0;
+                continue;
+            }
+            if (actualCounts[i] <= 0) {
+                actualCounts[i] = stack.getCount();
+            }
+            int display = Math.min(HARD_MAX, actualCounts[i]);
+            if (stack.getCount() != display) {
+                stack.setCount(display);
+            }
+        }
     }
 
     @Override
@@ -162,13 +242,13 @@ public class ItemPortHandler extends ItemStackHandler {
         BitSet slots = partialSlots.get(stack.getItem());
         if (slots == null) return false;
         for (int slot = slots.nextSetBit(0); slot >= 0; slot = slots.nextSetBit(slot + 1)) {
-            if (!areTagsDifferentOrNull(getStackInSlot(slot).getTag(), stack.getTag())) return true;
+            if (ItemStack.isSameItemSameComponents(getStackInSlot(slot), stack)) return true;
         }
         return false;
     }
 
-    public java.util.Set<Item> indexedItemTypes() {
-        var result = new java.util.HashSet<>(partialSlots.keySet());
+    public Set<Item> indexedItemTypes() {
+        var result = new HashSet<>(partialSlots.keySet());
         result.addAll(fullSlots.keySet());
         return result;
     }
@@ -177,14 +257,13 @@ public class ItemPortHandler extends ItemStackHandler {
         return Map.copyOf(itemTotals);
     }
 
-    /** Extract partial stacks first, then full stacks, while retaining the recipe's NBT predicate. */
-    public int extractMatching(Item item, java.util.function.Predicate<ItemStack> filter, int count, boolean simulate) {
+    public int extractMatching(Item item, Predicate<ItemStack> filter, int count, boolean simulate) {
         int remaining = extractMatching(partialSlots.get(item), filter, count, simulate);
         if (remaining > 0) remaining = extractMatching(fullSlots.get(item), filter, remaining, simulate);
         return remaining;
     }
 
-    private int extractMatching(BitSet slots, java.util.function.Predicate<ItemStack> filter, int remaining, boolean simulate) {
+    private int extractMatching(BitSet slots, Predicate<ItemStack> filter, int remaining, boolean simulate) {
         if (slots == null) return remaining;
         for (int slot = slots.nextSetBit(0); slot >= 0 && remaining > 0; slot = slots.nextSetBit(slot + 1)) {
             ItemStack stack = getStackInSlot(slot);
@@ -194,37 +273,36 @@ public class ItemPortHandler extends ItemStackHandler {
         return remaining;
     }
 
-    /** Insert into compatible partly filled slots, then empty slots, without scanning every slot. */
     public ItemStack insertStackFast(ItemStack stack, boolean simulate) {
         if (stack.isEmpty()) return ItemStack.EMPTY;
         ItemStack remaining = stack;
         BitSet partial = partialSlots.get(stack.getItem());
         if (partial != null) {
-            for (int slot = partial.nextSetBit(0); slot >= 0 && !remaining.isEmpty(); slot = partial.nextSetBit(slot + 1)) {
+            BitSet snapshot = (BitSet) partial.clone();
+            for (int slot = snapshot.nextSetBit(0); slot >= 0 && !remaining.isEmpty(); slot = snapshot.nextSetBit(slot + 1)) {
                 remaining = insertItem(slot, remaining, simulate);
             }
         }
-        for (int slot = emptySlots.nextSetBit(0); slot >= 0 && !remaining.isEmpty(); slot = emptySlots.nextSetBit(slot + 1)) {
+        BitSet empty = (BitSet) emptySlots.clone();
+        for (int slot = empty.nextSetBit(0); slot >= 0 && !remaining.isEmpty(); slot = empty.nextSetBit(slot + 1)) {
             remaining = insertItem(slot, remaining, simulate);
         }
         return remaining;
     }
 
-    /** Capacity for this exact item and tag, using the same slot order as insertStackFast. */
     public long insertionCapacity(ItemStack stack) {
         if (stack.isEmpty()) return 0;
         long capacity = 0;
         BitSet partial = partialSlots.get(stack.getItem());
         if (partial != null) {
             for (int slot = partial.nextSetBit(0); slot >= 0; slot = partial.nextSetBit(slot + 1)) {
-                ItemStack existing = getStackInSlot(slot);
-                if (!areTagsDifferentOrNull(existing.getTag(), stack.getTag())) {
+                if (ItemStack.isSameItemSameComponents(getStackInSlot(slot), stack)) {
                     capacity += getSlotLimit(slot) - actualCounts[slot];
                 }
             }
         }
         for (int slot = emptySlots.nextSetBit(0); slot >= 0; slot = emptySlots.nextSetBit(slot + 1)) {
-            capacity += stack.isStackable() ? getSlotLimit(slot) : 1;
+            capacity += !stack.isStackable() ? 1 : slotCapacity > 0 ? slotCapacity : stack.getMaxStackSize();
         }
         return capacity;
     }
@@ -303,9 +381,8 @@ public class ItemPortHandler extends ItemStackHandler {
             if (existing.getItem() != item) {
                 return stack; // different item
             }
-            // respect NBT: only merge when tags are equal or both null
-            if (areTagsDifferentOrNull(existing.getTag(), stack.getTag())) {
-                return stack; // different tag -> do not merge here
+            if (!ItemStack.isSameItemSameComponents(existing, stack)) {
+                return stack;
             }
             int existingCount = actualCounts[slot];
             int space = limit - existingCount;
@@ -355,11 +432,9 @@ public class ItemPortHandler extends ItemStackHandler {
     public int canInsert(ItemStack stack, int count) {
         if (stack == null || stack.isEmpty()) return count;
         int remainingToInsert = count;
-        CompoundTag stackTag = stack.getTag();
         BitSet partial = partialSlots.get(stack.getItem());
         if (partial != null) for (int slot = partial.nextSetBit(0); slot >= 0 && remainingToInsert > 0; slot = partial.nextSetBit(slot + 1)) {
-            ItemStack existing = getStackInSlot(slot);
-            if (!areTagsDifferentOrNull(existing.getTag(), stackTag))
+            if (ItemStack.isSameItemSameComponents(getStackInSlot(slot), stack))
                 remainingToInsert -= Math.min(getSlotLimit(slot) - actualCounts[slot], remainingToInsert);
         }
         for (int slot = emptySlots.nextSetBit(0); slot >= 0 && remainingToInsert > 0; slot = emptySlots.nextSetBit(slot + 1)) {
@@ -452,7 +527,7 @@ public class ItemPortHandler extends ItemStackHandler {
         if (partial == null) return remainingToInsert;
         for (int slot = partial.nextSetBit(0); slot >= 0 && remainingToInsert > 0; slot = partial.nextSetBit(slot + 1)) {
             ItemStack existing = getStackInSlot(slot);
-            if (checkNbt && areTagsDifferentOrNull(existing.getTag(), template.getTag())) continue;
+            if (checkNbt && !ItemStack.isSameItemSameComponents(existing, template)) continue;
             int limit = getSlotLimit(slot);
             int space = limit - actualCounts[slot];
             if (space <= 0) continue;
@@ -465,13 +540,6 @@ public class ItemPortHandler extends ItemStackHandler {
             remainingToInsert -= toMove;
         }
         return remainingToInsert;
-    }
-
-    private boolean areTagsDifferentOrNull(CompoundTag a, CompoundTag b) {
-        // Direct comparison - no cache overhead
-        if (a == b) return false;
-        if (a == null || b == null) return true;
-        return !a.equals(b);
     }
 
     @Override
@@ -523,7 +591,6 @@ public class ItemPortHandler extends ItemStackHandler {
     /**
      * Clears all stacks and actual counts.
      */
-    @SuppressWarnings("unused")
     public void clearAll() {
         for (int i = 0; i < stacks.size(); i++) {
             stacks.set(i, ItemStack.EMPTY);

@@ -3,23 +3,29 @@ package io.ticticboom.mods.mm.port;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.util.BlockUtils;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface IPortStorage {
-    <T> LazyOptional<T> getCapability(Capability<T> capability);
+    /**
+     * NeoForge replaced LazyOptional with plain nullable returns, and Capability with
+     * BlockCapability. Absent capability is now null rather than LazyOptional.empty().
+     */
+    <T> @Nullable T getCapability(BlockCapability<T, ?> capability);
 
-    <T> boolean hasCapability(Capability<T> capability);
+    <T> boolean hasCapability(BlockCapability<T, ?> capability);
 
-    CompoundTag save(CompoundTag tag);
+    // 1.21.1 serialises through a registry lookup, so the provider has to reach the storages.
+    CompoundTag save(CompoundTag tag, HolderLookup.Provider registries);
 
-    void load(CompoundTag tag);
+    void load(CompoundTag tag, HolderLookup.Provider registries);
 
     IPortStorageModel getStorageModel();
 
@@ -31,8 +37,8 @@ public interface IPortStorage {
      * A detached copy with the same contents and settings, which OutputSimulation fills to see whether several
      * outputs fit together; null when this kind of port can't be copied.
      */
-    @org.jetbrains.annotations.Nullable
-    default IPortStorage simulationCopy() {
+    @Nullable
+    default IPortStorage simulationCopy(HolderLookup.Provider registries) {
         return null;
     }
 
@@ -44,13 +50,6 @@ public interface IPortStorage {
         return false;
     }
 
-    /**
-     * @return what the port holds, for the controller's port list; empty when there is nothing to show
-     */
-    default List<PortContent> contents() {
-        return List.of();
-    }
-
     default void setupContainer(AbstractContainerMenu container, Inventory inv, PortModel model) {
         BlockUtils.setupPlayerInventory(container, inv, 0, 0);
     }
@@ -58,6 +57,22 @@ public interface IPortStorage {
     // Priority for outputs. Server authoritative. Range expected to be clamped to [0,10].
     // Implementations should persist this value in their save/load methods under the key "Priority" if applicable.
     default int getPriority() {
+        return 0;
+    }
+
+    default List<PortContent> contents() {
+        return List.of();
+    }
+
+    default List<net.minecraft.network.chat.Component> describeContents() {
+        return List.of();
+    }
+
+    default double fillRatio() {
+        return -1;
+    }
+
+    default int fillColor() {
         return 0;
     }
 

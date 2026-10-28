@@ -5,7 +5,7 @@
     {
       "type": "mm:input/consume",
       "ingredient": {
-        "type": "mm:mekanism/gas",
+        "type": "mm:mekanism/chemical",
         "gas": "mekanism:hydrogen",
         "amount": 10
       }
@@ -13,7 +13,7 @@
     {
       "type": "mm:input/consume",
       "ingredient": {
-        "type": "mm:mekanism/slurry",
+        "type": "mm:mekanism/chemical",
         "slurry": "mekanism:clean_tin",
         "amount": 10
       }
@@ -21,7 +21,7 @@
     {
       "type": "mm:input/consume",
       "ingredient": {
-        "type": "mm:mekanism/pigment",
+        "type": "mm:mekanism/chemical",
         "pigment": "mekanism:blue",
         "amount": 20
       }
@@ -29,7 +29,7 @@
     {
       "type": "mm:input/consume",
       "ingredient": {
-        "type": "mm:mekanism/infuse",
+        "type": "mm:mekanism/chemical",
         "infuse": "mekanism:bio",
         "amount": 20
       }
@@ -39,7 +39,7 @@
     {
       "type": "mm:output/simple",
       "ingredient": {
-        "type": "mm:mekanism/gas",
+        "type": "mm:mekanism/chemical",
         "gas": "mekanism:oxygen",
         "amount": 10
       }
@@ -47,7 +47,7 @@
     {
       "type": "mm:output/simple",
       "ingredient": {
-        "type": "mm:mekanism/slurry",
+        "type": "mm:mekanism/chemical",
         "slurry": "mekanism:clean_iron",
         "amount": 10
       }
@@ -55,7 +55,7 @@
     {
       "type": "mm:output/simple",
       "ingredient": {
-        "type": "mm:mekanism/pigment",
+        "type": "mm:mekanism/chemical",
         "pigment": "mekanism:brown",
         "amount": 5
       }
@@ -63,7 +63,7 @@
     {
       "type": "mm:output/simple",
       "ingredient": {
-        "type": "mm:mekanism/infuse",
+        "type": "mm:mekanism/chemical",
         "infuse": "mekanism:refined_obsidian",
         "amount": 20
       }

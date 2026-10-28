@@ -2,8 +2,10 @@ package io.ticticboom.mods.mm.structure;
 
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -12,31 +14,13 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Why a controller's multiblock isn't formed: the blocks missing or wrong in the closest matching
- * structure and rotation, so the controller screen can tell the player what to place where.
- *
- * @param total   how many positions are wrong in total; {@code missing} may hold fewer
- * @param missing the first wrong positions
- */
 public record StructureDiagnosis(int total, List<Missing> missing) {
-    /** At most this many positions are sent to the client. */
     public static final int MAX_SENT = 32;
     public static final StructureDiagnosis NONE = new StructureDiagnosis(0, List.of());
 
-    /**
-     * @param pos      world position
-     * @param icon     item of the (first) block that belongs there, empty if there is none
-     * @param required what belongs there
-     * @param found    the block there now, or null if the position is empty
-     * @param options  every block that fits there when there is more than one (e.g. each port tier), else empty
-     */
     public record Missing(BlockPos pos, ItemStack icon, Component required, @Nullable Component found, List<Component> options) {
     }
 
-    /**
-     * Picks, over the given structures and all rotations, the one with the fewest wrong positions.
-     */
     public static StructureDiagnosis diagnose(Level level, BlockPos controllerPos, Iterable<StructureModel> structures) {
         List<PositionedLayoutPiece> best = null;
         for (StructureModel structure : structures) {
@@ -68,21 +52,28 @@ public record StructureDiagnosis(int total, List<Missing> missing) {
         return new StructureDiagnosis(best.size(), result);
     }
 
-    public void write(FriendlyByteBuf buf) {
+    public void write(RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(total);
-        buf.writeCollection(missing, (b, m) -> {
-            b.writeBlockPos(m.pos());
-            b.writeItem(m.icon());
-            b.writeComponent(m.required());
-            b.writeNullable(m.found(), FriendlyByteBuf::writeComponent);
-            b.writeCollection(m.options(), FriendlyByteBuf::writeComponent);
-        });
+        buf.writeVarInt(missing.size());
+        for (Missing m : missing) {
+            buf.writeBlockPos(m.pos());
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, m.icon());
+            ComponentSerialization.STREAM_CODEC.encode(buf, m.required());
+            ByteBufCodecs.optional(ComponentSerialization.STREAM_CODEC).encode(buf, java.util.Optional.ofNullable(m.found()));
+            ComponentSerialization.STREAM_CODEC.apply(ByteBufCodecs.list()).encode(buf, m.options());
+        }
     }
 
-    public static StructureDiagnosis read(FriendlyByteBuf buf) {
+    public static StructureDiagnosis read(RegistryFriendlyByteBuf buf) {
         int total = buf.readVarInt();
-        List<Missing> missing = buf.readList(b -> new Missing(b.readBlockPos(), b.readItem(), b.readComponent(),
-                b.readNullable(FriendlyByteBuf::readComponent), b.readList(FriendlyByteBuf::readComponent)));
+        int size = buf.readVarInt();
+        var missing = new ArrayList<Missing>(size);
+        for (int i = 0; i < size; i++) {
+            missing.add(new Missing(buf.readBlockPos(), ItemStack.OPTIONAL_STREAM_CODEC.decode(buf),
+                    ComponentSerialization.STREAM_CODEC.decode(buf),
+                    ByteBufCodecs.optional(ComponentSerialization.STREAM_CODEC).decode(buf).orElse(null),
+                    ComponentSerialization.STREAM_CODEC.apply(ByteBufCodecs.list()).decode(buf)));
+        }
         return new StructureDiagnosis(total, missing);
     }
 }

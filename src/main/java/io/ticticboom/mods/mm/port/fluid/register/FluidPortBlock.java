@@ -1,12 +1,11 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
-import net.minecraft.world.level.block.state.StateDefinition;
-import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
+import net.minecraft.network.chat.MutableComponent;
 import io.ticticboom.mods.mm.model.PortModel;
-import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
@@ -21,7 +20,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -30,8 +28,8 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
@@ -41,16 +39,10 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
     private final boolean isInput;
 
     public FluidPortBlock(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;
-    }
-
-    @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        // follows the state of the machine the port belongs to; shown as the port's status light
-        builder.add(ControllerState.PROPERTY);
     }
 
     @Override
@@ -71,14 +63,13 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hitResult) {
-        return BlockUtils.commonUse(state, level, pos, player, hand, hitResult, FluidPortBlockEntity.class, () -> {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult) {
+        return BlockUtils.commonUse(state, level, pos, player, hitResult, FluidPortBlockEntity.class, () -> {
             IFluidHandler handler = getHandler(level, pos);
             if (handler == null){
                 return true;
             }
-            return !FluidUtil.interactWithFluidHandler(player, hand, handler);
+            return !FluidUtil.interactWithFluidHandler(player, InteractionHand.MAIN_HAND, handler);
         });
     }
 
@@ -100,26 +91,18 @@ public class FluidPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
-        // also called when only the status light (block state) changes: the port is still here then
-        if (state.is(newState.getBlock())) {
-            super.onRemove(state, level, pos, newState, p_60519_);
-            return;
-        }
-        // a linked machine's port sends its fluid to the network instead of losing it
-        NetworkLink.beforePortRemoved(level, pos);
-        // Notify nearby controllers that a part was removed
-        if (!level.isClientSide() && level instanceof ServerLevel sl) {
-            var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);
-            for (var cbe : controllers) {
-                try {
-                    if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
-                        mc.invalidateProgress();
-                    }
-                } catch (Throwable ignored) {
-                }
-            }
-        }
-        super.onRemove(state, level, pos, newState, p_60519_);
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        WorldUtil.scheduleNearbyValidation(level, pos);
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
+    }
+
+    /**
+     * Matches the block item: the generated block.mm.<id> entry loses a pack-supplied translation
+     * key and hardcodes the English Input/Output suffix, so the model name is used directly.
+     */
+    @Override
+    public MutableComponent getName() {
+        var name = model.displayName();
+        return name != null ? name.copy() : super.getName();
     }
 }

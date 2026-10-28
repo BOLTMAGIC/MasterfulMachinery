@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.pattern.PatternBuffer;
@@ -16,20 +17,16 @@ import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
 
 import java.util.List;
 
@@ -38,8 +35,7 @@ import java.util.List;
  * towards the parallel limit, pause with the machine and survive a reload. mmtest:pattern_run_test is "ICO",
  * iron in -> gold out, 60 ticks, at most 1 recipe at a time.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class PatternRunGameTests {
     private static final String TEMPLATE = "empty";
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
@@ -47,7 +43,7 @@ public class PatternRunGameTests {
     private static final BlockPos OUTPUT = CONTROLLER.offset(1, 0, 0);
     // where a pattern provider would be; empty unless a test puts a chest there
     private static final BlockPos RETURN = CONTROLLER.offset(0, 0, 2);
-    private static final ResourceLocation RECIPE = ResourceLocation.tryBuild("mmtest", "pattern_run_test");
+    private static final Identifier RECIPE = Identifier.tryBuild("mmtest", "pattern_run_test");
 
     @GameTest(template = TEMPLATE, timeoutTicks = 200)
     public static void patternRunUsesTheBufferNotThePorts(GameTestHelper helper) {
@@ -145,12 +141,12 @@ public class PatternRunGameTests {
                 // 2 iron in the buffer, the recipe takes 1
                 .thenExecute(() -> expectStarted(helper, controller, 2, "the pattern run should start"))
                 .thenExecute(() -> reload(helper, tag -> {
-                    var runs = tag.getList("PatternRuns", Tag.TAG_COMPOUND);
-                    runs.getCompound(0).putString("Recipe", "mmtest:no_such_recipe");
+                    var runs = tag.getListOrEmpty("PatternRuns");
+                    runs.getCompoundOrEmpty(0).putString("Recipe", "mmtest:no_such_recipe");
                 }))
                 .thenWaitUntil(() -> {
                     check(helper, live(helper).getPatternRuns().isEmpty(), "a run whose recipe is gone should give back what it holds and end");
-                    var chest = helper.getBlockEntity(RETURN).getCapability(ForgeCapabilities.ITEM_HANDLER).orElseThrow(IllegalStateException::new);
+                    var chest = java.util.Objects.requireNonNull(MMCapabilities.item(helper.getLevel(), helper.absolutePos(RETURN), null));
                     check(helper, chest.getStackInSlot(0).is(Items.IRON_INGOT) && chest.getStackInSlot(0).getCount() == 1,
                             "the unused iron should be in the chest");
                 })
@@ -174,9 +170,9 @@ public class PatternRunGameTests {
         helper.startSequence()
                 .thenWaitUntil(() -> formed(helper, controller))
                 .thenExecute(() -> {
-                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(touching)).machine() == controller,
+                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(touching, BlockEntity.class)).machine() == controller,
                             "a pattern port touching an input port belongs to that machine");
-                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(away)).machine() == null,
+                    check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(away, BlockEntity.class)).machine() == null,
                             "a pattern port away from any machine belongs to none");
                 })
                 .thenSucceed();
@@ -191,12 +187,12 @@ public class PatternRunGameTests {
         helper.setBlock(OUTPUT, block("test_wait_item_output"));
         helper.setBlock(glass, MMRegisters.PATTERN_PORT.get());
         var controller = live(helper);
-        ResourceLocation id = ResourceLocation.tryBuild("mmtest", "pattern_casing_test");
+        Identifier id = Identifier.tryBuild("mmtest", "pattern_casing_test");
 
         helper.startSequence()
                 .thenWaitUntil(() -> check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id)
                         && !"not_formed".equals(controller.statusKey()), "the machine should form with the Pattern Port in place of the glass"))
-                .thenExecute(() -> check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(glass)).machine() == controller,
+                .thenExecute(() -> check(helper, ((PatternPortBlockEntity) helper.getBlockEntity(glass, BlockEntity.class)).machine() == controller,
                         "a Pattern Port built into the machine belongs to it"))
                 .thenSucceed();
     }
@@ -214,16 +210,16 @@ public class PatternRunGameTests {
         var level = helper.getLevel();
         BlockPos pos = helper.absolutePos(CONTROLLER);
         BlockEntity old = level.getBlockEntity(pos);
-        var tag = old.saveWithFullMetadata();
+        var tag = old.saveWithFullMetadata(helper.getLevel().registryAccess());
         edit.accept(tag);
         level.removeBlockEntity(pos);
-        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag);
+        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag, net.minecraft.core.RegistryAccess.EMPTY);
         check(helper, fresh != null, "could not load the controller again");
         level.setBlockEntity(fresh);
     }
 
     private static MachineControllerBlockEntity live(GameTestHelper helper) {
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static MachineControllerBlockEntity build(GameTestHelper helper) {
@@ -239,18 +235,18 @@ public class PatternRunGameTests {
     }
 
     private static PatternIngredient item(String path, long amount) {
-        return new PatternIngredient(Kind.ITEM, ResourceLocation.tryBuild("minecraft", path), amount, null);
+        return new PatternIngredient(Kind.ITEM, Identifier.tryBuild("minecraft", path), amount, null);
     }
 
     private static ItemPortStorage items(GameTestHelper helper, BlockPos relative) {
-        if (helper.getBlockEntity(relative) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
+        if (helper.getBlockEntity(relative, BlockEntity.class) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
             return items;
         }
         throw new IllegalStateException("no item port at " + relative);
     }
 
     private static Block block(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("mm:" + id + " is not registered");
         }

@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.compat.kjs.event;
 
-import dev.latvian.mods.kubejs.event.StartupEventJS;
+import dev.latvian.mods.kubejs.event.KubeStartupEvent;
 import io.ticticboom.mods.mm.compat.kjs.builder.ControllerBuilderJS;
 import lombok.Getter;
 
@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-public class ControllerEventJS extends StartupEventJS {
+public class ControllerEventJS implements KubeStartupEvent {
     private final List<ControllerBuilderJS> controllers = new ArrayList<>();
 
     public ControllerEventJS() {

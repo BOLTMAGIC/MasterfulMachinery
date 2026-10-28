@@ -1,20 +1,26 @@
 package io.ticticboom.mods.mm.net.packet;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
-/** Server -> client: authoritative common config values for the MM settings screen. */
-public record MMConfigSyncPkt(Map<String, String> values) {
+public record MMConfigSyncPkt(Map<String, String> values) implements CustomPacketPayload {
+    public static final Type<MMConfigSyncPkt> TYPE = new Type<>(Ref.id("mm_config_sync"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, MMConfigSyncPkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), MMConfigSyncPkt::decode);
+
     private static Consumer<Map<String, String>> clientHandler = values -> {};
 
     public static void setClientHandler(Consumer<Map<String, String>> handler) { clientHandler = handler; }
 
-    public static void encode(MMConfigSyncPkt packet, FriendlyByteBuf buf) {
+    public static void encode(MMConfigSyncPkt packet, RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(packet.values.size());
         packet.values.forEach((key, value) -> {
             buf.writeUtf(key, 80);
@@ -22,7 +28,7 @@ public record MMConfigSyncPkt(Map<String, String> values) {
         });
     }
 
-    public static MMConfigSyncPkt decode(FriendlyByteBuf buf) {
+    public static MMConfigSyncPkt decode(RegistryFriendlyByteBuf buf) {
         int count = buf.readVarInt();
         if (count < 0 || count > 64) throw new IllegalArgumentException("Invalid MM config option count");
         Map<String, String> values = new LinkedHashMap<>();
@@ -30,8 +36,12 @@ public record MMConfigSyncPkt(Map<String, String> values) {
         return new MMConfigSyncPkt(Map.copyOf(values));
     }
 
-    public static void handle(MMConfigSyncPkt packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> clientHandler.accept(packet.values));
-        ctx.get().setPacketHandled(true);
+    public static void handle(MMConfigSyncPkt packet, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> clientHandler.accept(packet.values));
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

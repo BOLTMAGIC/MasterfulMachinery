@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,18 +21,18 @@ public class EnergyIngredientHelper implements IIngredientHelper<EnergyStack> {
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull EnergyStack ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull EnergyStack ingredient, @NotNull UidContext context) {
         return "energy";
     }
 
     @Override
-    public @NotNull ResourceLocation getResourceLocation(@NotNull EnergyStack ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull EnergyStack ingredient) {
         return Ref.id("energy");
     }
 
     @Override
     public @NotNull EnergyStack copyIngredient(EnergyStack ingredient) {
-        return new EnergyStack(ingredient.amount());
+        return new EnergyStack(ingredient.min(), ingredient.max());
     }
 
     @Override

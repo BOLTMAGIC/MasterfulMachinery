@@ -9,17 +9,17 @@ import io.ticticboom.mods.mm.util.ParserUtils;
 import java.util.function.Supplier;
 
 public record EnergyPortStorageModel(
-        int capacity,
-        int maxReceive,
-        int maxExtract,
+        long capacity,
+        long maxReceive,
+        long maxExtract,
         Supplier<Boolean> autoPush,
         int tierRank
 ) implements IPortStorageModel {
 
     public static EnergyPortStorageModel parse(JsonObject json) {
-        int capacity = json.get("capacity").getAsInt();
-        int maxReceive = json.get("maxReceive").getAsInt();
-        int maxExtract = json.get("maxExtract").getAsInt();
+        long capacity = json.get("capacity").getAsLong();
+        long maxReceive = json.get("maxReceive").getAsLong();
+        long maxExtract = json.get("maxExtract").getAsLong();
         var autoPush = ParserUtils.parseOrDefaultSupplier(json, "autoPush", () -> MMConfig.DEFAULT_PORT_AUTO_PUSH, JsonElement::getAsBoolean);
         int tierRank = 0;
         if (json.has("tierRank")) {

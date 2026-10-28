@@ -6,7 +6,6 @@ import appeng.api.implementations.blockentities.PatternContainerGroup;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
-import appeng.capabilities.Capabilities;
 import io.ticticboom.mods.mm.pattern.PatternBuffer;
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
 import io.ticticboom.mods.mm.pattern.PatternPortBlockEntity;
@@ -17,8 +16,6 @@ import io.ticticboom.mods.mm.setup.MMRegisters;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
 
 import java.util.List;
 
@@ -29,16 +26,8 @@ import java.util.List;
 public final class PatternPortCraftingMachine implements ICraftingMachine {
     private final PatternPortBlockEntity port;
 
-    private PatternPortCraftingMachine(PatternPortBlockEntity port) {
+    public PatternPortCraftingMachine(PatternPortBlockEntity port) {
         this.port = port;
-    }
-
-    public static LazyOptional<ICraftingMachine> capabilityFor(PatternPortBlockEntity port) {
-        return LazyOptional.of(() -> new PatternPortCraftingMachine(port));
-    }
-
-    public static boolean isCraftingMachine(Capability<?> cap) {
-        return cap == Capabilities.CRAFTING_MACHINE;
     }
 
     @Override

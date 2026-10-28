@@ -9,7 +9,7 @@ import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -158,14 +158,14 @@ public final class PatternRecipeMatcher {
         return consume.getChance() <= 0 || consume.isPerTick();
     }
 
-    /** Items go through the recipe's own item check (exact or partial NBT match); other kinds compare as they are. */
+    /** Items go through the recipe's own item check (components, NBT match); other kinds compare as they are. */
     private static boolean accepts(IPortIngredient ingredient, PatternIngredient wanted, PatternIngredient given) {
         if (wanted.kind() != given.kind() || !wanted.id().equals(given.id())) {
             return false;
         }
         if (ingredient instanceof BaseItemPortIngredient item) {
-            var stack = new ItemStack(ForgeRegistries.ITEMS.getValue(given.id()));
-            stack.setTag(given.nbt() == null ? null : given.nbt().copy());
+            var stack = new ItemStack(BuiltInRegistries.ITEM.getValue(given.id()));
+            stack.applyComponents(given.components());
             return item.matches(stack);
         }
         return wanted.sameResource(given);

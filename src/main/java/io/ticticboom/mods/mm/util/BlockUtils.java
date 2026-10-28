@@ -1,9 +1,9 @@
 package io.ticticboom.mods.mm.util;
 
-import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.controller.machine.register.MachineControllerMenu;
-
-import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
+import net.minecraft.world.item.Item;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -22,7 +22,6 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.network.NetworkHooks;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Function;
@@ -31,28 +30,33 @@ import java.util.function.Supplier;
 
 public class BlockUtils {
     public static <T extends MenuProvider> InteractionResult commonUse(BlockState state, Level level, BlockPos pos,
-                                                                       Player player, InteractionHand hand, BlockHitResult hitResult, Class<T> clz, @Nullable Supplier<Boolean> preScreenCheck) {
+                                                                       Player player, BlockHitResult hitResult, Class<T> clz, @Nullable Supplier<Boolean> preScreenCheck) {
         if (preScreenCheck == null) {
             preScreenCheck = () -> true;
         }
-        if (!level.isClientSide() && hand == InteractionHand.MAIN_HAND) {
+        // useWithoutItem is only fired for the main hand, so the old hand check is redundant.
+        if (!level.isClientSide()) {
             var be = WorldUtil.getBlockEntity(pos, (ServerLevel) level);
             if (be != null && clz.isAssignableFrom(be.getClass())) {
                 if (preScreenCheck.get()) {
-                    // let the auto I/O panel name sides relative to the multiblock's controller
-                    if (be instanceof AbstractPortBlockEntity port && port.getAutoIO() != null
-                            && port.getAutoIO().refreshFront((ServerLevel) level)) {
-                        port.setChanged();
-                    }
-                    if (be instanceof MachineControllerBlockEntity controller) {
-                        NetworkHooks.openScreen((ServerPlayer) player, controller, buf -> MachineControllerMenu.writeOpenData(buf, controller));
-                    } else {
-                        NetworkHooks.openScreen((ServerPlayer) player, (T) be, pos);
-                    }
+                    // NeoForge folded NetworkHooks.openScreen into an extension method on the player.
+                    ((ServerPlayer) player).openMenu((T) be, pos);
                 }
             }
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        return InteractionResult.SUCCESS;
+    }
+
+    public static final int PLAYER_INVENTORY_TOP = 141;
+
+    public static final int SLOT_AREA_TOP = 19;
+
+    public static int slotGridOriginX(int columns) {
+        return Math.max(((162 - (columns * 18)) / 2) + 8, 8);
+    }
+
+    public static int slotGridOriginY(int rows) {
+        return Math.max(((108 - (rows * 18)) / 2) + 8, SLOT_AREA_TOP);
     }
 
     public static void setupPlayerInventory(AbstractContainerMenu container, Inventory inv, int xOffset, int yOffset) {
@@ -70,7 +74,17 @@ public class BlockUtils {
     }
 
     public static BlockBehaviour.Properties createBlockProperties() {
-        return BlockBehaviour.Properties.copy(Blocks.IRON_BLOCK).requiresCorrectToolForDrops().strength(5f, 5f)
+        return BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).requiresCorrectToolForDrops().strength(5f, 5f)
                 .sound(SoundType.METAL);
+    }
+
+    /** Since 1.21.2 a block's properties carry its registry id, set before the block is constructed. */
+    public static BlockBehaviour.Properties createBlockProperties(Identifier id) {
+        return createBlockProperties().setId(ResourceKey.create(Registries.BLOCK, id));
+    }
+
+    /** Properties for the block item registered under id, named like its block (block.mm.<id>). */
+    public static Item.Properties blockItemProperties(Identifier id) {
+        return new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id)).useBlockDescriptionPrefix();
     }
 }

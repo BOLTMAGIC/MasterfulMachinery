@@ -1,11 +1,11 @@
 package io.ticticboom.mods.mm.recipe.condition.weather;
 
-import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.Level;
-
 import java.util.Locale;
+import io.ticticboom.mods.mm.recipe.RecipeStateModel;
+import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
+import net.minecraft.world.level.Level;
 
 public class WeatherRecipeCondition implements IRecipeCondition {
 
@@ -16,20 +16,17 @@ public class WeatherRecipeCondition implements IRecipeCondition {
     }
 
     @Override
-    public Component describe() {
-        return Component.translatable("jei.mm.condition.weather." + type.name().toLowerCase(Locale.ROOT));
+    public boolean canRun(RecipeConditionContext ctx) {
+        var level = ctx.level();
+        return switch (type) {
+            case RAIN -> level.isRaining();
+            case THUNDER -> level.isThundering();
+            case CLEAR -> !level.isThundering() && !level.isRaining();
+        };
     }
 
     @Override
-    public boolean canRun(RecipeConditionContext ctx) {
-        Level level = ctx.level();
-        if (type == RecipeWeatherType.RAIN) {
-            return level.isRaining();
-        } else if (type == RecipeWeatherType.THUNDER) {
-            return level.isThundering();
-        } else if (type == RecipeWeatherType.CLEAR) {
-            return !level.isThundering() && !level.isRaining();
-        }
-        return false;
+    public Component describe() {
+        return Component.translatable("jei.mm.condition.weather." + type.name().toLowerCase(Locale.ROOT));
     }
 }

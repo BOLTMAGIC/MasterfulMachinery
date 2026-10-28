@@ -70,6 +70,18 @@ public class StructureCharacterGrid {
         return rawLayout.get(y).get(z).charAt(x);
     }
 
+    public char valueFromBottom(int x, int y, int z) {
+        if (y < 0 || y >= rawLayout.size()) {
+            return ' ';
+        }
+        var layer = rawLayout.get(rawLayout.size() - 1 - y);
+        if (z < 0 || z >= layer.size()) {
+            return ' ';
+        }
+        var row = layer.get(z);
+        return x < 0 || x >= row.length() ? ' ' : row.charAt(x);
+    }
+
     public char getValueAt(BlockPos pos) {
         return getValueAt(pos.getX(), pos.getY(), pos.getZ());
     }

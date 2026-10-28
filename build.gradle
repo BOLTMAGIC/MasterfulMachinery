@@ -3,9 +3,7 @@ plugins {
     id 'idea'
     id 'maven-publish'
     id "me.shedaniel.unified-publishing" version "0.1.+"
-    id 'net.minecraftforge.gradle' version '[6.0,6.2)'
-    id 'org.spongepowered.mixin' version '0.7.+'
-    id 'org.parchmentmc.librarian.forgegradle' version '1.+'
+    id 'net.neoforged.gradle.userdev' version '7.1.39'
 }
 
 version = mod_version
@@ -15,398 +13,244 @@ base {
     archivesName = mod_archive_name
 }
 
-
-// Mojang ships Java 17 to end users in 1.18+
-// , so your mod should target Java 17.
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
-
+// Minecraft 26.1 runs on Java 25.
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 println "Java: ${System.getProperty 'java.version'}, JVM: ${System.getProperty 'java.vm.version'} (${System.getProperty 'java.vendor'}), Arch: ${System.getProperty 'os.arch'}"
+
+runs {
+    configureEach {
+        // Recommended logging data for a userdev environment.
+        // The markers can be added/removed as needed, separated by commas.
+        // "SCAN": For mods scan.
+        // "REGISTRIES": For firing of registry events.
+        // "REGISTRYDUMP": For getting the contents of all registries.
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        // Recommended logging level for the console.
+        systemProperty 'forge.logging.console.level', 'debug'
+
+        // Both source sets have to be named. The bare modSource(SourceSet) form attaches every
+        // source set to the project's own mod id, which put the test source set under "mm" and
+        // left TestRoot's @Mod("mmtest") entrypoint dangling. This mirrors the two-mod layout the
+        // 1.20.1 build declared through its mods { mm { ... } mmtest { ... } } block.
+        modSources {
+            add 'mm', project.sourceSets.main
+            add 'mmtest', project.sourceSets.test
+        }
+    }
+
+    client {
+        workingDirectory project.file('run/client')
+        // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
+        systemProperty 'neoforge.enabledGameTestNamespaces', 'mm'
+    }
+
+    server {
+        workingDirectory project.file('run/server')
+        systemProperty 'neoforge.enabledGameTestNamespaces', 'mm'
+        argument '--nogui'
+    }
+
+    // This run config launches the game test server and runs all registered gametests, then exits.
+    // By default, the server will crash when no gametests are provided.
+    // The gametest system is also enabled by default for other run configs under the /test command.
+    gameTestServer {
+        workingDirectory project.file('run/test_server')
+        systemProperty 'neoforge.enabledGameTestNamespaces', 'mm'
+    }
+
+    // 1.21.4 split data generation into clientData and serverData; clientData runs both providers
+    clientData {
+        workingDirectory project.file('run/data')
+        // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
+        arguments.addAll '--mod', 'mm', '--all',
+                '--output', file('src/generated/resources/').getAbsolutePath(),
+                '--existing', file('src/main/resources/').getAbsolutePath()
+    }
+}
+
 minecraft {
-    // The mappings can be changed at any time and must be in the following format.
-    // Channel:   Version:
-    // official   MCVersion             Official field/method names from Mojang mapping files
-    // parchment  YYYY.MM.DD-MCVersion  Open community-sourced parameter names and javadocs layered on top of official
-    //
-    // You must be aware of the Mojang license when using the 'official' or 'parchment' mappings.
-    // See more information here: https://github.com/MinecraftForge/MCPConfig/blob/master/Mojang.md
-    //
-    // Parchment is an unofficial project maintained by ParchmentMC, separate from MinecraftForge
-    // Additional setup is needed to use their mappings: https://github.com/ParchmentMC/Parchment/wiki/Getting-Started
-    //
-    // Use non-default mappings at your own risk. They may not always work.
-    // Simply re-run your setup task after changing the mappings to update your workspace.
-    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
-    //    copyIdeResources = true
-    accessTransformer = file('src/main/resources/META-INF/accesstransformer.cfg')
-    // Currently, this location cannot be changed from the default.
-
-    // Default run configurations.
-    // These can be tweaked, removed, or duplicated as needed.
-    runs {
-        client {
-            workingDirectory project.file('run/client')
-            jvmArg "-XX:+AllowEnhancedClassRedefinition"
-            // Recommended logging data for a userdev environment
-            // The markers can be added/remove as needed separated by commas.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
-            property 'forge.logging.console.level', 'debug'
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            property 'forge.enabledGameTestNamespaces', 'mm'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-            mods {
-                mm {
-                    source sourceSets.main
-                }
-                mmtest {
-                    source sourceSets.test
-                }
-            }
-        }
-
-        // Real client that runs the mmtest client smoke test (io.ticticboom.mods.mmtest.client.ClientSmokeTest) and exits.
-        // Inherits client (main class, mods, properties); its -XX:+AllowEnhancedClassRedefinition is dropped from the
-        // task below, as only JetBrains Runtime accepts it.
-        clientSmoke {
-            parent runs.client
-            workingDirectory project.file('run/client_smoke')
-            property 'mmtest.clientSmoke', 'true'
-        }
-
-        server {
-            workingDirectory project.file('run/server')
-
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            property 'forge.logging.console.level', 'debug'
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            property 'forge.enabledGameTestNamespaces', 'examplemod'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-            mods {
-                mm {
-                    source sourceSets.main
-                }
-                mmtest {
-                    source sourceSets.test
-                }
-            }
-        }
-
-        // This run config launches GameTestServer and runs all registered gametests, then exits.
-        // By default, the server will crash when no gametests are provided.
-        // The gametest system is also enabled by default for other run configs under the /test command.
-        gameTestServer {
-            workingDirectory project.file('run/test_server')
-
-            // Recommended logging data for a userdev environment
-            // The markers can be added/remove as needed separated by commas.
-            // "SCAN": For mods scan.
-            // "REGISTRIES": For firing of registry events.
-            // "REGISTRYDUMP": For getting the contents of all registries.
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            // Recommended logging level for the console
-            // You can set various levels here.
-            // Please read: https://stackoverflow.com/questions/2031163/when-to-use-the-different-log-levels
-            property 'forge.logging.console.level', 'debug'
-
-            // Comma-separated list of namespaces to load gametests from. Empty = all namespaces.
-            property 'forge.enabledGameTestNamespaces', 'mmtest'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-            mods {
-                mm {
-                    source sourceSets.main
-                }
-                mmtest {
-                    source sourceSets.test
-                }
-            }
-        }
-
-        data {
-            workingDirectory project.file('run/data')
-
-            property 'forge.logging.markers', 'REGISTRIES'
-
-            property 'forge.logging.console.level', 'debug'
-            property 'mixin.env.remapRefMap', 'true'
-            property 'mixin.env.refMapRemappingFile', "${buildDir}/createSrgToMcp/output.srg"
-            // Specify the modid for data generation, where to output the resulting resource, and where to look for existing resources.
-            args '--mod', 'examplemod', '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-
-            mods {
-                mm {
-                    source sourceSets.main
-                }
-                mmtest {
-                    source sourceSets.test
-                }
-            }
-        }
+    // NeoGradle does not pick the file up from its conventional location on its own here, and
+    // without it AbstractContainerMenu.addSlot stays protected and every menu fails to compile.
+    accessTransformers {
+        file rootProject.file('src/main/resources/META-INF/accesstransformer.cfg')
     }
 }
 
-// MM registers config-defined ports and controllers at mod construction, so the game test server needs
-// its definitions in run/test_server/config/mm before it starts.
-tasks.register('copyGameTestConfig', Copy) {
-    from 'src/test/gameTestConfig'
-    into 'run/test_server/config'
-}
-tasks.matching { it.name == 'runGameTestServer' }.configureEach {
-    dependsOn 'copyGameTestConfig'
-}
+// 26.1 ships unobfuscated with Mojang's parameter names, so no Parchment mappings are needed.
 
-// the client smoke test needs the same test ports and controllers
-tasks.register('copyClientSmokeConfig', Copy) {
-    from 'src/test/gameTestConfig'
-    into 'run/client_smoke/config'
-}
-tasks.matching { it.name == 'runClientSmoke' }.configureEach {
-    dependsOn 'copyClientSmokeConfig'
-    doFirst {
-        // ForgeGradle adds the run config's (inherited) JVM args when the task executes
-        runConfig.get().jvmArgs.removeIf { it.contains('AllowEnhancedClassRedefinition') }
-    }
+// Compat for mods without a 26.1.2 release yet (see the dependencies). The code stays in the repository and comes
+// back by removing its line once the mod is out.
+sourceSets.main.java {
+    exclude 'io/ticticboom/mods/mm/port/mekanism/**'          // Mekanism
+    exclude 'io/ticticboom/mods/mm/compat/mekanism/**'
+    exclude 'io/ticticboom/mods/mm/cap/MekCapabilities.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/ChemicalBridge.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/linker/ChemicalDrainer.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/pattern/Ae2ChemicalKeys.java'
+    exclude 'io/ticticboom/mods/mm/gateway/GatewayChemicalHandler.java'
+    exclude 'io/ticticboom/mods/mm/port/pneumaticcraft/**'    // PneumaticCraft
+    exclude 'io/ticticboom/mods/mm/cap/PncCapabilities.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/AirBridge.java'
+    exclude 'io/ticticboom/mods/mm/port/kinetic/**'           // Create
+    exclude 'io/ticticboom/mods/mm/port/ars/**'               // Ars Nouveau
+    exclude 'io/ticticboom/mods/mm/cap/ArsCapabilities.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/SourceBridge.java'
+    exclude 'io/ticticboom/mods/mm/port/projecte/**'          // ProjectE
+    exclude 'io/ticticboom/mods/mm/cap/ProjectECapabilities.java'
+    exclude 'io/ticticboom/mods/mm/compat/ae2/MatterKeys.java'          // Replication AE2 bridge
+    exclude 'io/ticticboom/mods/mm/compat/ae2/MatterBridge.java'
 }
 
 // Include resources generated by data generators.
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    // Put repositories for dependencies here
-    // ForgeGradle automatically adds the Forge maven and Maven Central for you
+    // Put repositories for dependencies here.
+    // NeoGradle automatically adds the NeoForged maven and Maven Central for you.
 
-    // If you have mod jar dependencies in ./libs, you can declare them as a repository like so:
-    // flatDir {
-    //     dir 'libs'
-    // }
     maven {
         name = "latvian"
         url = "https://maven.latvian.dev/releases"
     }
     maven {
-        // location of the maven that hosts JEI files before January 2023
-        name = "Progwml6's maven"
-        url = 'https://dvs1.progwml6.com/files/maven/'
-    }
-    maven {
-        // location of the maven that hosts JEI files since January 2023
+        // location of the maven that hosts JEI files
         name = "Jared's maven"
         url = 'https://maven.blamejared.com/'
     }
     maven {
-        // location of a maven mirror for JEI files, as a fallback
+        // maven mirror for JEI files, as a fallback
         name = 'ModMaven'
         url = 'https://modmaven.dev'
     }
+    maven {
+        url = "https://maven.ithundxr.dev/snapshots"
+    } // Primary mirror for Registrate artifacts
+
+    // Alternatively, you can use the Create Maven:
+    // maven { url = "https://maven.createmod.net" }
+    //}
     maven {
         url 'https://maven.architectury.dev/'
         content {
             includeGroup 'dev.architectury'
         }
     }
-
     maven {
         url 'https://www.cursemaven.com'
         content {
             includeGroup 'curse.maven'
         }
     }
-
     maven {
         url 'https://maven.saps.dev/minecraft'
         content {
             includeGroup 'dev.latvian.mods'
-            includeGroup 'dev.ftb.mods'
         }
     }
     maven {
-        url = "https://maven.createmod.net"
-        content {
-            includeGroup 'com.simibubi.create'
-            includeGroup 'net.createmod.ponder'
-            includeGroup 'dev.engine-room.flywheel'
-        }
-    }
-    maven {
-        url = "https://maven.ithundxr.dev/mirror"
-        content {
-            includeGroup 'com.tterrag.registrate'
-        }
-    }
-    maven {
-        url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/"
-        content {
-            includeGroup 'net.fuzzy.forgeconfigapiport'
-        }
-    }
-    maven {
-        url = "https://maven.blamejared.com"
-        content {
-            includeGroup 'org.appliedenergistics'
-        }
-    }
-    maven {
-        // FTB Teams
-        url = "https://maven.ftb.dev/releases"
+        url 'https://maven.ftb.dev/releases'
         content {
             includeGroup 'dev.ftb.mods'
         }
     }
     maven {
-        // GeckoLib (optional machine models)
-        name = 'GeckoLib'
-        url = 'https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/'
-        content {
-            includeGroupByRegex("software\\.bernie.*")
-        }
-    }
-    maven {
-        // Applied Mekanistics
         url = "https://api.modrinth.com/maven"
         content {
             includeGroup 'maven.modrinth'
         }
+    } // Replication
+
+    maven {
+        url = "https://maven.blamejared.com"
+        content {
+            includeGroup 'com.hollingsworth.ars_nouveau'
+        }
+    } // Ars Nouveau
+
+    maven { url = "https://maven.createmod.net" } // Create, Ponder, Flywheel
+    maven { url = "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" } // ForgeConfigAPIPort
+    maven {
+        url = "https://maven.theillusivec4.top/"
+        content {
+            includeGroup 'top.theillusivec4.curios'
+        }
+    }
+    maven {
+        url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
+        content {
+            includeGroup 'software.bernie.geckolib'
+        }
+    }
+    maven {
+        url = "https://maven.blakesmods.com/"
+        content {
+            includeGroupByRegex 'com\\.blakebr0\\..*'
+        }
     }
 
+    mavenCentral()
+    maven { url = "https://jitpack.io" }
 }
 
+// NeoForge ships Mixin, and production runs on Mojang mappings, so neither the Mixin
+// annotation processor nor MixinExtras needs to be declared the way ForgeGradle required.
 dependencies {
-    minecraft 'net.minecraftforge:forge:1.20.1-47.4.6'
-
-    annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
-
-    compileOnly 'org.projectlombok:lombok:1.18.24'
-    annotationProcessor 'org.projectlombok:lombok:1.18.24'
-
-
-    // ========================
-    // COMPILE MOD-ADDONS
-    // ========================
-
-    //JEI
-    compileOnly(fg.deobf("mezz.jei:jei-${mc_version}-common-api:${jei_version}"))
-    compileOnly(fg.deobf("mezz.jei:jei-${mc_version}-forge-api:${jei_version}"))
-
-    //JADE (WAILA)
-    compileOnly fg.deobf("curse.maven:jade-324717:${jade_id}")
-
-    // MEKANISM
-    compileOnly fg.deobf("curse.maven:mekanism-268560:5125665")
-
-    // AE2 + FTB TEAMS + APPLIED MEKANISTICS (network linker, all optional)
-    compileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
-    compileOnly(fg.deobf("dev.ftb.mods:ftb-teams-forge:${ftb_teams_version}")) { transitive = false }
-    compileOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
-
-    // GeckoLib: optional machine models (compat/geckolib), not shipped and not needed at runtime
-    compileOnly(fg.deobf("software.bernie.geckolib:geckolib-forge-1.20.1:4.8.4")) { transitive = false }
-
-    //PNEUMATICCRAFT (PNCR)
-    compileOnly fg.deobf("curse.maven:pneumaticcraft-281849:5279325")
-
-    //KUBEJS
-    compileOnly fg.deobf("dev.latvian.mods:kubejs-forge:${kubejs_version}")
-    compileOnly fg.deobf("dev.latvian.mods:rhino-forge:${rhino_version}")
-    compileOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-
-    // CREATE MOD
-    compileOnly(fg.deobf("com.simibubi.create:create-${mc_version}:${create_version}:slim") { transitive = false })
-    compileOnly(fg.deobf("net.createmod.ponder:Ponder-Forge-${mc_version}:${ponder_version}"))
-    compileOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-api-${mc_version}:${flywheel_version}"))
-    compileOnly(fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}"))
-    compileOnly(annotationProcessor("io.github.llamalad7:mixinextras-common:0.4.1"))
-    compileOnly("io.github.llamalad7:mixinextras-forge:0.4.1")
-
-    //BOTANIA
-    compileOnly fg.deobf("vazkii.botania:Botania:${botania_version}")
-
-
-    // ========================
-    // RUNTIME MOD-ADDONS
-    // ========================
-
-    // PATCHUOLI
-    runtimeOnly fg.deobf("curse.maven:patchouli-306770:${patchouli_version}")
-
-    // CURIOS
-    runtimeOnly fg.deobf("curse.maven:curios-309927:${curios_version}")
-
-    // CREATE MOD
-    runtimeOnly(fg.deobf("com.simibubi.create:create-${mc_version}:${create_version}:slim") { transitive = false })
-    runtimeOnly(fg.deobf("net.createmod.ponder:Ponder-Forge-${mc_version}:${ponder_version}"))
-    runtimeOnly(fg.deobf("dev.engine-room.flywheel:flywheel-forge-${mc_version}:${flywheel_version}"))
-    runtimeOnly(fg.deobf("com.tterrag.registrate:Registrate:${registrate_version}"))
-    runtimeOnly("io.github.llamalad7:mixinextras-forge:0.4.1")
-
-    // ProbeJS (kubejs)
-    runtimeOnly fg.deobf("curse.maven:probejs-585406:5227399")
-
-    // JEI
-    runtimeOnly(fg.deobf("mezz.jei:jei-${mc_version}-forge:${jei_version}"))
-
-    //EMI
-//    runtimeOnly(fg.deobf("curse.maven:emi-580555:6420945"))
-
-    //JADE (WAILA)
-    runtimeOnly(fg.deobf("curse.maven:jade-324717:${jade_id}"))
-
-    // MEKANISM
-    runtimeOnly(fg.deobf("curse.maven:mekanism-268560:5125665"))
-
-    //PNEUMATICCRAFT (PNCR)
-    runtimeOnly(fg.deobf("curse.maven:pneumaticcraft-281849:5279325"))
-
-    // KUBEJS
-    runtimeOnly fg.deobf("dev.latvian.mods:kubejs-forge:${kubejs_version}")
-    runtimeOnly fg.deobf("dev.latvian.mods:rhino-forge:${rhino_version}")
-    runtimeOnly fg.deobf("dev.architectury:architectury-forge:${architectury_version}")
-
-    // IMMERSIVE ENGINEERING
-    runtimeOnly fg.deobf("curse.maven:immersive-engineering-231951:6206989")
-
-    //BOTANIA
-    runtimeOnly fg.deobf("vazkii.botania:Botania:${botania_version}")
-
-    // SPARK PROFILER
-    runtimeOnly fg.deobf("curse.maven:spark-361579:4738952");
-
-    // AE2 (+ GuideME, which it requires) for dev runs: the tool's ME features and their GameTests; still optional in
-    // the built jar. -PnoAe2 leaves both out to run the game, GameTests and client smoke test without AE2.
-    if (!project.hasProperty('noAe2')) {
-        runtimeOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
-        runtimeOnly fg.deobf("curse.maven:guideme-1173950:8204776")
-        runtimeOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
-    }
-    testCompileOnly(fg.deobf("appeng:appliedenergistics2-forge:${ae2_version}")) { transitive = false }
-    testCompileOnly(fg.deobf("maven.modrinth:applied-mekanistics:${appmek_version}")) { transitive = false }
-    testCompileOnly fg.deobf("curse.maven:mekanism-268560:5125665")
-
-    // Jade API for the port tooltip GameTests
-    testCompileOnly fg.deobf("curse.maven:jade-324717:${jade_id}")
-
-    // UNIT TESTS (plain logic, no Minecraft)
+    // plain JUnit tests of logic that needs no running game (src/test)
     testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+    // the AE2 and Jade GameTests compile against those mods (compileOnly is not inherited by the test source set)
+    testCompileOnly "maven.modrinth:ae2:${ae2_version}"
+    testCompileOnly "maven.modrinth:jade:${jade_version}"
+    implementation "net.neoforged:neoforge:${neoforge_version}"
+
+    compileOnly 'org.projectlombok:lombok:1.18.48'
+    annotationProcessor 'org.projectlombok:lombok:1.18.48'
+
+    // Mods with a 26.1.2 release. Mekanism, PneumaticCraft, Create, Ars Nouveau, ProjectE, Applied Mekanistics,
+    // Ars Energistique, Applied Pneumatics and the Replication AE2 bridge have none yet: their compat is left out of
+    // the build (see the excludes below) until they do.
+    compileOnly "mezz.jei:jei-${mc_version}-common-api:${jei_version}"
+    compileOnly "mezz.jei:jei-${mc_version}-neoforge-api:${jei_version}"
+    compileOnly "com.hrznstudio:titanium:${titanium_version}"
+    compileOnly "dev.latvian.mods:kubejs-neoforge:${kubejs_version}"
+    compileOnly "dev.latvian.mods:rhino:${rhino_version}"
+    compileOnly("dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}") { transitive = false }
+    compileOnly "maven.modrinth:replication:${replication_version}"
+    compileOnly "maven.modrinth:ae2:${ae2_version}"
+    // AE2 in the dev runtime (and so the GameTest server), as in the 1.20.1 build; it needs GuideME
+    runtimeOnly "maven.modrinth:ae2:${ae2_version}"
+    runtimeOnly "maven.modrinth:guideme:${guideme_version}"
+    // Jade too: the pattern port and priority GameTests read its tooltip data
+    runtimeOnly "maven.modrinth:jade:${jade_version}"
+    compileOnly "maven.modrinth:jade:${jade_version}"
+    compileOnly "maven.modrinth:nuclear-radiation:${nuclear_radiation_version}"
+    compileOnly "maven.modrinth:appflux:${appflux_version}"
+    compileOnly "maven.modrinth:geckolib:${geckolib_version}"
+
+    runtimeOnly "mezz.jei:jei-${mc_version}-neoforge:${jei_version}"
+}
+
+// Expands the declared properties in neoforge.mods.toml so versions live in one place.
+tasks.named('processResources', ProcessResources).configure {
+    var replaceProperties = [
+            minecraft_version: mc_version,
+            neo_version      : neoforge_version,
+            mod_version      : mod_version,
+            mod_authors      : mod_authors
+    ]
+    inputs.properties replaceProperties
+
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
+    }
 }
 
 // Example for how to get properties into the manifest for reading at runtime.
 jar {
     manifest {
         attributes([
-                'Specification-Title'     : 'mm',
+                'Specification-Title'     : mod_archive_name,
                 'Specification-Vendor'    : mod_authors,
                 'Specification-Version'   : '1', // We are version 1 of ourselves
                 'Implementation-Title'    : project.name,
@@ -418,11 +262,6 @@ jar {
 }
 
 // Example configuration to allow publishing using the maven-publish plugin
-// This is the preferred method to reobfuscate your jar file
-jar.finalizedBy('reobfJar')
-// However if you are in a multi-project build, dev time needs unobfed jar files, so you can delay the obfuscation until publishing by doing
-// publish.dependsOn('reobfJar')
-
 publishing {
     publications {
         mavenJava(MavenPublication) {
@@ -438,6 +277,11 @@ publishing {
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
+    // javac stops reporting after 100 errors by default, which hides the true scope of a
+    // breaking change. Raise it so a failing build shows the whole picture at once.
+    options.compilerArgs << '-Xmaxerrs' << '2000'
+    // since JDK 23 javac only runs annotation processors (Lombok) when asked to
+    options.compilerArgs << '-proc:full'
 }
 
 var fullname = "${mod_archive_name}-${mod_version} ${mod_stability_name}"
@@ -448,11 +292,10 @@ unifiedPublishing {
         gameLoaders = [publish_modloader]
         displayName = fullname
         version = mod_version
-        changelog = new File("${project.projectDir}/changelog.md").text.replaceAll("VERSION_NAME", fullname)
+        changelog = new File("${project.projectDir}/changelog.txt").text.replaceAll("VERSION_NAME", fullname)
         releaseType = mod_stability_name.toLowerCase()
 
         mainPublication tasks.jar
-
 
         var cfToken = System.getenv("CURSEFORGE_TOKEN")
         if (cfToken != null) {
@@ -462,25 +305,29 @@ unifiedPublishing {
             }
         }
 
+        // publish_modrinth_id is optional, so the property has to be checked as well as the
+        // token. Referencing an undefined property fails the build outright, which is what
+        // happened before: the token check alone let it through and then blew up here.
         var mrToken = System.getenv("MODRINTH_TOKEN")
-        if (mrToken != null) {
+        if (mrToken != null && project.hasProperty("publish_modrinth_id")) {
             modrinth {
                 token = mrToken
-                id = publish_modrinth_id
+                id = project.property("publish_modrinth_id")
             }
         }
-
     }
-}
-
-mixin {
-    add sourceSets.main, "mm.refmap.json"
-
-    config "mixins.mm.json"
-    debug.verbose = true
-    debug.export = true
 }
 
 test {
     useJUnitPlatform()
+}
+
+// MM registers config-defined ports and controllers at mod construction, so the game test server needs
+// its definitions in run/test_server/config/mm before it starts.
+tasks.register('copyGameTestConfig', Copy) {
+    from 'src/test/gameTestConfig'
+    into 'run/test_server/config'
+}
+tasks.matching { it.name == 'runGameTestServer' }.configureEach {
+    dependsOn 'copyGameTestConfig'
 }

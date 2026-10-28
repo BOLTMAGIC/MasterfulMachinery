@@ -19,7 +19,7 @@ record TestPattern(AEItemKey definition, GenericStack[] ins, GenericStack[] outs
     /** @param name tells patterns apart (the port caches the recipe per pattern) */
     static TestPattern of(String name, GenericStack[] ins, GenericStack... outs) {
         var paper = new ItemStack(Items.PAPER);
-        paper.setHoverName(Component.literal(name));
+        paper.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal(name));
         return new TestPattern(AEItemKey.of(paper), ins, outs);
     }
 
@@ -69,7 +69,7 @@ record TestPattern(AEItemKey definition, GenericStack[] ins, GenericStack[] outs
     }
 
     @Override
-    public GenericStack[] getOutputs() {
-        return outs;
+    public java.util.List<GenericStack> getOutputs() {
+        return java.util.List.of(outs);
     }
 }

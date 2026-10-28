@@ -10,7 +10,7 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +61,7 @@ public class CollectedDebugData {
         recipeStates.add(state);
     }
 
-    public List<ResourceLocation> getStructureIds() {
+    public List<Identifier> getStructureIds() {
         return this.structureDefs.stream().map(StructureModel::id).toList();
     }
 }

@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -8,18 +10,14 @@ import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.material.Fluids;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 
 /**
  * Bolt's six retained seeds / max_types 3 scenario, without optional mods: six wool kinds stand in for
@@ -27,8 +25,7 @@ import net.minecraftforge.registries.ForgeRegistries;
  * 1,000,000 FE, 100 mB and 64 output per kind, with the controller's parallel limit set to 3.
  * Mystical Agriculture tier filtering and the KubeJS script itself still need testing in the pack.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class FlexBatchGameTests {
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos INPUT = CONTROLLER.offset(-1, 0, 0);
@@ -42,7 +39,7 @@ public class FlexBatchGameTests {
 
     @GameTest(template = "empty", timeoutTicks = 1100)
     public static void sixRetainedKindsRunInTwoBatchesOfThree(GameTestHelper helper) {
-        helper.setBlock(CONTROLLER, ForgeRegistries.BLOCKS.getValue(Ref.id("flex_batch_test"))
+        helper.setBlock(CONTROLLER, BuiltInRegistries.BLOCK.getValue(Ref.id("flex_batch_test"))
                 .defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
         place(helper, INPUT, "test_port_flex_batch_item_input");
         place(helper, OUTPUT, "test_port_flex_batch_item_output");
@@ -51,9 +48,9 @@ public class FlexBatchGameTests {
         long[] startedAt = { 0 };
         helper.startSequence()
                 .thenWaitUntil(() -> check(helper, controller(helper).isFormed()
-                        && controller(helper).getCachedPortStorages() != null, "batch machine not formed"))
+                        && controller(helper).getPortStorages() != null, "batch machine not formed"))
                 .thenExecute(() -> {
-                    check(helper, controller(helper).getParallelLimit() == 3, "controller parallel limit must match the report");
+                    check(helper, controller(helper).getDisplayedParallelLimit() == 3, "controller parallel limit must match the report");
                     for (Item kind : KINDS) items(helper, INPUT).insert(new ItemStack(kind), 1);
                     check(helper, energy(helper).internalInsert(6000000, false) == 6000000, "fill energy for two batches");
                     check(helper, fluid(helper).getHandler().fill(new FluidStack(Fluids.WATER, 600), IFluidHandler.FluidAction.EXECUTE) == 600,
@@ -61,7 +58,7 @@ public class FlexBatchGameTests {
                 })
                 .thenWaitUntil(() -> check(helper, controller(helper).getRecipeState() != null, "first batch should start"))
                 .thenExecute(() -> {
-                    startedAt[0] = controller(helper).saveWithFullMetadata().getLong("lastRecipeStartTime");
+                    startedAt[0] = controller(helper).saveWithFullMetadata(helper.getLevel().registryAccess()).getLongOr("lastRecipeStartTime", 0L);
                     picked(helper, 0);
                     check(helper, controller(helper).getActiveRecipeCount() == 1, "max_types must not duplicate the same recipe");
                     check(helper, energy(helper).getStoredEnergy() == 3000000, "linear cost: three kinds use 3,000,000 FE");
@@ -96,23 +93,23 @@ public class FlexBatchGameTests {
     }
 
     private static void place(GameTestHelper helper, BlockPos pos, String id) {
-        helper.setBlock(pos, ForgeRegistries.BLOCKS.getValue(Ref.id(id)));
+        helper.setBlock(pos, BuiltInRegistries.BLOCK.getValue(Ref.id(id)));
     }
 
     private static MachineControllerBlockEntity controller(GameTestHelper helper) {
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static ItemPortStorage items(GameTestHelper helper, BlockPos pos) {
-        return (ItemPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(pos)).getStorage();
+        return (ItemPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(pos, BlockEntity.class)).getStorage();
     }
 
     private static EnergyPortStorage energy(GameTestHelper helper) {
-        return (EnergyPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(ENERGY)).getStorage();
+        return (EnergyPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(ENERGY, BlockEntity.class)).getStorage();
     }
 
     private static FluidPortStorage fluid(GameTestHelper helper) {
-        return (FluidPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(FLUID)).getStorage();
+        return (FluidPortStorage) ((AbstractPortBlockEntity) helper.getBlockEntity(FLUID, BlockEntity.class)).getStorage();
     }
 
     private static int fluidAmount(GameTestHelper helper) {

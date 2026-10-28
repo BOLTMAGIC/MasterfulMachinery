@@ -7,10 +7,6 @@ import net.minecraft.network.chat.Component;
 
 import java.util.Locale;
 
-/**
- * The controller must (not) get a redstone signal: {"type": "mm:redstone", "redstone": "powered"}.
- * Unlike the controller's redstone setting this is part of the recipe, so it can differ per recipe.
- */
 public class RedstoneRecipeCondition implements IRecipeCondition {
     private final boolean powered;
 

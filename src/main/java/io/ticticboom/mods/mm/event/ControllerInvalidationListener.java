@@ -1,51 +1,27 @@
 package io.ticticboom.mods.mm.event;
 
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.util.WorldUtil;
-import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.level.BlockEvent;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public class ControllerInvalidationListener {
 
     @SubscribeEvent
-    public static void onBlockBroken(BlockEvent.BreakEvent event) {
-        var la = event.getLevel();
-        if (!(la instanceof Level level)) return;
-        if (level.isClientSide()) return;
-        if (!(level instanceof ServerLevel sl)) return;
-        BlockPos pos = event.getPos();
-        var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);
-        for (var cbe : controllers) {
-            try {
-                if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
-                    mc.onNearbyBlockBroken(pos);
-                }
-            } catch (Throwable ignored) {
-            }
+    public static void onBlockBroken(BreakBlockEvent event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            WorldUtil.scheduleNearbyValidation(level, event.getPos());
         }
     }
 
     @SubscribeEvent
     public static void onBlockPlaced(BlockEvent.EntityPlaceEvent event) {
-        var la = event.getLevel();
-        if (!(la instanceof Level level)) return;
-        if (level.isClientSide()) return;
-        if (!(level instanceof ServerLevel sl)) return;
-        BlockPos pos = event.getPos();
-        var controllers = WorldUtil.findControllerBlockEntitiesInRadius(pos, sl, 6);
-        for (var cbe : controllers) {
-            try {
-                if (cbe instanceof io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity mc) {
-                    // trigger a re-check; we call validateStructure via server thread by setting formed=false and letting tick revalidate,
-                    mc.requestValidation();
-                }
-            } catch (Throwable ignored) {
-            }
+        if (event.getLevel() instanceof ServerLevel level) {
+            WorldUtil.scheduleNearbyValidation(level, event.getPos());
         }
     }
 }

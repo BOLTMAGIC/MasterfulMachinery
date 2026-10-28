@@ -1,11 +1,13 @@
 package io.ticticboom.mods.mm.port.pneumaticcraft.air.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.item.ItemStack;
 
 public class PneumaticAirPortBlockItem  extends BlockItem implements IPortItem {
     private final PortModel model;
@@ -13,7 +15,7 @@ public class PneumaticAirPortBlockItem  extends BlockItem implements IPortItem {
     private final boolean isInput;
 
     public PneumaticAirPortBlockItem(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;
@@ -26,6 +28,18 @@ public class PneumaticAirPortBlockItem  extends BlockItem implements IPortItem {
 
     @Override
     public Component getTypeName() {
-        return Component.translatable("tooltip.mm.port_type.pneumatic_air").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
+        return Component.translatable("port.mm.pneumaticcraft_air.name").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD);
+    }
+
+    /**
+     * Ports always display their model name rather than the generated block.mm.<id> entry. That
+     * entry is built from the raw string name, which both loses the translation key when a pack
+     * supplies one and carries a hardcoded English Input/Output suffix; displayName() resolves the
+     * pack name and runs the suffix through port.mm.name_format.*.
+     */
+    @Override
+    public Component getName(ItemStack stack) {
+        var name = getModel().displayName();
+        return name != null ? name : super.getName(stack);
     }
 }

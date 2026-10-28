@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.waila.PortPriorityDataProvider;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -11,10 +12,9 @@ import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -25,10 +25,7 @@ import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.util.FakePlayerFactory;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import snownee.jade.api.BlockAccessor;
 
 import java.lang.reflect.Proxy;
@@ -38,8 +35,7 @@ import java.lang.reflect.Proxy;
  * gets from the server. mmtest:priority_test is "ICOOFF": iron in -> 1 gold + 100 mB water out, two item and two
  * fluid output ports.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class PortPriorityGameTests {
     private static final String TEMPLATE = "empty";
     private static final BlockPos CONTROLLER = new BlockPos(1, 1, 3);
@@ -92,7 +88,7 @@ public class PortPriorityGameTests {
                     player.setItemInHand(InteractionHand.MAIN_HAND, setter);
                     BlockPos pos = helper.absolutePos(ITEM_B);
                     var chunk = helper.getLevel().getChunkAt(pos);
-                    chunk.setUnsaved(false);
+                    chunk.tryMarkSaved();
 
                     setter.useOn(new UseOnContext(player, InteractionHand.MAIN_HAND,
                             new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false)));
@@ -123,7 +119,7 @@ public class PortPriorityGameTests {
 
     /** What PortPriorityDataProvider sends to the client for this port, -1 when nothing. */
     private static int jadePriority(GameTestHelper helper, BlockPos port) {
-        BlockEntity be = helper.getBlockEntity(port);
+        BlockEntity be = helper.getBlockEntity(port, BlockEntity.class);
         BlockPos pos = helper.absolutePos(port);
         BlockAccessor accessor = (BlockAccessor) Proxy.newProxyInstance(BlockAccessor.class.getClassLoader(),
                 new Class<?>[]{BlockAccessor.class}, (proxy, method, args) -> switch (method.getName()) {
@@ -138,11 +134,11 @@ public class PortPriorityGameTests {
                 });
         var data = new CompoundTag();
         PortPriorityDataProvider.INSTANCE.appendServerData(data, accessor);
-        return data.contains(PortPriorityDataProvider.KEY) ? data.getInt(PortPriorityDataProvider.KEY) : -1;
+        return data.contains(PortPriorityDataProvider.KEY) ? data.getIntOr(PortPriorityDataProvider.KEY, -1) : -1;
     }
 
     private static int savedPriority(GameTestHelper helper, BlockPos port) {
-        return helper.getBlockEntity(port).saveWithoutMetadata().getCompound(Ref.NBT_STORAGE_KEY).getInt("Priority");
+        return helper.getBlockEntity(port, BlockEntity.class).saveWithoutMetadata(helper.getLevel().registryAccess()).getCompoundOrEmpty(Ref.NBT_STORAGE_KEY).getIntOr("Priority", 0);
     }
 
     private static MachineControllerBlockEntity build(GameTestHelper helper) {
@@ -152,11 +148,11 @@ public class PortPriorityGameTests {
         helper.setBlock(ITEM_B, block("test_prio_item_output"));
         helper.setBlock(FLUID_A, block("test_prio_fluid_output"));
         helper.setBlock(FLUID_B, block("test_prio_fluid_output"));
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static void formed(GameTestHelper helper, MachineControllerBlockEntity controller) {
-        ResourceLocation id = ResourceLocation.tryBuild("mmtest", "priority_test");
+        Identifier id = Identifier.tryBuild("mmtest", "priority_test");
         check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id), "priority_test not formed yet");
     }
 
@@ -185,14 +181,14 @@ public class PortPriorityGameTests {
     }
 
     private static IPortStorage storage(GameTestHelper helper, BlockPos relative) {
-        if (helper.getBlockEntity(relative) instanceof AbstractPortBlockEntity port) {
+        if (helper.getBlockEntity(relative, BlockEntity.class) instanceof AbstractPortBlockEntity port) {
             return port.getStorage();
         }
         throw new IllegalStateException("no port at " + relative);
     }
 
     private static Block block(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("mm:" + id + " is not registered");
         }

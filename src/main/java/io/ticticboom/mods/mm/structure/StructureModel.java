@@ -13,18 +13,21 @@ import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachments;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
+import io.ticticboom.mods.mm.util.ParserUtils;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Rotation;
+import org.jetbrains.annotations.Nullable;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.fml.loading.FMLEnvironment;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.fml.loading.FMLEnvironment;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,8 +35,9 @@ import java.util.List;
 
 public class StructureModel {
 
-    private final ResourceLocation id;
+    private final Identifier id;
     private final String name;
+    private final Component displayName;
     private final IdList controllerIds;
     private final StructureLayout layout;
 
@@ -55,8 +59,20 @@ public class StructureModel {
     private SlotGrid grid;
 
     public StructureModel(
-            ResourceLocation id,
+            Identifier id,
             String name,
+            IdList controllerIds,
+            StructureLayout layout,
+            StructureAttachments attachments,
+            JsonObject config
+    ) {
+        this(id, name, Component.literal(name), controllerIds, layout, attachments, config);
+    }
+
+    public StructureModel(
+            Identifier id,
+            String name,
+            Component displayName,
             IdList controllerIds,
             StructureLayout layout,
             StructureAttachments attachments,
@@ -64,11 +80,12 @@ public class StructureModel {
     ) {
         this.id = id;
         this.name = name;
+        this.displayName = displayName;
         this.controllerIds = controllerIds;
         this.layout = layout;
         this.attachments = attachments;
         this.config = config;
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             renderer = new GuiStructureRenderer(this);
 //            countedPartItems = getCountedItemStacks();
         }
@@ -77,9 +94,9 @@ public class StructureModel {
     @OnlyIn(Dist.CLIENT)
     public PositionedCyclingBlockRenderer controllerUiRenderer() {
         BlockPos pos = new BlockPos(0, 0, 0);
-        List<ResourceLocation> ids = controllerIds.getIds();
+        List<Identifier> ids = controllerIds.getIds();
         var res = new ArrayList<GuiBlockRenderer>();
-        for (ResourceLocation id : ids) {
+        for (Identifier id : ids) {
             Block controllerBlock = MMControllerRegistry.getControllerBlock(id);
             GuiBlockRenderer gbr = new GuiBlockRenderer(controllerBlock, List.of());
             gbr.setupAt(pos);
@@ -88,19 +105,21 @@ public class StructureModel {
         return new PositionedCyclingBlockRenderer(res, pos);
     }
 
-    public static StructureModel parse(JsonObject json, ResourceLocation structureId) {
-        var name = json.get("name").getAsString();
+    public static StructureModel parse(JsonObject json, Identifier structureId) {
+        // "name" accepts a plain string or a { "translation": "key" } object.
+        var name = ParserUtils.parseComponentKey(json.get("name"));
+        var displayName = ParserUtils.parseComponent(json.get("name"));
         var layout = StructureLayout.parse(json, structureId);
         var ids = IdList.parse(json.get("controllerIds"));
         var attachments = StructureAttachments.parse(json);
-        return new StructureModel(structureId, name, ids, layout, attachments, json);
+        return new StructureModel(structureId, name, displayName, ids, layout, attachments, json);
     }
 
-    public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout) {
+    public static JsonObject paramsToJson(Identifier id, String name, IdList controllerIds, StructureLayout layout) {
         return paramsToJson(id, name, controllerIds, layout, -1);
     }
 
-    public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout, int maxParallelRecipes) {
+    public static JsonObject paramsToJson(Identifier id, String name, IdList controllerIds, StructureLayout layout, int maxParallelRecipes) {
         var json = new JsonObject();
         json.addProperty("id", id.toString());
         json.addProperty("name", name);
@@ -129,12 +148,20 @@ public class StructureModel {
         return layout.getRecipeStorages(level, controllerPos, this);
     }
 
-    public java.util.List<BlockPos> getPositions(Level level, BlockPos controllerPos) {
+    public @Nullable Rotation formedRotation(Level level, BlockPos controllerPos, @Nullable Rotation preferred) {
+        return layout.formedRotation(level, controllerPos, this, preferred);
+    }
+
+    public RecipeStorages getStorages(Level level, BlockPos controllerPos, Rotation rotation) {
+        return layout.getRecipeStorages(level, controllerPos, rotation);
+    }
+
+    public List<BlockPos> getPositions(Level level, BlockPos controllerPos) {
         return layout.getPositions(level, controllerPos, this);
     }
 
-    public java.util.List<BlockPos> getPortPositions(Level level, BlockPos controllerPos) {
-        return layout.getPortPositions(level, controllerPos, this);
+    public JsonObject getConfig() {
+        return config;
     }
 
     public JsonObject debugFormed(Level level, BlockPos controllerPos) {
@@ -144,6 +171,7 @@ public class StructureModel {
         json.addProperty("name", name);
         json.add("controllerIds", controllerIds.serialize());
         json.add("layout", debugLayout);
+        addMissingPorts(json);
         return json;
     }
 
@@ -152,8 +180,20 @@ public class StructureModel {
         json.addProperty("structureId", id.toString());
         json.addProperty("name", name);
         json.add("controllerIds", controllerIds.serialize());
-
+        addMissingPorts(json);
         return json;
+    }
+
+    private void addMissingPorts(JsonObject json) {
+        var missing = StructureProblems.missingPorts(id);
+        if (missing.isEmpty()) {
+            return;
+        }
+        var array = new com.google.gson.JsonArray();
+        for (var portId : missing) {
+            array.add(portId.toString());
+        }
+        json.add("missingPorts", array);
     }
 
     /**
@@ -169,7 +209,7 @@ public class StructureModel {
                 if (v < 0) return -1;
                 return Math.min(v, 100);
             }
-        } catch (Throwable ignored) { }
+        } catch (RuntimeException ignored) { }
         return -1;
     }
 
@@ -178,7 +218,7 @@ public class StructureModel {
         return renderer;
     }
 
-    public ResourceLocation id() {
+    public Identifier id() {
         return id;
     }
 
@@ -188,6 +228,11 @@ public class StructureModel {
 
     public String name() {
         return name;
+    }
+
+    /** Display form of the name, resolving a datapack-supplied translation key where one was given. */
+    public Component displayName() {
+        return displayName;
     }
 
     public IdList controllerIds() {
@@ -216,12 +261,12 @@ public class StructureModel {
         }
         countedPartItems = new ArrayList<>(result.values());
         var controllerList = new ArrayList<ItemStack>();
-        for (ResourceLocation controller : controllerIds.getIds()) {
+        for (Identifier controller : controllerIds.getIds()) {
             Block controllerBlock = MMControllerRegistry.getControllerBlock(controller);
             assert controllerBlock != null;
             controllerList.add(controllerBlock.asItem().getDefaultInstance());
         }
-        countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.translatable("mm.structure.piece.controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
+        countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.translatable("gui.mm.structure.controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
         return countedPartItems;
     }
 

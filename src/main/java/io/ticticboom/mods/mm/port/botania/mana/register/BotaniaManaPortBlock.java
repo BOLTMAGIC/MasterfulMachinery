@@ -1,9 +1,8 @@
 package io.ticticboom.mods.mm.port.botania.mana.register;
 
-import net.minecraft.world.level.block.state.StateDefinition;
-import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.datagen.provider.MMBlockstateProvider;
+import net.minecraft.network.chat.MutableComponent;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -25,15 +24,9 @@ public class BotaniaManaPortBlock extends Block implements IPortBlock, EntityBlo
     private final RegistryGroupHolder groupHolder;
 
     public BotaniaManaPortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
-    }
-
-    @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        // follows the state of the machine the port belongs to; shown as the port's status light
-        builder.add(ControllerState.PROPERTY);
     }
 
     @Override
@@ -57,8 +50,19 @@ public class BotaniaManaPortBlock extends Block implements IPortBlock, EntityBlo
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level p_153212_, BlockState p_153213_, BlockEntityType<T> p_153214_) {
         return (a, b, c, d) -> {
             if (d instanceof BotaniaManaPortBlockEntity bm) {
-                bm.tick();
+                // tick() drove Botania mana-network registration and is stubbed out; see
+                // BotaniaManaPortBlockEntity for what to restore.
             }
         };
+    }
+
+    /**
+     * Matches the block item: the generated block.mm.<id> entry loses a pack-supplied translation
+     * key and hardcodes the English Input/Output suffix, so the model name is used directly.
+     */
+    @Override
+    public MutableComponent getName() {
+        var name = model.displayName();
+        return name != null ? name.copy() : super.getName();
     }
 }

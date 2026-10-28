@@ -1,41 +1,61 @@
 package io.ticticboom.mods.mm.gateway;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortHandler;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Shows the slots of the machine's item input ports (read only), followed by one always-empty slot to insert into;
- * whatever is inserted, into any slot, goes on to the input ports, filling them in order. Nothing can be extracted.
- * Showing the ports' contents lets an AE2 Pattern Provider in blocking mode wait until the machine has used its inputs.
- */
-public class GatewayItemHandler implements IItemHandler {
+public class GatewayItemHandler implements IItemHandler, TransferSnapshot {
     private final Supplier<List<IPortStorage>> inputs;
+    private final Supplier<List<IPortStorage>> outputs;
 
     public GatewayItemHandler(Supplier<List<IPortStorage>> inputs) {
-        this.inputs = inputs;
+        this(inputs, List::of);
     }
 
-    private List<IItemHandler> handlers() {
+    public GatewayItemHandler(Supplier<List<IPortStorage>> inputs, Supplier<List<IPortStorage>> outputs) {
+        this.inputs = inputs;
+        this.outputs = outputs;
+    }
+
+    private static List<IItemHandler> handlers(List<IPortStorage> storages) {
         var result = new ArrayList<IItemHandler>();
-        for (IPortStorage storage : inputs.get()) {
-            storage.getCapability(MMCapabilities.ITEM).resolve().ifPresent(result::add);
+        for (IPortStorage storage : storages) {
+            var handler = storage.getCapability(MMCapabilities.ITEM);
+            if (handler != null) {
+                result.add(handler);
+            }
         }
         return result;
+    }
+
+    private List<IItemHandler> all() {
+        var result = handlers(inputs.get());
+        result.addAll(handlers(outputs.get()));
+        return result;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return GatewaySnapshots.create(all());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        GatewaySnapshots.restore(snapshot);
     }
 
     @Override
     public int getSlots() {
         int slots = 1;
-        for (IItemHandler handler : handlers()) {
+        for (IItemHandler handler : all()) {
             slots += handler.getSlots();
         }
         return slots;
@@ -43,42 +63,49 @@ public class GatewayItemHandler implements IItemHandler {
 
     @Override
     public @NotNull ItemStack getStackInSlot(int slot) {
-        for (IItemHandler handler : handlers()) {
+        for (IItemHandler handler : all()) {
             if (slot < handler.getSlots()) {
                 return handler.getStackInSlot(slot);
             }
             slot -= handler.getSlots();
         }
-        // the trailing entry slot
         return ItemStack.EMPTY;
     }
 
     @Override
     public @NotNull ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
         ItemStack remaining = stack;
-        for (IPortStorage storage : inputs.get()) {
+        for (IItemHandler handler : handlers(inputs.get())) {
             if (remaining.isEmpty()) {
                 break;
             }
-            var handler = storage.getCapability(MMCapabilities.ITEM).resolve();
-            if (handler.isPresent()) {
-                IItemHandler itemHandler = handler.get();
-                remaining = itemHandler instanceof ItemPortHandler port
-                        ? port.insertStackFast(remaining, simulate)
-                        : ItemHandlerHelper.insertItemStacked(itemHandler, remaining, simulate);
-            }
+            remaining = handler instanceof ItemPortHandler port
+                    ? port.insertStackFast(remaining, simulate)
+                    : ItemHandlerHelper.insertItemStacked(handler, remaining, simulate);
         }
         return remaining;
     }
 
     @Override
     public @NotNull ItemStack extractItem(int slot, int amount, boolean simulate) {
+        for (IItemHandler handler : handlers(inputs.get())) {
+            slot -= handler.getSlots();
+        }
+        if (slot < 0) {
+            return ItemStack.EMPTY;
+        }
+        for (IItemHandler handler : handlers(outputs.get())) {
+            if (slot < handler.getSlots()) {
+                return handler.extractItem(slot, amount, simulate);
+            }
+            slot -= handler.getSlots();
+        }
         return ItemStack.EMPTY;
     }
 
     @Override
     public int getSlotLimit(int slot) {
-        for (IItemHandler handler : handlers()) {
+        for (IItemHandler handler : all()) {
             if (slot < handler.getSlots()) {
                 return handler.getSlotLimit(slot);
             }

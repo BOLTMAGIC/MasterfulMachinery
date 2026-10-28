@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.structure.layout;
 
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
@@ -8,21 +9,24 @@ import io.ticticboom.mods.mm.piece.type.porttype.PortTypeAnywhereStructurePiece;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
-import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
+import io.ticticboom.mods.mm.util.PortUtils;
 import io.ticticboom.mods.mm.util.WorldUtil;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
 import java.util.Map;
+import io.ticticboom.mods.mm.piece.type.port.PortStructurePiece;
+import io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece;
 
 public class StructureLayout {
     @Getter
@@ -70,18 +74,48 @@ public class StructureLayout {
     }
 
     public boolean formed(Level level, BlockPos worldControllerPos, StructureModel model) {
-        for (var entry : rotatedPositionedPieces.entrySet()) {
-            if (innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
-                return true;
-            }
-        }
-        return false;
+        return formedRotation(level, worldControllerPos, model, null) != null;
     }
 
-    /**
-     * The pieces that keep the structure from forming, for the rotation where that list is shortest.
-     * A port that may go anywhere counts as missing when no port position can hold it.
-     */
+    public @Nullable Rotation formedRotation(Level level, BlockPos worldControllerPos, StructureModel model, @Nullable Rotation preferred) {
+        if (preferred != null && innerFormed(level, worldControllerPos, model, rotatedPositionedPieces.get(preferred), preferred)) {
+            return preferred;
+        }
+        for (var entry : rotatedPositionedPieces.entrySet()) {
+            if (entry.getKey() != preferred && innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    public JsonObject debugFormed(Level level, BlockPos worldControllerPos, StructureModel model) {
+        var json = new JsonObject();
+        for (var entry : rotatedPositionedPieces.entrySet()) {
+            json.add(entry.getKey().name(), debugInnerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey()));
+        }
+        return json;
+    }
+
+    public JsonObject debugInnerFormed(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
+        var json = new JsonObject();
+        json.addProperty("formed", innerFormed(level, worldControllerPos, model, positionedPieces, rot));
+        json.addProperty("rotation", rot.name());
+        var piecesJson = new JsonArray();
+        for (PositionedLayoutPiece positionedPiece : positionedPieces) {
+            var pieceJson = positionedPiece.piece().debugFormed(level, worldControllerPos, model, rot);
+            piecesJson.add(pieceJson);
+        }
+        json.add("pieces", piecesJson);
+        return json;
+    }
+
+    public void validate(StructurePieceSetupMetadata meta) {
+        for (StructureLayoutPiece value : pieces.values()) {
+            value.validate(meta);
+        }
+    }
+
     public List<PositionedLayoutPiece> closestMissing(Level level, BlockPos worldControllerPos, StructureModel model) {
         List<PositionedLayoutPiece> best = null;
         for (var entry : rotatedPositionedPieces.entrySet()) {
@@ -118,49 +152,64 @@ public class StructureLayout {
         return missing;
     }
 
-    /** Whether the piece is a port matched against any port position of the structure, not only its own. */
+    private static boolean isGatewayInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece) {
+        var underlying = piece.piece().piece();
+        if (underlying instanceof PortStructurePiece || underlying instanceof PortTypeStructurePiece
+                || underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece) {
+            return false;
+        }
+        var state = level.getBlockState(piece.findAbsolutePos(worldControllerPos));
+        return state.is(MMRegisters.INPUT_GATEWAY.get()) || state.is(MMRegisters.PATTERN_PORT.get());
+    }
+
+    public List<BlockPos> getPositions(Level level, BlockPos worldControllerPos, StructureModel model) {
+        var rotation = formedRotation(level, worldControllerPos, model, null);
+        if (rotation == null) {
+            return List.of();
+        }
+        var positions = new ArrayList<BlockPos>();
+        for (PositionedLayoutPiece piece : rotatedPositionedPieces.get(rotation)) {
+            positions.add(piece.findAbsolutePos(worldControllerPos));
+        }
+        return positions;
+    }
+
+    public int[] chunkBounds(BlockPos worldControllerPos, Rotation rotation) {
+        int minX = worldControllerPos.getX() >> 4, maxX = minX;
+        int minZ = worldControllerPos.getZ() >> 4, maxZ = minZ;
+        for (PositionedLayoutPiece piece : rotatedPositionedPieces.get(rotation)) {
+            BlockPos pos = piece.findAbsolutePos(worldControllerPos);
+            minX = Math.min(minX, pos.getX() >> 4);
+            maxX = Math.max(maxX, pos.getX() >> 4);
+            minZ = Math.min(minZ, pos.getZ() >> 4);
+            maxZ = Math.max(maxZ, pos.getZ() >> 4);
+        }
+        return new int[]{minX, minZ, maxX, maxZ};
+    }
+
+    public boolean contains(BlockPos worldControllerPos, Rotation rotation, BlockPos pos) {
+        var pieces = rotatedPositionedPieces.get(rotation);
+        if (pieces == null) {
+            return false;
+        }
+        for (PositionedLayoutPiece piece : pieces) {
+            if (piece.findAbsolutePos(worldControllerPos).equals(pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public boolean isAnywhere(Object underlying) {
         return underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece
-                || (portsAnywhereGlobal && (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
-                || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece));
-    }
-
-    public JsonObject debugFormed(Level level, BlockPos worldControllerPos, StructureModel model) {
-        var json = new JsonObject();
-        for (var entry : rotatedPositionedPieces.entrySet()) {
-            json.add(entry.getKey().name(), debugInnerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey()));
-        }
-        return json;
-    }
-
-    public JsonObject debugInnerFormed(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
-        var json = new JsonObject();
-        json.addProperty("formed", innerFormed(level, worldControllerPos, model, positionedPieces, rot));
-        json.addProperty("rotation", rot.name());
-        var piecesJson = new JsonArray();
-        for (PositionedLayoutPiece positionedPiece : positionedPieces) {
-            var pieceJson = positionedPiece.piece().debugFormed(level, worldControllerPos, model, rot);
-            piecesJson.add(pieceJson);
-        }
-        json.add("pieces", piecesJson);
-        return json;
-    }
-
-    public void validate(StructurePieceSetupMetadata meta) {
-        for (StructureLayoutPiece value : pieces.values()) {
-            value.validate(meta);
-        }
+                || (portsAnywhereGlobal && (underlying instanceof PortStructurePiece || underlying instanceof PortTypeStructurePiece));
     }
 
     private boolean innerFormed(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
         // First pass: validate all non-anywhere pieces in-place
         List<PositionedLayoutPiece> anywherePieces = new ArrayList<>();
         for (PositionedLayoutPiece piece : positionedPieces) {
-            var layoutPiece = piece.piece();
-            var underlying = layoutPiece.piece();
-            // treat port pieces as anywhere if either they are explicitly anywhere OR the layout enables portsAnywhereGlobal
-            if (underlying instanceof PortAnywhereStructurePiece || underlying instanceof PortTypeAnywhereStructurePiece
-                    || (portsAnywhereGlobal && (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece))) {
+            if (isAnywhere(piece.piece().piece())) {
                 anywherePieces.add(piece);
                 continue; // skip per-position check for anywhere pieces
             }
@@ -273,7 +322,7 @@ public class StructureLayout {
 
     private boolean candidateMatches(StructureLayoutPiece layoutReq, Object requiredPiece, Level level, BlockPos absPos, Rotation rot, StructureModel model) {
         // get block entity safely
-        var be = level.getExistingBlockEntity(absPos);
+        var be = (level.isLoaded(absPos) ? level.getBlockEntity(absPos) : null);
         if (be == null) {
             try {
                 be = WorldUtil.getBlockEntity(absPos, (ServerLevel) level);
@@ -285,30 +334,30 @@ public class StructureLayout {
 
         // handle both explicit anywhere pieces and normal port pieces when layout/global flag marks them anywhere
         boolean portMatch = false;
-        if (requiredPiece instanceof PortAnywhereStructurePiece || requiredPiece instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece) {
+        if (requiredPiece instanceof PortAnywhereStructurePiece || requiredPiece instanceof PortStructurePiece) {
             PortAnywhereStructurePiece pa = null;
-            io.ticticboom.mods.mm.piece.type.port.PortStructurePiece normalP = null;
+            PortStructurePiece normalP = null;
             if (requiredPiece instanceof PortAnywhereStructurePiece) pa = (PortAnywhereStructurePiece) requiredPiece;
-            if (requiredPiece instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece) normalP = (io.ticticboom.mods.mm.piece.type.port.PortStructurePiece) requiredPiece;
+            if (requiredPiece instanceof PortStructurePiece) normalP = (PortStructurePiece) requiredPiece;
             var pm = pbe.getModel();
             String expectedPath = pa != null ? pa.getPortId().getPath() : normalP.getPortId().getPath();
             Optional<Boolean> expectedInputOpt = pa != null ? pa.getInput() : normalP.getInput();
-            if (!pm.id().equals(io.ticticboom.mods.mm.util.PortUtils.id(expectedPath, pm.input()))) {
+            if (!PortUtils.matchesId(pm.id(), pm.input(), expectedPath)) {
                 return false;
             }
-            if (expectedInputOpt.isPresent() && !expectedInputOpt.get().equals(pm.input())) return false;
+            if (!PortUtils.sideMatches(pm.type(), pm.input(), expectedInputOpt)) return false;
             portMatch = true;
-        } else if (requiredPiece instanceof PortTypeAnywhereStructurePiece || requiredPiece instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece) {
+        } else if (requiredPiece instanceof PortTypeAnywhereStructurePiece || requiredPiece instanceof PortTypeStructurePiece) {
             PortTypeAnywhereStructurePiece pta = null;
-            io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece normalPT = null;
+            PortTypeStructurePiece normalPT = null;
             if (requiredPiece instanceof PortTypeAnywhereStructurePiece) pta = (PortTypeAnywhereStructurePiece) requiredPiece;
-            if (requiredPiece instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece) normalPT = (io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece) requiredPiece;
-            ResourceLocation expectedType = pta != null ? pta.getPortTypeId() : normalPT.getPortTypeId();
+            if (requiredPiece instanceof PortTypeStructurePiece) normalPT = (PortTypeStructurePiece) requiredPiece;
+            Identifier expectedType = pta != null ? pta.getPortTypeId() : normalPT.getPortTypeId();
             Optional<Boolean> expectedInputOpt = pta != null ? pta.getInput() : normalPT.getInput();
             int minTier = pta != null ? pta.getMinTier() : normalPT.getMinTier();
             int maxTier = pta != null ? pta.getMaxTier() : normalPT.getMaxTier();
             if (!pbe.getModel().type().equals(expectedType)) return false;
-            if (expectedInputOpt.isPresent() && !expectedInputOpt.get().equals(pbe.getModel().input())) return false;
+            if (!PortUtils.sideMatches(pbe.getModel().type(), pbe.getModel().input(), expectedInputOpt)) return false;
             var storageModel = pbe.getModel().config().getModel();
             int candidateRank = storageModel.getTierRank();
             try {
@@ -334,80 +383,28 @@ public class StructureLayout {
     }
 
     public RecipeStorages getRecipeStorages(Level level, BlockPos worldControllerPos, StructureModel model) {
-        for (var entry : rotatedPositionedPieces.entrySet()) {
-            if (innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
-                return innerGetRecipeStorages(level, worldControllerPos, entry.getValue());
-            }
-        }
-        return null;
+        var rotation = formedRotation(level, worldControllerPos, model, null);
+        return rotation == null ? null : getRecipeStorages(level, worldControllerPos, rotation);
     }
 
-    /**
-     * An Input Gateway or a Pattern Port may stand in for any plain structure block (casing, glass...), so it can
-     * be built into the machine; never for a port.
-     */
-    private static boolean isGatewayInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece) {
-        var underlying = piece.piece().piece();
-        if (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
-                || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece
-                || underlying instanceof PortAnywhereStructurePiece
-                || underlying instanceof PortTypeAnywhereStructurePiece) {
-            return false;
-        }
-        var state = level.getBlockState(piece.findAbsolutePos(worldControllerPos));
-        return state.is(MMRegisters.INPUT_GATEWAY.get()) || state.is(MMRegisters.PATTERN_PORT.get());
-    }
-
-    /**
-     * @return every position of the formed structure, or an empty list when not formed
-     */
-    public List<BlockPos> getPositions(Level level, BlockPos worldControllerPos, StructureModel model) {
-        for (var entry : rotatedPositionedPieces.entrySet()) {
-            if (innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
-                var positions = new ArrayList<BlockPos>();
-                for (PositionedLayoutPiece piece : entry.getValue()) {
-                    positions.add(piece.findAbsolutePos(worldControllerPos));
-                }
-                return positions;
-            }
-        }
-        return List.of();
-    }
-
-    /**
-     * @return positions of the ports of the formed structure, inputs first, or an empty list when not formed
-     */
-    public List<BlockPos> getPortPositions(Level level, BlockPos worldControllerPos, StructureModel model) {
-        for (var entry : rotatedPositionedPieces.entrySet()) {
-            if (!innerFormed(level, worldControllerPos, model, entry.getValue(), entry.getKey())) {
-                continue;
-            }
-            var inputs = new ArrayList<BlockPos>();
-            var outputs = new ArrayList<BlockPos>();
-            for (PositionedLayoutPiece positionedPiece : entry.getValue()) {
-                BlockPos absolutePos = positionedPiece.findAbsolutePos(worldControllerPos);
-                if (level.getExistingBlockEntity(absolutePos) instanceof IPortBlockEntity pbe) {
-                    (pbe.isInput() ? inputs : outputs).add(absolutePos);
-                }
-            }
-            inputs.addAll(outputs);
-            return inputs;
-        }
-        return List.of();
+    public RecipeStorages getRecipeStorages(Level level, BlockPos worldControllerPos, Rotation rotation) {
+        return innerGetRecipeStorages(level, worldControllerPos, rotatedPositionedPieces.get(rotation));
     }
 
     private RecipeStorages innerGetRecipeStorages(Level level, BlockPos worldControllerPos, List<PositionedLayoutPiece> positionedPieces) {
         var inputStorages = new ArrayList<IPortStorage>();
         var outputStorages = new ArrayList<IPortStorage>();
+        var sources = new ArrayList<IPortBlockEntity>();
         for (PositionedLayoutPiece positionedPiece : positionedPieces) {
             BlockPos absolutePos = positionedPiece.findAbsolutePos(worldControllerPos);
             //this works faster
-            var be = level.getExistingBlockEntity(absolutePos);
+            var be = (level.isLoaded(absolutePos) ? level.getBlockEntity(absolutePos) : null);
             if(be == null) {
                 //just in case of chunk unload
                 be = WorldUtil.getBlockEntity(absolutePos, (ServerLevel) level);
             }
             if (be instanceof IPortBlockEntity pbe) {
+                sources.add(pbe);
                 if (pbe.isInput()) {
                     inputStorages.add(pbe.getStorage());
                 } else {
@@ -415,10 +412,10 @@ public class StructureLayout {
                 }
             }
         }
-        return new RecipeStorages(inputStorages, outputStorages);
+        return new RecipeStorages(inputStorages, outputStorages, sources);
     }
 
-    public static StructureLayout parse(JsonObject json, ResourceLocation structureId) {
+    public static StructureLayout parse(JsonObject json, Identifier structureId) {
         var raw = getCharGrid(json);
         var pieces = getPieces(json, structureId);
         boolean portsAnywhere = false;
@@ -446,7 +443,7 @@ public class StructureLayout {
         }
     }
 
-    private static Map<StructureKeyChar, StructureLayoutPiece> getPieces(JsonObject json, ResourceLocation structureId) {
+    private static Map<StructureKeyChar, StructureLayoutPiece> getPieces(JsonObject json, Identifier structureId) {
         Map<StructureKeyChar, StructureLayoutPiece> pieces = new HashMap<>();
         for (var key : json.getAsJsonObject("key").asMap().entrySet()) {
             JsonObject jsonKey = key.getValue().getAsJsonObject();

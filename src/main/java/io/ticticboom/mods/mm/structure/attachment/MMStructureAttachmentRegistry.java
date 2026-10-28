@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.structure.attachment;
 
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.structure.attachment.states.StateListsStructureAttachmentType;
+import io.ticticboom.mods.mm.structure.attachment.visuals.VisualsStructureAttachmentType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,6 +16,7 @@ public class MMStructureAttachmentRegistry {
 
     public static void init() {
         register(new StateListsStructureAttachmentType());
+        register(new VisualsStructureAttachmentType());
     }
 
     public static List<StructureAttachment> parseStructureAttachments(JsonObject json) {

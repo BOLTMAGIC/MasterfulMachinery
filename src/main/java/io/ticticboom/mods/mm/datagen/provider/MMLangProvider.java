@@ -7,8 +7,8 @@ import io.ticticboom.mods.mm.port.IPortPart;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.common.data.LanguageProvider;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.common.data.LanguageProvider;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public class MMLangProvider extends LanguageProvider {
     public MMLangProvider(DataGenerator generator, String locale) {
@@ -17,7 +17,7 @@ public class MMLangProvider extends LanguageProvider {
 
     @Override
     protected void addTranslations() {
-        for (RegistryObject<Block> entry : MMRegisters.BLOCKS.getEntries()) {
+        for (DeferredHolder<Block, ? extends Block> entry : MMRegisters.BLOCKS.getEntries()) {
             if (entry.get() instanceof IControllerPart controllerPart) {
                 this.add(entry.get(), controllerPart.getModel().name());
             }
@@ -29,6 +29,9 @@ public class MMLangProvider extends LanguageProvider {
             }
         }
 
-        this.add(MMRegisters.BLUEPRINT.get(), "Blueprint");
+        // The blueprint's name is not generated here. It is a fixed item rather than data-driven
+        // content, so it lives in assets/mm/lang/en_us.json as item.mm.blueprint like the mod's
+        // other items. Generating it hardcoded English at runtime made it the one item name no
+        // translation or resource pack could override.
     }
 }

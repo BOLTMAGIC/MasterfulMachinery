@@ -5,21 +5,25 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortMenu;
 import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.port.common.IPagedPortMenu;
+import io.ticticboom.mods.mm.port.common.PortGrid;
+import io.ticticboom.mods.mm.port.common.PortPager;
 import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.MenuUtils;
 import lombok.Getter;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.entity.player.Player;
 
-public class ItemPortMenu extends MMContainerMenu implements IPortMenu {
+public class ItemPortMenu extends MMContainerMenu implements IPortMenu, IPagedPortMenu {
     @Getter
     private final PortModel model;
     private final RegistryGroupHolder groupHolder;
     private final boolean isInput;
     private final Inventory inv;
     private final IPortBlockEntity be;
+    @Getter
+    private final PortPager pager;
 
     private static int calcExtraSlots(IPortStorage storage) {
         ItemPortStorageModel storageModel = (ItemPortStorageModel) storage.getStorageModel();
@@ -34,18 +38,8 @@ public class ItemPortMenu extends MMContainerMenu implements IPortMenu {
         this.inv = inv;
         this.be = be;
         IPortStorage storage = be.getStorage();
+        this.pager = new PortPager(PortGrid.of((ItemPortStorageModel) storage.getStorageModel()));
         storage.setupContainer(this, inv, model);
-        if (!inv.player.level().isClientSide() && be instanceof ItemPortBlockEntity port) {
-            port.addViewer();
-        }
-    }
-
-    @Override
-    public void removed(Player player) {
-        super.removed(player);
-        if (!player.level().isClientSide() && be instanceof ItemPortBlockEntity port) {
-            port.removeViewer();
-        }
     }
 
     public ItemPortMenu(PortModel model, RegistryGroupHolder groupHolder, boolean isInput, int windowId, Inventory inv, FriendlyByteBuf buf) {

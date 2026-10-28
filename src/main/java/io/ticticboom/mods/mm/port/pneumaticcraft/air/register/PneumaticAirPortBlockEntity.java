@@ -22,6 +22,7 @@ import me.desht.pneumaticcraft.common.upgrades.ModUpgrades;
 import me.desht.pneumaticcraft.common.util.DirectionUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -33,10 +34,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -87,7 +86,7 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("container.mm.port.pneumatic_air");
+        return Component.translatable("port.mm.pneumaticcraft_air.title");
     }
 
     @Nullable
@@ -101,19 +100,9 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
     public boolean hasMenu() {
         return true;
     }
-    @Override
     public IItemHandler getPrimaryInventory() {
         return null;
     }
-
-    public <T> @NotNull LazyOptional<T> getCapability(@Nonnull Capability<T> cap, @javax.annotation.Nullable Direction side) {
-        if (cap != PNCCapabilities.AIR_HANDLER_MACHINE_CAPABILITY) {
-            return super.getCapability(cap, side);
-        } else {
-            return this.storage.getCapability(cap);
-        }
-    }
-
 
     @Nullable
     @Override
@@ -133,21 +122,21 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
 
 
     @Override
-    public void saveAdditional(CompoundTag tag) {
-        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag()));
-        super.saveAdditional(tag);
+    public void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
+        super.saveLegacy(tag, registries);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY));
-        super.load(tag);
+    public void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY), registries);
+        super.loadLegacy(tag, registries);
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag);
+        saveLegacy(tag, registries);
         return tag;
     }
 

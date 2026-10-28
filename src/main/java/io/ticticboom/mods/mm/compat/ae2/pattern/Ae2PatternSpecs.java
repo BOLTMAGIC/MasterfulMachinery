@@ -6,11 +6,11 @@ import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
 import io.ticticboom.mods.mm.pattern.PatternIngredient;
-import io.ticticboom.mods.mm.pattern.PatternMismatch;
 import io.ticticboom.mods.mm.pattern.PatternIngredient.Kind;
+import io.ticticboom.mods.mm.pattern.PatternMismatch;
 import io.ticticboom.mods.mm.pattern.PatternSpec;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -63,12 +63,12 @@ public final class Ae2PatternSpecs {
     @Nullable
     public static PatternIngredient ingredient(AEKey key, long amount) {
         if (key instanceof AEItemKey item) {
-            return new PatternIngredient(Kind.ITEM, ForgeRegistries.ITEMS.getKey(item.getItem()), amount,
-                    item.getTag() == null ? null : item.getTag().copy());
+            return new PatternIngredient(Kind.ITEM, BuiltInRegistries.ITEM.getKey(item.getItem()), amount,
+                    item.toStack().getComponentsPatch());
         }
         if (key instanceof AEFluidKey fluid) {
-            return new PatternIngredient(Kind.FLUID, ForgeRegistries.FLUIDS.getKey(fluid.getFluid()), amount, null);
+            return new PatternIngredient(Kind.FLUID, BuiltInRegistries.FLUID.getKey(fluid.getFluid()), amount);
         }
-        return APPMEK ? Ae2ChemicalKeys.ingredient(key, amount) : null;
+        return null; // [26.1-pending] Applied Mekanistics: APPMEK ? Ae2ChemicalKeys.ingredient(key, amount) : null
     }
 }

@@ -1,21 +1,24 @@
 package io.ticticboom.mods.mm.recipe.condition.dimension;
 
-import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import io.ticticboom.mods.mm.recipe.RecipeStateModel;
+import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.level.Level;
 
 public class DimensionRecipeCondition implements IRecipeCondition {
 
-    private final ResourceLocation id;
+    private final Identifier id;
 
-    public DimensionRecipeCondition(ResourceLocation id) {
+    public DimensionRecipeCondition(Identifier id) {
         this.id = id;
     }
 
     @Override
     public boolean canRun(RecipeConditionContext ctx) {
-        return ctx.level().dimension().location().equals(id);
+        return ctx.level().dimension().identifier().equals(id);
     }
 
     @Override

@@ -1,0 +1,24 @@
+{
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "ae2"
+    }
+  ],
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " PF",
+    " IP",
+    "I  "
+  ],
+  "key": {
+    "F": "ae2:fluix_crystal",
+    "P": "ae2:engineering_processor",
+    "I": "minecraft:iron_ingot"
+  },
+  "result": {
+    "id": "mm:network_linker",
+    "count": 1
+  }
+}

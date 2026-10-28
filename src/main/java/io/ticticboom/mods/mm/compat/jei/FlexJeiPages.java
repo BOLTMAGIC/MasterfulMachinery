@@ -38,7 +38,7 @@ public final class FlexJeiPages {
             config.addProperty(FlexRecipeIngredientEntry.JEI_PAGE_TIER, pages.get(i).tier());
             config.addProperty(FlexRecipeIngredientEntry.JEI_PAGE_PART, pages.get(i).part());
             copies.add(new RecipeModel(recipe.id(), recipe.structureId(), recipe.ticks(), recipe.inputs(), recipe.outputs(),
-                    new ArrayList<>(), new ArrayList<>(), recipe.conditions(), recipe.parallelProcessing(), config));
+                    new ArrayList<>(), new ArrayList<>(), recipe.conditions(), recipe.parallelProcessing(), recipe.requestOnly(), config));
         }
         return copies;
     }

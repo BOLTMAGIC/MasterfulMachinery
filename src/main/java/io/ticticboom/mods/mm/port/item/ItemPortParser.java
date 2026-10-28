@@ -1,11 +1,14 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.util.ItemComponentUtil;
+import net.minecraft.core.component.DataComponentPatch;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.port.IPortParser;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.NbtMatchUtils;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.nbt.CompoundTag;
@@ -13,7 +16,6 @@ import net.minecraft.nbt.CompoundTag;
 import java.util.function.Supplier;
 
 public class ItemPortParser implements IPortParser {
-    private static final int HARD_MAX = 16_384;
 
     @Override
     public IPortStorageFactory parseStorage(JsonObject json) {
@@ -23,7 +25,7 @@ public class ItemPortParser implements IPortParser {
         int slotCapacity = 0;
         if (json.has("slotCapacity")) {
             try {
-                slotCapacity = Math.max(0, Math.min(HARD_MAX, json.get("slotCapacity").getAsInt()));
+                slotCapacity = Math.max(0, Math.min(ItemPortHandler.MAX_SLOT_CAPACITY, json.get("slotCapacity").getAsInt()));
             } catch (Exception ignored) {
             }
         }
@@ -39,8 +41,7 @@ public class ItemPortParser implements IPortParser {
 
     @Override
     public IPortIngredient parseRecipeIngredient(JsonObject json) {
-        // like vanilla recipes, a missing count means one item
-        var count = json.has("count") ? json.get("count").getAsInt() : 1;
+        var count = json.has("count") ? AmountRange.parse(json, "count") : AmountRange.of(1);
         CompoundTag requiredNbt = null;
         boolean nbtStrong = false;
         if (json.has("nbt")) {
@@ -54,6 +55,7 @@ public class ItemPortParser implements IPortParser {
             } catch (Exception e) {
             }
         }
+        DataComponentPatch components = json.has("components") ? ItemComponentUtil.parse(json.get("components")) : DataComponentPatch.EMPTY;
         if (json.has("nbt_match")) {
             try {
                 var v = json.get("nbt_match").getAsString();
@@ -64,10 +66,10 @@ public class ItemPortParser implements IPortParser {
 
         if (json.has("item")) {
             var itemId = ParserUtils.parseId(json, "item");
-            return new SingleItemPortIngredient(itemId, count, requiredNbt, nbtStrong);
+            return new SingleItemPortIngredient(itemId, count, requiredNbt, nbtStrong, components);
         } else if (json.has("tag")) {
             var tagId = ParserUtils.parseId(json, "tag");
-            return new TagItemPortIngredient(tagId, count, requiredNbt, nbtStrong);
+            return new TagItemPortIngredient(tagId, count, requiredNbt, nbtStrong, components);
         }
         throw new RuntimeException("Invalid recipe item ingredient, neither item, not tag was found.");
     }

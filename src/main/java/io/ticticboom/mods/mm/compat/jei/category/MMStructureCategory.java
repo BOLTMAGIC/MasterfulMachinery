@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
+import org.joml.Matrix3x2fStack;
+import org.joml.Vector2f;
 import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
@@ -27,14 +29,16 @@ import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.recipe.RecipeType;
 import mezz.jei.api.recipe.category.IRecipeCategory;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2i;
 import org.joml.Vector4f;
+import io.ticticboom.mods.mm.config.MMConfigSetup;
+import io.ticticboom.mods.mm.structure.StructureProblems;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -52,11 +56,10 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     // dynamic fields that can change per-recipe when setRecipe is called
     private IDrawableStatic background;
     private int dynamicHeight = PANEL_SIZE.y;
+    private final MutableComponent title = Component.translatable("jei.mm.category.structure");
     private static final int LAYER_WIDGET_WIDTH = 80;
     private static final int LAYER_WIDGET_Y = RENDER_SIZE.y - 12;
-    private final MutableComponent title = Component.translatable("jei.mm.structure.title");
-    // selected Y layer per structure shown in JEI; -1 = whole structure
-    private final Map<ResourceLocation, Integer> selectedLayers = new HashMap<>();
+    private final Map<Identifier, Integer> selectedLayers = new HashMap<>();
 
     public MMStructureCategory(final IGuiHelper helper) {
         this.helper = helper;
@@ -70,7 +73,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public ResourceLocation getRegistryName(StructureModel recipe) {
+    public Identifier getRegistryName(StructureModel recipe) {
         return recipe.id();
     }
 
@@ -96,8 +99,8 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, StructureModel recipe, @NotNull IFocusGroup focuses) {
-        var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST);
-        for (ResourceLocation id : recipe.controllerIds().getIds()) {
+        var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CRAFTING_STATION);
+        for (Identifier id : recipe.controllerIds().getIds()) {
             Item controller = MMControllerRegistry.getControllerItem(id);
             if (controller != null) {
                 catalysts.addItemStack(controller.getDefaultInstance());
@@ -145,7 +148,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             slot.addRichTooltipCallback((a, b) -> b.add(countedItemStack.getDetail()));
         }
 
-        builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)
+        builder.addInvisibleIngredients(RecipeIngredientRole.CRAFTING_STATION)
                 .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
             builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
                 .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
@@ -157,7 +160,6 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         guiRenderer.init();
         int layerCount = guiRenderer.getStructureSize().y + 1;
         if (layerCount >= 2) {
-            // added first: JEI gives the input to the first handler under the pointer
             var widget = new StructureLayerWidget(
                 (PANEL_SIZE.x - LAYER_WIDGET_WIDTH) / 2, LAYER_WIDGET_Y, LAYER_WIDGET_WIDTH, layerCount,
                 () -> selectedLayers.getOrDefault(recipe.id(), -1),
@@ -165,9 +167,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             builder.addWidget(widget);
             builder.addInputHandler(widget);
         }
-        // blue "i" in the bottom-right corner of the view explains the mouse controls
         builder.addWidget(new StructureInfoWidget(RENDER_SIZE.x - StructureInfoWidget.SIZE - 1, LAYER_WIDGET_Y + 1));
-        // mouse wheel over the view zooms
         builder.addInputHandler(new IJeiInputHandler() {
             private final ScreenRectangle area = new ScreenRectangle(1, 1, RENDER_SIZE.x, RENDER_SIZE.y);
 
@@ -177,7 +177,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             }
 
             @Override
-            public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollDelta) {
+            public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDelta) {
                 guiRenderer.zoom(scrollDelta);
                 return true;
             }
@@ -185,7 +185,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, @NotNull GuiGraphics guiGraphics, double mouseX, double mouseY) {
+    public void draw(@NotNull StructureModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         background.draw(guiGraphics, 0, 0);
 
         renderStructure(recipe, guiGraphics, mouseX, mouseY);
@@ -196,7 +196,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         }
 
         // Render Max Parallel Processing as first entry in JEI (configurable)
-        if (io.ticticboom.mods.mm.config.MMConfigSetup.COMMON.showJeiMaxParallel.get()) {
+        if (MMConfigSetup.COMMON.showJeiMaxParallel.get()) {
         int structVal = recipe.maxParallelRecipes();
         int displayInt = 1; // default when unspecified or zero/negative
         if (structVal > 0) {
@@ -210,49 +210,66 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 }
             }
         }
-        String line = Component.translatable("jei.mm.structure.max_parallel", displayInt).getString();
+        String line = Component.translatable("gui.mm.controller.max_parallel", displayInt).getString();
             // draw structure name first, then the Max Parallel line smaller beneath it
             int nameY = 5;
-            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, nameY, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.displayName(), 5, nameY, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
             int lineHeight = Minecraft.getInstance().font.lineHeight;
             int subY = nameY + lineHeight;
             float scale = 0.65f; // smaller text for the max-parallel line
-            guiGraphics.pose().pushPose();
+            guiGraphics.pose().pushMatrix();
             // translate to desired position then scale down
-            guiGraphics.pose().translate(5f, (float) subY, 0f);
-            guiGraphics.pose().scale(scale, scale, 1f);
+            guiGraphics.pose().translate(5f, (float) subY);
+            guiGraphics.pose().scale(scale, scale);
             int wrapWidth = (int) ((RENDER_SIZE.x - 5) / scale);
             TextRenderUtil.renderWordWrapLimit(guiGraphics, line, 0, 0, wrapWidth, 1, 0xFFFFFFFF);
-            guiGraphics.pose().popPose();
+            guiGraphics.pose().popMatrix();
         } else {
-            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.name(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
+            TextRenderUtil.renderWordWrapLimit(guiGraphics, recipe.displayName(), 5, 5, RENDER_SIZE.x - 5, 2, 0xFFFFFFFF);
         }
+        drawMissingPorts(recipe, guiGraphics);
     }
 
-    private void renderStructure(StructureModel recipe, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+    private void drawMissingPorts(StructureModel recipe, GuiGraphicsExtractor guiGraphics) {
+        var missing = StructureProblems.missingPorts(recipe.id());
+        if (missing.isEmpty()) {
+            return;
+        }
+        int lineHeight = Minecraft.getInstance().font.lineHeight;
+        int warnY = MMConfigSetup.COMMON.showJeiMaxParallel.get()
+                ? 5 + lineHeight + 7
+                : 5 + lineHeight;
+        String warn = Component.translatable("jei.mm.structure.missing_port", missing.get(0).toString()).getString();
+        float scale = 0.65f;
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().translate(5f, (float) warnY);
+        guiGraphics.pose().scale(scale, scale);
+        TextRenderUtil.renderWordWrapLimit(guiGraphics, warn, 0, 0, (int) ((RENDER_SIZE.x - 5) / scale), 2, 0xFFFF5555);
+        guiGraphics.pose().popMatrix();
+    }
+
+    private void renderStructure(StructureModel recipe, GuiGraphicsExtractor guiGraphics, double mouseX, double mouseY) {
         var pos = getGuiPosition(guiGraphics.pose());
 
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().setIdentity();
+        guiGraphics.pose().pushMatrix();
+        guiGraphics.pose().identity();
 
         var renderer = recipe.getGuiRenderer();
-        // the renderer is shared with the blueprint screen, so apply this view's layer every frame
         int layer = selectedLayers.getOrDefault(recipe.id(), -1);
         renderer.setYSlice(layer >= 0, renderer.getMinBound().y() + layer);
         renderer.setViewport(GuiPos.of(pos.x + 1, pos.y + 1, RENDER_SIZE.x, RENDER_SIZE.y));
-        renderer.render(guiGraphics, (int) mouseX, (int) mouseY, isOverView(mouseX, mouseY));
+        renderer.setHoverBounds(null);
+        renderer.extractRenderState(guiGraphics, (int) mouseX, (int) mouseY, isOverView(mouseX, mouseY));
 
-        guiGraphics.pose().popPose();
+        guiGraphics.pose().popMatrix();
     }
 
-    /** Over the 3D view, but not over the layer selector at its bottom. */
     private static boolean isOverView(double mouseX, double mouseY) {
         return mouseX >= 1 && mouseX < 1 + RENDER_SIZE.x && mouseY >= 1 && mouseY < LAYER_WIDGET_Y;
     }
 
-    private Vector2i getGuiPosition(PoseStack poseStack) {
-        var transformedPosition = new Vector4f(0, 0, 0, 1);
-        transformedPosition.mul(poseStack.last().pose());
+    private Vector2i getGuiPosition(Matrix3x2fStack pose) {
+        var transformedPosition = pose.transformPosition(new Vector2f(0, 0));
         return new Vector2i((int) transformedPosition.x, (int) transformedPosition.y);
     }
 }

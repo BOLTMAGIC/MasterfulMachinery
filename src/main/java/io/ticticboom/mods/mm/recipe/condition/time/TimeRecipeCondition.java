@@ -7,9 +7,6 @@ import net.minecraft.network.chat.Component;
 
 import java.util.Locale;
 
-/**
- * Only by day or only at night: {"type": "mm:time", "time": "night"}.
- */
 public class TimeRecipeCondition implements IRecipeCondition {
     private final boolean day;
 
@@ -23,10 +20,8 @@ public class TimeRecipeCondition implements IRecipeCondition {
 
     @Override
     public boolean canRun(RecipeConditionContext ctx) {
-        // the sun is up for world time 0..12999 of each day
-        long time = ctx.level().getDayTime() % 24000L;
-        boolean isDay = time < 13000L;
-        return isDay == day;
+        long time = ctx.level().getOverworldClockTime() % 24000L;
+        return (time < 13000L) == day;
     }
 
     @Override

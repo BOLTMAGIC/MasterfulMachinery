@@ -6,7 +6,7 @@
       "type": "mm:input/consume",
       "ingredient": {
         "type": "mm:item",
-        "tag": "forge:ingots",
+        "tag": "c:ingots",
         "count": 2
       }
     },

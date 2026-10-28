@@ -4,7 +4,7 @@ import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -26,10 +26,10 @@ public class NoCountItemRenderer implements IIngredientRenderer<ItemStack> {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, ItemStack ingredient) {
+    public void render(GuiGraphicsExtractor guiGraphics, ItemStack ingredient) {
         // Render the item model only; skip renderItemDecorations so the vanilla
         // count string is never drawn (we draw our own in MMRecipeCategory.draw).
-        guiGraphics.renderItem(ingredient, 0, 0);
+        guiGraphics.item(ingredient, 0, 0);
     }
 
     @Override

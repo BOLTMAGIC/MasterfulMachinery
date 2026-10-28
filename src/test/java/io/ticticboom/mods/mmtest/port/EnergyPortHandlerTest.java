@@ -14,12 +14,14 @@ class EnergyPortHandlerTest {
         return new EnergyPortHandler(capacity, capacity, capacity, () -> {});
     }
 
+    // The 26.1 base (An0mz's) keeps energy as a long and receives through insert(long, simulate); these are the
+    // overflow cases of the 1.20.1 fix, checked against that API.
     @Test
     void receiveNearIntMaxFillsUpToCapacity() {
         // a Gigantic port (capacity Integer.MAX_VALUE) getting 64M from a recipe: energy + amount overflowed int and wrapped negative
         var handler = handler(MAX);
-        handler.unboundedReceiveEnergy(2_118_065_408, false);
-        assertEquals(MAX - 2_118_065_408, handler.unboundedReceiveEnergy(64_000_000, false));
+        handler.insert(2_118_065_408, false);
+        assertEquals(MAX - 2_118_065_408, handler.insert(64_000_000, false));
         assertEquals(MAX, handler.getEnergyStored());
     }
 
@@ -27,16 +29,16 @@ class EnergyPortHandlerTest {
     void simulatedReceiveNearIntMaxReportsOnlyTheRoomLeft() {
         // canOutput simulates first: it must see the port as (nearly) full, or the machine keeps running into it
         var handler = handler(MAX);
-        handler.unboundedReceiveEnergy(2_118_065_408, false);
-        assertEquals(MAX - 2_118_065_408, handler.unboundedReceiveEnergy(64_000_000, true));
+        handler.insert(2_118_065_408, false);
+        assertEquals(MAX - 2_118_065_408, handler.insert(64_000_000, true));
         assertEquals(2_118_065_408, handler.getEnergyStored());
     }
 
     @Test
     void fullPortReceivesNothing() {
         var handler = handler(MAX);
-        handler.unboundedReceiveEnergy(MAX, false);
-        assertEquals(0, handler.unboundedReceiveEnergy(64_000_000, false));
+        handler.insert(MAX, false);
+        assertEquals(0, handler.insert(64_000_000, false));
         assertEquals(MAX, handler.getEnergyStored());
     }
 
@@ -44,14 +46,14 @@ class EnergyPortHandlerTest {
     void negativeSavedEnergyLoadsAsEmpty() {
         // worlds saved while the overflow bug was hit hold a negative amount
         var handler = handler(MAX);
-        handler.deserializeNBT(IntTag.valueOf(-2_112_901_888));
+        handler.deserialize(IntTag.valueOf(-2_112_901_888));
         assertEquals(0, handler.getEnergyStored());
     }
 
     @Test
     void savedEnergyAboveCapacityLoadsAsFull() {
         var handler = handler(1_000);
-        handler.deserializeNBT(IntTag.valueOf(5_000));
+        handler.deserialize(IntTag.valueOf(5_000));
         assertEquals(1_000, handler.getEnergyStored());
     }
 }

@@ -1,70 +1,93 @@
 package io.ticticboom.mods.mm.recipe.output.simple;
 
+import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.SlotBadgeDrawable;
 import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
-import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.ChanceUtils;
-import lombok.Getter;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
-import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
-    @Getter
     private final IPortIngredient ingredient;
-    @Getter
     private final double chance;
-    @Getter
     private final boolean perTick;
-    /** The "as" name of an mm:input/count entry whose count multiplies the amount, or null. */
-    @Getter
-    @Nullable
+    private final String chanceRollKey;
+    /** The "as" name of an mm:input/count (or mm:input/flex) entry whose number multiplies the amount, or null. */
+    @org.jetbrains.annotations.Nullable
     private final String scaleBy;
-    private final Map<Integer, IPortIngredient> scaled = new ConcurrentHashMap<>();
-
-    private boolean shouldRun = true;
+    private final java.util.Map<Integer, IPortIngredient> scaled = new java.util.concurrent.ConcurrentHashMap<>();
 
     public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick) {
         this(ingredient, chance, perTick, null);
     }
 
-    public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick, @Nullable String scaleBy) {
+    public SimpleRecipeOutputEntry(IPortIngredient ingredient, double chance, boolean perTick, @org.jetbrains.annotations.Nullable String scaleBy) {
 
         this.ingredient = ingredient;
         this.chance = chance;
         this.perTick = perTick;
         this.scaleBy = scaleBy;
+        this.chanceRollKey = "c" + AmountRange.nextRollKey();
+    }
+
+    public double getChance() {
+        return chance;
+    }
+
+    public boolean isPerTick() {
+        return perTick;
+    }
+
+    @org.jetbrains.annotations.Nullable
+    public String getScaleBy() {
+        return scaleBy;
     }
 
     /** The ingredient for this run: scaled by the counted items when "scale_by" is set. */
     private IPortIngredient ingredientFor(RecipeStateModel state) {
-        if (scaleBy == null) {
+        if (scaleBy == null || state == null) {
             return ingredient;
         }
-        return scaled.computeIfAbsent(state.getCount(scaleBy), f -> ingredient.scaled(f));
+        return scaled.computeIfAbsent(state.getCount(scaleBy), factor -> ingredient.scaled(factor));
+    }
+
+    @Override
+    public java.util.List<io.ticticboom.mods.mm.recipe.output.DisplayedOutput> displayedOutputs() {
+        return java.util.List.of(new io.ticticboom.mods.mm.recipe.output.DisplayedOutput(ingredient, chance));
+    }
+
+    public IPortIngredient getIngredient() {
+        return ingredient;
+    }
+
+    private boolean shouldRun(RecipeStateModel state) {
+        if (chance >= 1) {
+            return true;
+        }
+        if (perTick || state == null) {
+            return ChanceUtils.shouldProceed(chance);
+        }
+        return chance >= state.getRollToken(chanceRollKey);
     }
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        shouldRun = ChanceUtils.shouldProceed(chance);
-        if (!shouldRun) {
+        if (!shouldRun(state)) {
             return true;
         }
         return ingredientFor(state).canOutput(level, storages, state);
@@ -72,14 +95,14 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if (!perTick && shouldRun) {
+        if (!perTick && shouldRun(state)) {
             ingredientFor(state).output(level, storages, state);
         }
     }
 
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if (perTick && shouldRun) {
+        if (perTick && shouldRun(state)) {
             ingredientFor(state).output(level, storages, state);
         }
         ingredientFor(state).outputTick(level, storages, state);
@@ -87,17 +110,13 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
-        return !perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
+        return !perTick && shouldRun(state) ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
     }
 
     @Override
     public java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
-        return perTick && shouldRun ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
-    }
-
-    @Override
-    public java.util.List<DisplayedOutput> displayedOutputs() {
-        return java.util.List.of(new DisplayedOutput(ingredient, chance));
+        // a per-tick chance is rolled again on every tick, so room is kept as if it always hits
+        return perTick ? java.util.List.of(ingredientFor(state)) : java.util.List.of();
     }
 
     @Override
@@ -110,10 +129,9 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         var rSlot = addOutputSlot(builder, model, focus, helpers, grid, ingredient);
         double percent = chance * 100.0;
         String percentStr = new java.math.BigDecimal(Double.toString(percent)).setScale(4, java.math.RoundingMode.HALF_UP).stripTrailingZeros().toPlainString();
-        var fmtChance = percentStr + "% Chance of Output";
         rSlot.addRichTooltipCallback((v, list) -> {
             if (chance < 1) {
-                list.add(Component.literal(fmtChance).withStyle(ChatFormatting.DARK_AQUA));
+                list.add(Component.translatable("jei.mm.recipe.chance_of_output", percentStr).withStyle(ChatFormatting.DARK_AQUA));
             }
             if (perTick) {
                 list.add(Component.translatable("jei.mm.recipe.output_per_tick").withStyle(ChatFormatting.DARK_AQUA));
@@ -124,25 +142,26 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
         });
     }
 
-    /**
-     * Adds a JEI output slot on the next grid cell for the ingredient, with the item count badge.
-     */
     public static IRecipeSlotBuilder addOutputSlot(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IPortIngredient ingredient) {
         SlotGridEntry slot = grid.next();
         slot.setUsed();
         var rSlot = builder.addSlot(RecipeIngredientRole.OUTPUT, slot.getInnerX(), slot.getInnerY());
-        // if underlying ingredient is an item, store its intended count on the slot for JEI rendering
-        try {
-            if (ingredient instanceof io.ticticboom.mods.mm.port.item.BaseItemPortIngredient bif) {
-                int cnt = bif.getCount();
-                slot.setBadgeCount(cnt);
-                if (cnt > 1) {
-                    rSlot.setOverlay(new SlotBadgeDrawable(cnt, false), 0, 0);
-                    rSlot.addRichTooltipCallback((v, list) ->
-                        list.add(Component.literal("x " + cnt).withStyle(ChatFormatting.GRAY)));
-                }
+        if (ingredient instanceof BaseItemPortIngredient item) {
+            slot.setBadgeCount(item.getCount());
+            if (item.getCount() > 1) {
+                rSlot.setOverlay(new SlotBadgeDrawable(item.getCount(), false), 0, 0);
             }
-        } catch (Throwable ignored) {
+        }
+        var range = ingredient.getAmountRange();
+        if (range != null && range.isRanged()) {
+            rSlot.addRichTooltipCallback((v, list) -> {
+                list.add(Component.translatable("jei.mm.recipe.outputs_range", range.min(), range.max())
+                        .withStyle(ChatFormatting.DARK_AQUA));
+                if (range.isGrouped()) {
+                    list.add(Component.translatable("jei.mm.recipe.roll_group", range.groupName())
+                            .withStyle(ChatFormatting.DARK_GRAY));
+                }
+            });
         }
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
         return rSlot;
@@ -152,6 +171,7 @@ public class SimpleRecipeOutputEntry implements IRecipeOutputEntry {
     public JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject json) {
         json.addProperty("chance", chance);
         json.addProperty("perTick", perTick);
+        json.addProperty("chanceRoll", shouldRun(model));
         if (scaleBy != null) {
             json.addProperty("scaleBy", scaleBy);
             json.addProperty("factor", model.getCount(scaleBy));

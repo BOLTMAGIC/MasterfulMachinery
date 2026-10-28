@@ -1,0 +1,43 @@
+## Change Log [VERSION_NAME]
+
+A fix release for the compat ports and the port screens. No pack file needs editing.
+If you are coming from the 1.20.1 line, read the 0.1.1 notes first: they cover the
+Mekanism chemical merge, the nbt matching change, and Botania.
+
+### Fixed
+
+- Mekanism and PneumaticCraft ports can be piped into and out of again. NeoForge
+  requires a capability to be registered against a block entity type before anything
+  can query it, and only the item, fluid and energy capabilities were being
+  registered. The chemical and compressed-air ports answered their capability
+  correctly but were never asked, so they worked inside a machine while being
+  invisible to every pipe, tube and machine outside it.
+
+- A pack naming a port type that is misspelled, or whose mod is not installed, now
+  fails with a message naming the type and listing the ones that are registered. It
+  used to be a bare NullPointerException during mod construction, which took every
+  port down with it.
+
+- Any error while loading a controller, port or extra block config now names the file
+  it came from, instead of failing somewhere inside parsing with nothing saying which
+  file was at fault.
+
+- Port screens no longer draw the port's name on top of the slots. Slot grids were
+  centred in a fixed height budget, which worked up to four rows but placed a
+  five-row grid one pixel under the title and a six-row grid exactly on it. Grids
+  of four rows and smaller are positioned exactly as before, so existing ports look
+  unchanged.
+
+- A port name long enough to wrap no longer spills onto the first row of slots. The
+  name is drawn on a single line and clipped if it does not fit.
+
+- Grids too large for the window are kept inside it rather than drawn off the top or
+  the side.
+
+### Known limitation
+
+The port window is a fixed-size background image, so the usable area holds at most
+six rows of nine columns. Larger grids are now clamped into view instead of
+rendering outside the window, but a grid taller than six rows will still overlap the
+player inventory. Sizing the window to the grid needs a new background texture and
+is not in this release.

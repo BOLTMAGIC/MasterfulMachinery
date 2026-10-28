@@ -16,13 +16,7 @@ final class Ae2ChemicalKeys {
         if (!(key instanceof MekanismKey chemical)) {
             return null;
         }
-        Kind kind = switch (chemical.getForm()) {
-            case MekanismKey.GAS -> Kind.GAS;
-            case MekanismKey.INFUSION -> Kind.INFUSION;
-            case MekanismKey.PIGMENT -> Kind.PIGMENT;
-            case MekanismKey.SLURRY -> Kind.SLURRY;
-            default -> null;
-        };
-        return kind == null ? null : new PatternIngredient(kind, chemical.getStack().getTypeRegistryName(), amount, null);
+        // AEKey.getId() is the chemical's registry id
+        return new PatternIngredient(Kind.CHEMICAL, chemical.getId(), amount);
     }
 }

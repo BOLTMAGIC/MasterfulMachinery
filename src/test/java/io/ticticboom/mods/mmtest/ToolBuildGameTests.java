@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import com.mojang.authlib.GameProfile;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
@@ -19,11 +21,10 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -35,12 +36,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
+import net.neoforged.fml.ModList;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,11 +49,10 @@ import java.util.function.Consumer;
  * Building with the Multiblock Tool: in the world at an anchor (controller included) and finishing a controller.
  * Uses the mmtest:assembly_test structure ("FCGS") like {@link AssemblyGameTests}.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class ToolBuildGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
     private static final int START_FE = 1000;
     /** Clicked on its top face, so the anchor is one block above. */
     private static final BlockPos CLICKED = new BlockPos(3, 0, 3);
@@ -105,7 +102,7 @@ public class ToolBuildGameTests {
     public static void toolCompletesController(GameTestHelper helper) {
         Player player = player(helper, 0);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(port("s")), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         store.insertItem(2, new ItemStack(port("l")), false);
@@ -181,12 +178,12 @@ public class ToolBuildGameTests {
                 event.setCanceled(true);
             }
         };
-        MinecraftForge.EVENT_BUS.addListener(claims);
+        NeoForge.EVENT_BUS.addListener(claims);
         AssemblyJob job;
         try {
             job = run(helper, player, build);
         } finally {
-            MinecraftForge.EVENT_BUS.unregister(claims);
+            NeoForge.EVENT_BUS.unregister(claims);
         }
 
         int fe = MMConfigSetup.COMMON.toolEnergyPerPlacedBlock.get();
@@ -202,7 +199,7 @@ public class ToolBuildGameTests {
     public static void toolBuildRefusedWithoutController(GameTestHelper helper) {
         Player player = player(helper, 180);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(port("s")), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         store.insertItem(2, new ItemStack(port("l")), false);
@@ -234,7 +231,7 @@ public class ToolBuildGameTests {
     public static void toolBuildRefusedWhenAnyBlockMissing(GameTestHelper helper) {
         Player player = player(helper, 180);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(port("s")), false);
         store.insertItem(2, new ItemStack(Blocks.GLASS), false);
@@ -274,14 +271,14 @@ public class ToolBuildGameTests {
                 event.setCanceled(true);
             }
         };
-        MinecraftForge.EVENT_BUS.addListener(claims);
+        NeoForge.EVENT_BUS.addListener(claims);
         AssemblyJob job;
         try {
             // a big budget: nothing after the controller may be placed in the same tick either
             job = AssemblyJob.create(helper.getLevel(), build.controllerPos(), build.plan(), build.perBlockFe());
             AssemblyJobs.tickBuild(player, job, build.source(), 64);
         } finally {
-            MinecraftForge.EVENT_BUS.unregister(claims);
+            NeoForge.EVENT_BUS.unregister(claims);
         }
 
         check(helper, job.controllerNotPlaced(), "the job should report the controller could not be placed");
@@ -382,9 +379,10 @@ public class ToolBuildGameTests {
         Player player = player(helper, 180);
         ItemStack tool = tool(player);
         ItemStack tagged = new ItemStack(Blocks.GLASS);
-        tagged.getOrCreateTag().put(BlockItem.BLOCK_ENTITY_TAG, new CompoundTag());
+        tagged.set(net.minecraft.core.component.DataComponents.BLOCK_ENTITY_DATA,
+                net.minecraft.world.item.component.TypedEntityData.of(net.minecraft.world.level.block.entity.BlockEntityType.CHEST, new CompoundTag()));
         // stores filled before the store refused such stacks may still hold one
-        new ToolStore(tool).setStackInSlot(0, tagged.copy());
+        new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY).setStackInSlot(0, tagged.copy());
         player.getInventory().setItem(9, tagged.copy());
         MaterialSource source = ToolBuildPlan.source(player, tool);
 
@@ -396,7 +394,7 @@ public class ToolBuildGameTests {
 
         player.getInventory().setItem(10, new ItemStack(Blocks.GLASS));
         ItemStack taken = source.take(Blocks.GLASS);
-        check(helper, !taken.isEmpty() && !taken.hasTag(), "the plain glass should be taken, got " + taken);
+        check(helper, !taken.isEmpty() && taken.isComponentsPatchEmpty(), "the plain glass should be taken, got " + taken);
         check(helper, storeCount(tool) == 1 && player.getInventory().getItem(9).getCount() == 1, "the tagged stacks must still stay");
         helper.succeed();
     }
@@ -404,7 +402,12 @@ public class ToolBuildGameTests {
     @GameTest(template = TEMPLATE)
     public static void chainedSourceUsesStoreThenInventory(GameTestHelper helper) {
         List<ItemStack> dropped = new ArrayList<>();
-        Player player = new Player(helper.getLevel(), helper.absolutePos(ANCHOR), 0, new GameProfile(UUID.randomUUID(), "tool-test")) {
+        Player player = new Player(helper.getLevel(), new GameProfile(UUID.randomUUID(), "tool-test")) {
+            @Override
+            public net.minecraft.world.level.GameType gameMode() {
+                return net.minecraft.world.level.GameType.SURVIVAL;
+            }
+
             @Override
             public boolean isSpectator() {
                 return false;
@@ -416,13 +419,14 @@ public class ToolBuildGameTests {
             }
 
             @Override
-            public ItemEntity drop(ItemStack stack, boolean dropAround, boolean includeThrowerName) {
+            public ItemEntity drop(ItemStack stack, boolean thrownFromHand) {
                 dropped.add(stack.copy());
                 return null;
             }
         };
+        player.setPos(net.minecraft.world.phys.Vec3.atCenterOf(helper.absolutePos(ANCHOR)));
         ItemStack tool = tool(player);
-        new ToolStore(tool).insertItem(0, new ItemStack(Blocks.GLASS), false);
+        new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY).insertItem(0, new ItemStack(Blocks.GLASS), false);
         player.getInventory().setItem(9, new ItemStack(Blocks.GLASS));
         MaterialSource source = ToolBuildPlan.source(player, tool);
 
@@ -436,7 +440,7 @@ public class ToolBuildGameTests {
         check(helper, storeCount(tool) == 1, "a refund should go into the store first");
 
         // store full of something else -> the inventory
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.extractItem(0, 1, false);
         for (int i = 0; i < store.getSlots(); i++) {
             store.insertItem(i, new ItemStack(Blocks.DIRT, ToolStore.LIMIT), false);
@@ -446,7 +450,7 @@ public class ToolBuildGameTests {
         check(helper, player.getInventory().countItem(Items.GLASS) == 1, "with the store full, a refund should go into the inventory");
 
         // inventory full too -> dropped at the player
-        var items = player.getInventory().items;
+        var items = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < items.size(); i++) {
             if (items.get(i).is(Items.GLASS)) {
                 items.set(i, ItemStack.EMPTY);
@@ -500,7 +504,7 @@ public class ToolBuildGameTests {
     }
 
     private static Player player(GameTestHelper helper, float yRot) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.setYRot(yRot);
         check(helper, !player.getAbilities().instabuild, "mock player should not be instabuild");
         return player;
@@ -517,7 +521,7 @@ public class ToolBuildGameTests {
 
     /** Exactly the blocks of one assembly_test (lowest tiers), only in the tool's store. */
     private static void stockStore(ItemStack tool) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(port("s")), false);
         store.insertItem(2, new ItemStack(Blocks.GLASS), false);
@@ -525,7 +529,7 @@ public class ToolBuildGameTests {
     }
 
     private static int storeCount(ItemStack tool) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         int total = 0;
         for (int i = 0; i < store.getSlots(); i++) {
             total += store.getStackInSlot(i).getCount();
@@ -558,7 +562,7 @@ public class ToolBuildGameTests {
     }
 
     private static Block registered(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("block mm:" + id + " is not registered");
         }

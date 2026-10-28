@@ -1,119 +1,104 @@
 package io.ticticboom.mods.mm.port.energy;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
+import net.minecraft.nbt.LongTag;
+import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
-import net.minecraftforge.energy.EnergyStorage;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 
-public class EnergyPortHandler extends EnergyStorage {
+public class EnergyPortHandler implements IEnergyStorage, TransferSnapshot {
+    private final long capacity;
+    private final long maxReceive;
+    private final long maxExtract;
     private final INotifyChangeFunction changed;
+    private long energy;
 
-    public EnergyPortHandler(int capacity, int maxReceive, int maxExtract, INotifyChangeFunction changed) {
-        super(capacity, maxReceive, maxExtract);
+    public EnergyPortHandler(long capacity, long maxReceive, long maxExtract, INotifyChangeFunction changed) {
+        this.capacity = capacity;
+        this.maxReceive = maxReceive;
+        this.maxExtract = maxExtract;
         this.changed = changed;
     }
 
-    public long unboundedReceiveEnergy(long maxReceive, boolean simulate) {
-        // Handle large amounts by receiving in chunks to avoid int overflow
-        if (maxReceive <= Integer.MAX_VALUE) {
-            return unboundedReceiveEnergyInt((int) maxReceive, simulate);
-        }
-
-        long received = 0;
-        long remaining = maxReceive;
-        int simulatedEnergy = this.energy;  // Track energy state during all operations
-
-        while (remaining > 0) {
-            int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
-            int canReceive = Math.max(0, Math.min(this.capacity - simulatedEnergy, chunk));
-            
-            // Always update simulated state consistently
-            simulatedEnergy += canReceive;
-            received += canReceive;
-
-            if (canReceive < chunk) break; // Can't receive more
-            remaining -= canReceive;
-        }
-
-        // Apply final state to real energy if not simulating
-        if (!simulate) {
-            this.energy = simulatedEnergy;
-            changed.call();
-        }
-        return received;
-    }
-
-    private int unboundedReceiveEnergyInt(int maxReceive, boolean simulate) {
-        // room left, not energy + maxReceive: that sum overflows int near an Integer.MAX_VALUE capacity
-        int canReceive = Math.max(0, Math.min(this.capacity - this.energy, maxReceive));
-        if (!simulate) {
-            this.energy += canReceive;
-            changed.call();
-        }
-        return canReceive;
-    }
-
-    public long unboundedExtractEnergy(long maxExtract, boolean simulate) {
-        // Handle large amounts by extracting in chunks to avoid int overflow
-        if (maxExtract <= Integer.MAX_VALUE) {
-            return unboundedExtractEnergyInt((int) maxExtract, simulate);
-        }
-
-        long extracted = 0;
-        long remaining = maxExtract;
-        int simulatedEnergy = this.energy;  // Track energy state during all operations
-
-        while (remaining > 0) {
-            int chunk = (int) Math.min(remaining, Integer.MAX_VALUE);
-            int canExtract = Math.min(simulatedEnergy, chunk);
-            
-            // Always update simulated state consistently
-            simulatedEnergy -= canExtract;
-            extracted += canExtract;
-
-            if (canExtract < chunk) break; // Can't extract more
-            remaining -= canExtract;
-        }
-
-        // Apply final state to real energy if not simulating
-        if (!simulate) {
-            this.energy = simulatedEnergy;
-            changed.call();
-        }
-        return extracted;
-    }
-
-    private int unboundedExtractEnergyInt(int maxExtract, boolean simulate) {
-        int canExtract = Math.min(this.energy, maxExtract);
-        if (!simulate) {
-            this.energy -= canExtract;
-            changed.call();
-        }
-        return canExtract;
+    @Override
+    public Object createSnapshot() {
+        return energy;
     }
 
     @Override
-    public void deserializeNBT(Tag nbt) {
-        super.deserializeNBT(nbt);
-        // ports saved while the overflow above was hit hold a negative amount
-        this.energy = Math.max(0, Math.min(this.energy, this.capacity));
+    public void restoreSnapshot(Object snapshot) {
+        energy = (Long) snapshot;
+        changed.call();
+    }
+
+    public long getStored() {
+        return energy;
+    }
+
+    public long getCapacity() {
+        return capacity;
+    }
+
+    public long insert(long amount, boolean simulate) {
+        long accepted = Math.max(0, Math.min(amount, capacity - energy));
+        if (!simulate && accepted > 0) {
+            energy += accepted;
+            changed.call();
+        }
+        return accepted;
+    }
+
+    public long extract(long amount, boolean simulate) {
+        long taken = Math.max(0, Math.min(amount, energy));
+        if (!simulate && taken > 0) {
+            energy -= taken;
+            changed.call();
+        }
+        return taken;
     }
 
     @Override
-    public int receiveEnergy(int maxReceive, boolean simulate) {
-        int result = super.receiveEnergy(maxReceive, simulate);
-        if (result > 0 && !simulate) {
-            changed.call();
+    public int receiveEnergy(int toReceive, boolean simulate) {
+        if (!canReceive() || toReceive <= 0) {
+            return 0;
         }
-        return result;
+        return (int) insert(Math.min(toReceive, maxReceive), simulate);
     }
 
     @Override
-    public int extractEnergy(int maxExtract, boolean simulate) {
-        int result = super.extractEnergy(maxExtract, simulate);
-        if (result > 0 && !simulate) {
-            changed.call();
+    public int extractEnergy(int toExtract, boolean simulate) {
+        if (!canExtract() || toExtract <= 0) {
+            return 0;
         }
-        return result;
+        return (int) extract(Math.min(toExtract, maxExtract), simulate);
     }
 
+    @Override
+    public int getEnergyStored() {
+        return (int) Math.min(energy, Integer.MAX_VALUE);
+    }
+
+    @Override
+    public int getMaxEnergyStored() {
+        return (int) Math.min(capacity, Integer.MAX_VALUE);
+    }
+
+    @Override
+    public boolean canExtract() {
+        return maxExtract > 0;
+    }
+
+    @Override
+    public boolean canReceive() {
+        return maxReceive > 0;
+    }
+
+    public Tag serialize() {
+        return LongTag.valueOf(energy);
+    }
+
+    public void deserialize(Tag tag) {
+        energy = tag instanceof NumericTag number ? Math.max(0, Math.min(capacity, number.longValue())) : 0;
+    }
 }

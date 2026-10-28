@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierResolver;
@@ -12,14 +13,11 @@ import io.ticticboom.mods.mm.tool.ToolData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.Map;
 
@@ -27,11 +25,10 @@ import java.util.Map;
  * Server-side checks of the tool screen's requests ({@link ToolSettingsPkt#apply}), against the real structures and
  * the registered test item ports (tiers 1-3).
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class ToolSettingsGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
     private static final String ITEM_INPUT = PortTiers.key(Ref.Ports.ITEM, true);
 
     @GameTest(template = TEMPLATE)
@@ -95,7 +92,7 @@ public class ToolSettingsGameTests {
         ItemStack other = new ItemStack(Items.STICK);
         check(helper, !apply(other, Action.SET_USE_ME, "", 1, tiers), "another item: refused");
         check(helper, !apply(other, Action.FORGET_NETWORK, "", 0, tiers), "another item: refused");
-        check(helper, !other.hasTag(), "another item must stay untouched, got " + other.getTag());
+        check(helper, other.isComponentsPatchEmpty(), "another item must stay untouched, got " + other.getComponentsPatch());
         helper.succeed();
     }
 
@@ -135,7 +132,8 @@ public class ToolSettingsGameTests {
 
         check(helper, apply(first, Action.SET_INSTANT_BUILD, "", 1, tiers), "enabling instant build should be accepted");
         check(helper, ToolData.instantBuild(first) && !ToolData.instantBuild(second), "only the selected tool should change");
-        ItemStack reloaded = ItemStack.of(first.save(new CompoundTag()));
+        var registries = helper.getLevel().registryAccess();
+        ItemStack reloaded = LegacyNbt.parseItem(registries, LegacyNbt.saveItem(first, registries));
         check(helper, ToolData.instantBuild(reloaded), "instant build should survive an item NBT round trip");
 
         check(helper, apply(first, Action.SET_INSTANT_BUILD, "", 0, tiers), "disabling instant build should be accepted");
@@ -151,7 +149,7 @@ public class ToolSettingsGameTests {
         check(helper, !apply(null, Action.SELECT_STRUCTURE, STRUCTURE.toString(), 0, tiers), "no held tool: refused");
         check(helper, !apply(other, Action.SELECT_STRUCTURE, STRUCTURE.toString(), 0, tiers), "another item: refused");
         check(helper, !apply(other, Action.SET_TIER, ITEM_INPUT, 2, tiers), "another item: refused");
-        check(helper, !other.hasTag(), "another item must stay untouched, got " + other.getTag());
+        check(helper, other.isComponentsPatchEmpty(), "another item must stay untouched, got " + other.getComponentsPatch());
         helper.succeed();
     }
 

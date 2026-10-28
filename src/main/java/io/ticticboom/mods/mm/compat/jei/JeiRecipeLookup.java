@@ -2,15 +2,12 @@ package io.ticticboom.mods.mm.compat.jei;
 
 import io.ticticboom.mods.mm.port.PortContent;
 import mezz.jei.api.constants.VanillaTypes;
-import mezz.jei.api.forge.ForgeTypes;
+import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.recipe.IFocus;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import mezz.jei.api.runtime.IJeiRuntime;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Opens JEI's recipe screen from MM screens. Only touch this class when JEI is loaded.
- */
 public final class JeiRecipeLookup {
     @Nullable
     private static IJeiRuntime runtime;
@@ -22,9 +19,6 @@ public final class JeiRecipeLookup {
         runtime = jeiRuntime;
     }
 
-    /**
-     * @return whether JEI can show recipes for it (items and fluids)
-     */
     public static boolean canShow(PortContent content) {
         return switch (content.kind()) {
             case ITEM -> !content.item().isEmpty();
@@ -33,10 +27,6 @@ public final class JeiRecipeLookup {
         };
     }
 
-    /**
-     * @param uses true for the recipes that use it, false for the recipes that make it
-     * @return false when JEI couldn't show anything
-     */
     public static boolean show(PortContent content, boolean uses) {
         if (runtime == null || !canShow(content)) {
             return false;
@@ -45,7 +35,7 @@ public final class JeiRecipeLookup {
         var factory = runtime.getJeiHelpers().getFocusFactory();
         IFocus<?> focus = content.kind() == PortContent.Kind.ITEM
                 ? factory.createFocus(role, VanillaTypes.ITEM_STACK, content.item().copyWithCount(1))
-                : factory.createFocus(role, ForgeTypes.FLUID_STACK, content.fluid());
+                : factory.createFocus(role, NeoForgeTypes.FLUID_STACK, content.fluid());
         runtime.getRecipesGui().show(focus);
         return true;
     }

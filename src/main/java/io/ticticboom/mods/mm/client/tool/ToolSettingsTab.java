@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.minecraft.client.input.MouseButtonEvent;
+import io.ticticboom.mods.mm.client.util.TextColors;
+import io.ticticboom.mods.mm.client.util.NineSliceUtil;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.PortTiers;
 import io.ticticboom.mods.mm.builder.TierPrefs;
@@ -7,10 +10,10 @@ import io.ticticboom.mods.mm.builder.TierResolver;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -23,12 +26,6 @@ import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
 
-/**
- * The tool screen's Settings tab: the preferred tier per registered port type and direction (types that come in
- * more than one tier), cycled with {@code <} / {@code >}, an instant-build toggle, then (with AE2 only) the ME network
- * toggles (with a "Forget ME network" button while bound), a note on how a structure may overrule the tier choice,
- * and the dismantle hint.
- */
 public class ToolSettingsTab {
     private static final int ROW = 14;
     private static final int BUTTON = 11;
@@ -40,10 +37,8 @@ public class ToolSettingsTab {
     private final Font font;
     private final TierPrefs prefs;
     private final ObjIntConsumer<String> onChange;
-    /** port type key -> tier -> block, from the registered ports */
     private final Map<String, NavigableMap<Integer, Block>> rows = PortTiers.registeredTiered();
     private final List<String> keys = List.copyOf(rows.keySet());
-    /** the note and the key hint, wrapped to the width; set by {@link #setBounds} */
     private List<FormattedCharSequence> footer = List.of();
     private int x;
     private int y;
@@ -51,30 +46,15 @@ public class ToolSettingsTab {
     private int height;
     private int scroll;
 
-    // ---- tool build and ME network options ----
     private boolean useMe;
     private boolean autoCraft;
     private boolean instantBuild;
-    /** Read fresh every frame from the tool's (server-synced) NBT. */
     private final BooleanSupplier bound;
     private final Consumer<Boolean> onToggleUseMe;
     private final Consumer<Boolean> onToggleAutoCraft;
     private final Consumer<Boolean> onToggleInstantBuild;
     private final Runnable onForgetNetwork;
 
-    /**
-     * @param prefs             the tool's preferences; changed in place when a row is cycled
-     * @param onChange          called with the key and the new tier after a change
-     * @param useMe             the tool's current "use ME network" setting
-     * @param autoCraft         the tool's current "auto-craft missing" setting
-     * @param instantBuild      the tool's current instant-build setting
-     * @param bound             whether the tool is currently bound to a network (shows the forget button); polled
-     *                          from the tool's own data so the row only reacts once the server confirms a change
-     * @param onToggleUseMe     called with the new value after the "use ME network" row is clicked
-     * @param onToggleAutoCraft called with the new value after the "auto-craft missing" row is clicked
-     * @param onToggleInstantBuild called with the new value after the instant-build row is clicked
-     * @param onForgetNetwork   called after the "Forget ME network" button is clicked
-     */
     public ToolSettingsTab(Font font, TierPrefs prefs, ObjIntConsumer<String> onChange, boolean useMe, boolean autoCraft,
                             boolean instantBuild, BooleanSupplier bound, Consumer<Boolean> onToggleUseMe,
                             Consumer<Boolean> onToggleAutoCraft, Consumer<Boolean> onToggleInstantBuild, Runnable onForgetNetwork) {
@@ -101,7 +81,6 @@ public class ToolSettingsTab {
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8));
         lines.addAll(font.split(Component.translatable("gui.mm.tool.settings.anchor", ToolKeys.ANCHOR.getTranslatedKeyMessage()), width - 8));
         footer = lines;
-        // Keep the build toggle and at least one tier row visible in the smallest tool screen.
         if (rowsBottom() - rowsTop() < ROW) {
             footer = font.split(Component.translatable("gui.mm.tool.settings.dismantle", ToolKeys.DISMANTLE.getTranslatedKeyMessage()), width - 8);
         }
@@ -115,19 +94,14 @@ public class ToolSettingsTab {
         return y + 14;
     }
 
-    /**
-     * Tier rows end above the instant-build row, followed by optional ME controls and the footer.
-     */
     private int rowsBottom() {
         return y + height - footer.size() * 9 - 6 - meSectionHeight() - (hasMeSection() ? 8 : 4) - ROW - 4;
     }
 
-    /** ME networks only exist with AE2. */
     private static boolean hasMeSection() {
         return NetworkLink.AVAILABLE;
     }
 
-    /** Two toggle rows, plus a third for the forget button while the tool is bound; none without AE2. */
     private int meRowCount() {
         if (!hasMeSection()) {
             return 0;
@@ -163,7 +137,6 @@ public class ToolSettingsTab {
         return Math.min(120, (width - 8) * 2 / 5);
     }
 
-    // a row: label | < | value | >
     private int leftArrowX() {
         return x + 4 + labelWidth() + 4;
     }
@@ -172,7 +145,6 @@ public class ToolSettingsTab {
         return leftArrowX() + BUTTON + 4;
     }
 
-    // leaves room for the scroll bar at the right edge
     private int rightArrowX() {
         return x + width - 6 - BUTTON;
     }
@@ -181,7 +153,7 @@ public class ToolSettingsTab {
         return rightArrowX() - 4 - valueX();
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         drawClipped(gfx, Component.translatable("gui.mm.tool.settings.title"), x + 4, y + 3, width - 8, LABEL);
         int top = rowsTop();
         int bottom = rowsBottom();
@@ -210,13 +182,12 @@ public class ToolSettingsTab {
             footerY = meBottom + 4;
         }
         for (FormattedCharSequence line : footer) {
-            gfx.drawString(font, line, x + 4, footerY, LABEL, false);
+            gfx.text(font, line, x + 4, footerY, TextColors.argb(LABEL), false);
             footerY += 9;
         }
     }
 
-    /** "Use ME network" / "Auto-craft missing" toggles, plus "Forget ME network" while bound. */
-    private void drawMeSection(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void drawMeSection(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         int rowY = meSectionTop();
         drawToggleRow(gfx, Component.translatable("gui.mm.tool.settings.use_me"), useMe, rowY, mouseX, mouseY);
         rowY += ROW;
@@ -227,14 +198,14 @@ public class ToolSettingsTab {
         }
     }
 
-    private void drawToggleRow(GuiGraphics gfx, Component label, boolean value, int rowY, int mouseX, int mouseY) {
+    private void drawToggleRow(GuiGraphicsExtractor gfx, Component label, boolean value, int rowY, int mouseX, int mouseY) {
         boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         drawClipped(gfx, label, x + 4, rowY + 3, labelWidth() - 4, hovered ? TEXT : LABEL);
         Component state = Component.translatable(value ? "options.on" : "options.off");
         drawClipped(gfx, state, valueX(), rowY + 3, valueWidth(), value ? VALUE : LABEL);
     }
 
-    private void drawForgetButton(GuiGraphics gfx, int rowY, int mouseX, int mouseY) {
+    private void drawForgetButton(GuiGraphicsExtractor gfx, int rowY, int mouseX, int mouseY) {
         boolean hovered = isOnOptionRow(mouseX, mouseY, rowY);
         Component label = Component.translatable("gui.mm.tool.settings.forget_network");
         drawClipped(gfx, label, x + 4, rowY + 3, width - 8, hovered ? VALUE : TEXT);
@@ -244,8 +215,7 @@ public class ToolSettingsTab {
         return mouseX >= x + 2 && mouseX < x + width - 2 && mouseY >= rowY && mouseY < rowY + ROW;
     }
 
-    /** A thin bar at the right edge when the rows don't all fit, like the structure list's. */
-    private void drawScrollBar(GuiGraphics gfx, int top, int bottom) {
+    private void drawScrollBar(GuiGraphicsExtractor gfx, int top, int bottom) {
         int max = maxScroll();
         if (max <= 0) {
             return;
@@ -258,7 +228,7 @@ public class ToolSettingsTab {
         gfx.fill(x + width - 3, barY, x + width - 1, barY + barHeight, 0xFF8A8A8A);
     }
 
-    private void drawRow(GuiGraphics gfx, String key, NavigableMap<Integer, Block> tiers, int rowY, int mouseX, int mouseY) {
+    private void drawRow(GuiGraphicsExtractor gfx, String key, NavigableMap<Integer, Block> tiers, int rowY, int mouseX, int mouseY) {
         gfx.fill(x + 2, rowY + ROW - 1, x + width - 2, rowY + ROW, DIVIDER);
         int textY = rowY + 3;
         drawClipped(gfx, rowName(key, tiers), x + 4, textY, labelWidth() - 4, TEXT);
@@ -267,31 +237,28 @@ public class ToolSettingsTab {
         drawArrow(gfx, rightArrowX(), rowY + 1, ">", mouseX, mouseY);
     }
 
-    private void drawArrow(GuiGraphics gfx, int bx, int by, String arrow, int mouseX, int mouseY) {
+    private void drawArrow(GuiGraphicsExtractor gfx, int bx, int by, String arrow, int mouseX, int mouseY) {
         boolean hovered = mouseX >= bx && mouseX < bx + BUTTON && mouseY >= by && mouseY < by + BUTTON
                 && mouseY >= rowsTop() && mouseY < rowsBottom();
         var texture = hovered ? Ref.UiTextures.BUTTON_PRESSED : Ref.UiTextures.BUTTON_ACTIVE;
-        gfx.blitNineSlicedSized(texture, bx, by, BUTTON, BUTTON, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
-        gfx.drawString(font, arrow, bx + (BUTTON - font.width(arrow)) / 2 + 1, by + 2, 0x3A3A3A, false);
+        NineSliceUtil.blitNineSliced(gfx, texture, bx, by, BUTTON, BUTTON, 2, 2, 2, 2, 16, 16, 0, 0, 16, 16);
+        gfx.text(font, arrow, bx + (BUTTON - font.width(arrow)) / 2 + 1, by + 2, TextColors.argb(0x3A3A3A), false);
     }
 
-    /** "Item Input": the port type's name and the direction. */
     static Component rowName(String key, NavigableMap<Integer, Block> tiers) {
         int slash = key.lastIndexOf('/');
         boolean input = key.endsWith("/input");
-        ResourceLocation type = ResourceLocation.tryParse(slash < 0 ? key : key.substring(0, slash));
+        Identifier type = Identifier.tryParse(slash < 0 ? key : key.substring(0, slash));
         Component typeName;
         String langKey = type == null ? "" : "tooltip." + type.getNamespace() + ".port_type." + type.getPath().replace('/', '_');
         if (Language.getInstance().has(langKey)) {
             typeName = Component.translatable(langKey);
         } else {
-            // no name for the type: its smallest port says what it is
             typeName = tiers.firstEntry().getValue().getName();
         }
         return Component.translatable(input ? "gui.mm.tool.settings.input" : "gui.mm.tool.settings.output", typeName);
     }
 
-    /** "Lowest: Small Item Input" or "T2 · Medium Item Input". */
     static Component valueText(int preferred, NavigableMap<Integer, Block> tiers) {
         if (preferred == TierResolver.LOWEST) {
             return Component.translatable("gui.mm.assemble.lowest", tiers.firstEntry().getValue().getName());
@@ -301,7 +268,7 @@ public class ToolSettingsTab {
         return Component.translatable("gui.mm.tool.settings.tier", preferred, name);
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
@@ -317,7 +284,10 @@ public class ToolSettingsTab {
         return keys.get(index);
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button != 0) {
             return false;
         }
@@ -339,7 +309,6 @@ public class ToolSettingsTab {
                 return true;
             }
             if (bound.getAsBoolean() && isOnOptionRow(mouseX, mouseY, meTop + 2 * ROW)) {
-                // no local flip: the row disappears once the server-confirmed tool data says "not bound"
                 onForgetNetwork.run();
                 return true;
             }
@@ -356,7 +325,6 @@ public class ToolSettingsTab {
         } else {
             return false;
         }
-        // "lowest" followed by every registered tier
         int next = TierPrefs.cycle(prefs.get(key), rows.get(key).keySet(), step);
         prefs.set(key, next);
         onChange.accept(key, next);
@@ -372,7 +340,6 @@ public class ToolSettingsTab {
         return true;
     }
 
-    /** Full row label and value, for rows cut short. */
     @Nullable
     public List<Component> tooltip(double mouseX, double mouseY) {
         if (mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < rowsTop()) {

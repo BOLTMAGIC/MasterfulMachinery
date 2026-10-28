@@ -28,25 +28,13 @@ import java.util.concurrent.Future;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-/**
- * One craft the Multiblock Tool asked AE2 for: the crafting plan is calculated off-thread, then submitted as a
- * standalone job (as a terminal does), whose output goes into the network's storage.
- * <p>
- * AE2 15 gives no link for a job submitted without a requester (and never marks a standalone job's link done), so the
- * job is followed through public API only: the CPU that went from idle to busy during the submit is ours, and the
- * craft is done once the item's stock has grown by the requested amount ({@link CraftProgress}). A CPU that can't be
- * told apart (e.g. an addon's) is followed by whether the network still crafts the item.
- */
 final class Ae2CraftHandle implements CraftHandle {
-    /** Polls a finished job may show too little stock (the network catching up) before it counts as failed. */
     private static final int SHORT_POLLS = 2;
-    /** The same when our CPU is gone from the list (AE2 leaves out clusters that lost power for a moment). */
     private static final int CPU_GONE_POLLS = 10;
 
     private final Item item;
     private final int amount;
     private final AEItemKey key;
-    /** The grid as submitted to; later polls look it up again ({@link #network}), since it may re-form or go away. */
     private IGrid grid;
     private final Supplier<IGrid> network;
     private final IActionSource source;
@@ -56,10 +44,8 @@ final class Ae2CraftHandle implements CraftHandle {
     private Component failure;
     @Nullable
     private ICraftingCPU cpu;
-    /** The item's stock at submission plus the requested amount. */
     private long target;
     private int shortPolls;
-    /** The last poll found the network unreachable or unpowered. */
     private boolean waiting;
 
     private Ae2CraftHandle(Item item, int amount, IGrid grid, Supplier<IGrid> network, IActionSource source, Future<ICraftingPlan> calculation) {
@@ -72,14 +58,8 @@ final class Ae2CraftHandle implements CraftHandle {
         this.calculation = calculation;
     }
 
-    /**
-     * Starts calculating a plan for amount of item, as player.
-     *
-     * @param network the bound network looked up again (null while it can't be reached or player may not use it)
-     */
     static CraftHandle start(ServerPlayer player, IGrid grid, Supplier<IGrid> network, Item item, int amount) {
         IActionSource source = IActionSource.ofPlayer(player);
-        // the calculation only looks for patterns on the requester's grid: without a node it finds none
         IGridNode node = grid.getPivot();
         ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
             @Override
@@ -106,7 +86,6 @@ final class Ae2CraftHandle implements CraftHandle {
         IGrid now = network.get();
         waiting = now == null || !now.getEnergyService().isNetworkPowered();
         if (waiting) {
-            // unreachable, unpowered or no access: nothing is submitted or judged, and the job may well go on afterwards
             return;
         }
         grid = now;
@@ -122,7 +101,6 @@ final class Ae2CraftHandle implements CraftHandle {
         return waiting;
     }
 
-    /** The plan is ready (never waited for): submit it, or fail when it lacks ingredients. */
     private void submit() {
         ICraftingPlan plan;
         try {
@@ -137,7 +115,6 @@ final class Ae2CraftHandle implements CraftHandle {
             return;
         }
         ICraftingService crafting = grid.getCraftingService();
-        // all on the server thread: the only CPU to go from idle to busy during the submit is the one that took it
         List<ICraftingCPU> idle = crafting.getCpus().stream().filter(c -> !c.isBusy()).collect(Collectors.toList());
         long before = stock();
         ICraftingSubmitResult result = crafting.submitJob(plan, null, null, false, source);
@@ -155,7 +132,6 @@ final class Ae2CraftHandle implements CraftHandle {
         state = State.CRAFTING;
     }
 
-    /** The CPU that went busy, confirmed by what it crafts when it says; null when that isn't one clear CPU. */
     private @Nullable ICraftingCPU ourCpu(List<ICraftingCPU> idleBefore) {
         List<ICraftingCPU> started = new ArrayList<>();
         for (ICraftingCPU each : idleBefore) {
@@ -191,14 +167,12 @@ final class Ae2CraftHandle implements CraftHandle {
             case WAIT -> shortPolls = 0;
             case SHORT -> {
                 if (++shortPolls >= (cpuGone ? CPU_GONE_POLLS : SHORT_POLLS)) {
-                    // public API can't tell a cancelled job from one whose items were used up at once
                     fail("message.mm.tool.craft.ended");
                 }
             }
         }
     }
 
-    /** The item's live stock (a simulated extraction, not the per-tick cache). */
     private long stock() {
         return grid.getStorageService().getInventory().extract(key, Long.MAX_VALUE, Actionable.SIMULATE, source);
     }

@@ -1,73 +1,99 @@
 package io.ticticboom.mods.mm.port.item;
 
-import io.ticticboom.mods.mm.pattern.PatternIngredient;
+import io.ticticboom.mods.mm.port.IPortIngredient;
+import io.ticticboom.mods.mm.port.PortContent;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.compat.jei.NoCountItemRenderer;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
-import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.util.AmountRange;
 import lombok.Getter;
-import mezz.jei.api.constants.VanillaTypes;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.List;
 import java.util.function.Predicate;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
+import io.ticticboom.mods.mm.util.NbtMatchUtils;
 
 public class SingleItemPortIngredient extends BaseItemPortIngredient {
 
     private final Item item;
     private final ItemStack stack;
     @Getter
-    private final ResourceLocation itemId;
+    private final Identifier itemId;
 
     @Override
-    protected Item indexedItem() { return item; }
+    protected Item indexedItem() {
+        return item;
+    }
 
-    public SingleItemPortIngredient(ResourceLocation itemId, int count, CompoundTag requiredNbt, boolean nbtStrong) {
-        super(count, createPredicate(itemId), requiredNbt, nbtStrong);
+    public SingleItemPortIngredient(Identifier itemId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
+        super(count, createPredicate(itemId), requiredNbt, nbtStrong, components);
         this.itemId = itemId;
-        item = ForgeRegistries.ITEMS.getValue(itemId);
+        item = BuiltInRegistries.ITEM.getValue(itemId);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", itemId));
         }
         // use a display stack with the real required count so external transfer/encode handlers
         // that read the ItemStack count (rather than the JEI badge) get the correct amount.
-        stack = new ItemStack(item, count);
+        stack = new ItemStack(item, count.max());
+        stack.applyComponents(components);
         if (requiredNbt != null) {
-            stack.setTag(requiredNbt.copy());
+            ItemNbtUtil.setTag(stack, requiredNbt.copy());
         }
+    }
+
+    @Override
+    public List<ItemStack> exampleStacks() {
+        return List.of(stack.copy());
     }
 
     @Override
     public IPortIngredient scaled(double factor) {
-        return new SingleItemPortIngredient(itemId, IPortIngredient.scaleAmount(count, factor), requiredNbt, nbtStrong);
+        return new SingleItemPortIngredient(itemId, count.scaled(factor), requiredNbt, nbtStrong, components);
     }
 
     @Override
-    public ItemStack displayItem() {
-        return stack.copy();
+    public PortContent display() {
+        return PortContent.item(stack.copyWithCount(1), stack.getCount());
     }
 
-    private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
-        var item = ForgeRegistries.ITEMS.getValue(id);
+    public ItemStack outputStack() {
+        return stack.copyWithCount(1);
+    }
+
+    private static Predicate<ItemStack> createPredicate(Identifier id) {
+        var item = BuiltInRegistries.ITEM.getValue(id);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", id));
         }
         return c -> c.is(item);
+    }
+
+    @Override
+    public io.ticticboom.mods.mm.pattern.PatternIngredient asPatternIngredient() {
+        if (count.isRanged()) {
+            // a pattern holds a fixed amount; a ranged input comes from the ports
+            return null;
+        }
+        // the display stack carries the recipe's components and NBT (custom_data)
+        return new io.ticticboom.mods.mm.pattern.PatternIngredient(io.ticticboom.mods.mm.pattern.PatternIngredient.Kind.ITEM,
+                itemId, count.min(), stack.getComponentsPatch());
     }
 
     @Override
@@ -76,15 +102,10 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     }
 
     @Override
-    public PatternIngredient asPatternIngredient() {
-        return new PatternIngredient(PatternIngredient.Kind.ITEM, itemId, count, requiredNbt == null ? null : requiredNbt.copy());
-    }
-
-    @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        ItemStack probe = outputStack();
+        ItemStack probe = outputProbe();
         List<ItemPortStorage> itemStorages = outputPorts(storages, probe);
-        int remainingToInsert = count;
+        int remainingToInsert = resolveCount(state);
 
         for (ItemPortStorage itemStorage : itemStorages) {
             remainingToInsert = itemStorage.canInsert(probe, remainingToInsert);
@@ -95,10 +116,9 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        ItemStack probe = outputStack();
+        ItemStack probe = outputProbe();
         List<ItemPortStorage> itemStorages = outputPorts(storages, probe);
-        
-        int remainingToInsert = count;
+        int remainingToInsert = resolveCount(state);
 
         for (ItemPortStorage s : itemStorages) {
             if (remainingToInsert <= 0) break;
@@ -106,9 +126,10 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         }
     }
 
-    private ItemStack outputStack() {
+    private ItemStack outputProbe() {
         ItemStack probe = new ItemStack(item, 1);
-        if (requiredNbt != null) probe.setTag(requiredNbt.copy());
+        probe.applyComponents(components);
+        if (requiredNbt != null) ItemNbtUtil.setTag(probe, requiredNbt.copy());
         return probe;
     }
 
@@ -127,28 +148,25 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid, IRecipeSlotBuilder recipeSlot) {
         recipeSlot.addIngredient(MMJeiIngredients.ITEM, this.stack);
-        // Suppress vanilla count rendering; MMRecipeCategory.draw() draws our AE2-style K/M count instead.
-        var defaultRenderer = helpers.getIngredientManager().getIngredientRenderer(VanillaTypes.ITEM_STACK);
-        recipeSlot.setCustomRenderer(VanillaTypes.ITEM_STACK, new NoCountItemRenderer(defaultRenderer));
     }
 
 
 
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
-        ItemStack probe = outputStack();
+        ItemStack probe = outputProbe();
         List<ItemPortStorage> itemStorages = outputPorts(storages, probe);
         var searchedStorages = new JsonArray();
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ITEM.toString());
-        json.addProperty("amountToInsert", count);
+        count.addToDebug(json, "amountToInsert", null);
 
         if (requiredNbt != null) {
             json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
-            json.add("nbt", io.ticticboom.mods.mm.util.NbtMatchUtils.toJson(requiredNbt));
+            json.add("nbt", NbtMatchUtils.toJson(requiredNbt));
         }
 
-        int remainingToInsert = count;
+        int remainingToInsert = count.max();
         for (ItemPortStorage storage : itemStorages) {
             var iterJson = new JsonObject();
 

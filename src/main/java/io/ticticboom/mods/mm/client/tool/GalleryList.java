@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.minecraft.client.input.MouseButtonEvent;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -7,11 +8,11 @@ import io.ticticboom.mods.mm.tool.StructureCategories;
 import io.ticticboom.mods.mm.util.TextMatch;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -25,9 +26,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 
-/**
- * The tool screen's structure list, grouped by the world's category settings. Groups can be collapsed and searched.
- */
 public class GalleryList {
     private static final int ROW = 10;
     private static final int INDENT = 8;
@@ -36,14 +34,9 @@ public class GalleryList {
     private static final int MATCH = 0xFFD84D;
     private static final int SELECTED = 0xFF3A4A6A;
     private static final int HOVER = 0x30FFFFFF;
-    // collapsed categories; remembered while the game runs
     private static final Set<String> COLLAPSED = new HashSet<>();
 
-    /**
-     * One structure in the list: an MM {@link StructureModel} ({@code builder} false) or another mod's
-     * {@link BuildableStructure} ({@code builder} true).
-     */
-    public record Entry(ResourceLocation id, String name, String namespace, boolean builder, Object structure) {
+    public record Entry(Identifier id, String name, String namespace, boolean builder, Object structure) {
         public static Entry of(StructureModel model) {
             return new Entry(model.id(), model.name(), model.id().getNamespace(), false, model);
         }
@@ -52,7 +45,7 @@ public class GalleryList {
             return new Entry(structure.id(), structure.displayName().getString(), structure.group(), true, structure);
         }
 
-        public boolean is(@Nullable ResourceLocation otherId, boolean otherBuilder) {
+        public boolean is(@Nullable Identifier otherId, boolean otherBuilder) {
             return id.equals(otherId) && builder == otherBuilder;
         }
     }
@@ -60,7 +53,6 @@ public class GalleryList {
     private record Group(String category, Component name, List<Entry> structures) {
     }
 
-    /** One shown line: a group header, or a structure with where the search text is in its name (-1 when not). */
     private record Line(Group group, @Nullable Entry structure, int shownCount, int matchStart) {
     }
 
@@ -79,10 +71,10 @@ public class GalleryList {
     private int height;
     private boolean draggingScrollbar;
     @Nullable
-    private ResourceLocation selected;
+    private Identifier selected;
     private boolean selectedBuilder;
 
-    public GalleryList(Font font, Collection<Entry> structures, @Nullable ResourceLocation selected, boolean selectedBuilder,
+    public GalleryList(Font font, Collection<Entry> structures, @Nullable Identifier selected, boolean selectedBuilder,
                        Consumer<Entry> onSelect, Consumer<Entry> onCategorize) {
         this.font = font;
         this.onSelect = onSelect;
@@ -128,7 +120,7 @@ public class GalleryList {
         refresh();
     }
 
-    private static String machineKey(ResourceLocation id) {
+    private static String machineKey(Identifier id) {
         String path = id.getPath();
         String name = path.substring(path.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
         String version = "";
@@ -163,7 +155,6 @@ public class GalleryList {
     }
 
     public void setQuery(String query) {
-        // not lower-cased: that may change the length; matching ignores case itself (TextMatch)
         String normalized = query.strip();
         if (!normalized.equals(this.query)) {
             this.query = normalized;
@@ -172,7 +163,6 @@ public class GalleryList {
         }
     }
 
-    /** Scrolls so the selected structure is in view. */
     public void showSelected() {
         for (int i = 0; i < lines.size(); i++) {
             Entry structure = lines.get(i).structure();
@@ -200,11 +190,9 @@ public class GalleryList {
                 matches.add(new Line(group, structure, 0, start));
             }
             if (matches.isEmpty()) {
-                // nothing of this group matches the search: the whole group is hidden
                 continue;
             }
             result.add(new Line(group, null, matches.size(), -1));
-            // a search shows its matches even in collapsed groups
             if (searching || !COLLAPSED.contains(group.category())) {
                 result.addAll(matches);
             }
@@ -231,7 +219,7 @@ public class GalleryList {
         return mouseX >= x && mouseX < x + width && mouseY >= y && mouseY < y + height;
     }
 
-    public void render(GuiGraphics gfx, int mouseX, int mouseY) {
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         refreshCategoriesIfNeeded();
         if (lines.isEmpty()) {
             String key = groups.isEmpty() ? "gui.mm.tool.gallery.empty" : "gui.mm.tool.gallery.no_match";
@@ -273,7 +261,6 @@ public class GalleryList {
         }
     }
 
-    /** The name with the search text underlined in yellow. */
     private Component highlighted(String name, int start) {
         int end = start + query.length();
         if (start < 0 || query.isEmpty() || end > name.length()) {
@@ -284,7 +271,7 @@ public class GalleryList {
                 .append(Component.literal(name.substring(end)));
     }
 
-    private void drawClipped(GuiGraphics gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
+    private void drawClipped(GuiGraphicsExtractor gfx, Component text, int drawX, int drawY, int maxWidth, int color) {
         TextRenderUtil.drawClipped(gfx, font, text, drawX, drawY, maxWidth, color);
     }
 
@@ -297,7 +284,6 @@ public class GalleryList {
         return index >= 0 && index < lines.size() ? lines.get(index) : null;
     }
 
-    /** @return the full name and id of the structure under the mouse (names may be cut short); null when none */
     @Nullable
     public List<Component> tooltip(double mouseX, double mouseY) {
         Line line = lineAt(mouseX, mouseY);
@@ -308,7 +294,10 @@ public class GalleryList {
         return List.of(Component.literal(structure.name()), Component.literal(structure.id().toString()).withStyle(ChatFormatting.DARK_GRAY));
     }
 
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
         if (button == 0 && hasScrollbar() && isMouseOver(mouseX, mouseY) && mouseX >= x + width - 5) {
             draggingScrollbar = true;
             scrollToThumb(mouseY);

@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.core.registries.BuiltInRegistries;
 import com.mojang.authlib.GameProfile;
 import io.netty.buffer.Unpooled;
 import io.ticticboom.mods.mm.Ref;
@@ -22,12 +24,11 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
@@ -35,10 +36,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.util.FakePlayer;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -54,11 +52,10 @@ import java.util.UUID;
  * network ({@link FakeMe}) whose crafts the test moves on by hand. The build never starts on its own; a later
  * right-click (prepare) builds once everything is there. Uses mmtest:assembly_test ("FCGS", one of each block).
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class ToolCraftGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
     private static final int START_FE = 1000;
     private static final BlockPos CLICKED = new BlockPos(3, 0, 3);
     private static final BlockPos ANCHOR = new BlockPos(3, 1, 3);
@@ -68,7 +65,7 @@ public class ToolCraftGameTests {
     public static void craftsRequestedForCraftablesOnly(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -94,7 +91,7 @@ public class ToolCraftGameTests {
     public static void nonCraftableReported(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        new ToolStore(tool).insertItem(0, new ItemStack(Blocks.GLASS), false);
+        new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY).insertItem(0, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
 
         ToolBuilds.Result result = prepare(helper, player, tool, me);
@@ -117,7 +114,7 @@ public class ToolCraftGameTests {
     public static void rightClickWhileCraftingStillWaits(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -146,7 +143,7 @@ public class ToolCraftGameTests {
     public static void craftingNotMissingWhileNetworkUnreachable(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -171,7 +168,7 @@ public class ToolCraftGameTests {
     public static void craftsDoneThenRightClickBuilds(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -207,7 +204,7 @@ public class ToolCraftGameTests {
     public static void failedPlanReported(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         store.insertItem(2, new ItemStack(port("l")), false);
@@ -242,7 +239,7 @@ public class ToolCraftGameTests {
     public static void networkCraftingNotRequestedAgain(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -268,7 +265,7 @@ public class ToolCraftGameTests {
     public static void doneCraftNotRequestedAgainBeforeStockCatchesUp(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         store.insertItem(2, new ItemStack(port("l")), false);
@@ -295,7 +292,7 @@ public class ToolCraftGameTests {
     public static void ordersFollowRespawnedPlayer(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         store.insertItem(2, new ItemStack(port("l")), false);
@@ -337,7 +334,7 @@ public class ToolCraftGameTests {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
         ToolData.setAutoCraft(tool, false);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -358,7 +355,7 @@ public class ToolCraftGameTests {
     public static void storeAndMeCountedTogether(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -383,7 +380,7 @@ public class ToolCraftGameTests {
     public static void hudFollowsCrafts(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -426,7 +423,7 @@ public class ToolCraftGameTests {
     public static void hudShowsFailure(GameTestHelper helper) {
         TestPlayer player = player(helper);
         ItemStack tool = tool(player);
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         store.insertItem(0, new ItemStack(controllerBlock()), false);
         store.insertItem(1, new ItemStack(Blocks.GLASS), false);
         FakeMe me = new FakeMe();
@@ -528,10 +525,10 @@ public class ToolCraftGameTests {
     }
 
     private static HudState roundTrip(HudState state) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), net.minecraft.core.RegistryAccess.EMPTY);
         try {
-            ToolHudPkt.encode(new ToolHudPkt(state), buf);
-            HudState decoded = ToolHudPkt.decode(buf).state();
+            ToolHudPkt.STREAM_CODEC.encode(buf, new ToolHudPkt(state));
+            HudState decoded = ToolHudPkt.STREAM_CODEC.decode(buf).state();
             if (buf.readableBytes() != 0) {
                 throw new IllegalStateException(buf.readableBytes() + " bytes left after decoding");
             }
@@ -596,7 +593,7 @@ public class ToolCraftGameTests {
         for (int dx = -1; dx <= 2; dx++) {
             check(helper, helper.getLevel().getBlockState(anchor.offset(dx, 0, 0)).isAir(), "nothing should be placed at " + anchor.offset(dx, 0, 0));
         }
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         int total = 0;
         for (int i = 0; i < store.getSlots(); i++) {
             total += store.getStackInSlot(i).getCount();
@@ -702,7 +699,7 @@ public class ToolCraftGameTests {
     private static TestPlayer player(GameTestHelper helper) {
         TestPlayer player = new TestPlayer(helper.getLevel());
         BlockPos at = helper.absolutePos(new BlockPos(3, 1, 5));
-        player.moveTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180, 0);
+        player.snapTo(at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 180, 0);
         check(helper, player.getDirection() == Direction.NORTH, "the test player should face north, faces " + player.getDirection());
         return player;
     }
@@ -719,7 +716,12 @@ public class ToolCraftGameTests {
         }
 
         @Override
-        public void displayClientMessage(Component message, boolean actionBar) {
+        public void sendSystemMessage(Component message) {
+            messages.add(message);
+        }
+
+        @Override
+        public void sendOverlayMessage(Component message) {
             messages.add(message);
         }
 
@@ -748,7 +750,7 @@ public class ToolCraftGameTests {
     }
 
     private static Block registered(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("block mm:" + id + " is not registered");
         }

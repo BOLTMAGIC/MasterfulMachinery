@@ -6,10 +6,6 @@ import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.structure.StructureTier;
 import net.minecraft.network.chat.Component;
 
-/**
- * The formed structure's tier must be within a range: {"type": "mm:tier", "minTier": 2}; either end may be left out.
- * Useful for a recipe given to several structures (structureIds) that only the higher tiers may run.
- */
 public class TierRecipeCondition implements IRecipeCondition {
     private final double minTier;
     private final double maxTier;

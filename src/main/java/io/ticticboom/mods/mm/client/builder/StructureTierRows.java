@@ -14,14 +14,8 @@ import java.util.Map;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
-/**
- * The port types of a structure whose positions take a range of tiers, and which tier and block a preference
- * turns into there. Shared by the controller's Assemble screen and the multiblock tool screen.
- */
 public final class StructureTierRows {
-    /** port type key -> tier -> block, over every port_type position of the structure */
     private final Map<String, NavigableMap<Integer, Block>> rows = new LinkedHashMap<>();
-    /** port type key -> its positions, each with its own tier range */
     private final Map<String, List<TieredPortPiece>> positions = new LinkedHashMap<>();
 
     public StructureTierRows(@Nullable StructureModel structure) {
@@ -39,7 +33,6 @@ public final class StructureTierRows {
         rows.values().removeIf(Map::isEmpty);
     }
 
-    /** Port type key -> tier -> block, only types with at least one existing tier. */
     public Map<String, NavigableMap<Integer, Block>> rows() {
         return Collections.unmodifiableMap(rows);
     }
@@ -48,7 +41,6 @@ public final class StructureTierRows {
         return rows.isEmpty();
     }
 
-    /** The tier used for a preference over all of this type's tiers, or -1 when the type is not in the structure. */
     public int chosen(String key, int preferred) {
         var tiers = rows.get(key);
         if (tiers == null) {
@@ -57,13 +49,11 @@ public final class StructureTierRows {
         return TierResolver.resolve(preferred, Integer.MIN_VALUE, Integer.MAX_VALUE, tiers.navigableKeySet());
     }
 
-    /** The block {@link #chosen} stands for, null when none. */
     public @Nullable Block chosenBlock(String key, int preferred) {
         var tiers = rows.get(key);
         return tiers == null ? null : tiers.get(chosen(key, preferred));
     }
 
-    /** True when some position of this port type cannot take the preferred tier and gets another one. */
     public boolean adjusted(String key, int preferred) {
         if (preferred == TierResolver.LOWEST) {
             return false;

@@ -7,9 +7,9 @@ import io.ticticboom.mods.mm.port.energy.EnergyPortStorageModel;
 
 public class EnergyPortConfigBuilderJS extends PortConfigBuilderJS {
 
-    private int capacity;
-    private int maxReceive;
-    private int maxExtract;
+    private long capacity;
+    private long maxReceive;
+    private long maxExtract;
     private boolean isAutoPushSet = false;
     private boolean autoPush = false;
 
@@ -17,17 +17,17 @@ public class EnergyPortConfigBuilderJS extends PortConfigBuilderJS {
 
     }
 
-    public EnergyPortConfigBuilderJS capacity(int capacity) {
+    public EnergyPortConfigBuilderJS capacity(long capacity) {
         this.capacity = capacity;
         return this;
     }
 
-    public EnergyPortConfigBuilderJS maxReceive(int maxReceive) {
+    public EnergyPortConfigBuilderJS maxReceive(long maxReceive) {
         this.maxReceive = maxReceive;
         return this;
     }
 
-    public EnergyPortConfigBuilderJS maxExtract(int maxExtract) {
+    public EnergyPortConfigBuilderJS maxExtract(long maxExtract) {
         this.maxExtract = maxExtract;
         return this;
     }

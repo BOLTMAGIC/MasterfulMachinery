@@ -1,9 +1,11 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import com.mojang.blaze3d.platform.InputConstants;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
-import io.ticticboom.mods.mm.net.MMNetwork;
+import net.neoforged.neoforge.network.PacketDistributor;
 import io.ticticboom.mods.mm.net.packet.ToolDismantlePkt;
 import io.ticticboom.mods.mm.net.packet.ToolRotatePkt;
 import io.ticticboom.mods.mm.net.packet.ToolAnchorPkt;
@@ -11,7 +13,7 @@ import io.ticticboom.mods.mm.net.packet.ToolBuildPkt;
 import io.ticticboom.mods.mm.tool.ToolTarget;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -22,43 +24,37 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.InputEvent;
-import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
-import net.minecraftforge.client.settings.KeyConflictContext;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerInteractEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent;
+import net.neoforged.neoforge.client.settings.KeyConflictContext;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.Objects;
 
-/**
- * The multiblock tool's key: hold it while looking at a machine to dismantle it. Also tracks which machine a
- * dismantle is aimed at (V held, or waiting for the second Shift+right-click) so the hologram can outline it.
- */
-@Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
 public class ToolKeys {
+    /** Key categories are objects since 1.21.9; shown as key.category.mm.main. */
+    public static final KeyMapping.Category CATEGORY = new KeyMapping.Category(Ref.id("main"));
     public static final KeyMapping DISMANTLE = new KeyMapping("key.mm.dismantle", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.mm");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, CATEGORY);
     public static final KeyMapping ANCHOR = new KeyMapping("key.mm.anchor", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.mm");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, CATEGORY);
     /** How long V must be held: 1 s. */
     public static final int HOLD_TICKS = 20;
     private static final int BAR_SEGMENTS = 10;
 
-    // V hold: the aimed-at block, the machine's controller and positions, ticks held on that machine
     private static BlockPos holdAim;
     private static BlockPos holdController;
     private static List<BlockPos> holdPositions = List.of();
     private static int holdTicks;
-    // set once the packet went out; nothing more happens until V is released
     private static boolean holdLatched;
     private static boolean barShown;
     private static boolean noMachineShown;
-    // first Shift+right-click on a machine: outlined until the server's confirmation window ends
     private static BlockPos pendingController;
     private static List<BlockPos> pendingPositions = List.of();
     private static long pendingUntil;
@@ -69,11 +65,11 @@ public class ToolKeys {
 
     @SubscribeEvent
     public static void onRegisterKeys(RegisterKeyMappingsEvent event) {
+        event.registerCategory(CATEGORY);
         event.register(DISMANTLE);
         event.register(ANCHOR);
     }
 
-    /** The tool in the main hand, else the off hand; empty when the player holds none. */
     public static ItemStack heldTool(Player player) {
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
@@ -84,7 +80,6 @@ public class ToolKeys {
         return ItemStack.EMPTY;
     }
 
-    /** Positions of the machine a dismantle is aimed at, to outline in red; empty when none. */
     static List<BlockPos> dismantleHighlight(Level level) {
         if (holdController != null) {
             return holdPositions;
@@ -98,7 +93,7 @@ public class ToolKeys {
     /** Forgets the aimed-at machine and clears the progress bar if it was showing. */
     private static void loseTarget(Player player) {
         if (barShown) {
-            player.displayClientMessage(Component.empty(), true);
+            player.sendOverlayMessage(Component.empty());
             barShown = false;
         }
         holdAim = null;
@@ -107,17 +102,13 @@ public class ToolKeys {
         holdTicks = 0;
     }
 
-    /** Client-side input handling; the server re-validates everything. */
-    @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+    @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT)
     public static final class Input {
         private Input() {
         }
 
         @SubscribeEvent
-        public static void onClientTick(TickEvent.ClientTickEvent event) {
-            if (event.phase != TickEvent.Phase.END) {
-                return;
-            }
+        public static void onClientTick(ClientTickEvent.Post event) {
             Minecraft mc = Minecraft.getInstance();
             Player player = mc.player;
             Level level = mc.level;
@@ -140,11 +131,10 @@ public class ToolKeys {
                 if (mc.screen == null && !heldTool(player).isEmpty()) {
                     InteractionHand hand = player.getMainHandItem().getItem() instanceof MultiblockToolItem
                             ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-                    MMNetwork.INSTANCE.sendToServer(new ToolAnchorPkt(hand));
+                    ClientPacketDistributor.sendToServer(new ToolAnchorPkt(hand));
                 }
             }
             if (heldTool(player).isEmpty() || mc.screen != null || !DISMANTLE.isDown()) {
-                // released (early or not): the next press starts over
                 loseTarget(player);
                 holdLatched = false;
                 noMachineShown = false;
@@ -159,7 +149,6 @@ public class ToolKeys {
                 return;
             }
             if (!target.equals(holdAim)) {
-                // new aim: resolve once, not every tick; progress carries over while it is the same machine
                 holdAim = target.immutable();
                 List<BlockPos> positions = DismantlePlanner.previewPositions(level, holdAim, heldTool(player));
                 BlockPos controller = positions.isEmpty() ? null : positions.get(positions.size() - 1);
@@ -171,23 +160,21 @@ public class ToolKeys {
             }
             if (holdController == null) {
                 if (barShown) {
-                    player.displayClientMessage(Component.empty(), true);
+                    player.sendOverlayMessage(Component.empty());
                     barShown = false;
                 }
                 if (!noMachineShown) {
-                    player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.no_machine"), true);
+                    player.sendOverlayMessage(Component.translatable("message.mm.tool.dismantle.no_machine"));
                     noMachineShown = true;
                 }
                 return;
             }
-            // a machine was seen: leaving it for a non-machine may say so again
             noMachineShown = false;
             holdTicks++;
-            player.displayClientMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)), true);
+            player.sendOverlayMessage(Component.translatable("message.mm.tool.dismantle.progress", bar(holdTicks)));
             barShown = true;
             if (holdTicks >= HOLD_TICKS) {
-                // the server resolves the machine again from the aimed-at block
-                MMNetwork.INSTANCE.sendToServer(new ToolDismantlePkt(holdAim));
+                ClientPacketDistributor.sendToServer(new ToolDismantlePkt(holdAim));
                 holdLatched = true;
                 barShown = false;
                 holdAim = null;
@@ -213,8 +200,8 @@ public class ToolKeys {
                     ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
             event.setCanceled(true);
             event.setSwingHand(false);
-            if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool.getItem())) {
-                MMNetwork.INSTANCE.sendToServer(new ToolBuildPkt(hand));
+            if (event.getHand() == hand && !player.getCooldowns().isOnCooldown(tool)) {
+                ClientPacketDistributor.sendToServer(new ToolBuildPkt(hand));
             }
         }
 
@@ -232,11 +219,9 @@ public class ToolKeys {
                 pendingController = null;
                 return;
             }
-            // the controller is always last
             BlockPos controller = positions.get(positions.size() - 1);
             long now = level.getGameTime();
             if (controller.equals(pendingController) && now <= pendingUntil) {
-                // second click: the server starts dismantling
                 pendingController = null;
                 pendingPositions = List.of();
                 return;
@@ -246,7 +231,6 @@ public class ToolKeys {
             pendingUntil = now + ToolDismantles.CONFIRM_TICKS;
         }
 
-        /** Shift+scroll turns the build instead of changing the hotbar slot. */
         @SubscribeEvent
         public static void onMouseScroll(InputEvent.MouseScrollingEvent event) {
             Minecraft mc = Minecraft.getInstance();
@@ -255,21 +239,20 @@ public class ToolKeys {
                 scrollAccum = 0;
                 return;
             }
-            if (event.getScrollDelta() == 0) {
+            if (event.getScrollDeltaY() == 0) {
                 return;
             }
             event.setCanceled(true);
-            double delta = event.getScrollDelta();
+            double delta = event.getScrollDeltaY();
             long now = Util.getMillis();
             if (Math.signum(delta) != Math.signum(scrollAccum) || now - lastScrollMs > SCROLL_RESET_MS) {
                 scrollAccum = 0;
             }
             lastScrollMs = now;
-            // one quarter turn per whole notch, so smooth-scrolling touchpads do not flood the server
             scrollAccum += delta;
             while (Math.abs(scrollAccum) >= 1) {
                 int step = scrollAccum > 0 ? 1 : -1;
-                MMNetwork.INSTANCE.sendToServer(new ToolRotatePkt(step));
+                ClientPacketDistributor.sendToServer(new ToolRotatePkt(step));
                 scrollAccum -= step;
             }
         }

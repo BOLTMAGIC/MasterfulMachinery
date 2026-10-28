@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.kinetic;
 
+import net.minecraft.network.chat.Component;
+import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.compat.jei.SlotGrid;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
@@ -85,5 +87,10 @@ public class CreateKineticPortIngredient implements IPortIngredient {
     @Override
     public JsonObject debugOutput(Level level, RecipeStorages storages, JsonObject json) {
         return null;
+    }
+
+    @Override
+    public PortContent display() {
+        return PortContent.gauge(Component.translatable("port.mm.create_kinetic.name"), 0xB0A070, (long) Math.abs(speed), 0, "RPM");
     }
 }

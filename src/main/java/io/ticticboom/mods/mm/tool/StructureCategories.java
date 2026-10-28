@@ -3,14 +3,16 @@ package io.ticticboom.mods.mm.tool;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureRegistry;
 import io.ticticboom.mods.mm.structure.StructureManager;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import io.ticticboom.mods.mm.Ref;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -21,15 +23,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** World-wide, admin-managed grouping for the Structure Builder gallery. */
 public final class StructureCategories extends SavedData {
     public static final String DEFAULT = "Uncategorized";
-    private static final String DATA_ID = "mm_structure_categories";
+    private static final SavedDataType<StructureCategories> TYPE = new SavedDataType<>(Ref.id("structure_categories"), StructureCategories::new,
+            CompoundTag.CODEC.xmap(StructureCategories::load, data -> data.save(new CompoundTag())));
     private static final int MAX_CATEGORIES = 64;
     private static final int MAX_ASSIGNMENTS = 4096;
 
     public record Snapshot(List<String> categories, Map<String, String> assignments, long revision) {
-        public String category(ResourceLocation id, boolean builder) {
+        public String category(Identifier id, boolean builder) {
             return assignments.getOrDefault(key(id, builder), DEFAULT);
         }
     }
@@ -41,25 +43,25 @@ public final class StructureCategories extends SavedData {
 
     public enum Action { CREATE, RENAME, DELETE, ASSIGN }
 
-    public static String key(ResourceLocation id, boolean builder) {
+    public static String key(Identifier id, boolean builder) {
         return (builder ? "builder|" : "mm|") + id;
     }
 
     public static Snapshot clientSnapshot() { return client; }
 
     public static void receive(List<String> names, Map<String, String> assignments) {
-        //noinspection NonAtomicOperationOnVolatileField
         client = new Snapshot(List.copyOf(names), Map.copyOf(assignments), client.revision() + 1);
     }
 
     public static StructureCategories get(MinecraftServer server) {
-        StructureCategories data = server.overworld().getDataStorage().computeIfAbsent(StructureCategories::load, StructureCategories::new, DATA_ID);
+        StructureCategories data = server.overworld().getDataStorage().computeIfAbsent(TYPE);
         data.importDefaults(StructureManager.STRUCTURES.keySet(), BuildableStructureRegistry.SERVER.all());
         return data;
     }
 
-    public void importDefaults(Collection<ResourceLocation> machines, Collection<BuildableStructure> builders) {
-        for (ResourceLocation id : machines) {
+    /** Puts machines and other mods' structures in a category once, the first time the world sees them. */
+    public void importDefaults(Collection<Identifier> machines, Collection<BuildableStructure> builders) {
+        for (Identifier id : machines) {
             importDefault(key(id, false), "Custom Multiblocks");
         }
         for (BuildableStructure structure : builders) {
@@ -71,8 +73,7 @@ public final class StructureCategories extends SavedData {
                 case "crazy_ae2" -> "Crazy AE2";
                 case "woot" -> "Woot";
                 case "" -> structure.groupName();
-                default -> //noinspection removal
-                        BuildableStructure.fallbackName(new ResourceLocation(structure.id().getNamespace(), folder));
+                default -> BuildableStructure.fallbackName(Identifier.fromNamespaceAndPath(structure.id().getNamespace(), folder));
             };
             importDefault(key(structure.id(), true), category);
         }
@@ -102,28 +103,27 @@ public final class StructureCategories extends SavedData {
 
     public static StructureCategories load(CompoundTag tag) {
         StructureCategories data = new StructureCategories();
-        ListTag names = tag.getList("Categories", Tag.TAG_STRING);
+        ListTag names = tag.getListOrEmpty("Categories");
         for (int i = 0; i < names.size() && data.categories.size() < MAX_CATEGORIES; i++) {
-            String name = names.getString(i);
+            String name = names.getStringOr(i, "");
             if (validName(name) && !data.containsName(name)) data.categories.add(name);
         }
-        ListTag entries = tag.getList("Assignments", Tag.TAG_COMPOUND);
+        ListTag entries = tag.getListOrEmpty("Assignments");
         for (int i = 0; i < entries.size() && data.assignments.size() < MAX_ASSIGNMENTS; i++) {
-            CompoundTag entry = entries.getCompound(i);
-            String key = entry.getString("Structure");
-            String category = entry.getString("Category");
+            CompoundTag entry = entries.getCompoundOrEmpty(i);
+            String key = entry.getStringOr("Structure", "");
+            String category = entry.getStringOr("Category", "");
             if (validKey(key) && data.categories.contains(category)) data.assignments.put(key, category);
         }
-        ListTag imported = tag.getList("ImportedStructures", Tag.TAG_STRING);
+        ListTag imported = tag.getListOrEmpty("ImportedStructures");
         for (int i = 0; i < imported.size() && data.importedStructures.size() < MAX_ASSIGNMENTS; i++) {
-            String key = imported.getString(i);
+            String key = imported.getStringOr(i, "");
             if (validKey(key)) data.importedStructures.add(key);
         }
         return data;
     }
 
-    @Override
-    public @NotNull CompoundTag save(@NotNull CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag) {
         ListTag names = new ListTag();
         for (String name : categories) names.add(StringTag.valueOf(name));
         tag.put("Categories", names);
@@ -174,7 +174,6 @@ public final class StructureCategories extends SavedData {
 
     private static boolean validName(@Nullable String name) {
         if (name == null || name.isBlank() || name.length() > 32 || !name.equals(name.strip())) return false;
-        //noinspection UnnecessaryUnicodeEscape
         return name.chars().noneMatch(c -> Character.isISOControl(c) || c == '\u00a7');
     }
 
@@ -182,11 +181,11 @@ public final class StructureCategories extends SavedData {
         int split = key.indexOf('|');
         if (split < 1 || split == key.length() - 1) return false;
         if (!key.startsWith("builder|") && !key.startsWith("mm|")) return false;
-        return ResourceLocation.tryParse(key.substring(split + 1)) != null;
+        return Identifier.tryParse(key.substring(split + 1)) != null;
     }
 
     private static boolean knownStructure(String key) {
-        ResourceLocation id = ResourceLocation.tryParse(key.substring(key.indexOf('|') + 1));
+        Identifier id = Identifier.tryParse(key.substring(key.indexOf('|') + 1));
         return key.startsWith("builder|") ? BuildableStructureRegistry.SERVER.get(id) != null
                 : StructureManager.STRUCTURES.containsKey(id);
     }

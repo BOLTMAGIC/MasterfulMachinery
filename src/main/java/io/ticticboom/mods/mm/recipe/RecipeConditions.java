@@ -1,11 +1,11 @@
 package io.ticticboom.mods.mm.recipe;
 
+import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
+import net.minecraft.network.chat.Component;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
-import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
-import net.minecraft.network.chat.Component;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,6 @@ public class RecipeConditions {
         return conditions.isEmpty();
     }
 
-    /** One line per condition, for JEI. */
     public List<Component> describe() {
         return conditions.stream().map(IRecipeCondition::describe).toList();
     }

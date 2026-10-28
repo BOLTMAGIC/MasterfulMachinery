@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -12,9 +13,8 @@ import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.flex.FlexRecipeOutputEntry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -22,9 +22,6 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.List;
 
@@ -34,11 +31,10 @@ import java.util.List;
  * logs -> 2 planks (consumed), wool -> carpet (chance 0), cobblestone counted -> stone, saplings -> leaves
  * with 1 bone meal per kind.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class FlexRecipeGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "flex_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "flex_test");
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos INPUT = CONTROLLER.offset(-1, 0, 0);
     private static final BlockPos OUTPUT = CONTROLLER.offset(1, 0, 0);
@@ -211,12 +207,12 @@ public class FlexRecipeGameTests {
         helper.setBlock(CONTROLLER, block("flex_test").defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
         helper.setBlock(INPUT, block("test_port_flex_input"));
         helper.setBlock(OUTPUT, block("test_port_flex_output"));
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static void formed(GameTestHelper helper, MachineControllerBlockEntity ignored) {
         // read the live block entity: a test may have replaced it
-        var controller = (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        var controller = (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
         check(helper, controller.getStructure() != null && controller.getStructure().id().equals(STRUCTURE), "flex_test not formed yet");
     }
 
@@ -247,7 +243,7 @@ public class FlexRecipeGameTests {
     }
 
     private static ItemPortStorage storage(GameTestHelper helper, BlockPos relative) {
-        if (helper.getBlockEntity(relative) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
+        if (helper.getBlockEntity(relative, BlockEntity.class) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
             return items;
         }
         throw new IllegalStateException("no item port at " + relative);
@@ -259,15 +255,15 @@ public class FlexRecipeGameTests {
         BlockPos pos = helper.absolutePos(relative);
         BlockEntity old = level.getBlockEntity(pos);
         check(helper, old != null, "no block entity at " + pos);
-        var tag = old.saveWithFullMetadata();
+        var tag = old.saveWithFullMetadata(helper.getLevel().registryAccess());
         level.removeBlockEntity(pos);
-        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag);
+        BlockEntity fresh = BlockEntity.loadStatic(pos, level.getBlockState(pos), tag, net.minecraft.core.RegistryAccess.EMPTY);
         check(helper, fresh != null && fresh != old, "could not load a new block entity");
         level.setBlockEntity(fresh);
     }
 
     private static Block block(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("mm:" + id + " is not registered");
         }

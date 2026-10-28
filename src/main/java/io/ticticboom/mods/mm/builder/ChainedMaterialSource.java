@@ -10,7 +10,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -20,25 +20,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Predicate;
 
-/**
- * The multiblock tool's source: blocks come from the tool's own store first, then the player's inventory, then the
- * ME network the tool is bound to (when given one); energy comes from the tool. Nothing is taken or paid in creative.
- * Refunds, and a sink's items (dismantling), never go to the network: tool store, then inventory, then the ground.
- */
 public final class ChainedMaterialSource implements MaterialSource, ItemSink {
     private final ToolStore store;
     private final Player player;
     private final ToolEnergy energy;
     @Nullable
     private final MeAccess me;
-    /** The network could not be used at some tick of the job (gone, unpowered, access withdrawn). */
     private boolean meLost;
 
     public ChainedMaterialSource(ToolStore store, Player player, ToolEnergy energy) {
         this(store, player, energy, null);
     }
 
-    /** @param me the tool's reachable ME network, or null to use the store and inventory only */
     public ChainedMaterialSource(ToolStore store, Player player, ToolEnergy energy, @Nullable MeAccess me) {
         this.store = store;
         this.player = player;
@@ -46,7 +39,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         this.me = me;
     }
 
-    /** The ME network this source may draw from, or null. */
     public @Nullable MeAccess me() {
         return me;
     }
@@ -59,19 +51,10 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return storeSlot(block) >= 0 || PlayerMaterials.has(player, block) || meHas(block.asItem());
     }
 
-    /**
-     * The network can give one item right now. The snapshot rules most items out; a simulated extraction confirms the
-     * rest, since the job relies on {@link #take} delivering what {@code has} promised (the snapshot may lag a tick).
-     */
     private boolean meHas(Item item) {
         return meStock(item) > 0 && !me.extract(item, 1, true).isEmpty();
     }
 
-    /**
-     * {@link #has} frozen now, as a set lookup: for planning and previews that ask about many blocks at once. Later
-     * changes to the store or inventory are not seen; the store is as read at construction or the last
-     * {@link #beginTick}. The network is asked once per item (from its stock snapshot), never per position.
-     */
     public Predicate<Block> snapshot() {
         if (free()) {
             return block -> true;
@@ -82,10 +65,9 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
                 addBuildable(items, store.getStackInSlot(i));
             }
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             addBuildable(items, stack);
         }
-        // empty stacks and blocks without an item both map to air
         items.remove(Items.AIR);
         if (me == null) {
             return block -> items.contains(block.asItem());
@@ -97,10 +79,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         };
     }
 
-    /**
-     * How many of item the store, the inventory and the network (its stock snapshot) hold together right now, for
-     * checking a whole build before it starts; stacks carrying block entity data never count. Creative: unlimited.
-     */
     public long available(Item item) {
         if (free()) {
             return Long.MAX_VALUE;
@@ -114,7 +92,7 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
                 count += buildableCount(store.getStackInSlot(i), item);
             }
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             count += buildableCount(stack, item);
         }
         return count + meStock(item);
@@ -146,7 +124,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return meStock(block.asItem()) > 0 ? me.extract(block.asItem(), 1, false) : ItemStack.EMPTY;
     }
 
-    /** Stock of item in the bound network: 0 without one, while it is unreachable, or while the tool is not carried. */
     private long meStock(Item item) {
         if (me == null || item == Items.AIR || !me.reachable() || !toolCarried()) {
             return 0;
@@ -164,7 +141,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
             leftover = ItemHandlerHelper.insertItemStacked(store, stack, false);
         }
         if (!leftover.isEmpty()) {
-            // drops whatever the inventory cannot hold
             player.getInventory().placeItemBackInInventory(leftover);
         }
     }
@@ -194,23 +170,16 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         energy.restore(fe);
     }
 
-    /** The tool left the player (dropped, stored away or split off); creative builds need nothing from it. */
     @Override
     public boolean gone() {
         return !free() && !toolCarried();
     }
 
-    /** Waits while the tool's own store is open, so the menu and the job never write over each other. */
     @Override
     public boolean ready() {
         return !(player.containerMenu instanceof MultiblockToolMenu);
     }
 
-    /**
-     * Re-reads the store from the tool once per job tick. Within a tick only this store writes the tool's store NBT:
-     * the menu (the other writer) is closed whenever {@link #ready()} lets the job run. The network is looked up again
-     * too, with a fresh stock snapshot.
-     */
     @Override
     public void beginTick() {
         if (toolCarried()) {
@@ -234,10 +203,6 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return player.getAbilities().instabuild;
     }
 
-    /**
-     * The store slot to take block's item from (plain stacks before tagged ones, never block entity data, like the
-     * inventory), or -1.
-     */
     private int storeSlot(Block block) {
         Item item = block.asItem();
         if (item == Items.AIR || !toolCarried()) {
@@ -247,7 +212,7 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         for (int i = 0; i < store.getSlots(); i++) {
             ItemStack stack = store.getStackInSlot(i);
             if (PlayerMaterials.buildable(stack, item)) {
-                if (!stack.hasTag()) {
+                if (stack.getComponentsPatch().isEmpty()) {
                     return i;
                 }
                 if (tagged < 0) {
@@ -258,20 +223,16 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
         return tagged;
     }
 
-    /** The tool still exists and is still on the player (not dropped, stored away or split off). */
     private boolean toolCarried() {
         if (!store.isToolStackPresent()) {
             return false;
         }
         ItemStack tool = store.toolStack();
-        var inventory = player.getInventory();
-        for (var compartment : List.of(inventory.items, inventory.offhand)) {
-            for (ItemStack stack : compartment) {
-                if (stack == tool) {
-                    return true;
-                }
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+            if (stack == tool) {
+                return true;
             }
         }
-        return false;
+        return player.getOffhandItem() == tool;
     }
 }

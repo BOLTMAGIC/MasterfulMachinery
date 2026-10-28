@@ -5,6 +5,7 @@ import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import io.ticticboom.mods.mm.piece.modifier.MMStructurePieceModifierType;
 import io.ticticboom.mods.mm.piece.modifier.blockstate.BlockstateStructurePieceModifierType;
 import io.ticticboom.mods.mm.piece.type.StructurePiece;
+import io.ticticboom.mods.mm.piece.type.anyof.AnyOfStructurePieceType;
 import io.ticticboom.mods.mm.piece.type.block.BlockStructurePieceType;
 import io.ticticboom.mods.mm.piece.type.MMStructurePieceType;
 import io.ticticboom.mods.mm.piece.type.port.PortStructurePieceType;
@@ -47,6 +48,7 @@ public class MMStructurePieceRegistry {
     }
 
     public static void init() {
+        registerPiece(new AnyOfStructurePieceType());
         registerPiece(new BlockStructurePieceType());
         registerPiece(new TagStructurePieceType());
         registerPiece(new PortStructurePieceType());

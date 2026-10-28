@@ -1,7 +1,8 @@
 package io.ticticboom.mods.mm.builder.me;
 
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.net.MMNetwork;
+import net.neoforged.neoforge.network.PacketDistributor;
 import io.ticticboom.mods.mm.net.packet.ToolHudPkt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -9,13 +10,11 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -28,34 +27,22 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * The crafts the Multiblock Tool asked a player's ME network for, in memory only: a relog or restart forgets them (AE2
- * crafts on, and the next right-click finds the items in the network). Handles are advanced on the server thread every
- * {@value #INTERVAL} ticks and never waited on. An item with a craft on its way counts as coming, never as missing.
- */
-@Mod.EventBusSubscriber(modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public final class CraftTracker {
     private static final int INTERVAL = 10;
-    /** Polls a finished craft still counts as coming until a stock check has seen its items (the stock may lag). */
     private static final int DONE_GRACE = 2;
-    /** Polls orders are kept once nothing is left to follow (for the HUD's "ready"), then dropped. */
     private static final int KEEP_FINISHED = 30;
-    /** Polls between HUD updates sent while nothing changes (20 ticks). */
     private static final int RESEND = 2;
     private static final Map<UUID, Orders> ORDERS = new HashMap<>();
 
     private CraftTracker() {
     }
 
-    /** Every craft of one item for a player: requests for the same item are merged here. */
     public static final class Order {
         private final Item item;
         private final List<CraftHandle> handles = new ArrayList<>();
-        /** Failures already told to the player. */
         private final Set<CraftHandle> reported = Collections.newSetFromMap(new IdentityHashMap<>());
-        /** Finished crafts -> polls since they finished; removed once a stock check saw their items. */
         private final Map<CraftHandle, Integer> unseen = new IdentityHashMap<>();
-        /** Crafts already seen finishing by an update. */
         private final Set<CraftHandle> finished = Collections.newSetFromMap(new IdentityHashMap<>());
 
         private Order(Item item) {
@@ -66,40 +53,32 @@ public final class CraftTracker {
             return item;
         }
 
-        /** Amount requested, failed crafts left out. */
         public int requested() {
             return handles.stream().filter(h -> h.state() != CraftHandle.State.FAILED).mapToInt(CraftHandle::amount).sum();
         }
 
-        /** Amount still calculating or crafting. */
         public int active() {
             return handles.stream().filter(h -> h.state().active()).mapToInt(CraftHandle::amount).sum();
         }
 
-        /** Amount already crafted into the network. */
         public int done() {
             return handles.stream().filter(h -> h.state() == CraftHandle.State.DONE).mapToInt(CraftHandle::amount).sum();
         }
 
-        /** Amount on its way: calculating, crafting, or just finished and not yet seen in the stock. */
         public int coming() {
             int unseenDone = unseen.entrySet().stream().filter(e -> e.getValue() < DONE_GRACE).mapToInt(e -> e.getKey().amount()).sum();
             return active() + unseenDone;
         }
 
-        /** The first failed craft of this item, or null. */
         public @Nullable CraftHandle failed() {
             return handles.stream().filter(h -> h.state() == CraftHandle.State.FAILED).findFirst().orElse(null);
         }
     }
 
     private static final class Orders {
-        /** The player's current object: a respawn (death, leaving the End) replaces it, the UUID stays. */
         Player player;
         final Map<Item, Order> byItem = new LinkedHashMap<>();
-        /** Polls since nothing was left to follow. */
         int finishedPolls;
-        /** The HUD state last sent to the player, and polls since. */
         HudState sent = HudState.NONE;
         int sentPolls;
 
@@ -108,22 +87,16 @@ public final class CraftTracker {
         }
     }
 
-    /** How many of item are calculating or crafting for player. */
     public static int active(Player player, Item item) {
         Order order = order(player, item);
         return order == null ? 0 : order.active();
     }
 
-    /**
-     * How many of item are on their way for player: calculating, crafting, or finished so recently that the stock may
-     * not show them yet (see {@link #seen}).
-     */
     public static int coming(Player player, Item item) {
         Order order = order(player, item);
         return order == null ? 0 : order.coming();
     }
 
-    /** A stock check found enough of item: its finished crafts no longer count as coming. */
     public static void seen(Player player, Item item) {
         Order order = order(player, item);
         if (order != null) {
@@ -136,10 +109,6 @@ public final class CraftTracker {
         return orders == null ? null : orders.byItem.get(item);
     }
 
-    /**
-     * Follows a new craft for player, merged with the item's earlier ones; the item's failed crafts are dropped (this
-     * is the new attempt). A craft that failed at once is not told again by {@link #update}: its caller reports it.
-     */
     public static void add(Player player, CraftHandle handle) {
         Orders orders = ORDERS.computeIfAbsent(player.getUUID(), id -> new Orders(player));
         orders.player = player;
@@ -153,26 +122,17 @@ public final class CraftTracker {
         orders.finishedPolls = 0;
     }
 
-    /** Player's orders, in request order (for the HUD); empty when none. */
     public static List<Order> orders(Player player) {
         Orders orders = ORDERS.get(player.getUUID());
         return orders == null ? List.of() : List.copyOf(orders.byItem.values());
     }
 
-    /**
-     * Forgets player's crafts (a build started with everything on hand, the network was forgotten, auto-craft was turned
-     * off) and hides their HUD; AE2 still finishes any that run.
-     */
     public static void clear(Player player) {
         if (ORDERS.remove(player.getUUID()) != null) {
             send(player, HudState.NONE);
         }
     }
 
-    /**
-     * What player's HUD shows: progress while crafts are on their way ("waiting" when the network can't be reached),
-     * then ready, or failed when some crafts failed; hidden without orders.
-     */
     public static HudState hud(Player player) {
         Orders orders = ORDERS.get(player.getUUID());
         if (orders == null || orders.byItem.isEmpty()) {
@@ -211,7 +171,6 @@ public final class CraftTracker {
         return new HudState(phase, done, total, List.copyOf(inProgress), failure);
     }
 
-    /** Sends player's HUD state when it changed, and every {@value #RESEND} polls while crafts are on their way. */
     private static void sendHud(Player player, Orders orders) {
         HudState state = hud(player);
         boolean active = state.phase() == HudState.Phase.CRAFTING || state.phase() == HudState.Phase.WAITING;
@@ -223,16 +182,11 @@ public final class CraftTracker {
     }
 
     private static void send(Player player, HudState state) {
-        // fake players (machines, tests) have no client to show it
         if (player instanceof ServerPlayer real && !(player instanceof FakePlayer) && real.connection != null) {
-            MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> real), new ToolHudPkt(state));
+            PacketDistributor.sendToPlayer(real, new ToolHudPkt(state));
         }
     }
 
-    /**
-     * Advances player's crafts once: a newly failed one is told in the action bar (once), and the HUD is updated (it says
-     * when all are done and the player can right-click again). The build itself never starts on its own.
-     */
     public static void update(Player player) {
         Orders orders = ORDERS.get(player.getUUID());
         if (orders == null) {
@@ -251,7 +205,7 @@ public final class CraftTracker {
                     order.unseen.computeIfPresent(handle, (h, polls) -> polls + 1);
                 }
                 if (state == CraftHandle.State.FAILED && order.reported.add(handle)) {
-                    player.displayClientMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW), true);
+                    player.sendOverlayMessage(entry(handle.item(), handle.amount(), handle.failure()).withStyle(ChatFormatting.YELLOW));
                 }
             }
         }
@@ -259,32 +213,28 @@ public final class CraftTracker {
         sendHud(player, orders);
     }
 
-    /** "Oak Planks ×12". */
     public static MutableComponent amount(Item item, int count) {
-        return Component.empty().append(item.getDescription()).append(Component.literal(" ×" + count));
+        return Component.empty().append(item.getName(item.getDefaultInstance())).append(Component.literal(" ×" + count));
     }
 
-    /** "item" or "items" as count asks, for "Crafting 1 item" / "Crafting 3 items". */
     public static MutableComponent itemsWord(int count) {
         return Component.translatable(count == 1 ? "message.mm.tool.item" : "message.mm.tool.items");
     }
 
-    /** "Oak Planks ×12: reason". */
     public static MutableComponent entry(Item item, int count, @Nullable Component reason) {
         Component why = reason != null ? reason : Component.translatable("message.mm.tool.craft.error");
         return Component.translatable("message.mm.tool.craft.entry", amount(item, count), why);
     }
 
     @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || ORDERS.isEmpty() || event.getServer().getTickCount() % INTERVAL != 0) {
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (ORDERS.isEmpty() || event.getServer().getTickCount() % INTERVAL != 0) {
             return;
         }
         var it = ORDERS.entrySet().iterator();
         while (it.hasNext()) {
             var entry = it.next();
             Orders orders = entry.getValue();
-            // matched by UUID: the listed player is the current object even after a respawn
             ServerPlayer listed = event.getServer().getPlayerList().getPlayer(entry.getKey());
             Player player = listed != null ? listed : orders.player instanceof FakePlayer fake && !fake.isRemoved() ? fake : null;
             if (player == null || orders.finishedPolls > KEEP_FINISHED) {

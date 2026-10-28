@@ -1,16 +1,15 @@
 package io.ticticboom.mods.mm.pattern;
 
-import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
+// [26.1-pending] import: import io.ticticboom.mods.mm.compat.mekanism.PatternChemicals;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.fml.ModList;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 /**
  * Gives what a finished pattern run holds back to the pattern provider that pushed it, through the provider's item,
@@ -29,15 +28,14 @@ public final class PatternReturn {
         if (!level.isLoaded(pos)) {
             return false;
         }
-        BlockEntity target = level.getBlockEntity(pos);
-        if (target == null) {
+        if (level.getBlockEntity(pos) == null) {
             return run.getBuffer().isEmpty();
         }
         for (PatternIngredient left : run.getBuffer().leftovers()) {
             long given = switch (left.kind()) {
-                case ITEM -> giveItems(target, run, left);
-                case FLUID -> giveFluid(target, run, left);
-                default -> MEKANISM ? PatternChemicals.give(target, run.getReturnFace(), left) : 0;
+                case ITEM -> giveItems(level, run, left);
+                case FLUID -> giveFluid(level, run, left);
+                case CHEMICAL -> 0; // [26.1-pending] Mekanism: MEKANISM ? PatternChemicals.give(level, pos, run.getReturnFace(), left) : 0
             };
             if (given > 0) {
                 run.getBuffer().remove(left.withAmount(given));
@@ -46,13 +44,13 @@ public final class PatternReturn {
         return run.getBuffer().isEmpty();
     }
 
-    private static long giveItems(BlockEntity target, PatternRun run, PatternIngredient items) {
-        var handler = target.getCapability(ForgeCapabilities.ITEM_HANDLER, run.getReturnFace()).resolve().orElse(null);
+    private static long giveItems(ServerLevel level, PatternRun run, PatternIngredient items) {
+        var handler = MMCapabilities.item(level, run.getReturnPos(), run.getReturnFace());
         if (handler == null) {
             return 0;
         }
-        var template = new ItemStack(ForgeRegistries.ITEMS.getValue(items.id()));
-        template.setTag(items.nbt() == null ? null : items.nbt().copy());
+        var template = new ItemStack(BuiltInRegistries.ITEM.getValue(items.id()));
+        template.applyComponents(items.components());
         long given = 0;
         while (given < items.amount()) {
             int batch = (int) Math.min(template.getMaxStackSize(), items.amount() - given);
@@ -65,12 +63,12 @@ public final class PatternReturn {
         return given;
     }
 
-    private static long giveFluid(BlockEntity target, PatternRun run, PatternIngredient fluid) {
-        var handler = target.getCapability(ForgeCapabilities.FLUID_HANDLER, run.getReturnFace()).resolve().orElse(null);
+    private static long giveFluid(ServerLevel level, PatternRun run, PatternIngredient fluid) {
+        var handler = MMCapabilities.fluid(level, run.getReturnPos(), run.getReturnFace());
         if (handler == null) {
             return 0;
         }
         int amount = (int) Math.min(Integer.MAX_VALUE, fluid.amount());
-        return handler.fill(new FluidStack(ForgeRegistries.FLUIDS.getValue(fluid.id()), amount), IFluidHandler.FluidAction.EXECUTE);
+        return handler.fill(new FluidStack(BuiltInRegistries.FLUID.getValue(fluid.id()), amount), IFluidHandler.FluidAction.EXECUTE);
     }
 }

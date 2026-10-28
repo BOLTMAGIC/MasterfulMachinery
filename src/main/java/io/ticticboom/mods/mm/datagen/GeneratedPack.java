@@ -5,12 +5,12 @@ import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.mojang.logging.LogUtils;
-import net.minecraft.FileUtil;
-import net.minecraft.Util;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FileUtil;
+import net.minecraft.util.Util;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
+import net.minecraft.server.packs.metadata.MetadataSectionType;
 import net.minecraft.server.packs.resources.IoSupplier;
 import net.minecraft.util.GsonHelper;
 import org.slf4j.Logger;
@@ -49,27 +49,28 @@ public class GeneratedPack implements PackResources {
     }
 
 
+    /** The pack's metadata comes from MMRepositorySource, which builds the Pack itself; there is no pack.mcmeta. */
     @Override
-    public <T> T getMetadataSection(MetadataSectionSerializer<T> deserializer) {
-        JsonObject jsonobject = new JsonObject();
-        JsonObject packObject = new JsonObject();
-        packObject.addProperty("pack_format", 15);
-        packObject.addProperty("description", "mm");
-        jsonobject.add("pack", packObject);
-        if (!jsonobject.has(deserializer.getMetadataSectionName())) {
-            return null;
-        } else {
-            try {
-                return deserializer.fromJson(GsonHelper.getAsJsonObject(jsonobject, deserializer.getMetadataSectionName()));
-            } catch (JsonParseException jsonparseexception) {
-                return null;
-            }
-        }
+    public <T> T getMetadataSection(MetadataSectionType<T> type) {
+        return null;
     }
 
     @Override
     public String packId() {
         return packId;
+    }
+
+    /**
+     * PackResources.packId was replaced by location() in 1.20.5. The pack is created
+     * programmatically rather than discovered on disk, so it reports itself as built in.
+     */
+    @Override
+    public net.minecraft.server.packs.PackLocationInfo location() {
+        return new net.minecraft.server.packs.PackLocationInfo(
+                packId,
+                net.minecraft.network.chat.Component.literal(packId),
+                net.minecraft.server.packs.repository.PackSource.BUILT_IN,
+                java.util.Optional.empty());
     }
 
     @Nullable
@@ -84,13 +85,13 @@ public class GeneratedPack implements PackResources {
     }
 
     @Nullable
-    public IoSupplier<InputStream> getResource(PackType p_249352_, ResourceLocation p_251715_) {
+    public IoSupplier<InputStream> getResource(PackType p_249352_, Identifier p_251715_) {
         Path path = this.root.resolve(p_249352_.getDirectory()).resolve(p_251715_.getNamespace());
         return getResource(p_251715_, path);
     }
 
-    public static IoSupplier<InputStream> getResource(ResourceLocation p_250145_, Path p_251046_) {
-        return FileUtil.decomposePath(p_250145_.getPath()).get().map((p_251647_) -> {
+    public static IoSupplier<InputStream> getResource(Identifier p_250145_, Path p_251046_) {
+        return FileUtil.decomposePath(p_250145_.getPath()).mapOrElse((p_251647_) -> {
             Path path = FileUtil.resolvePath(p_251046_, p_251647_);
             return returnFileIfExists(path);
         }, (p_248714_) -> {
@@ -105,10 +106,10 @@ public class GeneratedPack implements PackResources {
     }
 
     public void listResources(PackType p_251452_, String p_249854_, String p_248650_, PackResources.ResourceOutput p_248572_) {
-        FileUtil.decomposePath(p_248650_).get().ifLeft((p_250225_) -> {
+        FileUtil.decomposePath(p_248650_).ifSuccess((p_250225_) -> {
             Path path = this.root.resolve(p_251452_.getDirectory()).resolve(p_249854_);
             listPath(p_249854_, path, p_250225_, p_248572_);
-        }).ifRight((p_252338_) -> {
+        }).ifError((p_252338_) -> {
             LOGGER.error("Invalid path {}: {}", p_248650_, p_252338_.message());
         });
     }
@@ -121,7 +122,7 @@ public class GeneratedPack implements PackResources {
         })) {
             stream.forEach((p_249092_) -> {
                 String s = PATH_JOINER.join(p_249514_.relativize(p_249092_));
-                ResourceLocation resourcelocation = ResourceLocation.tryBuild(p_249455_, s);
+                Identifier resourcelocation = Identifier.tryBuild(p_249455_, s);
                 if (resourcelocation == null) {
                     Util.logAndPauseIfInIde(String.format(Locale.ROOT, "Invalid path in pack: %s:%s, ignoring", p_249455_, s));
                 } else {

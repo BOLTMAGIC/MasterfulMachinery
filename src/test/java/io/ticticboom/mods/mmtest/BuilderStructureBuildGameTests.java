@@ -16,16 +16,13 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.Map;
 
@@ -33,12 +30,11 @@ import java.util.Map;
  * Building another mod's structure (a datapack .nbt) with the Multiblock Tool: the mmtest:test_tower file
  * (9 stone and 1 oak stairs, 3x2x3), no controller, all or nothing like MM builds.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class BuilderStructureBuildGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation TOWER = ResourceLocation.tryBuild("mmtest", "test_tower");
-    private static final ResourceLocation UNBUILDABLE = ResourceLocation.tryBuild("mmtest", "unbuildable");
+    private static final Identifier TOWER = Identifier.tryBuild("mmtest", "test_tower");
+    private static final Identifier UNBUILDABLE = Identifier.tryBuild("mmtest", "unbuildable");
     private static final int START_FE = 1000;
     /** Clicked on its top face, so the anchor is one block above. */
     private static final BlockPos CLICKED = new BlockPos(3, 0, 3);
@@ -196,7 +192,7 @@ public class BuilderStructureBuildGameTests {
     @GameTest(template = TEMPLATE)
     public static void selectingBuilderAndMmStructuresReplaceEachOther(GameTestHelper helper) {
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
-        ResourceLocation mmStructure = ResourceLocation.tryBuild("mmtest", "assembly_test");
+        Identifier mmStructure = Identifier.tryBuild("mmtest", "assembly_test");
         check(helper, ToolSettingsPkt.apply(tool, ToolSettingsPkt.Action.SELECT_STRUCTURE, TOWER.toString(), ToolSettingsPkt.BUILDER_STRUCTURE,
                 id -> false, id -> BuildableStructureRegistry.SERVER.get(id) != null, Map.of()), "a loaded builder structure should be selectable");
         check(helper, TOWER.equals(ToolData.builderStructure(tool)) && ToolData.structure(tool) == null,
@@ -229,13 +225,13 @@ public class BuilderStructureBuildGameTests {
     }
 
     private static Player player(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.setYRot(180); // facing north
         check(helper, !player.getAbilities().instabuild, "mock player should not be instabuild");
         return player;
     }
 
-    private static ItemStack tool(Player player, ResourceLocation structure) {
+    private static ItemStack tool(Player player, Identifier structure) {
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         ToolData.setBuilderStructure(tool, structure);
         new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).restore(START_FE);
@@ -244,7 +240,7 @@ public class BuilderStructureBuildGameTests {
     }
 
     private static void stockStore(ItemStack tool, int stone, int stairs) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         if (stone > 0) {
             store.insertItem(0, new ItemStack(Blocks.STONE, stone), false);
         }
@@ -254,7 +250,7 @@ public class BuilderStructureBuildGameTests {
     }
 
     private static int storeCount(ItemStack tool) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         int total = 0;
         for (int i = 0; i < store.getSlots(); i++) {
             total += store.getStackInSlot(i).getCount();

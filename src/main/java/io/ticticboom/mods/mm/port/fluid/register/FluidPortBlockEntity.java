@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.ticticboom.mods.mm.Ref;
@@ -30,10 +31,8 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
 
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -72,7 +71,7 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("container.mm.port.fluid");
+        return Component.translatable("port.mm.fluid.title");
     }
 
     @Nullable
@@ -87,7 +86,10 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     }
 
     @Override
-    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        return storage.getCapability(cap);
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            NetworkLink.beforePortRemoved(level, pos);
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

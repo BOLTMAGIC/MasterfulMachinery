@@ -6,9 +6,10 @@ import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import lombok.Getter;
 import lombok.Setter;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
 
@@ -32,24 +33,24 @@ public class BotaniaManaPortStorage implements IPortStorage {
     }
 
     @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> capability) {
-        return LazyOptional.empty();
+    public <T> @Nullable T getCapability(BlockCapability<T, ?> capability) {
+        return null;
     }
 
     @Override
-    public <T> boolean hasCapability(Capability<T> capability) {
+    public <T> boolean hasCapability(BlockCapability<T, ?> capability) {
         return false;
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putInt("stored", stored);
         return tag;
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        stored = tag.getInt("stored");
+    public void load(CompoundTag tag, HolderLookup.Provider registries) {
+        stored = tag.getIntOr("stored", 0);
     }
 
     @Override

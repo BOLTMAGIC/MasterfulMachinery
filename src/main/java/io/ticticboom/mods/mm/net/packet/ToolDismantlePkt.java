@@ -1,30 +1,34 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
 
-import java.util.function.Supplier;
 
-/** Client held V on a machine while holding the multiblock tool -> server: dismantle it now. */
-public record ToolDismantlePkt(BlockPos pos) {
-    /** How far the aimed-at block may be from the player's eyes. */
+public record ToolDismantlePkt(BlockPos pos) implements CustomPacketPayload {
+    public static final Type<ToolDismantlePkt> TYPE = new Type<>(Ref.id("tool_dismantle"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, ToolDismantlePkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), ToolDismantlePkt::decode);
+
     private static final double MAX_DISTANCE = 8;
 
-    public static void encode(ToolDismantlePkt pkt, FriendlyByteBuf buf) {
+    public static void encode(ToolDismantlePkt pkt, RegistryFriendlyByteBuf buf) {
         buf.writeBlockPos(pkt.pos);
     }
 
-    public static ToolDismantlePkt decode(FriendlyByteBuf buf) {
+    public static ToolDismantlePkt decode(RegistryFriendlyByteBuf buf) {
         return new ToolDismantlePkt(buf.readBlockPos());
     }
 
-    public static void handle(ToolDismantlePkt pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer sender = ctx.get().getSender();
+    public static void handle(ToolDismantlePkt pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = (ctx.player() instanceof ServerPlayer player ? player : null);
             if (sender == null) {
                 return;
             }
@@ -33,9 +37,12 @@ public record ToolDismantlePkt(BlockPos pos) {
                     || sender.getEyePosition().distanceToSqr(pkt.pos.getCenter()) > MAX_DISTANCE * MAX_DISTANCE) {
                 return;
             }
-            // target, access, build rights and energy are checked like a Shift+right-click
             ToolDismantles.start(sender, tool, pkt.pos);
         });
-        ctx.get().setPacketHandled(true);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -1,21 +1,15 @@
 package io.ticticboom.mods.mm.pattern;
 
-import io.ticticboom.mods.mm.compat.ae2.pattern.PatternPortCraftingMachine;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.MachineLinks;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -25,7 +19,8 @@ import java.util.Optional;
 
 /**
  * A Pattern Port: finds the machine it belongs to (like an Input Gateway) and remembers why the last push was
- * refused, for Jade. The pattern runs themselves live in the controller.
+ * refused, for Jade. The pattern runs themselves live in the controller; the AE2 crafting machine capability is
+ * registered for this block entity in Ae2Capabilities.
  */
 public class PatternPortBlockEntity extends BlockEntity {
     /** How long the found machine is trusted before looking again, in ticks. */
@@ -41,11 +36,8 @@ public class PatternPortBlockEntity extends BlockEntity {
     @Nullable
     private PatternMismatch noRecipeWhy;
     // recipe found per (pattern, structure), until recipes reload
-    private final Map<List<Object>, Optional<ResourceLocation>> recipeByPattern = new HashMap<>();
+    private final Map<List<Object>, Optional<Identifier>> recipeByPattern = new HashMap<>();
     private int recipeGeneration = -1;
-    // the AE2 crafting machine capability, made on first request; only with AE2
-    @Nullable
-    private LazyOptional<?> craftingMachine;
 
     public PatternPortBlockEntity(BlockPos pos, BlockState state) {
         super(MMRegisters.PATTERN_PORT_BE.get(), pos, state);
@@ -63,7 +55,8 @@ public class PatternPortBlockEntity extends BlockEntity {
             var found = MachineLinks.find(serverLevel, getBlockPos());
             controllerPos = found == null ? null : found.getBlockPos();
         }
-        if (controllerPos != null && serverLevel.getExistingBlockEntity(controllerPos) instanceof MachineControllerBlockEntity controller
+        if (controllerPos != null && serverLevel.isLoaded(controllerPos)
+                && serverLevel.getBlockEntity(controllerPos) instanceof MachineControllerBlockEntity controller
                 && controller.getStructure() != null) {
             return controller;
         }
@@ -120,25 +113,5 @@ public class PatternPortBlockEntity extends BlockEntity {
         var id = recipeByPattern.computeIfAbsent(List.of(pattern, structure), key -> Optional.ofNullable(
                 PatternRecipeMatcher.match(MachineRecipeManager.getRecipeForStructureIds(List.of(structure)), spec)).map(RecipeModel::id));
         return id.map(MachineRecipeManager.RECIPES::get).orElse(null);
-    }
-
-    @Override
-    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if (NetworkLink.AVAILABLE && PatternPortCraftingMachine.isCraftingMachine(cap)) {
-            if (craftingMachine == null) {
-                craftingMachine = PatternPortCraftingMachine.capabilityFor(this);
-            }
-            return craftingMachine.cast();
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        if (craftingMachine != null) {
-            craftingMachine.invalidate();
-            craftingMachine = null;
-        }
     }
 }

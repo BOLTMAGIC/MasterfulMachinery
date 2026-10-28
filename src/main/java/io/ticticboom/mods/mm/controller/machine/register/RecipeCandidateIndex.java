@@ -1,12 +1,10 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
 import io.ticticboom.mods.mm.recipe.RecipeModel;
-import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,56 +14,54 @@ import java.util.Set;
  * A structure's recipes, indexed by every exact item they consume, so a controller only looks at recipes whose
  * inputs could be in its ports instead of scanning every recipe of the structure.
  */
-public class RecipeCandidateIndex {
-    private final List<RecipeModel> recipes;
+class RecipeCandidateIndex {
     private final RecipeRequirements[] requirements;
     // Every exact item input points to the recipes that consume it.
-    private final Map<ResourceLocation, int[]> positionsByItem = new HashMap<>();
-    // recipes with no specific item input (tags, fluids, energy...), always candidates
+    private final Map<Identifier, int[]> positionsByItem = new HashMap<>();
+    // recipes with no specific item input (tags, fluids, energy...), checked whatever items the ports hold
     private final int[] unindexedPositions;
+    private final int[] allPositions;
 
-    public RecipeCandidateIndex(Collection<RecipeModel> structureRecipes) {
-        this.recipes = new ArrayList<>(structureRecipes);
-        this.requirements = new RecipeRequirements[recipes.size()];
-        Map<ResourceLocation, List<Integer>> byItem = new HashMap<>();
+    RecipeCandidateIndex(List<RecipeModel> structureRecipes) {
+        requirements = new RecipeRequirements[structureRecipes.size()];
+        allPositions = new int[structureRecipes.size()];
+        Map<Identifier, List<Integer>> byItem = new HashMap<>();
         List<Integer> unindexed = new ArrayList<>();
-        for (int i = 0; i < recipes.size(); i++) {
-            var req = RecipeRequirements.of(recipes.get(i));
+        for (int i = 0; i < structureRecipes.size(); i++) {
+            var req = RecipeRequirements.of(structureRecipes.get(i));
             requirements[i] = req;
+            allPositions[i] = i;
             if (req.itemIds().isEmpty()) {
                 unindexed.add(i);
             } else {
-                for (ResourceLocation item : req.itemIds()) {
+                for (Identifier item : req.itemIds()) {
                     byItem.computeIfAbsent(item, k -> new ArrayList<>()).add(i);
                 }
             }
         }
         byItem.forEach((item, positions) -> positionsByItem.put(item, toArray(positions)));
-        this.unindexedPositions = toArray(unindexed);
+        unindexedPositions = toArray(unindexed);
     }
 
-    public int size() {
-        return recipes.size();
+    RecipeRequirements requirements(int position) {
+        return requirements[position];
     }
 
-    public boolean isEmpty() {
-        return recipes.isEmpty();
-    }
-
-    public RecipeModel get(int position) {
-        return recipes.get(position);
+    /** Every position, for when the port contents aren't known. */
+    int[] all() {
+        return allPositions;
     }
 
     /**
-     * @return positions, ascending, of the recipes the ports might be able to run
+     * @return positions, ascending, of the recipes whose item, fluid and energy inputs the ports might hold
      */
-    public int[] candidates(StorageCacheManager.StorageCache cache, @Nullable Set<ResourceLocation> portTypes) {
-        BitSet found = new BitSet(recipes.size());
-        BitSet tested = new BitSet(recipes.size());
-        addMatching(unindexedPositions, cache, portTypes, tested, found);
-        for (ResourceLocation item : cache.availableItemIds) {
+    int[] candidates(Set<Identifier> itemIds, Set<Identifier> fluidIds, boolean hasEnergy) {
+        BitSet found = new BitSet(requirements.length);
+        BitSet tested = new BitSet(requirements.length);
+        addMatching(unindexedPositions, itemIds, fluidIds, hasEnergy, tested, found);
+        for (Identifier item : itemIds) {
             int[] positions = positionsByItem.get(item);
-            if (positions != null) addMatching(positions, cache, portTypes, tested, found);
+            if (positions != null) addMatching(positions, itemIds, fluidIds, hasEnergy, tested, found);
         }
         int[] result = new int[found.cardinality()];
         int index = 0;
@@ -75,13 +71,15 @@ public class RecipeCandidateIndex {
         return result;
     }
 
-    private void addMatching(int[] positions, StorageCacheManager.StorageCache cache,
-                             @Nullable Set<ResourceLocation> portTypes, BitSet tested, BitSet out) {
+    private void addMatching(int[] positions, Set<Identifier> itemIds, Set<Identifier> fluidIds,
+                             boolean hasEnergy, BitSet tested, BitSet out) {
         for (int position : positions) {
             if (tested.get(position)) continue;
             tested.set(position);
             var req = requirements[position];
-            if (req.hasPortTypes(portTypes) && req.isMetBy(cache)) out.set(position);
+            if (itemIds.containsAll(req.itemIds()) && fluidIds.containsAll(req.fluidIds()) && (!req.energy() || hasEnergy)) {
+                out.set(position);
+            }
         }
     }
 

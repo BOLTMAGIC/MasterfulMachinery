@@ -33,42 +33,31 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Finds the machine a dismantle is aimed at and the blocks it is made of. */
 public final class DismantlePlanner {
-    /** How far from the aimed-at block a machine's controller may be. */
     public static final int SEARCH_RADIUS = 16;
 
     private DismantlePlanner() {
     }
 
-    /** A block to dismantle and what stood there when the dismantle was planned. */
     public record Target(BlockPos pos, Block block) {
     }
 
-    /** A complete match for the selected, controller-free structure. The center block is kept last for previews. */
     public record BuilderMatch(BlockPos center, List<Target> positions) {
     }
 
     private record Candidate(Rotation rotation, BlockPos origin) {
     }
 
-    /**
-     * Find a complete copy of the selected builder structure containing the clicked block. The file's rotation and
-     * original placement point are not stored in the world, so try only translations that place a matching block at
-     * the clicked position. Matching block types rather than full states permits stairs and formed machines to update
-     * their states after placement. An incomplete or ambiguous match is never dismantled.
-     */
     public static @Nullable BuilderMatch matchBuilder(Level level, BlockPos clicked, ItemStack tool) {
         var id = ToolData.builderStructure(tool);
         if (id == null || !level.isLoaded(clicked)) return null;
-        BuildableStructure structure = (level.isClientSide ? BuildableStructureRegistry.CLIENT : BuildableStructureRegistry.SERVER).get(id);
+        BuildableStructure structure = (level.isClientSide() ? BuildableStructureRegistry.CLIENT : BuildableStructureRegistry.SERVER).get(id);
         if (structure == null || structure.blocks().isEmpty()) return null;
         Block clickedBlock = level.getBlockState(clicked).getBlock();
         Map<Block, Integer> frequency = new HashMap<>();
         for (BuildableStructure.Placement placement : structure.blocks()) {
             frequency.merge(placement.state().getBlock(), 1, Integer::sum);
         }
-        // Rare blocks reject incorrect translations early, before checking a large casing wall.
         List<BuildableStructure.Placement> probes = new ArrayList<>(structure.blocks());
         probes.sort(Comparator.comparingInt(placement -> frequency.get(placement.state().getBlock())));
         Set<Candidate> tried = new HashSet<>();
@@ -97,7 +86,6 @@ public final class DismantlePlanner {
         }
         if (matchedPositions == null) return null;
         List<BlockPos> ordered = new ArrayList<>(matchedPositions);
-        // Remove upper blocks first so gravity and support updates do not drop pieces before their turn.
         ordered.sort(Comparator.<BlockPos>comparingInt(BlockPos::getY).reversed()
                 .thenComparingInt(BlockPos::getX).thenComparingInt(BlockPos::getZ));
         int minX = ordered.stream().mapToInt(BlockPos::getX).min().orElseThrow();
@@ -115,7 +103,6 @@ public final class DismantlePlanner {
         return new BuilderMatch(center, targets);
     }
 
-    /** MM controllers first, then a complete match for the selected controller-free structure. */
     public static List<BlockPos> previewPositions(Level level, BlockPos pos, ItemStack tool) {
         List<BlockPos> mm = previewPositions(level, pos);
         if (!mm.isEmpty()) return mm;
@@ -123,10 +110,6 @@ public final class DismantlePlanner {
         return builder == null ? List.of() : builder.positions().stream().map(Target::pos).toList();
     }
 
-    /**
-     * The controller the aimed-at block belongs to: the block itself when it is a controller, else a controller
-     * within {@link #SEARCH_RADIUS} whose formed structure contains it. Only loaded chunks are searched.
-     */
     public static @Nullable MachineControllerBlockEntity resolve(Level level, BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller) {
             return controller;
@@ -162,11 +145,6 @@ public final class DismantlePlanner {
         return best;
     }
 
-    /**
-     * What dismantling this controller breaks: its formed structure's blocks (ports included), then the controller
-     * last. An unformed controller is only itself. Air is left out. Each target keeps the block standing there now,
-     * so a block swapped in later is not broken.
-     */
     public static List<Target> positions(Level level, MachineControllerBlockEntity controller) {
         BlockPos controllerPos = controller.getBlockPos();
         Set<BlockPos> positions = new LinkedHashSet<>(structurePositions(level, controller));
@@ -182,14 +160,6 @@ public final class DismantlePlanner {
         return result;
     }
 
-    /**
-     * Client-safe preview of {@link #resolve} + {@link #positions} for outlining the aimed-at machine: never calls
-     * the structure's formed checks (they need a server level). Uses the controller's synced formed flag and the
-     * best matching rotation; without the flag, every piece must hold a fitting block. The server stays
-     * authoritative.
-     *
-     * @return the machine's positions, controller last; empty when the block belongs to no machine
-     */
     public static List<BlockPos> previewPositions(Level level, BlockPos pos) {
         if (level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller) {
             return previewPositions(level, controller);
@@ -247,9 +217,7 @@ public final class DismantlePlanner {
             }
         }
         List<PositionedLayoutPiece> pieces = AssemblyPlanner.pieces(structure, rotation);
-        // the server's formed flag is synced; the own check is only a fallback for a controller not validated yet
         if (!controller.isFormed() && bestScore < pieces.size()) {
-            // not formed: like the server, only the controller itself
             return List.of(controllerPos);
         }
         Set<BlockPos> positions = new LinkedHashSet<>();
@@ -265,10 +233,6 @@ public final class DismantlePlanner {
         return result;
     }
 
-    /**
-     * How many pieces hold a fitting block in this rotation, as loosely as the server's formed check: a port that
-     * may go anywhere fits any anywhere-port candidate, and an input gateway stands in for a non-port piece.
-     */
     private static int previewMatches(Level level, StructureModel structure, BlockPos controllerPos, Rotation rotation) {
         StructureLayout layout = structure.layout();
         List<PositionedLayoutPiece> pieces = AssemblyPlanner.pieces(structure, rotation);
@@ -308,7 +272,6 @@ public final class DismantlePlanner {
                 || piece instanceof PortAnywhereStructurePiece || piece instanceof PortTypeAnywhereStructurePiece;
     }
 
-    /** Every piece of the controller's cached structure (ports are pieces too), or none when it is not formed. */
     private static List<BlockPos> structurePositions(Level level, MachineControllerBlockEntity controller) {
         StructureModel structure = controller.getStructure();
         return structure == null ? List.of() : structure.getPositions(level, controller.getBlockPos());

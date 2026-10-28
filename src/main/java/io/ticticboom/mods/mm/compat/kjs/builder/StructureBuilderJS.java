@@ -1,14 +1,17 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
-import dev.latvian.mods.rhino.util.HideFromJS;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
+import dev.latvian.mods.rhino.util.HideFromJS;
 import io.ticticboom.mods.mm.model.IdList;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachments;
+import io.ticticboom.mods.mm.structure.attachment.visuals.FluidVolumeVisual;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,15 +20,16 @@ import java.util.function.Consumer;
 @Getter
 public class StructureBuilderJS {
 
-    private final List<ResourceLocation> controllers = new ArrayList<>();
-    private final ResourceLocation id;
+    private final List<Identifier> controllers = new ArrayList<>();
+    private final Identifier id;
     private String name;
     private Consumer<StructureLayoutBuilderJS> layoutConsumer;
     private int maxParallelRecipes = -1;
+    private final List<FluidVolumeVisual> fluidVolumes = new ArrayList<>();
     private JsonElement geoModel;
 
     public StructureBuilderJS(String id) {
-        this.id = ResourceLocation.tryParse(id);
+        this.id = Identifier.tryParse(id);
     }
 
     public StructureBuilderJS name(String name) {
@@ -34,7 +38,7 @@ public class StructureBuilderJS {
     }
 
     public StructureBuilderJS controllerId(String id) {
-        controllers.add(ResourceLocation.tryParse(id));
+        controllers.add(Identifier.tryParse(id));
         return this;
     }
 
@@ -49,14 +53,31 @@ public class StructureBuilderJS {
         return this;
     }
 
-    /**
-     * GeckoLib model for this structure; replaces the controller's. See ControllerBuilderJS#geoModel.
-     * 'none': no GeckoLib model while this structure is formed, even if the controller has one.
-     * One JsonElement parameter on purpose: with JsonObject + String overloads Rhino can't pick for a JS object.
-     */
+    public StructureBuilderJS fluidVolume(List<Number> from, List<Number> to) {
+        return fluidVolume(from, to, null);
+    }
+
+    public StructureBuilderJS fluidVolume(List<Number> from, List<Number> to, String port) {
+        fluidVolumes.add(new FluidVolumeVisual(toPos(from), toPos(to), null, port));
+        return this;
+    }
+
     public StructureBuilderJS geoModel(JsonElement geoModel) {
         this.geoModel = geoModel;
         return this;
+    }
+
+    public StructureBuilderJS fluidArea(String area) {
+        return fluidArea(area, null);
+    }
+
+    public StructureBuilderJS fluidArea(String area, String port) {
+        fluidVolumes.add(new FluidVolumeVisual(null, null, area, port));
+        return this;
+    }
+
+    private static BlockPos toPos(List<Number> values) {
+        return new BlockPos(values.get(0).intValue(), values.get(1).intValue(), values.get(2).intValue());
     }
 
     @HideFromJS
@@ -65,9 +86,15 @@ public class StructureBuilderJS {
         layoutConsumer.accept(event);
         IdList controllerIds = new IdList(controllers);
         StructureLayout layout = event.build();
-        // TODO: create real structure attachment js builders
         var json = StructureModel.paramsToJson(id, name, controllerIds, layout, maxParallelRecipes);
-        if (geoModel != null) json.add(GeoModelConfig.KEY, geoModel);
-        return new StructureModel(id, name, controllerIds, layout, new StructureAttachments(List.of()), json);
+        if (!fluidVolumes.isEmpty()) {
+            var visuals = new JsonArray();
+            fluidVolumes.forEach(volume -> visuals.add(volume.toJson()));
+            json.add("visuals", visuals);
+        }
+        if (geoModel != null) {
+            json.add(GeoModelConfig.KEY, geoModel);
+        }
+        return new StructureModel(id, name, controllerIds, layout, StructureAttachments.parse(json), json);
     }
 }

@@ -4,9 +4,9 @@ import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -16,14 +16,14 @@ import org.jetbrains.annotations.Nullable;
  */
 @Getter
 public final class PatternRun {
-    private final ResourceLocation recipeId;
+    private final Identifier recipeId;
     private final RecipeStateModel state;
     private final PatternBuffer buffer;
     private final BlockPos returnPos;
     private final Direction returnFace;
     private boolean returning;
 
-    public PatternRun(ResourceLocation recipeId, RecipeStateModel state, PatternBuffer buffer, BlockPos returnPos, Direction returnFace) {
+    public PatternRun(Identifier recipeId, RecipeStateModel state, PatternBuffer buffer, BlockPos returnPos, Direction returnFace) {
         this.recipeId = recipeId;
         this.state = state;
         this.buffer = buffer;
@@ -35,12 +35,12 @@ public final class PatternRun {
         returning = true;
     }
 
-    public CompoundTag save() {
+    public CompoundTag save(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
         tag.putString("Recipe", recipeId.toString());
-        tag.put("State", state.save(new CompoundTag()));
-        tag.put("Buffer", buffer.save());
-        tag.put("ReturnPos", NbtUtils.writeBlockPos(returnPos));
+        tag.put("State", state.save(new CompoundTag(), registries));
+        tag.put("Buffer", buffer.save(registries));
+        tag.putLong("ReturnPos", returnPos.asLong());
         tag.putString("ReturnFace", returnFace.getName());
         tag.putBoolean("Returning", returning);
         return tag;
@@ -48,15 +48,15 @@ public final class PatternRun {
 
     /** @return null if the data is broken */
     @Nullable
-    public static PatternRun load(CompoundTag tag) {
-        ResourceLocation recipeId = ResourceLocation.tryParse(tag.getString("Recipe"));
-        Direction face = Direction.byName(tag.getString("ReturnFace"));
-        if (recipeId == null || face == null) {
+    public static PatternRun load(CompoundTag tag, HolderLookup.Provider registries) {
+        Identifier recipeId = Identifier.tryParse(tag.getStringOr("Recipe", ""));
+        Direction face = Direction.byName(tag.getStringOr("ReturnFace", ""));
+        if (recipeId == null || face == null || !tag.contains("ReturnPos")) {
             return null;
         }
-        var run = new PatternRun(recipeId, RecipeStateModel.load(tag.getCompound("State")), PatternBuffer.load(tag.getCompound("Buffer")),
-                NbtUtils.readBlockPos(tag.getCompound("ReturnPos")), face);
-        run.returning = tag.getBoolean("Returning");
+        var run = new PatternRun(recipeId, RecipeStateModel.load(tag.getCompoundOrEmpty("State"), registries),
+                PatternBuffer.load(tag.getCompoundOrEmpty("Buffer"), registries), BlockPos.of(tag.getLongOr("ReturnPos", 0L)), face);
+        run.returning = tag.getBooleanOr("Returning", false);
         return run;
     }
 }

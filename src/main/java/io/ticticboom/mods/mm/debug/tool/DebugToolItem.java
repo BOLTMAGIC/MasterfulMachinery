@@ -14,8 +14,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 
 public class DebugToolItem extends Item {
-    public DebugToolItem() {
-        super(new Properties().stacksTo(1));
+    public DebugToolItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override
@@ -34,11 +34,10 @@ public class DebugToolItem extends Item {
 
         CollectedDebugData collect = DebugOutputManager.collect(ctx.getLevel(), ctx.getClickedPos());
         var path = DebugOutputManager.output(collect);
-        var msg = Component.translatable("message.mm.debug_tool.saved_to")
-                .withStyle(Style.EMPTY.withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, path)))
-                .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.translatable("message.mm.debug_tool.copy_path"))))
-                .append(Component.literal(path).withStyle(ChatFormatting.DARK_AQUA));
-        ctx.getPlayer().sendSystemMessage(Component.translatable("message.mm.debug_tool.saved").withStyle(ChatFormatting.GREEN));
+        var msg = Component.translatable("item.mm.debug_tool.message.saved_to", Component.literal(path).withStyle(ChatFormatting.DARK_AQUA))
+                .withStyle(Style.EMPTY.withClickEvent(new ClickEvent.CopyToClipboard(path)))
+                .withStyle(Style.EMPTY.withHoverEvent(new HoverEvent.ShowText(Component.translatable("item.mm.debug_tool.message.copy_hint"))));
+        ctx.getPlayer().sendSystemMessage(Component.translatable("item.mm.debug_tool.message.saved").withStyle(ChatFormatting.GREEN));
         ctx.getPlayer().sendSystemMessage(msg);
 
         return InteractionResult.SUCCESS;

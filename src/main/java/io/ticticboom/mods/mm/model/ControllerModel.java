@@ -1,23 +1,85 @@
 package io.ticticboom.mods.mm.model;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+
+import java.util.function.Supplier;
 
 
 public record ControllerModel(
         String id,
-        ResourceLocation type,
+        Identifier type,
         String name,
+        Supplier<Component> displayNameSource,
         boolean parallelProcessingDefault,
         int maxParallelRecipes,
         RecipeSelectionMode recipeSelectionMode,
         JsonObject config
 ) {
+
+    public Component displayName() {
+        return displayNameSource.get();
+    }
+
+    public Identifier overlayTexture() {
+        return ParserUtils.parseOptionalId(config, "overlay");
+    }
+
+    public Identifier baseTexture() {
+        return ParserUtils.parseOptionalId(config, "texture");
+    }
+
+    public String screenColor(String state) {
+        var key = state + "Color";
+        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
+        return config.get(key).getAsString();
+    }
+
+    public Identifier workingSound() {
+        return configId("workingSound");
+    }
+
+    public int workingSoundInterval() {
+        if (config == null || !config.has("workingSoundInterval") || !config.get("workingSoundInterval").isJsonPrimitive()) return 40;
+        return Math.max(1, config.get("workingSoundInterval").getAsInt());
+    }
+
+    public Identifier workingParticle() {
+        return configId("workingParticle");
+    }
+
+    private Identifier configId(String key) {
+        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
+        return Identifier.tryParse(config.get(key).getAsString());
+    }
+
+    public Identifier customModel() {
+        return ParserUtils.parseOptionalId(config, "model");
+    }
+
+    public Identifier customModel(String state) {
+        var specific = ParserUtils.parseOptionalId(config, state + "Model");
+        return specific != null ? specific : customModel();
+    }
+
+    public Identifier overlayTexture(String state) {
+        var specific = ParserUtils.parseOptionalId(config, state + "Overlay");
+        return specific != null ? specific : overlayTexture();
+    }
+
+    private static Supplier<Component> literalOf(String name) {
+        var literal = Component.literal(name);
+        return () -> literal;
+    }
+
     public static ControllerModel parse(JsonObject json) {
         var id = json.get("id").getAsString();
-        var name = json.get("name").getAsString();
+        // "name" accepts a plain string or a { "translation": "key" } object.
+        var name = ParserUtils.parseComponentKey(json.get("name"));
+        var displayName = ParserUtils.parseNameSupplier(json.get("name"));
         var type = ParserUtils.parseId(json, "type");
         var parallelProcessingDefault = json.has("parallelProcessingDefault") && json.get("parallelProcessingDefault").getAsBoolean();
         var maxParallelRecipes = json.has("maxParallelRecipes") ? json.get("maxParallelRecipes").getAsInt() : -1; // -1 => use global default
@@ -25,31 +87,42 @@ public record ControllerModel(
         var recipeSelectionMode = json.has("recipeSelectionMode")
                 ? RecipeSelectionMode.parse(json.get("recipeSelectionMode").getAsString())
                 : RecipeSelectionMode.DEFAULT;
-        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
+        return new ControllerModel(id, type, name, displayName, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
     }
 
-    public static ControllerModel create(String id, ResourceLocation type, String name) {
+    public static ControllerModel create(String id, Identifier type, String name) {
         JsonObject json = paramsToJson(id, type, name);
-        return new ControllerModel(id, type, name, false, -1, RecipeSelectionMode.DEFAULT, json);
+        return new ControllerModel(id, type, name, literalOf(name), false, -1, RecipeSelectionMode.DEFAULT, json);
     }
 
-    public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault) {
+    public static ControllerModel create(String id, Identifier type, String name, boolean parallelProcessingDefault) {
         JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, -1);
-        return new ControllerModel(id, type, name, parallelProcessingDefault, -1, RecipeSelectionMode.DEFAULT, json);
+        return new ControllerModel(id, type, name, literalOf(name), parallelProcessingDefault, -1, RecipeSelectionMode.DEFAULT, json);
     }
 
-    public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
+    public static ControllerModel create(String id, Identifier type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
         return create(id, type, name, parallelProcessingDefault, maxParallelRecipes, RecipeSelectionMode.DEFAULT);
     }
 
-    public static ControllerModel create(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
+    public static ControllerModel create(String id, Identifier type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
         maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
         if (recipeSelectionMode == null) recipeSelectionMode = RecipeSelectionMode.DEFAULT;
         JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
-        return new ControllerModel(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
+        return new ControllerModel(id, type, name, literalOf(name), parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
     }
 
-    public static JsonObject paramsToJson(String id, ResourceLocation type, String name) {
+    public static ControllerModel createStyled(String id, Identifier type, JsonElement nameSpec, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
+        if (nameSpec == null || nameSpec.isJsonNull()) {
+            return create(id, type, null, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        }
+        maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
+        if (recipeSelectionMode == null) recipeSelectionMode = RecipeSelectionMode.DEFAULT;
+        var name = ParserUtils.parseComponentKey(nameSpec);
+        JsonObject json = paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        return new ControllerModel(id, type, name, ParserUtils.parseNameSupplier(nameSpec), parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode, json);
+    }
+
+    public static JsonObject paramsToJson(String id, Identifier type, String name) {
         var json = new JsonObject();
         json.addProperty("id", id);
         json.addProperty("type", type.toString());
@@ -60,11 +133,11 @@ public record ControllerModel(
         return json;
     }
 
-    public static JsonObject paramsToJson(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
+    public static JsonObject paramsToJson(String id, Identifier type, String name, boolean parallelProcessingDefault, int maxParallelRecipes) {
         return paramsToJson(id, type, name, parallelProcessingDefault, maxParallelRecipes, RecipeSelectionMode.DEFAULT);
     }
 
-    public static JsonObject paramsToJson(String id, ResourceLocation type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
+    public static JsonObject paramsToJson(String id, Identifier type, String name, boolean parallelProcessingDefault, int maxParallelRecipes, RecipeSelectionMode recipeSelectionMode) {
         maxParallelRecipes = clampMaxParallelRecipesMarker(maxParallelRecipes);
         if (recipeSelectionMode == null) recipeSelectionMode = RecipeSelectionMode.DEFAULT;
         var json = new JsonObject();
@@ -75,50 +148,6 @@ public record ControllerModel(
         json.addProperty("maxParallelRecipes", maxParallelRecipes);
         json.addProperty("recipeSelectionMode", recipeSelectionMode.serializedName());
         return json;
-    }
-
-    /**
-     * Optional per-controller screen color, e.g. "idleColor": "#55FF55" in the controller's JSON.
-     * @param state unformed, idle or working
-     * @return the color string, or null when the controller doesn't set one
-     */
-    public String screenColor(String state) {
-        var key = state + "Color";
-        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
-        return config.get(key).getAsString();
-    }
-
-    /**
-     * Optional sound played while the machine works, e.g. "workingSound": "minecraft:block.blastfurnace.fire_crackle".
-     * @return the sound id, or null when the controller doesn't set one (or it isn't a valid id)
-     */
-    @Nullable
-    public ResourceLocation workingSound() {
-        return configId("workingSound");
-    }
-
-    /**
-     * Ticks between two plays of the working sound, e.g. "workingSoundInterval": 40 (the default, two seconds).
-     */
-    public int workingSoundInterval() {
-        if (config == null || !config.has("workingSoundInterval") || !config.get("workingSoundInterval").isJsonPrimitive()) return 40;
-        return Math.max(1, config.get("workingSoundInterval").getAsInt());
-    }
-
-    /**
-     * Optional particle shown on the controller's front while the machine works, e.g. "workingParticle": "minecraft:smoke".
-     * Only particles without extra options can be used.
-     * @return the particle id, or null when the controller doesn't set one (or it isn't a valid id)
-     */
-    @Nullable
-    public ResourceLocation workingParticle() {
-        return configId("workingParticle");
-    }
-
-    @Nullable
-    private ResourceLocation configId(String key) {
-        if (config == null || !config.has(key) || !config.get(key).isJsonPrimitive()) return null;
-        return ResourceLocation.tryParse(config.get(key).getAsString());
     }
 
     private static int clampMaxParallelRecipesMarker(int v) {

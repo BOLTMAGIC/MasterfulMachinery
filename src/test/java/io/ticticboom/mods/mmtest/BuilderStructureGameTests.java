@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import io.netty.buffer.Unpooled;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureParser;
@@ -9,7 +10,6 @@ import io.ticticboom.mods.mm.net.packet.BuildableStructureSyncPkt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
@@ -17,14 +17,12 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.StairBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Half;
 import net.minecraft.world.level.block.state.properties.StairsShape;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,13 +33,12 @@ import java.io.IOException;
  * Non-MM structures for the Multiblock Tool: loading the test {@code .nbt} files from structure_builder/structures
  * (and not from the old mbtool_structures folder), their names, groups and buildability, and the chunked client sync.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class BuilderStructureGameTests {
     private static final String TEMPLATE = "empty";
 
-    private static ResourceLocation id(String path) {
-        return ResourceLocation.tryBuild("mmtest", path);
+    private static Identifier id(String path) {
+        return Identifier.tryBuild("mmtest", path);
     }
 
     @GameTest(template = TEMPLATE)
@@ -50,16 +47,16 @@ public class BuilderStructureGameTests {
                 4, "verdium", 5, "azurine", 6, "caerium", 7, "amethystine",
                 8, "rosarium", 9, "ultimate");
         for (var tier : names.entrySet()) {
-            ResourceLocation file = ResourceLocation.tryBuild("mm", "structure_builder/structures/voidminer/voidminer_tier"
+            Identifier file = Identifier.tryBuild("mm", "structure_builder/structures/voidminer/voidminer_tier"
                     + tier.getKey() + "_" + tier.getValue() + ".nbt");
             var resource = helper.getLevel().getServer().getResourceManager().getResource(file);
             check(helper, resource.isPresent(), "missing Void Miner tier " + tier.getKey());
             try (var in = resource.orElseThrow().open()) {
-                CompoundTag nbt = NbtIo.readCompressed(in);
-                int paletteSize = nbt.getList("palette", Tag.TAG_COMPOUND).size();
+                CompoundTag nbt = NbtIo.readCompressed(in, net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+                int paletteSize = nbt.getListOrEmpty("palette").size();
                 check(helper, paletteSize > 0, "empty Void Miner palette in " + file);
-                for (Tag entry : nbt.getList("blocks", Tag.TAG_COMPOUND)) {
-                    int state = ((CompoundTag) entry).getInt("state");
+                for (Tag entry : nbt.getListOrEmpty("blocks")) {
+                    int state = ((CompoundTag) entry).getIntOr("state", 0);
                     check(helper, state >= 0 && state < paletteSize,
                             "invalid Void Miner state " + state + " in " + file);
                 }
@@ -103,6 +100,12 @@ public class BuilderStructureGameTests {
         check(helper, BuildableStructureRegistry.SERVER.get(id("nuclearcraft_fission_reactor")) == null,
                 "the NuclearCraft reactor should be skipped without NuclearCraft");
         BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
+        if (!net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
+            // Mekanism has no 26.1 release yet, so it is not in the dev runtime: its boiler is skipped like NuclearCraft's
+            check(helper, boiler == null, "the Mekanism boiler should be skipped without Mekanism");
+            helper.succeed();
+            return;
+        }
         check(helper, boiler != null, "the Mekanism boiler (a Multi Builder Tool file) should load with Mekanism present");
         check(helper, boiler.blockCount() == 128, "expected 128 non-air blocks in the boiler, got " + boiler.blockCount());
         check(helper, boiler.buildable(), "every boiler block has an item form");
@@ -125,16 +128,20 @@ public class BuilderStructureGameTests {
         check(helper, BuildableStructure.langKey(named.id()).equals("structure.mmtest.named.lang_named"), "unexpected lang key " + BuildableStructure.langKey(named.id()));
         check(helper, named.displayName().getString().equals("Lang Named Tower"), "the lang key should name it, got " + named.displayName().getString());
 
-        BuildableStructure mixed = BuildableStructureRegistry.SERVER.get(id("mixed_mods"));
-        check(helper, mixed.displayName().getString().equals("Mixed Mods"), "without a lang key the file name is title-cased, got " + mixed.displayName().getString());
-        // 10 stone, 3 Immersive Engineering, 2 Mekanism: the most common non-vanilla namespace wins
-        check(helper, mixed.group().equals("immersiveengineering"), "expected group immersiveengineering, got " + mixed.group());
-        check(helper, mixed.groupName().equals("Immersive Engineering"), "expected the mod's display name, got " + mixed.groupName());
+        // these Multi Builder Tool files hold Mekanism blocks, which load only when Mekanism is installed (it has no
+        // 26.1 release yet)
+        if (net.neoforged.fml.ModList.get().isLoaded("mekanism")) {
+            BuildableStructure mixed = BuildableStructureRegistry.SERVER.get(id("mixed_mods"));
+            check(helper, mixed.displayName().getString().equals("Mixed Mods"), "without a lang key the file name is title-cased, got " + mixed.displayName().getString());
+            // 10 stone, 3 Immersive Engineering, 2 Mekanism: the most common non-vanilla namespace wins
+            check(helper, mixed.group().equals("immersiveengineering"), "expected group immersiveengineering, got " + mixed.group());
+            check(helper, mixed.groupName().equals("Immersive Engineering"), "expected the mod's display name, got " + mixed.groupName());
 
-        BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
-        check(helper, boiler.group().equals("mekanism") && boiler.groupName().equals("Mekanism"), "expected group Mekanism, got " + boiler.groupName());
-        check(helper, boiler.displayName().getString().equals("Mekanism Boiler"), "got " + boiler.displayName().getString());
-        check(helper, BuildableStructure.fallbackName(ResourceLocation.tryBuild("mm", "woot/woot_tier_1_copper")).equals("Woot Tier 1 Copper"), "title case of a nested path");
+            BuildableStructure boiler = BuildableStructureRegistry.SERVER.get(id("mekanism_boiler"));
+            check(helper, boiler.group().equals("mekanism") && boiler.groupName().equals("Mekanism"), "expected group Mekanism, got " + boiler.groupName());
+            check(helper, boiler.displayName().getString().equals("Mekanism Boiler"), "got " + boiler.displayName().getString());
+        }
+        check(helper, BuildableStructure.fallbackName(Identifier.tryBuild("mm", "woot/woot_tier_1_copper")).equals("Woot Tier 1 Copper"), "title case of a nested path");
         helper.succeed();
     }
 
@@ -149,7 +156,7 @@ public class BuilderStructureGameTests {
         // the multi-palette form uses its first palette
         CompoundTag multi = template(List.of("minecraft:stone"), List.of(new int[]{0, 0, 0, 0}));
         ListTag palettes = new ListTag();
-        palettes.add(multi.getList("palette", 10));
+        palettes.add(multi.getListOrEmpty("palette"));
         multi.remove("palette");
         multi.put("palettes", palettes);
         var result = BuildableStructureParser.parse(id("multi"), multi);
@@ -170,7 +177,7 @@ public class BuilderStructureGameTests {
         var assembler = new BuildableStructureSync.Assembler();
         List<BuildableStructure> received = null;
         for (int i = 0; i < packets.size(); i++) {
-            FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+            RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
             BuildableStructureSyncPkt.encode(packets.get(i), buf);
             check(helper, buf.readableBytes() < BuildableStructureSync.MAX_PACKET_BYTES, "packet " + i + " is " + buf.readableBytes() + " bytes");
             BuildableStructureSyncPkt decoded = BuildableStructureSyncPkt.decode(buf);
@@ -219,7 +226,7 @@ public class BuilderStructureGameTests {
     }
 
     private static BuildableStructureSyncPkt roundTrip(BuildableStructureSyncPkt pkt) {
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), net.minecraft.core.RegistryAccess.EMPTY);
         BuildableStructureSyncPkt.encode(pkt, buf);
         BuildableStructureSyncPkt decoded = BuildableStructureSyncPkt.decode(buf);
         buf.release();
@@ -227,7 +234,7 @@ public class BuilderStructureGameTests {
     }
 
     /** A solid cube of mixed states, so the palette has several entries. */
-    private static BuildableStructure big(ResourceLocation id, int edge) {
+    private static BuildableStructure big(Identifier id, int edge) {
         BlockState[] states = {
                 Blocks.STONE.defaultBlockState(),
                 Blocks.OAK_STAIRS.defaultBlockState().setValue(StairBlock.FACING, Direction.WEST),

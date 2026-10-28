@@ -5,7 +5,8 @@ import java.util.Locale;
 public enum RecipeSelectionMode {
     DEFAULT("default", false),
     AVOID_SAME_RECIPE("avoid_same_recipe", true),
-    ROUND_ROBIN_INPUT_ITEM("round_robin_input_item", true);
+    ROUND_ROBIN_INPUT_ITEM("round_robin_input_item", true),
+    MANUAL("manual", false);
 
     private final String serializedName;
     private final boolean fairScheduling;
@@ -32,6 +33,7 @@ public enum RecipeSelectionMode {
         return switch (normalized) {
             case "avoid_same_recipe", "avoidsame", "avoid_same" -> AVOID_SAME_RECIPE;
             case "round_robin_input_item", "round_robin_input", "roundrobininputitem", "roundrobininput" -> ROUND_ROBIN_INPUT_ITEM;
+            case "manual", "select", "choose", "gui" -> MANUAL;
             case "default", "normal", "vanilla", "current" -> DEFAULT;
             default -> DEFAULT;
         };

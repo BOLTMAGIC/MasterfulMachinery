@@ -1,12 +1,13 @@
 package io.ticticboom.mods.mm.compat.jei;
 
+import io.ticticboom.mods.mm.client.util.TextColors;
 import com.mojang.blaze3d.platform.InputConstants;
 import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.inputs.IJeiInputHandler;
 import mezz.jei.api.gui.inputs.IJeiUserInput;
 import mezz.jei.api.gui.widgets.IRecipeWidget;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenPosition;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
@@ -17,10 +18,6 @@ import org.lwjgl.glfw.GLFW;
 import java.util.function.IntConsumer;
 import java.util.function.IntSupplier;
 
-/**
- * "&lt; All layers &gt;" selector drawn over the JEI structure view.
- * Layer -1 shows the whole structure, 0..layerCount-1 shows a single Y layer from the bottom.
- */
 public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
     private static final int ARROW_WIDTH = 9;
     private static final int HEIGHT = 11;
@@ -52,7 +49,7 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
     }
 
     @Override
-    public void drawWidget(GuiGraphics gfx, double mouseX, double mouseY) {
+    public void drawWidget(GuiGraphicsExtractor gfx, double mouseX, double mouseY) {
         var font = Minecraft.getInstance().font;
         int width = area.width();
         gfx.fill(0, 0, width, HEIGHT, COLOR_BACKDROP);
@@ -60,22 +57,20 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
         boolean hovered = mouseY >= 0 && mouseY < HEIGHT && mouseX >= 0 && mouseX < width;
         int leftColor = hovered && mouseX < ARROW_WIDTH ? COLOR_ARROW_HOVER : COLOR_ARROW;
         int rightColor = hovered && mouseX >= width - ARROW_WIDTH ? COLOR_ARROW_HOVER : COLOR_ARROW;
-        gfx.drawString(font, "<", 2, 2, leftColor, false);
-        gfx.drawString(font, ">", width - ARROW_WIDTH + 2, 2, rightColor, false);
+        gfx.text(font, "<", 2, 2, TextColors.argb(leftColor), false);
+        gfx.text(font, ">", width - ARROW_WIDTH + 2, 2, TextColors.argb(rightColor), false);
 
         var label = font.plainSubstrByWidth(labelFor(layer.getAsInt()).getString(), width - 2 * ARROW_WIDTH);
-        gfx.drawString(font, label, (width - font.width(label)) / 2, 2, COLOR_TEXT, false);
+        gfx.text(font, label, (width - font.width(label)) / 2, 2, TextColors.argb(COLOR_TEXT), false);
     }
 
     @Override
     public void getTooltip(ITooltipBuilder tooltip, double mouseX, double mouseY) {
-        // JEI asks every widget for a tooltip wherever the mouse is over the recipe, so check the bounds here
         if (mouseX >= 0 && mouseX < area.width() && mouseY >= 0 && mouseY < HEIGHT) {
             tooltip.add(Component.translatable("jei.mm.structure.layer.hint"));
         }
     }
 
-    // JEI passes mouse coordinates relative to getArea()'s top-left corner
     @Override
     public boolean handleInput(double mouseX, double mouseY, IJeiUserInput input) {
         InputConstants.Key key = input.getKey();
@@ -98,14 +93,12 @@ public class StructureLayerWidget implements IRecipeWidget, IJeiInputHandler {
     }
 
     @Override
-    public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollDelta) {
-        // scrolling up moves up the structure
+    public boolean handleMouseScrolled(double mouseX, double mouseY, double scrollDeltaX, double scrollDelta) {
         step(scrollDelta > 0 ? 1 : -1);
         return true;
     }
 
     private void step(int direction) {
-        // cycle through: all, 0, 1, ... layerCount-1, all
         int states = layerCount + 1;
         int current = layer.getAsInt() + 1;
         int next = Math.floorMod(current + direction, states);

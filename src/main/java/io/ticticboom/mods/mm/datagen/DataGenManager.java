@@ -15,15 +15,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.server.packs.repository.PackRepository;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.common.data.ExistingFileHelper;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.fml.ModLoader;
-import net.minecraftforge.fml.loading.FMLEnvironment;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryManager;
-import net.minecraftforge.resource.ResourcePackLoader;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.fml.ModLoader;
+import net.neoforged.fml.loading.FMLEnvironment;
+import net.neoforged.fml.loading.FMLPaths;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.resource.ResourcePackLoader;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,32 +36,31 @@ public class DataGenManager {
     public static void generate() {
         if (!hasGenerated) {
             try {
-                if (!ModLoader.isLoadingStateValid()) {
+                // ModLoader.isLoadingStateValid is gone in NeoForge; ModLoader.hasErrors covers it.
+                if (ModLoader.hasErrors()) {
                     return;
                 }
                 generator.run();
                 hasGenerated = true;
             } catch (Exception e) {
-                e.printStackTrace();
+                Ref.LOG.error("Data generation failed", e);
             }
         }
     }
 
     public static void registerDataProviders() {
         generator = createDataGenerator();
-        ExistingFileHelper efh = new ExistingFileHelper(ImmutableList.of(), ImmutableSet.of(), false, null, null);
         CompletableFuture<HolderLookup.Provider> lookupProvider = CompletableFuture.supplyAsync(() -> RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
-        generator.addProvider(true, new MMLootTableProvider(generator));
+        generator.addProvider(true, new MMLootTableProvider(generator, lookupProvider));
         generator.addProvider(true, new MMLangProvider(generator, "en_us"));
         generator.addProvider(true, new MMBlockTagsProvider(generator, lookupProvider));
-        if (FMLEnvironment.dist != Dist.DEDICATED_SERVER) {
-            generator.addProvider(true, new MMBlockstateProvider(generator, efh));
-            generator.addProvider(true, new MMItemModelProvider(generator, efh));
+        if (FMLEnvironment.getDist() != Dist.DEDICATED_SERVER) {
+            generator.addProvider(true, new MMBlockstateProvider(generator));
         }
     }
 
     public static DataGenerator createDataGenerator() {
-        generator = new DataGenerator(MMRepositorySource.CONFIG_DIR, DetectedVersion.tryDetectVersion(), true);
+        generator = new DataGenerator.Cached(MMRepositorySource.CONFIG_DIR, DetectedVersion.tryDetectVersion(), true);
         return generator;
     }
 }

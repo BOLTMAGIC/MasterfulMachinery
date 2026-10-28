@@ -1,13 +1,13 @@
 package io.ticticboom.mods.mm.compat.kjs.event;
 
-import dev.latvian.mods.kubejs.event.EventJS;
+import dev.latvian.mods.kubejs.event.KubeEvent;
 import io.ticticboom.mods.mm.compat.kjs.builder.ExtraBlockBuilderJS;
 import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExtraBlockEventJS extends EventJS {
+public class ExtraBlockEventJS implements KubeEvent {
     @Getter
     private final List<ExtraBlockBuilderJS> builder = new ArrayList<>();
 

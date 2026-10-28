@@ -1,39 +1,59 @@
 package io.ticticboom.mods.mm.gateway;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Shows the tanks of the machine's fluid input ports (read only), followed by one always-empty tank to fill;
- * filled fluid goes on to the input ports, filling them in order. Nothing can be drained.
- * Showing the ports' contents lets an AE2 Pattern Provider in blocking mode wait until the machine has used its inputs.
- */
-public class GatewayFluidHandler implements IFluidHandler {
+public class GatewayFluidHandler implements IFluidHandler, TransferSnapshot {
     private final Supplier<List<IPortStorage>> inputs;
+    private final Supplier<List<IPortStorage>> outputs;
 
     public GatewayFluidHandler(Supplier<List<IPortStorage>> inputs) {
-        this.inputs = inputs;
+        this(inputs, List::of);
     }
 
-    private List<IFluidHandler> handlers() {
+    public GatewayFluidHandler(Supplier<List<IPortStorage>> inputs, Supplier<List<IPortStorage>> outputs) {
+        this.inputs = inputs;
+        this.outputs = outputs;
+    }
+
+    private static List<IFluidHandler> handlers(List<IPortStorage> storages) {
         var result = new ArrayList<IFluidHandler>();
-        for (IPortStorage storage : inputs.get()) {
-            storage.getCapability(MMCapabilities.FLUID).resolve().ifPresent(result::add);
+        for (IPortStorage storage : storages) {
+            var handler = storage.getCapability(MMCapabilities.FLUID);
+            if (handler != null) {
+                result.add(handler);
+            }
         }
         return result;
+    }
+
+    private List<IFluidHandler> all() {
+        var result = handlers(inputs.get());
+        result.addAll(handlers(outputs.get()));
+        return result;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return GatewaySnapshots.create(all());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        GatewaySnapshots.restore(snapshot);
     }
 
     @Override
     public int getTanks() {
         int tanks = 1;
-        for (IFluidHandler handler : handlers()) {
+        for (IFluidHandler handler : all()) {
             tanks += handler.getTanks();
         }
         return tanks;
@@ -41,19 +61,18 @@ public class GatewayFluidHandler implements IFluidHandler {
 
     @Override
     public @NotNull FluidStack getFluidInTank(int tank) {
-        for (IFluidHandler handler : handlers()) {
+        for (IFluidHandler handler : all()) {
             if (tank < handler.getTanks()) {
                 return handler.getFluidInTank(tank);
             }
             tank -= handler.getTanks();
         }
-        // the trailing entry tank
         return FluidStack.EMPTY;
     }
 
     @Override
     public int getTankCapacity(int tank) {
-        for (IFluidHandler handler : handlers()) {
+        for (IFluidHandler handler : all()) {
             if (tank < handler.getTanks()) {
                 return handler.getTankCapacity(tank);
             }
@@ -73,25 +92,38 @@ public class GatewayFluidHandler implements IFluidHandler {
             return 0;
         }
         int filled = 0;
-        for (IPortStorage storage : inputs.get()) {
+        for (IFluidHandler handler : handlers(inputs.get())) {
             if (filled >= resource.getAmount()) {
                 break;
             }
-            var handler = storage.getCapability(MMCapabilities.FLUID).resolve();
-            if (handler.isPresent()) {
-                filled += handler.get().fill(new FluidStack(resource, resource.getAmount() - filled), action);
-            }
+            filled += handler.fill(resource.copyWithAmount(resource.getAmount() - filled), action);
         }
         return filled;
     }
 
     @Override
     public @NotNull FluidStack drain(FluidStack resource, FluidAction action) {
-        return FluidStack.EMPTY;
+        if (resource.isEmpty()) {
+            return FluidStack.EMPTY;
+        }
+        int drained = 0;
+        for (IFluidHandler handler : handlers(outputs.get())) {
+            if (drained >= resource.getAmount()) {
+                break;
+            }
+            drained += handler.drain(resource.copyWithAmount(resource.getAmount() - drained), action).getAmount();
+        }
+        return drained <= 0 ? FluidStack.EMPTY : resource.copyWithAmount(drained);
     }
 
     @Override
     public @NotNull FluidStack drain(int maxDrain, FluidAction action) {
+        for (IFluidHandler handler : handlers(outputs.get())) {
+            var simulated = handler.drain(maxDrain, FluidAction.SIMULATE);
+            if (!simulated.isEmpty()) {
+                return drain(simulated, action);
+            }
+        }
         return FluidStack.EMPTY;
     }
 }

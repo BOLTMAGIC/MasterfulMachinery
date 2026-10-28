@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mmtest;
 
+import java.util.Optional;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.core.registries.BuiltInRegistries;
 import appeng.api.implementations.blockentities.ICraftingMachine;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.GenericStack;
@@ -12,20 +15,17 @@ import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.registries.ForgeRegistries;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
+import net.neoforged.neoforge.items.IItemHandler;
 import snownee.jade.api.BlockAccessor;
 
 import java.lang.reflect.Proxy;
@@ -35,7 +35,6 @@ import java.lang.reflect.Proxy;
  * "ICO", iron in -> gold out, 40 ticks, 2 recipes at once; the Pattern Port touches the input port and a chest stands
  * where the pattern provider would be.
  */
-@PrefixGameTestTemplate(false)
 public class PatternPortGameTests {
     static final String TEMPLATE = "empty";
     static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
@@ -139,10 +138,10 @@ public class PatternPortGameTests {
                 .thenExecute(() -> {
                     check(helper, push(helper, ironToGold("iron")), "the pattern port should take the pattern");
                     var data = jadeData(helper);
-                    check(helper, data.getInt("PatternRuns") == 1, "Jade should get 1 running pattern, data " + data);
-                    check(helper, !data.getString("PatternMachine").isEmpty(), "Jade should get the machine's name, data " + data);
+                    check(helper, data.getIntOr("PatternRuns", 0) == 1, "Jade should get 1 running pattern, data " + data);
+                    check(helper, !data.getStringOr("PatternMachine", "").isEmpty(), "Jade should get the machine's name, data " + data);
                     check(helper, !push(helper, nothing), "no recipe makes a diamond from dirt");
-                    check(helper, "no_recipe".equals(jadeData(helper).getString("PatternLast")), "Jade should get why the last push was refused, data "
+                    check(helper, "no_recipe".equals(jadeData(helper).getStringOr("PatternLast", "")), "Jade should get why the last push was refused, data "
                             + jadeData(helper));
                 })
                 .thenSucceed();
@@ -173,9 +172,9 @@ public class PatternPortGameTests {
                 .thenWaitUntil(() -> formed(helper, controller))
                 .thenExecute(() -> {
                     check(helper, !push(helper, pattern), "without a blaze rod anywhere the pattern can't start");
-                    check(helper, "missing_inputs".equals(jadeData(helper).getString("PatternLast")), "Jade should say inputs are missing, data "
+                    check(helper, "missing_inputs".equals(jadeData(helper).getStringOr("PatternLast", "")), "Jade should say inputs are missing, data "
                             + jadeData(helper));
-                    var port = helper.getBlockEntity(INPUT).getCapability(ForgeCapabilities.ITEM_HANDLER).orElseThrow(IllegalStateException::new);
+                    var port = java.util.Objects.requireNonNull(MMCapabilities.item(helper.getLevel(), helper.absolutePos(INPUT), null));
                     port.insertItem(0, new ItemStack(Items.BLAZE_ROD), false);
                 })
                 .thenExecute(() -> check(helper, push(helper, pattern), "with the blaze rod in the input port the pattern should run"))
@@ -197,12 +196,12 @@ public class PatternPortGameTests {
                 .thenWaitUntil(() -> formed(helper, controller))
                 .thenExecute(() -> {
                     check(helper, !push(helper, twoIron), "the recipe takes 1 iron, not 2");
-                    var why = jadeData(helper).getCompound("PatternWhy");
-                    check(helper, "amount".equals(why.getString("Reason")) && "minecraft:iron_ingot".equals(why.getString("What"))
-                            && why.getLong("Pattern") == 2 && why.getLong("Recipe") == 1, "Jade should say the iron amount differs, got " + why);
+                    var why = jadeData(helper).getCompoundOrEmpty("PatternWhy");
+                    check(helper, "amount".equals(why.getStringOr("Reason", "")) && "minecraft:iron_ingot".equals(why.getStringOr("What", ""))
+                            && why.getLongOr("Pattern", 0L) == 2 && why.getLongOr("Recipe", 0L) == 1, "Jade should say the iron amount differs, got " + why);
                     check(helper, !push(helper, dirt), "nothing makes a diamond");
-                    why = jadeData(helper).getCompound("PatternWhy");
-                    check(helper, "no_output".equals(why.getString("Reason")) && "minecraft:diamond".equals(why.getString("What")),
+                    why = jadeData(helper).getCompoundOrEmpty("PatternWhy");
+                    check(helper, "no_output".equals(why.getStringOr("Reason", "")) && "minecraft:diamond".equals(why.getStringOr("What", "")),
                             "Jade should say no recipe makes a diamond, got " + why);
                     check(helper, push(helper, ironToGold("iron")), "a fitting pattern should run");
                     check(helper, !jadeData(helper).contains("PatternWhy"), "a pattern that ran leaves no reason behind");
@@ -212,7 +211,7 @@ public class PatternPortGameTests {
 
     /** What PatternPortDataProvider sends to the client for the port. */
     static CompoundTag jadeData(GameTestHelper helper) {
-        var be = helper.getBlockEntity(PORT);
+        var be = helper.getBlockEntity(PORT, BlockEntity.class);
         BlockPos pos = helper.absolutePos(PORT);
         BlockAccessor accessor = (BlockAccessor) Proxy.newProxyInstance(BlockAccessor.class.getClassLoader(),
                 new Class<?>[]{BlockAccessor.class}, (proxy, method, args) -> switch (method.getName()) {
@@ -234,7 +233,7 @@ public class PatternPortGameTests {
     }
 
     static boolean push(GameTestHelper helper, TestPattern pattern) {
-        var machine = ICraftingMachine.of(helper.getBlockEntity(PORT), PROVIDER_SIDE);
+        var machine = ICraftingMachine.of(helper.getBlockEntity(PORT, BlockEntity.class), PROVIDER_SIDE);
         check(helper, machine != null, "the pattern port should be an AE2 crafting machine");
         return machine.acceptsPlans() && machine.pushPattern(pattern, pattern.inputs(), PROVIDER_SIDE);
     }
@@ -243,7 +242,7 @@ public class PatternPortGameTests {
     static boolean finishedWith(MachineControllerBlockEntity controller, Item item) {
         for (PatternRun run : controller.getPatternRuns()) {
             if (run.isReturning() && run.getBuffer().leftovers().stream()
-                    .anyMatch(left -> left.id().equals(ForgeRegistries.ITEMS.getKey(item)))) {
+                    .anyMatch(left -> left.id().equals(BuiltInRegistries.ITEM.getKey(item)))) {
                 return true;
             }
         }
@@ -251,7 +250,7 @@ public class PatternPortGameTests {
     }
 
     static IItemHandler chestHandler(GameTestHelper helper) {
-        return helper.getBlockEntity(PROVIDER).getCapability(ForgeCapabilities.ITEM_HANDLER, PROVIDER_SIDE.getOpposite())
+        return Optional.ofNullable(MMCapabilities.item(helper.getLevel(), helper.absolutePos(PROVIDER), PROVIDER_SIDE.getOpposite()))
                 .orElseThrow(IllegalStateException::new);
     }
 
@@ -272,17 +271,17 @@ public class PatternPortGameTests {
         helper.setBlock(OUTPUT, block("test_wait_item_output"));
         helper.setBlock(PORT, MMRegisters.PATTERN_PORT.get());
         helper.setBlock(PROVIDER, Blocks.CHEST);
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     static void formed(GameTestHelper helper, MachineControllerBlockEntity controller) {
-        ResourceLocation id = ResourceLocation.tryBuild("mmtest", "pattern_push_test");
+        Identifier id = Identifier.tryBuild("mmtest", "pattern_push_test");
         check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id)
                 && !"not_formed".equals(controller.statusKey()), "pattern_push_test not formed yet");
     }
 
     static int count(GameTestHelper helper, BlockPos port, Item item) {
-        if (!(helper.getBlockEntity(port) instanceof AbstractPortBlockEntity be) || !(be.getStorage() instanceof ItemPortStorage items)) {
+        if (!(helper.getBlockEntity(port, BlockEntity.class) instanceof AbstractPortBlockEntity be) || !(be.getStorage() instanceof ItemPortStorage items)) {
             throw new IllegalStateException("no item port at " + port);
         }
         int total = 0;
@@ -295,7 +294,7 @@ public class PatternPortGameTests {
     }
 
     static Block block(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("mm:" + id + " is not registered");
         }

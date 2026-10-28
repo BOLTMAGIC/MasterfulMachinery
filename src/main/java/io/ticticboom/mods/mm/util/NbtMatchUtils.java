@@ -13,7 +13,7 @@ public class NbtMatchUtils {
         if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) {
             // try SNBT parsing
             try {
-                return TagParser.parseTag(el.getAsString());
+                return TagParser.parseCompoundFully(el.getAsString());
                 // if parsed is not a compound, wrap it into one under key "value"
             } catch (Exception e) {
                 throw new RuntimeException("Failed to parse SNBT: " + e.getMessage(), e);
@@ -98,7 +98,7 @@ public class NbtMatchUtils {
     public static JsonElement toJson(CompoundTag tag) {
         if (tag == null) return JsonNull.INSTANCE;
         JsonObject obj = new JsonObject();
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             Tag t = tag.get(key);
             obj.add(key, tagToJson(t));
         }
@@ -115,34 +115,34 @@ public class NbtMatchUtils {
             return arr;
         }
         if (t instanceof StringTag st) {
-            return new JsonPrimitive(st.getAsString());
+            return new JsonPrimitive(st.value());
         }
         if (t instanceof ByteTag bt) {
-            return new JsonPrimitive(bt.getAsByte());
+            return new JsonPrimitive(bt.byteValue());
         }
         if (t instanceof ShortTag sht) {
-            return new JsonPrimitive(sht.getAsShort());
+            return new JsonPrimitive(sht.shortValue());
         }
         if (t instanceof IntTag it) {
-            return new JsonPrimitive(it.getAsInt());
+            return new JsonPrimitive(it.intValue());
         }
         if (t instanceof LongTag ltg) {
-            return new JsonPrimitive(ltg.getAsLong());
+            return new JsonPrimitive(ltg.longValue());
         }
         if (t instanceof FloatTag ft) {
-            return new JsonPrimitive(ft.getAsFloat());
+            return new JsonPrimitive(ft.floatValue());
         }
         if (t instanceof DoubleTag dt) {
-            return new JsonPrimitive(dt.getAsDouble());
+            return new JsonPrimitive(dt.doubleValue());
         }
         // fallback
-        return new JsonPrimitive(t.getAsString());
+        return new JsonPrimitive(t.toString());
     }
 
     public static boolean matchesWeak(CompoundTag subset, CompoundTag superset) {
         if (subset == null) return true;
         if (superset == null) return false;
-        for (String key : subset.getAllKeys()) {
+        for (String key : subset.keySet()) {
             if (!superset.contains(key)) return false;
             Tag a = subset.get(key);
             Tag b = superset.get(key);
@@ -179,11 +179,11 @@ public class NbtMatchUtils {
             if (allStrings) {
                 java.util.HashMap<String, Integer> counts = new java.util.HashMap<>();
                 for (Tag tb : bl) {
-                    String key = tb.getAsString();
+                    String key = tb.asString().orElse("");
                     counts.put(key, counts.getOrDefault(key, 0) + 1);
                 }
                 for (Tag ta : al) {
-                    String k = ta.getAsString();
+                    String k = ta.asString().orElse("");
                     Integer c = counts.get(k);
                     if (c == null || c <= 0) return false;
                     counts.put(k, c - 1);
@@ -222,8 +222,8 @@ public class NbtMatchUtils {
     private static final double FLOAT_EPSILON = 1e-9;
 
     private static boolean numberTagEquals(Tag a, Tag b) {
-        double va = ((NumericTag) a).getAsNumber().doubleValue();
-        double vb = ((NumericTag) b).getAsNumber().doubleValue();
+        double va = ((NumericTag) a).doubleValue();
+        double vb = ((NumericTag) b).doubleValue();
         if (Double.compare(va, vb) == 0) {
             return true;
         }

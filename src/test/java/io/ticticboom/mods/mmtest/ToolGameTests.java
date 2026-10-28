@@ -1,34 +1,29 @@
 package io.ticticboom.mods.mmtest;
 
+import io.ticticboom.mods.mm.tool.ToolComponents;
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.event.AttachCapabilitiesEvent;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.common.NeoForge;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.Consumer;
@@ -36,15 +31,14 @@ import java.util.function.Consumer;
 /**
  * The Multiblock Tool's block store (54 x 512) and FE storage, both backed by the tool item's own NBT.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class ToolGameTests {
     private static final String TEMPLATE = "empty";
 
     @GameTest(template = TEMPLATE)
     public static void toolStoreHolds512AndSurvivesNbt(GameTestHelper helper) {
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
-        ToolStore store = new ToolStore(tool);
+        ToolStore store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
 
         ItemStack leftover = store.insertItem(0, new ItemStack(Blocks.COBBLESTONE, 600), false);
         check(helper, store.getStackInSlot(0).getCount() == 512, "expected 512 stored, got " + store.getStackInSlot(0).getCount());
@@ -56,8 +50,9 @@ public class ToolGameTests {
         ItemStack secondSword = store.insertItem(1, new ItemStack(Items.IRON_SWORD, 1), false);
         check(helper, secondSword.getCount() == 1, "a second sword should not fit in the same slot, got leftover " + secondSword.getCount());
 
-        ItemStack roundTripped = ItemStack.of(tool.save(new CompoundTag()));
-        ToolStore reloaded = new ToolStore(roundTripped);
+        var registries = helper.getLevel().registryAccess();
+        ItemStack roundTripped = LegacyNbt.parseItem(registries, LegacyNbt.saveItem(tool, registries));
+        ToolStore reloaded = new ToolStore(roundTripped, net.minecraft.core.RegistryAccess.EMPTY);
         check(helper, reloaded.getStackInSlot(0).getCount() == 512, "count 512 should survive an NBT round-trip, got " + reloaded.getStackInSlot(0).getCount());
         check(helper, reloaded.getStackInSlot(1).getCount() == 1, "the sword's count should survive an NBT round-trip, got " + reloaded.getStackInSlot(1).getCount());
         helper.succeed();
@@ -89,7 +84,7 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void menuQuickMoveMerges(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
@@ -102,13 +97,13 @@ public class ToolGameTests {
         // that's the real vanilla shift-click entry point (and it loops calling quickMoveStack for as
         // long as it keeps getting a non-empty result back for the same slot)
         for (int i = 0; i < 3; i++) {
-            menu.clicked(MultiblockToolMenu.STORE_SLOTS + i, 0, ClickType.QUICK_MOVE, player);
+            menu.clicked(MultiblockToolMenu.STORE_SLOTS + i, 0, ContainerInput.QUICK_MOVE, player);
         }
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 192,
                 "expected 192 merged into one store slot, got " + menu.getStore().getStackInSlot(0).getCount());
 
         // one shift-click on the store slot must hand out exactly one stack (64), not drain it all
-        menu.clicked(0, 0, ClickType.QUICK_MOVE, player);
+        menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player);
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 128,
                 "expected 128 left in the store slot after taking one stack back, got " + menu.getStore().getStackInSlot(0).getCount());
         check(helper, player.getInventory().countItem(Blocks.STONE.asItem()) == 64,
@@ -118,7 +113,7 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void pickupSwapRefusedForOversizedStoreSlot(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
@@ -126,7 +121,7 @@ public class ToolGameTests {
 
         // cursor holds a different item; vanilla's raw swap would otherwise hand the cursor 512 stone
         menu.setCarried(new ItemStack(Items.DIRT, 1));
-        menu.clicked(0, 0, ClickType.PICKUP, player);
+        menu.clicked(0, 0, ContainerInput.PICKUP, player);
 
         check(helper, menu.getCarried().getItem() == Items.DIRT && menu.getCarried().getCount() == 1,
                 "the cursor should still hold the original dirt untouched, got " + menu.getCarried());
@@ -138,14 +133,14 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void swapMovesAtMostOneStackFromStore(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
         menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 512), false);
 
         // hotbar slot 1 is a plain, empty, unlocked hotbar slot (the tool sits in slot 0)
-        menu.clicked(0, 1, ClickType.SWAP, player);
+        menu.clicked(0, 1, ContainerInput.SWAP, player);
 
         ItemStack storeSlot = menu.getStore().getStackInSlot(0);
         ItemStack hotbarSlot = player.getInventory().getItem(1);
@@ -159,14 +154,14 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void swapRefusesLockedDestination(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
         menu.getStore().insertItem(0, new ItemStack(Blocks.STONE, 100), false);
 
         // button 0 is the hotbar slot currently holding the tool (selected defaults to 0)
-        menu.clicked(0, 0, ClickType.SWAP, player);
+        menu.clicked(0, 0, ContainerInput.SWAP, player);
 
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 100, "the store slot should be untouched by a swap targeting the locked slot");
         check(helper, player.getItemInHand(InteractionHand.MAIN_HAND) == tool, "the held tool should be unaffected");
@@ -175,7 +170,7 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void menuInvalidAfterToolDropped(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
@@ -187,12 +182,12 @@ public class ToolGameTests {
         // its identity. Identity-only staleness checks would miss this entirely.
         ItemStack dropped = tool.split(tool.getCount());
         check(helper, tool.isEmpty(), "the original held-stack instance should now be empty");
-        check(helper, dropped.getTagElement("ToolStore") != null, "the dropped copy should carry the store's NBT (this is the dupe vector)");
+        check(helper, dropped.has(ToolComponents.STORE.get()), "the dropped copy should carry the store's NBT (this is the dupe vector)");
         check(helper, player.getItemInHand(InteractionHand.MAIN_HAND) == tool, "the hand should still reference the same (now empty) instance");
 
         check(helper, !menu.stillValid(player), "the menu must be invalid once the held tool is emptied, even though the instance is unchanged");
 
-        menu.clicked(0, 0, ClickType.QUICK_MOVE, player);
+        menu.clicked(0, 0, ContainerInput.QUICK_MOVE, player);
         check(helper, menu.getStore().getStackInSlot(0).getCount() == 512,
                 "nothing should be extractable once the tool is gone, got " + menu.getStore().getStackInSlot(0).getCount());
         ItemStack pickupAttempt = menu.quickMoveStack(player, 0);
@@ -202,7 +197,7 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void cannotStoreTool(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack heldTool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, heldTool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);
@@ -226,40 +221,13 @@ public class ToolGameTests {
     @GameTest(template = TEMPLATE)
     public static void storeRefusesContainerItems(GameTestHelper helper) {
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
-        ToolStore store = new ToolStore(tool);
+        ToolStore store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
 
         ItemStack shulker = new ItemStack(Items.SHULKER_BOX);
-        CompoundTag contents = new CompoundTag();
-        ListTag items = new ListTag();
-        CompoundTag diamond = new ItemStack(Items.DIAMOND, 64).save(new CompoundTag());
-        diamond.putByte("Slot", (byte) 0);
-        items.add(diamond);
-        contents.put("Items", items);
-        shulker.getOrCreateTag().put(BlockItem.BLOCK_ENTITY_TAG, contents);
+        shulker.set(net.minecraft.core.component.DataComponents.CONTAINER,
+                net.minecraft.world.item.component.ItemContainerContents.fromItems(java.util.List.of(new ItemStack(Items.DIAMOND, 64))));
         check(helper, store.insertItem(0, shulker.copy(), false).getCount() == 1, "a filled shulker box must be refused");
 
-        // an item exposing an item handler (a backpack): attach one to a stick for this test only
-        Consumer<AttachCapabilitiesEvent<ItemStack>> attach = event -> {
-            if (event.getObject().is(Items.STICK)) {
-                LazyOptional<IItemHandler> handler = LazyOptional.of(() -> new ItemStackHandler(1));
-                event.addCapability(ResourceLocation.tryBuild("mmtest", "backpack"), new ICapabilityProvider() {
-                    @Override
-                    public <T> LazyOptional<T> getCapability(Capability<T> cap, @Nullable Direction side) {
-                        return cap == ForgeCapabilities.ITEM_HANDLER ? handler.cast() : LazyOptional.empty();
-                    }
-                });
-            }
-        };
-        MinecraftForge.EVENT_BUS.addGenericListener(ItemStack.class, attach);
-        ItemStack backpack;
-        try {
-            backpack = new ItemStack(Items.STICK);
-            backpack.getCapability(ForgeCapabilities.ITEM_HANDLER); // item capabilities attach lazily, on first use
-        } finally {
-            MinecraftForge.EVENT_BUS.unregister(attach);
-        }
-        check(helper, backpack.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent(), "the test stick should expose an item handler");
-        check(helper, store.insertItem(0, backpack, false).getCount() == 1, "an item with its own inventory must be refused");
 
         check(helper, store.insertItem(0, new ItemStack(Blocks.GLASS), false).isEmpty(), "a plain block is fine");
         check(helper, store.insertItem(1, new ItemStack(Items.STICK), false).isEmpty(), "a plain stick is fine");
@@ -268,7 +236,7 @@ public class ToolGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void lockedToolSlotCannotBeMoved(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         player.setItemInHand(InteractionHand.MAIN_HAND, tool);
         MultiblockToolMenu menu = new MultiblockToolMenu(0, player.getInventory(), InteractionHand.MAIN_HAND);

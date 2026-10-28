@@ -9,10 +9,6 @@ import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntryParser;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * {"type": "mm:output/weighted", "chance": 1.0, "options": [{"weight": 3, "ingredient": {...}}, {"weight": 1}]}
- * Each option takes an "ingredient" or the item shorthand fields; an option with neither outputs nothing.
- */
 public class WeightedRecipeOutputEntryParser implements IRecipeOutputEntryParser {
     @Override
     public IRecipeOutputEntry parse(JsonObject json) {

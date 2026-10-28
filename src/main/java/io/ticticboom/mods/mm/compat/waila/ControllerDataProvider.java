@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockE
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -14,17 +14,14 @@ import snownee.jade.api.config.IPluginConfig;
 
 import java.util.Locale;
 
-/**
- * Jade tooltip of a machine controller: state, recipe progress, parallel recipes, redstone mode and owner.
- */
 public class ControllerDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("controller_progress");
-    public static final String STATUS_KEY = "Status";
-    public static final String PROGRESS_KEY = "Progress";
-    public static final String RUNNING_KEY = "Running";
-    public static final String LIMIT_KEY = "ParallelLimit";
-    public static final String REDSTONE_KEY = "RedstoneMode";
-    public static final String OWNER_KEY = "Owner";
+    public static final Identifier UID = Ref.id("controller_progress");
+    private static final String STATUS_KEY = "Status";
+    private static final String PROGRESS_KEY = "Progress";
+    private static final String RUNNING_KEY = "Running";
+    private static final String LIMIT_KEY = "ParallelLimit";
+    private static final String REDSTONE_KEY = "RedstoneMode";
+    private static final String OWNER_KEY = "Owner";
 
     public static final ControllerDataProvider INSTANCE = new ControllerDataProvider();
 
@@ -49,7 +46,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 
@@ -59,7 +56,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         if (!data.contains(STATUS_KEY)) {
             return;
         }
-        String status = data.getString(STATUS_KEY);
+        String status = data.getStringOr(STATUS_KEY, "");
         tooltip.add(Component.translatable("gui.mm.controller.status." + status).withStyle(statusColor(status)));
         if (data.contains(PROGRESS_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.progress", String.format("%.0f%%", data.getFloat(PROGRESS_KEY))));
@@ -67,7 +64,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         if (data.contains(LIMIT_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.parallel", data.getInt(RUNNING_KEY), data.getInt(LIMIT_KEY)));
         }
-        String redstone = data.getString(REDSTONE_KEY);
+        String redstone = data.getStringOr(REDSTONE_KEY, "");
         if (!redstone.isEmpty() && !"ignored".equals(redstone)) {
             tooltip.add(Component.translatable("jade.mm.controller.redstone",
                     Component.translatable("gui.mm.controller.redstone." + redstone)));
@@ -80,7 +77,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
     static ChatFormatting statusColor(String status) {
         return switch (status) {
             case "not_formed" -> ChatFormatting.RED;
-            case "paused" -> ChatFormatting.GOLD;
+            case "paused", "stalled" -> ChatFormatting.GOLD;
             case "running" -> ChatFormatting.GREEN;
             default -> ChatFormatting.YELLOW;
         };

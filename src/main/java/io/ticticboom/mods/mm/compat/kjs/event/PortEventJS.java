@@ -1,13 +1,13 @@
 package io.ticticboom.mods.mm.compat.kjs.event;
 
-import dev.latvian.mods.kubejs.event.StartupEventJS;
+import dev.latvian.mods.kubejs.event.KubeStartupEvent;
 import io.ticticboom.mods.mm.compat.kjs.builder.PortBuilderJS;
 import lombok.Getter;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class PortEventJS extends StartupEventJS {
+public class PortEventJS implements KubeStartupEvent {
 
     @Getter
     private final List<PortBuilderJS> ports = new ArrayList<>();

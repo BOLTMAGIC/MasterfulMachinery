@@ -4,26 +4,26 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class IdList {
     @Getter
-    private final List<ResourceLocation> ids;
+    private final List<Identifier> ids;
 
-    public IdList(List<ResourceLocation> ids) {
+    public IdList(List<Identifier> ids) {
 
         this.ids = ids;
     }
 
-    public boolean contains(ResourceLocation id) {
+    public boolean contains(Identifier id) {
         return ids.contains(id);
     }
 
     public static IdList parse(JsonElement json) {
-        List<ResourceLocation> ids = new ArrayList<>();
+        List<Identifier> ids = new ArrayList<>();
         if (json.isJsonArray()) {
             JsonArray elems = json.getAsJsonArray();
             for (var elem : elems) {
@@ -37,7 +37,7 @@ public class IdList {
 
     public JsonArray serialize() {
         var ids = new JsonArray();
-        for (ResourceLocation id : this.ids) {
+        for (Identifier id : this.ids) {
             ids.add(id.toString());
         }
         return ids;

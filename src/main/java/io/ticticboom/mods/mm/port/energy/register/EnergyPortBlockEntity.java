@@ -1,6 +1,5 @@
 package io.ticticboom.mods.mm.port.energy.register;
 
-import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -10,18 +9,14 @@ import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
 import io.ticticboom.mods.mm.port.common.autoio.PortTransfers;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
 
 public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
     private final PortModel model;
@@ -39,12 +34,6 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
         var enabledByDefault = !isInput && ((EnergyPortStorageModel) storage.getStorageModel()).autoPush().get();
         autoIO = new PortAutoIO(this, isInput, enabledByDefault, PortTransfers.energy(storage::getHandler));
     }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        return storage.getCapability(cap);
-    }
-
     @Override
     public IPortStorage getStorage() {
         return storage;
@@ -66,41 +55,12 @@ public class  EnergyPortBlockEntity extends AbstractPortBlockEntity {
 
     @Override
     public @NotNull Component getDisplayName() {
-        return Component.translatable("container.mm.port.energy");
+        return Component.translatable("port.mm.energy.title");
     }
 
     @Nullable
     @Override
     public AbstractContainerMenu createMenu(int windowId, @NotNull Inventory inv, @NotNull Player player) {
         return new EnergyPortMenu(model, groupHolder, isInput, windowId, inv, this);
-    }
-
-    @Override
-    protected void saveAdditional(CompoundTag tag) {
-        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag()));
-        super.saveAdditional(tag);
-    }
-
-    @Override
-    public void load(CompoundTag tag) {
-        storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY));
-        super.load(tag);
-    }
-
-    @Override
-    public @NotNull CompoundTag getUpdateTag() {
-        var tag = new CompoundTag();
-        saveAdditional(tag);
-        return tag;
-    }
-
-    @Override
-    public void setChanged() {
-        assert level != null;
-        if (level.isClientSide()){
-            return;
-        }
-        super.setChanged();
-        level.sendBlockUpdated(getBlockPos(), this.getBlockState(), this.getBlockState(), Block.UPDATE_CLIENTS);
     }
 }

@@ -5,9 +5,6 @@ import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import net.minecraft.network.chat.Component;
 
-/**
- * The controller's Y must be within a range: {"type": "mm:height", "minY": 0, "maxY": 64}; either end may be left out.
- */
 public class HeightRecipeCondition implements IRecipeCondition {
     private final int minY;
     private final int maxY;

@@ -9,14 +9,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Preferred tier per port type and direction, keyed like "mm:item/input" (see {@link PortTiers#key}).
- * Missing keys mean {@link TierResolver#LOWEST}.
- */
 public final class TierPrefs {
-    /** Most entries kept from saved data; a machine has only a handful of port types. */
     public static final int MAX_ENTRIES = 32;
-    /** Returned by {@link #validate} for a key the machine does not have. */
     public static final int REJECTED = -1;
 
     private final Map<String, Integer> prefs = new HashMap<>();
@@ -25,7 +19,6 @@ public final class TierPrefs {
         return prefs.getOrDefault(key, TierResolver.LOWEST);
     }
 
-    /** @return true when the stored value changed */
     public boolean set(String key, int rank) {
         if (rank <= TierResolver.LOWEST) {
             return prefs.remove(key) != null;
@@ -34,12 +27,6 @@ public final class TierPrefs {
         return old == null || old != rank;
     }
 
-    /**
-     * Checks a tier a client asked for.
-     *
-     * @param maxTierByKey every key the machine's structures have, with the highest tier they offer for it
-     * @return the tier to store, clamped to [{@link TierResolver#LOWEST}, max], or {@link #REJECTED} for an unknown key
-     */
     public static int validate(Map<String, Integer> maxTierByKey, String key, int rank) {
         Integer max = maxTierByKey.get(key);
         if (max == null) {
@@ -48,10 +35,6 @@ public final class TierPrefs {
         return Math.max(TierResolver.LOWEST, Math.min(max, rank));
     }
 
-    /**
-     * The next choice when a player steps through "lowest" followed by {@code tiers} (ascending), wrapping around;
-     * an unknown current value counts as "lowest".
-     */
     public static int cycle(int current, Collection<Integer> tiers, int step) {
         List<Integer> options = new ArrayList<>();
         options.add(TierResolver.LOWEST);
@@ -77,11 +60,11 @@ public final class TierPrefs {
 
     public static TierPrefs load(CompoundTag tag) {
         var result = new TierPrefs();
-        for (String key : tag.getAllKeys()) {
+        for (String key : tag.keySet()) {
             if (result.prefs.size() >= MAX_ENTRIES) {
                 break;
             }
-            result.set(key, tag.getInt(key));
+            result.set(key, tag.getIntOr(key, 0));
         }
         return result;
     }

@@ -29,25 +29,21 @@ public class AutoTransform {
     private Vector3i maxBound = new Vector3i(Integer.MIN_VALUE);
     private Vector3f pan;
     private Vector3f offset;
-    // structure point the view rotates around, in block coordinates
     private Vector3f center = new Vector3f();
     private float scaleFactor;
     private static final float MIN_SCALE = 0.05f;
     private static final float MAX_SCALE = 20f;
-    // mouse button of the drag in progress, -1 when none; buttons as last seen, to catch fresh presses
     private int dragButton = -1;
     private boolean wasLeft;
     private boolean wasRight;
     private boolean wasMiddle;
 
-    /** For a preview that isn't an MM structure; the renderer sets the rotation center from its blocks. */
-    public AutoTransform() {
-        reset();
+    public AutoTransform(StructureModel model) {
+        this(model.layout().getPositionedPieces().stream().map(PositionedLayoutPiece::pos).toList());
     }
 
-    public AutoTransform(StructureModel model) {
-        for (PositionedLayoutPiece piece : model.layout().getPositionedPieces()) {
-            BlockPos pos = piece.pos();
+    public AutoTransform(Iterable<BlockPos> positions) {
+        for (BlockPos pos : positions) {
             // min
             minBound.x = Math.min(pos.getX(), minBound.x);
             minBound.y = Math.min(pos.getY(), minBound.y);
@@ -66,17 +62,12 @@ public class AutoTransform {
         run(mouseX, mouseY, true);
     }
 
-    /**
-     * Mouse controls: left or middle drag rotates, shift + left drag pans, right drag zooms.
-     * A drag only starts when the button is pressed while the pointer is over the view ({@code hovered}),
-     * so clicks elsewhere on the screen don't move the structure.
-     */
     public void run(int mouseX, int mouseY, boolean hovered) {
         if (lastX == 0 && lastY == 0) {
             lastX = mouseX;
             lastY = mouseY;
         }
-        long window = mc.getWindow().getWindow();
+        long window = mc.getWindow().handle();
         boolean left = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         boolean right = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
         boolean middle = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;
@@ -114,7 +105,6 @@ public class AutoTransform {
         lastY = mouseY;
     }
 
-    /** Mouse wheel zoom: each notch scales the view by 10%. */
     public void zoom(double scrollDelta) {
         scaleFactor = (float) Math.min(MAX_SCALE, Math.max(MIN_SCALE, scaleFactor * Math.pow(1.1, scrollDelta)));
     }

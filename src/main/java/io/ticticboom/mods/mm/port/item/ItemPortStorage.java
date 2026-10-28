@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.item;
 
+import java.util.List;
+import java.util.ArrayList;
+import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
@@ -8,23 +11,20 @@ import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
-import io.ticticboom.mods.mm.port.common.PortGuiLayout;
-import io.ticticboom.mods.mm.util.BlockUtils;
+import io.ticticboom.mods.mm.port.common.IPagedPortMenu;
+import io.ticticboom.mods.mm.port.common.PortGrid;
+import io.ticticboom.mods.mm.port.common.PortPager;
 import lombok.Getter;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import org.jetbrains.annotations.Nullable;
 
-import io.ticticboom.mods.mm.port.PortContent;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
 
@@ -32,7 +32,6 @@ public class ItemPortStorage implements IPortStorage {
 
     @Getter
     private final ItemPortHandler handler;
-    private final LazyOptional<ItemPortHandler> handlerLazyOptional;
     private final ItemPortStorageModel model;
     private final UUID uid = UUID.randomUUID();
 
@@ -45,25 +44,22 @@ public class ItemPortStorage implements IPortStorage {
         this.model = model;
         int capacity = model.slotCapacity();
         handler = new ItemPortHandler(model.rows() * model.columns(), capacity, changed);
-        handlerLazyOptional = LazyOptional.of(() -> handler);
     }
 
     @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> capability) {
-        if (hasCapability(capability)) {
-            return handlerLazyOptional.cast();
-        }
-        return LazyOptional.empty();
+    public <T> @Nullable T getCapability(BlockCapability<T, ?> capability) {
+        @SuppressWarnings("unchecked") var cast = (T) handler;
+        return hasCapability(capability) ? cast : null;
     }
 
     @Override
-    public <T> boolean hasCapability(Capability<T> capability) {
+    public <T> boolean hasCapability(BlockCapability<T, ?> capability) {
         return capability == MMCapabilities.ITEM;
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
-        Tag compoundTag = handler.serializeStacks();
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+        Tag compoundTag = handler.serializeStacks(registries);
         tag.put("handler", compoundTag);
         // save priority
         tag.putInt("Priority", this.priority);
@@ -71,13 +67,13 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     @Override
-    public void load(CompoundTag tag) {
+    public void load(CompoundTag tag, HolderLookup.Provider registries) {
         Tag compoundTag = tag.get("handler");
         if (compoundTag != null) {
-            handler.deserializeStacks(compoundTag);
+            handler.deserializeStacks(compoundTag, registries);
         }
         if (tag.contains("Priority")) {
-            this.priority = Math.max(0, Math.min(10, tag.getInt("Priority")));
+            this.priority = Math.max(0, Math.min(10, tag.getIntOr("Priority", 0)));
         } else {
             this.priority = 0;
         }
@@ -94,7 +90,7 @@ public class ItemPortStorage implements IPortStorage {
     }
 
     @Override
-    public IPortStorage simulationCopy() {
+    public IPortStorage simulationCopy(HolderLookup.Provider registries) {
         var copy = new ItemPortStorage(model, () -> {});
         copy.handler.copyContentsFrom(handler);
         copy.priority = priority;
@@ -116,7 +112,7 @@ public class ItemPortStorage implements IPortStorage {
         json.addProperty("slotCapacity", model.slotCapacity());
         var stacksJson = new JsonArray();
         for (ItemStack stack : handler.getStacks()) {
-            var res = JsonOps.INSTANCE.withEncoder(ItemStack.CODEC).apply(stack);
+            var res = JsonOps.INSTANCE.withEncoder(ItemStack.OPTIONAL_CODEC).apply(stack);
             if (res.result().isPresent()) {
                 stacksJson.add(res.result().get());
             } else {
@@ -128,49 +124,17 @@ public class ItemPortStorage implements IPortStorage {
 
     @Override
     public void setupContainer(AbstractContainerMenu container, Inventory inv, PortModel portModel) {
-        var columns = model.columns();
-        var rows = model.rows();
-
-        int offsetX = PortGuiLayout.slotGridX(columns);
-        int offsetY = PortGuiLayout.slotGridY(rows);
-
+        var pager = container instanceof IPagedPortMenu paged ? paged.getPager() : new PortPager(PortGrid.of(model));
+        var grid = pager.grid();
         var portInv = new ItemPortContainer(this.handler);
-        boolean clientSide = inv.player.level().isClientSide();
 
-        for (int y = 0; y < rows; y++) {
-            for (int x = 0; x < columns; x++) {
-                container.addSlot(new ItemPortSlot(portInv, (y * columns) + x, x * 18 + offsetX, y * 18 + offsetY, clientSide));
-            }
-        }
-
-        BlockUtils.setupPlayerInventory(container, inv, PortGuiLayout.inventoryOffsetX(columns), PortGuiLayout.extraHeight(rows));
-    }
-
-    @Override
-    public List<PortContent> contents() {
-        var stacks = new ArrayList<ItemStack>();
-        var counts = new ArrayList<Long>();
-        outer:
         for (int slot = 0; slot < handler.getSlots(); slot++) {
-            ItemStack stack = handler.getStackInSlot(slot);
-            if (stack.isEmpty()) {
-                continue;
-            }
-            long count = handler.getActualCount(slot);
-            for (int i = 0; i < stacks.size(); i++) {
-                if (ItemStack.isSameItemSameTags(stacks.get(i), stack)) {
-                    counts.set(i, counts.get(i) + count);
-                    continue outer;
-                }
-            }
-            stacks.add(stack.copyWithCount(1));
-            counts.add(count);
+            int page = grid.pageOf(slot);
+            int indexOnPage = slot - grid.firstSlot(page);
+            container.addSlot(new ItemPortSlot(portInv, slot, grid.slotX(indexOnPage), grid.slotY(indexOnPage), pager, page));
         }
-        var contents = new ArrayList<PortContent>();
-        for (int i = 0; i < stacks.size(); i++) {
-            contents.add(PortContent.item(stacks.get(i), counts.get(i)));
-        }
-        return contents;
+
+        IPortStorage.super.setupContainer(container, inv, portModel);
     }
 
     public int canExtract(Predicate<ItemStack> item, int count) {
@@ -223,5 +187,32 @@ public class ItemPortStorage implements IPortStorage {
 
     public void setPriority(int priority) {
         this.priority = Math.max(0, Math.min(10, priority));
+    }
+
+    @Override
+    public List<PortContent> contents() {
+        var stacks = new ArrayList<ItemStack>();
+        var counts = new ArrayList<Long>();
+        outer:
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack stack = handler.getStackInSlot(slot);
+            if (stack.isEmpty()) {
+                continue;
+            }
+            long count = handler.getActualCount(slot);
+            for (int i = 0; i < stacks.size(); i++) {
+                if (ItemStack.isSameItemSameComponents(stacks.get(i), stack)) {
+                    counts.set(i, counts.get(i) + count);
+                    continue outer;
+                }
+            }
+            stacks.add(stack.copyWithCount(1));
+            counts.add(count);
+        }
+        var contents = new ArrayList<PortContent>();
+        for (int i = 0; i < stacks.size(); i++) {
+            contents.add(PortContent.item(stacks.get(i), counts.get(i)));
+        }
+        return contents;
     }
 }

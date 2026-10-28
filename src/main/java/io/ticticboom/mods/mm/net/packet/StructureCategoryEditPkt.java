@@ -1,36 +1,45 @@
 package io.ticticboom.mods.mm.net.packet;
 
-import io.ticticboom.mods.mm.net.MMNetwork;
+import net.minecraft.server.permissions.Permissions;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.StructureCategories;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.function.Supplier;
 
-/** Admin tool screen -> server: one validated category change. */
-public record StructureCategoryEditPkt(StructureCategories.Action action, String target, String value) {
-    public static void encode(StructureCategoryEditPkt packet, FriendlyByteBuf buf) {
+public record StructureCategoryEditPkt(StructureCategories.Action action, String target, String value) implements CustomPacketPayload {
+    public static final Type<StructureCategoryEditPkt> TYPE = new Type<>(Ref.id("structure_category_edit"));
+
+    public static final StreamCodec<RegistryFriendlyByteBuf, StructureCategoryEditPkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), StructureCategoryEditPkt::decode);
+
+    public static void encode(StructureCategoryEditPkt packet, RegistryFriendlyByteBuf buf) {
         buf.writeEnum(packet.action);
         buf.writeUtf(packet.target, 256);
         buf.writeUtf(packet.value, 32);
     }
 
-    public static StructureCategoryEditPkt decode(FriendlyByteBuf buf) {
+    public static StructureCategoryEditPkt decode(RegistryFriendlyByteBuf buf) {
         return new StructureCategoryEditPkt(buf.readEnum(StructureCategories.Action.class), buf.readUtf(256), buf.readUtf(32));
     }
 
-    public static void handle(StructureCategoryEditPkt packet, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer sender = ctx.get().getSender();
-            if (sender == null || !sender.hasPermissions(2) || !(sender.containerMenu instanceof MultiblockToolMenu)) return;
-            StructureCategories categories = StructureCategories.get(sender.getServer());
+    public static void handle(StructureCategoryEditPkt packet, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> {
+            ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
+            if (sender == null || !sender.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || !(sender.containerMenu instanceof MultiblockToolMenu)) return;
+            StructureCategories categories = StructureCategories.get(sender.level().getServer());
             if (categories.apply(packet.action, packet.target, packet.value)) {
-                MMNetwork.INSTANCE.send(PacketDistributor.ALL.noArg(), new StructureCategoriesSyncPkt(categories.snapshot()));
+                PacketDistributor.sendToAllPlayers(new StructureCategoriesSyncPkt(categories.snapshot()));
             }
         });
-        ctx.get().setPacketHandled(true);
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

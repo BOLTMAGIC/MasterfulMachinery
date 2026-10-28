@@ -43,7 +43,7 @@ public class BlockstateStructurePieceModifier extends StructurePieceModifier {
             StateDefinition<Block, BlockState> stateDefinition = requiredBlock.getStateDefinition();
             for (StructureBlockstateProperty property : properties) {
                 Property<?> prop = stateDefinition.getProperty(property.key());
-                var val = JsonOps.INSTANCE.withDecoder(prop.valueCodec()).apply(property.value()).getOrThrow(false, RuntimeException::new).getFirst();
+                var val = JsonOps.INSTANCE.withDecoder(prop.valueCodec()).apply(property.value()).getOrThrow(RuntimeException::new).getFirst();
                 propValues.put(prop.getName(), val);
             }
         }
@@ -99,12 +99,12 @@ public class BlockstateStructurePieceModifier extends StructurePieceModifier {
     }
 
     private BlockState modifyBlockstate(BlockState state) {
-        var encoded = JsonOps.INSTANCE.withEncoder(BlockState.CODEC).apply(state).getOrThrow(false, RuntimeException::new);
+        var encoded = JsonOps.INSTANCE.withEncoder(BlockState.CODEC).apply(state).getOrThrow(RuntimeException::new);
         JsonObject jsonProps = encoded.getAsJsonObject().get(BlockState.PROPERTIES_TAG).getAsJsonObject();
         for (StructureBlockstateProperty property : properties) {
             jsonProps.add(property.key(), property.value());
         }
-        var result = JsonOps.INSTANCE.withDecoder(BlockState.CODEC).apply(encoded).getOrThrow(false, RuntimeException::new).getFirst();
+        var result = JsonOps.INSTANCE.withDecoder(BlockState.CODEC).apply(encoded).getOrThrow(RuntimeException::new).getFirst();
         return result;
     }
 

@@ -1,13 +1,18 @@
 package io.ticticboom.mods.mm.port.item;
 
+import io.ticticboom.mods.mm.util.ItemComponentUtil;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.IPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.NbtMatchUtils;
 import lombok.Getter;
+import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Item;
@@ -18,18 +23,20 @@ import java.util.function.Predicate;
 
 public abstract class BaseItemPortIngredient implements IPortIngredient {
 
-    /** Specific items can use the controller and slot indexes; tag ingredients keep predicate scans. */
-    protected Item indexedItem() { return null; }
+    protected final AmountRange count;
+
+    protected Item indexedItem() {
+        return null;
+    }
 
     private List<ItemPortStorage> inputItemStorages(RecipeStorages storages) {
         Item item = indexedItem();
         return item == null ? storages.getInputStorages(ItemPortStorage.class) : storages.getInputItemStorages(item);
     }
 
-    @Getter
-    protected final int count;
     protected final Predicate<ItemStack> filter;
     protected final CompoundTag requiredNbt;
+    protected final DataComponentPatch components;
     /**
      * -- GETTER --
      *  Whether NBT matching is strong (exact equality) for this ingredient.
@@ -38,16 +45,19 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
     protected final boolean nbtStrong;
 
     @SuppressWarnings("unused")
-    public BaseItemPortIngredient(int count, Predicate<ItemStack> filter) {
-        this(count, filter, null, false);
+    public BaseItemPortIngredient(AmountRange count, Predicate<ItemStack> filter) {
+        this(count, filter, null, false, DataComponentPatch.EMPTY);
     }
 
-    public BaseItemPortIngredient(int count, Predicate<ItemStack> filter, CompoundTag requiredNbt, boolean nbtStrong) {
+    public BaseItemPortIngredient(AmountRange count, Predicate<ItemStack> filter, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
         this.count = count;
+        if (!components.isEmpty()) {
+            filter = filter.and(s -> ItemComponentUtil.matches(s, components));
+        }
         // wrap the provided filter to include NBT-check if requiredNbt present
         if (requiredNbt != null) {
             this.filter = filter.and(s -> {
-                var tag = s.getTag();
+                var tag = ItemNbtUtil.getTag(s);
                 if (tag == null) return false;
                 if (nbtStrong) {
                     return tag.equals(requiredNbt);
@@ -60,24 +70,38 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         }
         this.requiredNbt = requiredNbt != null ? requiredNbt.copy() : null;
         this.nbtStrong = nbtStrong;
+        this.components = components;
+    }
+
+    @Override
+    public AmountRange getAmountRange() {
+        return count;
+    }
+
+    public int getCount() {
+        return count.max();
     }
 
     /** Every item this ingredient accepts, for JEI (flex recipes list one output per accepted item). */
     public List<ItemStack> exampleStacks() {
-        ItemStack item = displayItem();
-        return item.isEmpty() ? List.of() : List.of(item);
+        var content = display();
+        return content == null || content.item() == null || content.item().isEmpty() ? List.of() : List.of(content.item().copy());
     }
 
-    /** Whether a stack is accepted by this ingredient (item/tag and NBT), ignoring its count. */
+    /** Whether a stack is accepted by this ingredient (item/tag and components), ignoring its count. */
     public boolean matches(ItemStack stack) {
         return !stack.isEmpty() && filter.test(stack);
+    }
+
+    public int resolveCount(RecipeStateModel state) {
+        return count.resolve(state);
     }
 
     @Override
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel state) {
         if(storages == null) return false;
         List<ItemPortStorage> itemStorages = inputItemStorages(storages);
-        int remaining = count;
+        int remaining = resolveCount(state);
         for (ItemPortStorage storage : itemStorages) {
             remaining = indexedItem() == null ? storage.canExtract(filter, remaining)
                     : storage.canExtract(indexedItem(), filter, remaining);
@@ -88,7 +112,7 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
     @Override
     public void process(Level level, RecipeStorages storages, RecipeStateModel state) {
         List<ItemPortStorage> itemStorages = inputItemStorages(storages);
-        int remaining = count;
+        int remaining = resolveCount(state);
         for (ItemPortStorage storage : itemStorages) {
             remaining = indexedItem() == null ? storage.extract(filter, remaining)
                     : storage.extract(indexedItem(), filter, remaining);
@@ -101,14 +125,14 @@ public abstract class BaseItemPortIngredient implements IPortIngredient {
         var searchedStorages = new JsonArray();
         var searchIterations = new JsonArray();
         json.addProperty("ingredientType", Ref.Ports.ITEM.toString());
-        json.addProperty("amountToExtract", count);
+        count.addToDebug(json, "amountToExtract", null);
 
         if (requiredNbt != null) {
             json.addProperty("nbt_match", nbtStrong ? "strong" : "weak");
             json.add("nbt", NbtMatchUtils.toJson(requiredNbt));
         }
 
-        int remaining = count;
+        int remaining = count.max();
         for (ItemPortStorage storage : itemStorages) {
             var iterJson = new JsonObject();
 

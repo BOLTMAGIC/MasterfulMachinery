@@ -5,12 +5,12 @@ import io.ticticboom.mods.mm.extra.circuit.CircuitBlockType;
 import io.ticticboom.mods.mm.extra.gearbox.GearboxBlockType;
 import io.ticticboom.mods.mm.extra.vent.VentBlockType;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 
 public class MMExtraBlockRegistry {
-    public static final Map<ResourceLocation, ExtraBlockType> BLOCK_TYPES = new HashMap<>();
+    public static final Map<Identifier, ExtraBlockType> BLOCK_TYPES = new HashMap<>();
     public static final List<RegistryGroupHolder> BLOCKS = new ArrayList<>();
 
     public static void init(){
@@ -19,11 +19,11 @@ public class MMExtraBlockRegistry {
         register(Ref.ExtraBlocks.VENT, new VentBlockType());
     }
 
-    public static ExtraBlockType get(ResourceLocation id) {
+    public static ExtraBlockType get(Identifier id) {
         return BLOCK_TYPES.get(id);
     }
 
-    public static void register(ResourceLocation id, ExtraBlockType type) {
+    public static void register(Identifier id, ExtraBlockType type) {
         BLOCK_TYPES.put(id, type);
     }
 }

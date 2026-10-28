@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.structure.attachment.states;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachment;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 //TODO: add rendering object add rendering extras to controller screen.
 public class StateListsStructureAttachment extends StructureAttachment {
@@ -23,7 +23,7 @@ public class StateListsStructureAttachment extends StructureAttachment {
     }
 
     @Override
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return Ref.StructureAttachments.STATE_LISTS;
     }
 

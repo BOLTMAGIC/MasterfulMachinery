@@ -4,22 +4,13 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Tracks one craft requested through {@link MeAccess#requestCraft}. {@link CraftTracker} advances these on the server
- * thread ({@link #update}) and reads their state for the player.
- */
 public interface CraftHandle {
     enum State {
-        /** The crafting plan is still being calculated. */
         CALCULATING,
-        /** A plan was found and submitted; the crafting CPU is working. */
         CRAFTING,
-        /** The requested amount is now in the network. */
         DONE,
-        /** The plan couldn't be completed (missing ingredients, cancelled, ...). */
         FAILED;
 
-        /** Still on its way: calculating or crafting. */
         public boolean active() {
             return this == CALCULATING || this == CRAFTING;
         }
@@ -31,23 +22,16 @@ public interface CraftHandle {
 
     int amount();
 
-    /** Reason for {@link State#FAILED}, else null. */
     @Nullable
     Component failure();
 
-    /**
-     * Looks at the network once and moves the state on (calculation finished, craft done or cancelled). Called on the
-     * server thread; must never wait for anything.
-     */
     default void update() {
     }
 
-    /** The last {@link #update} found the network unreachable or unpowered, so it could not look at the craft. */
     default boolean waiting() {
         return false;
     }
 
-    /** A request that failed at once (e.g. the network went away meanwhile). */
     static CraftHandle failed(Item item, int amount, Component reason) {
         return new CraftHandle() {
             @Override

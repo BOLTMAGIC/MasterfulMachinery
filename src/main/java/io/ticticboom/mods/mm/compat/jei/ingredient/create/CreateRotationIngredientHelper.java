@@ -5,12 +5,12 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public class CreateRotationIngredientHelper implements IIngredientHelper<CreateRotationStack> {
-    private static final ResourceLocation ingredientId = Ref.id("create-rotation");
+    private static final Identifier ingredientId = Ref.id("create-rotation");
 
     @Override
     public @NotNull IIngredientType<CreateRotationStack> getIngredientType() {
@@ -23,12 +23,12 @@ public class CreateRotationIngredientHelper implements IIngredientHelper<CreateR
     }
 
     @Override
-    public @NotNull String getUniqueId(CreateRotationStack createRotationStack, @NotNull UidContext uidContext) {
+    public @NotNull Object getUid(CreateRotationStack createRotationStack, @NotNull UidContext uidContext) {
         return "create-rotation-" + createRotationStack.speed();
     }
 
     @Override
-    public @NotNull ResourceLocation getResourceLocation(@NotNull CreateRotationStack createRotationStack) {
+    public @NotNull Identifier getIdentifier(@NotNull CreateRotationStack createRotationStack) {
         return ingredientId;
     }
 

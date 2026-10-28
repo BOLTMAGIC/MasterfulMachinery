@@ -3,12 +3,8 @@ package io.ticticboom.mods.mm.structure;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
-/**
- * A structure's tier: its "tier" field, else a number after "Tier" (or Seviye / Level / Lvl / Mk) in its name,
- * e.g. "Auto Crusher Tier 1.5" or "Mk IV". Structures without one are tier 1.
- */
 public final class StructureTier {
-    private static final Pattern IN_NAME = Pattern.compile("(?i)\\b(?:tier|seviye|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
+    private static final Pattern IN_NAME = Pattern.compile("(?i)\\b(?:tier|level|lvl|mk)\\s*[.:#-]?\\s*(\\d+(?:[.,]\\d+)?|[ivx]+)\\b");
 
     private StructureTier() {
     }
@@ -44,7 +40,6 @@ public final class StructureTier {
         return total;
     }
 
-    /** 2.0 -> "2", 1.5 -> "1.5" */
     public static String format(double tier) {
         return tier == Math.rint(tier) ? Long.toString((long) tier) : Double.toString(tier);
     }

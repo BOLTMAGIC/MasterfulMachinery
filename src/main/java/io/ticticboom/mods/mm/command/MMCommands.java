@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.command;
 
+import net.minecraft.server.permissions.Permissions;
 import com.mojang.brigadier.context.CommandContext;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
@@ -16,9 +17,9 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunk;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public class MMCommands {
 
     @SubscribeEvent
@@ -36,7 +37,7 @@ public class MMCommands {
         event.getDispatcher().register(
             Commands.literal("mm")
                 .then(Commands.literal("reform")
-                    .requires(cs -> cs.hasPermission(2)) // permission level 2: ops/admins
+                    .requires(cs -> cs.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) // permission level 2: ops/admins
                     .executes(MMCommands::reformAll)
                 )
         );
@@ -71,7 +72,7 @@ public class MMCommands {
         ConcurrentLinkedQueue<ChunkPos> queue = new ConcurrentLinkedQueue<>(chunksToProcess);
 
         // Send initial message
-        server.execute(() -> source.sendSuccess(() -> Component.translatable("commands.mm.reform.started", queue.size()), false));
+        server.execute(() -> source.sendSuccess(() -> Component.translatable("command.mm.reform.started", queue.size()), false));
 
         bg.submit(() -> {
             AtomicInteger processedChunks = new AtomicInteger(0);
@@ -86,7 +87,7 @@ public class MMCommands {
                 CompletableFuture<Void> fut = new CompletableFuture<>();
                 server.execute(() -> {
                     try {
-                        ChunkAccess chunk = level.getChunkSource().getChunk(chunkPos.x, chunkPos.z, false);
+                        ChunkAccess chunk = level.getChunkSource().getChunk(chunkPos.x(), chunkPos.z(), false);
                         if (chunk instanceof LevelChunk lc) {
                             for (BlockEntity be : lc.getBlockEntities().values()) {
                                 if (be instanceof MachineControllerBlockEntity mcbe) {
@@ -106,14 +107,14 @@ public class MMCommands {
                                 }
                             }
                         }
-                    } catch (Throwable t) {
-                        Ref.LOG.error("Error while processing chunk {}:{} - {}", chunkPos.x, chunkPos.z, t.toString());
+                    } catch (RuntimeException e) {
+                        Ref.LOG.error("Error while processing chunk {}:{}", chunkPos.x(), chunkPos.z(), e);
                     } finally {
                         int processed = processedChunks.incrementAndGet();
                         // Periodically send progress update
                         if (processed % reportInterval == 0) {
                             int reformed = reformedCount.get();
-                            source.sendSuccess(() -> Component.translatable("commands.mm.reform.progress", processed, total, reformed), false);
+                            source.sendSuccess(() -> Component.translatable("command.mm.reform.progress", processed, total, reformed), false);
                         }
                         fut.complete(null);
                     }
@@ -129,7 +130,7 @@ public class MMCommands {
 
             // Final report
             server.execute(() -> {
-                source.sendSuccess(() -> Component.translatable("commands.mm.reform.finished", reformedCount.get()), true);
+                source.sendSuccess(() -> Component.translatable("command.mm.reform.finished", reformedCount.get()), true);
             });
             bg.shutdown();
         });

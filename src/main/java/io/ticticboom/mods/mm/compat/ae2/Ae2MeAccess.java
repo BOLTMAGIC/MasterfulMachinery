@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.ae2;
 
+import io.ticticboom.mods.mm.compat.ae2.linker.NetworkAccess;
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.security.IActionSource;
@@ -19,17 +20,11 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * The AE2 network a Multiblock Tool is bound to. Reached like the network linker's (loaded chunk, active node, no
- * force-loading) and only by players the network's owners allow ({@link NetworkAccess#mayUse}); AE2 15 has no security
- * service, so that check is the only one. Extractions run as the player.
- */
 public final class Ae2MeAccess implements MeAccess {
     private final ServerPlayer player;
     private final LinkData.NetworkPos network;
     @Nullable
     private IGrid grid;
-    /** What this access extracted since the last refresh; AE2's cached stock only catches up at the end of a tick. */
     private final Map<AEItemKey, Long> extracted = new HashMap<>();
 
     private Ae2MeAccess(ServerPlayer player, LinkData.NetworkPos network) {
@@ -37,7 +32,6 @@ public final class Ae2MeAccess implements MeAccess {
         this.network = network;
     }
 
-    /** The {@code MeAccessFactory} lookup: null when the tool isn't bound, ME is turned off, or the network can't be used. */
     @Nullable
     public static MeAccess forTool(ServerPlayer player, ItemStack tool) {
         LinkData.NetworkPos network = ToolData.network(tool);
@@ -49,14 +43,13 @@ public final class Ae2MeAccess implements MeAccess {
         return access.reachable() ? access : null;
     }
 
-    /** Why {@link #forTool} gives null for a bound tool with ME turned on (unreachable, or no access); else null. */
     @Nullable
     public static Component problem(ServerPlayer player, ItemStack tool) {
         LinkData.NetworkPos network = ToolData.network(tool);
         if (network == null || !ToolData.useMe(tool)) {
             return null;
         }
-        IGrid grid = NetworkAccess.grid(player.server, network);
+        IGrid grid = NetworkAccess.grid(player.level().getServer(), network);
         String key;
         if (grid == null) {
             key = "message.mm.tool.me_unreachable";
@@ -65,24 +58,19 @@ public final class Ae2MeAccess implements MeAccess {
         } else {
             return null;
         }
-        return Component.translatable(key, network.pos().toShortString(), network.dimension().location().getPath())
+        return Component.translatable(key, network.pos().toShortString(), network.dimension().identifier().getPath())
                 .withStyle(ChatFormatting.YELLOW);
     }
 
-    /** Looks the grid up again (it may be gone, or its owners changed) and starts a new tick's stock. */
     @Override
     public void refresh() {
         grid = usableGrid();
         extracted.clear();
     }
 
-    /**
-     * The bound grid when the player may use it, else null. Crafts look it up through this too, so one waiting for its
-     * network never submits to, or follows, a grid the player lost access to (or that re-formed under another owner).
-     */
     @Nullable
     private IGrid usableGrid() {
-        IGrid found = NetworkAccess.grid(player.server, network);
+        IGrid found = NetworkAccess.grid(player.level().getServer(), network);
         return found != null && NetworkAccess.mayUse(player, found) ? found : null;
     }
 
@@ -108,7 +96,7 @@ public final class Ae2MeAccess implements MeAccess {
         }
         AEItemKey key = AEItemKey.of(item);
         long got = StorageHelper.poweredExtraction(grid.getEnergyService(), grid.getStorageService().getInventory(), key, amount,
-                IActionSource.ofPlayer(player), Actionable.ofSimulate(simulate));
+                IActionSource.ofPlayer(player), simulate ? Actionable.SIMULATE : Actionable.MODULATE);
         if (got <= 0) {
             return ItemStack.EMPTY;
         }

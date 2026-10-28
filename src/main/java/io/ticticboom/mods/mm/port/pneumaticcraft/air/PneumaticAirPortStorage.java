@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.pneumaticcraft.air;
 
+import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
@@ -13,12 +14,14 @@ import me.desht.pneumaticcraft.common.capabilities.MachineAirHandler;
 import me.desht.pneumaticcraft.common.util.DirectionUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.IntTag;
 import net.minecraft.nbt.Tag;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.ItemStackHandler;
+import net.minecraft.network.chat.Component;
+import net.neoforged.neoforge.capabilities.BlockCapability;
+import org.jetbrains.annotations.Nullable;
+import net.neoforged.neoforge.items.ItemStackHandler;
 
 import java.util.*;
 
@@ -28,7 +31,6 @@ public class PneumaticAirPortStorage implements IPortStorage {
 
     @Getter
     private PneumaticAirPortHandler airhandler;
-    private final LazyOptional<PneumaticAirPortHandler> airhandlerLO;
     public final Map<IAirHandlerMachine, List<Direction>> airHandlerMap = new IdentityHashMap();
     private final UUID uid = UUID.randomUUID();
 
@@ -36,33 +38,29 @@ public class PneumaticAirPortStorage implements IPortStorage {
         this.model = model;
         this.changed = changed;
         airhandler = new PneumaticAirPortHandler(model.tier(), model.volume(), changed);
-        airhandlerLO = LazyOptional.of(() -> airhandler);
         this.onNeighborBlockUpdate();
     }
 
     @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> capability) {
-        if (hasCapability(capability)) {
-            return airhandlerLO.cast();
-        } else {
-            return LazyOptional.empty();
-        }
+    public <T> @Nullable T getCapability(BlockCapability<T, ?> capability) {
+        @SuppressWarnings("unchecked") var cast = (T) airhandler;
+        return hasCapability(capability) ? cast : null;
     }
 
 
     @Override
-    public <T> boolean hasCapability(Capability<T> capability) {
-        return capability == PNCCapabilities.AIR_HANDLER_MACHINE_CAPABILITY;
+    public <T> boolean hasCapability(BlockCapability<T, ?> capability) {
+        return capability == PNCCapabilities.AIR_HANDLER_MACHINE;
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag) {
+    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put("Air", serializeNBT());
         return tag;
     }
 
     @Override
-    public void load(CompoundTag tag) {
+    public void load(CompoundTag tag, HolderLookup.Provider registries) {
         deserializeNBT(tag.get("Air"));
     }
 
@@ -84,6 +82,19 @@ public class PneumaticAirPortStorage implements IPortStorage {
     }
 
 
+
+    @Override
+    public List<PortContent> contents() {
+        long capacity = (long) (airhandler.getDangerPressure() * getVolume());
+        return List.of(PortContent.gauge(Component.translatable("port.mm.pneumaticcraft_air.name"), 0x8FB8D8, getAir(), capacity, "mB"));
+    }
+
+    @Override
+    public List<Component> describeContents() {
+        return List.of(
+                Component.translatable("gui.mm.port.pneumaticcraft_air.pressure", String.format(Locale.ROOT, "%.2f", getPressure())),
+                Component.translatable("gui.mm.port.pneumaticcraft_air.air", getAir()));
+    }
 
     public float getPressure(){
         return airhandler.getPressure();
@@ -117,9 +128,9 @@ public class PneumaticAirPortStorage implements IPortStorage {
     public void onNeighborBlockUpdate() {
         airHandlerMap.clear();
         for (Direction side : DirectionUtil.VALUES) {
-            airhandlerLO.cast().ifPresent(handler -> airHandlerMap.computeIfAbsent((IAirHandlerMachine) handler, k -> new ArrayList<>()).add(side));
+            airHandlerMap.computeIfAbsent(airhandler, k -> new ArrayList<>()).add(side);
         }
-        airHandlerMap.forEach(IAirHandlerMachine::setConnectedFaces);
+        airHandlerMap.forEach(IAirHandlerMachine::setConnectableFaces);
     }
 
 

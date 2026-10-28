@@ -1,20 +1,25 @@
 package io.ticticboom.mods.mm.client.config;
 
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import io.ticticboom.mods.mm.client.util.TextColors;
+import net.minecraft.server.permissions.Permissions;
+import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigOptions;
 import io.ticticboom.mods.mm.config.WorkingEffectsConfig;
 import io.ticticboom.mods.mm.controller.IControllerPart;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
-import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.MMConfigEditPkt;
 import io.ticticboom.mods.mm.net.packet.MMConfigRequestPkt;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -24,10 +29,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** In-game MM settings, with a collapsed machine-effects list to keep the page compact. */
 public final class MMConfigScreen extends Screen {
     private enum Page { SERVER, CLIENT, EFFECTS }
-    private record EffectRow(ResourceLocation id, String name, @Nullable String field) {}
+    private record EffectRow(Identifier id, String name, @Nullable String field) {}
     private static final int ROW = 17;
     private static final int BG = 0xFF202126;
     private static final int PANEL = 0xFF303139;
@@ -41,7 +45,7 @@ public final class MMConfigScreen extends Screen {
     @Nullable private Map<String, String> serverValues;
     @Nullable private MMConfigOptions.Option editing;
     @Nullable private EffectRow editingEffect;
-    @Nullable private ResourceLocation expandedController;
+    @Nullable private Identifier expandedController;
     @Nullable private EditBox editor;
     @Nullable private Component error;
     private int scroll;
@@ -61,7 +65,7 @@ public final class MMConfigScreen extends Screen {
     }
 
     private boolean canEditServer() {
-        return minecraft != null && minecraft.player != null && minecraft.player.hasPermissions(2);
+        return minecraft != null && minecraft.player != null && minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
     }
 
     @Override
@@ -71,7 +75,7 @@ public final class MMConfigScreen extends Screen {
         x = (width - panelWidth) / 2;
         y = (height - panelHeight) / 2;
         page = canEditServer() ? Page.SERVER : Page.CLIENT;
-        if (canEditServer()) MMNetwork.INSTANCE.sendToServer(new MMConfigRequestPkt());
+        if (canEditServer()) ClientPacketDistributor.sendToServer(new MMConfigRequestPkt());
     }
 
     private List<MMConfigOptions.Option> options() {
@@ -79,15 +83,15 @@ public final class MMConfigScreen extends Screen {
     }
 
     private List<EffectRow> effectRows() {
-        Map<ResourceLocation, String> controllers = new LinkedHashMap<>();
+        Map<Identifier, String> controllers = new LinkedHashMap<>();
         for (var holder : MMControllerRegistry.CONTROLLERS) {
             var block = holder.getBlock().get();
             if (block instanceof IControllerPart) {
-                ResourceLocation id = ForgeRegistries.BLOCKS.getKey(block);
+                Identifier id = BuiltInRegistries.BLOCK.getKey(block);
                 if (id != null) controllers.put(id, block.getName().getString());
             }
         }
-        for (ResourceLocation id : WorkingEffectsConfig.snapshot().keySet())
+        for (Identifier id : WorkingEffectsConfig.snapshot().keySet())
             controllers.putIfAbsent(id, id.toString());
         var sorted = new ArrayList<>(controllers.entrySet());
         sorted.sort(Comparator.comparing(entry -> entry.getValue().toLowerCase(java.util.Locale.ROOT)));
@@ -112,11 +116,16 @@ public final class MMConfigScreen extends Screen {
     private int valueX() { return x + panelWidth - 136; }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTick) {
-        renderBackground(gfx);
+    public void extractRenderState(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractRenderState(gfx, mouseX, mouseY, partialTick);
+    }
+
+    @Override
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTick) {
+        super.extractBackground(gfx, mouseX, mouseY, partialTick);
         gfx.fill(x - 2, y - 2, x + panelWidth + 2, y + panelHeight + 2, 0xFFC6C6C6);
         gfx.fill(x, y, x + panelWidth, y + panelHeight, BG);
-        gfx.drawString(font, title, x + 9, y + 8, TEXT, false);
+        gfx.text(font, title, x + 9, y + 8, TextColors.argb(TEXT), false);
         button(gfx, x + 8, y + 25, 90, 16, Component.translatable("config.mm.server"),
                 page == Page.SERVER, canEditServer(), mouseX, mouseY);
         button(gfx, x + 102, y + 25, 90, 16, Component.translatable("config.mm.client"),
@@ -128,16 +137,15 @@ public final class MMConfigScreen extends Screen {
 
         gfx.fill(x + 6, rowsTop() - 2, x + panelWidth - 6, rowsBottom() + 2, PANEL);
         if (page == Page.SERVER && serverValues == null) {
-            gfx.drawString(font, Component.translatable("config.mm.loading"), x + 12, rowsTop() + 8, MUTED, false);
+            gfx.text(font, Component.translatable("config.mm.loading"), x + 12, rowsTop() + 8, TextColors.argb(MUTED), false);
         } else if (page == Page.EFFECTS) renderEffects(gfx, mouseX, mouseY);
         else renderOptions(gfx, mouseX, mouseY);
         Component footer = error != null ? error : footerText(mouseX, mouseY);
         TextRenderUtil.drawClipped(gfx, font, footer, x + 9, y + panelHeight - 26, panelWidth - 18,
                 error != null ? ERROR : MUTED);
-        super.render(gfx, mouseX, mouseY, partialTick);
     }
 
-    private void renderOptions(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void renderOptions(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         List<MMConfigOptions.Option> options = options();
         gfx.enableScissor(x + 7, rowsTop(), x + panelWidth - 7, rowsBottom());
         for (int i = 0; i < options.size(); i++) {
@@ -161,7 +169,7 @@ public final class MMConfigScreen extends Screen {
         drawScrollbar(gfx, options.size());
     }
 
-    private void renderEffects(GuiGraphics gfx, int mouseX, int mouseY) {
+    private void renderEffects(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
         List<EffectRow> rows = effectRows();
         gfx.enableScissor(x + 7, rowsTop(), x + panelWidth - 7, rowsBottom());
         for (int i = 0; i < rows.size(); i++) {
@@ -199,7 +207,7 @@ public final class MMConfigScreen extends Screen {
         };
     }
 
-    private void drawScrollbar(GuiGraphics gfx, int count) {
+    private void drawScrollbar(GuiGraphicsExtractor gfx, int count) {
         if (maxScroll() <= 0 || count == 0) return;
         int track = rowsBottom() - rowsTop();
         int thumb = Math.max(10, track * track / (count * ROW));
@@ -222,7 +230,7 @@ public final class MMConfigScreen extends Screen {
         return Component.literal(hovered.key() + range);
     }
 
-    private void button(GuiGraphics gfx, int bx, int by, int bw, int bh, Component label,
+    private void button(GuiGraphicsExtractor gfx, int bx, int by, int bw, int bh, Component label,
                         boolean active, boolean enabled, int mouseX, int mouseY) {
         boolean hovered = mouseX >= bx && mouseX < bx + bw && mouseY >= by && mouseY < by + bh;
         gfx.fill(bx, by, bx + bw, by + bh, active ? ACTIVE : hovered && enabled ? 0xFF5A5F69 : 0xFF444750);
@@ -247,9 +255,12 @@ public final class MMConfigScreen extends Screen {
     }
 
     @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
-        if (editor != null && editor.isMouseOver(mouseX, mouseY)) return super.mouseClicked(mouseX, mouseY, button);
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        double mouseX = event.x();
+        double mouseY = event.y();
+        int button = event.button();
+        if (button != 0) return super.mouseClicked(event, doubleClick);
+        if (editor != null && editor.isMouseOver(mouseX, mouseY)) return super.mouseClicked(event, doubleClick);
         if (!commitEditor()) return true;
         if (mouseY >= y + 7 && mouseY < y + 23 && mouseX >= x + panelWidth - 62 && mouseX < x + panelWidth - 8) {
             onClose();
@@ -357,21 +368,24 @@ public final class MMConfigScreen extends Screen {
         if (option.scope() == MMConfigOptions.Scope.CLIENT) {
             if (!option.set(value)) error = Component.translatable("config.mm.invalid", option.label());
         } else if (canEditServer()) {
-            MMNetwork.INSTANCE.sendToServer(new MMConfigEditPkt(option.key(), value));
+            ClientPacketDistributor.sendToServer(new MMConfigEditPkt(option.key(), value));
         }
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double delta) {
         if (mouseX < x + 6 || mouseX >= x + panelWidth - 6 || mouseY < rowsTop() || mouseY >= rowsBottom())
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, scrollX, delta);
         if (!commitEditor()) return true;
         scroll = Mth.clamp(scroll - (int) Math.signum(delta) * ROW * 2, 0, maxScroll());
         return true;
     }
 
     @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+    public boolean keyPressed(KeyEvent event) {
+        int keyCode = event.key();
+        int scanCode = event.scancode();
+        int modifiers = event.modifiers();
         if (editor != null) {
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) return commitEditor();
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
@@ -379,7 +393,7 @@ public final class MMConfigScreen extends Screen {
                 return true;
             }
         }
-        return super.keyPressed(keyCode, scanCode, modifiers);
+        return super.keyPressed(event);
     }
 
     @Override

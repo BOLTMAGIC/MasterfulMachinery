@@ -1,20 +1,22 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import com.mojang.serialization.Codec;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import lombok.Getter;
 import net.minecraft.nbt.*;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
-public class FluidPortHandler implements IFluidHandler {
+public class FluidPortHandler implements IFluidHandler, TransferSnapshot {
 
     private final int tanks;
     private final int capacity;
@@ -22,14 +24,15 @@ public class FluidPortHandler implements IFluidHandler {
     private final INotifyChangeFunction changed;
 
     private final ArrayList<FluidStack> stacks;
-
-    // fluid remembered while the port is locked, null = not locked to a fluid yet
-    @Nullable
-    private Fluid lockedFluid;
+    private final Fluid[] lockedFluids;
     @Getter
     private boolean locked = false;
+    private Predicate<Fluid> filter = fluid -> true;
+    private boolean oneFluidPerTank = false;
 
-    public static final Codec<List<FluidStack>> STACKS_CODEC = Codec.list(FluidStack.CODEC);
+    // OPTIONAL_CODEC, not CODEC: the strict codec rejects empty stacks, and empty tanks are
+    // serialised on every block update. Same split as ItemStack in 1.20.5.
+    public static final Codec<List<FluidStack>> STACKS_CODEC = Codec.list(FluidStack.OPTIONAL_CODEC);
 
     public FluidPortHandler(int tanks, int capacity, INotifyChangeFunction changed) {
         this.tanks = tanks;
@@ -39,50 +42,36 @@ public class FluidPortHandler implements IFluidHandler {
         for (int i = 0; i < tanks; i++) {
             stacks.add(FluidStack.EMPTY);
         }
+        lockedFluids = new Fluid[tanks];
+    }
+
+    public void setFilter(Predicate<Fluid> filter) {
+        this.filter = filter;
+    }
+
+    public void setOneFluidPerTank(boolean oneFluidPerTank) {
+        this.oneFluidPerTank = oneFluidPerTank;
     }
 
     public void setLocked(boolean locked) {
         this.locked = locked;
-        lockedFluid = locked ? storedFluid() : null;
+        for (int i = 0; i < tanks; i++) {
+            FluidStack stack = stacks.get(i);
+            lockedFluids[i] = locked && !stack.isEmpty() ? stack.getFluid() : null;
+        }
         changed.call();
     }
 
     @Nullable
-    public Fluid getLockedFluid() {
-        return lockedFluid;
+    public Fluid getLockedFluid(int tank) {
+        return lockedFluids[tank];
     }
 
-    /**
-     * Restores lock state from NBT without re-deriving it from the current contents.
-     */
-    public void loadLock(boolean locked, @Nullable Fluid fluid) {
+    public void loadLock(boolean locked, Fluid[] fluids) {
         this.locked = locked;
-        lockedFluid = locked ? fluid : null;
-    }
-
-    /**
-     * @return the fluid this port currently holds; a port holds a single fluid type at a time
-     */
-    @Nullable
-    public Fluid storedFluid() {
-        for (FluidStack stack : stacks) {
-            if (!stack.isEmpty()) {
-                return stack.getFluid();
-            }
+        for (int i = 0; i < tanks; i++) {
+            lockedFluids[i] = locked && i < fluids.length ? fluids[i] : null;
         }
-        return null;
-    }
-
-    public int getTotalAmount() {
-        int total = 0;
-        for (FluidStack stack : stacks) {
-            total += stack.getAmount();
-        }
-        return total;
-    }
-
-    public int getTotalCapacity() {
-        return tanks * capacity;
     }
 
     public void clearAll() {
@@ -92,15 +81,37 @@ public class FluidPortHandler implements IFluidHandler {
         changed.call();
     }
 
-    private void rememberLockedFluid(Fluid fluid) {
-        if (locked && lockedFluid == null) {
-            lockedFluid = fluid;
+    private void rememberLockedFluid(int tank, Fluid fluid) {
+        if (locked && lockedFluids[tank] == null) {
+            lockedFluids[tank] = fluid;
         }
     }
 
     @Override
     public int getTanks() {
         return tanks;
+    }
+
+    private record Snapshot(FluidStack[] stacks, Fluid[] lockedFluids) {
+    }
+
+    @Override
+    public Object createSnapshot() {
+        var copies = new FluidStack[stacks.size()];
+        for (int i = 0; i < copies.length; i++) {
+            copies[i] = stacks.get(i).copy();
+        }
+        return new Snapshot(copies, lockedFluids.clone());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        var saved = (Snapshot) snapshot;
+        for (int i = 0; i < stacks.size() && i < saved.stacks().length; i++) {
+            stacks.set(i, saved.stacks()[i].copy());
+        }
+        System.arraycopy(saved.lockedFluids(), 0, lockedFluids, 0, Math.min(lockedFluids.length, saved.lockedFluids().length));
+        changed.call();
     }
 
     @Override
@@ -111,7 +122,7 @@ public class FluidPortHandler implements IFluidHandler {
     public void setFluidInTank(int i, FluidStack fluidStack) {
         stacks.set(i, fluidStack);
         if (!fluidStack.isEmpty()) {
-            rememberLockedFluid(fluidStack.getFluid());
+            rememberLockedFluid(i, fluidStack.getFluid());
         }
         changed.call();
     }
@@ -123,17 +134,15 @@ public class FluidPortHandler implements IFluidHandler {
 
     @Override
     public boolean isFluidValid(int i, @NotNull FluidStack fluidStack) {
-        Fluid fluid = fluidStack.getFluid();
-        if (lockedFluid != null && lockedFluid != fluid) {
+        if (!fluidStack.isEmpty() && !filter.test(fluidStack.getFluid())) {
             return false;
         }
-        // one fluid type per port: a different fluid goes to another port
-        Fluid stored = storedFluid();
-        if (stored != null && stored != fluid) {
+        Fluid lockedFluid = lockedFluids[i];
+        if (lockedFluid != null && lockedFluid != fluidStack.getFluid()) {
             return false;
         }
         FluidStack slotStack = stacks.get(i);
-        return slotStack.isEmpty() || slotStack.isFluidEqual(fluidStack);
+        return slotStack.isEmpty() || FluidStack.isSameFluidSameComponents(slotStack, fluidStack);
     }
 
     @Override
@@ -143,14 +152,34 @@ public class FluidPortHandler implements IFluidHandler {
         }
 
         int filled = 0;
-        for (int slot = 0; slot < stacks.size(); slot++) {
-            filled += innerFill(slot, stack.getFluid(), stack.getAmount() - filled, action.simulate());
+        if (oneFluidPerTank) {
+            int slot = tankFor(stack);
+            if (slot >= 0) {
+                filled = innerFill(slot, stack.getFluid(), stack.getAmount(), action.simulate());
+            }
+        } else {
+            for (int slot = 0; slot < stacks.size() && filled < stack.getAmount(); slot++) {
+                filled += innerFill(slot, stack.getFluid(), stack.getAmount() - filled, action.simulate());
+            }
         }
-        // only a real change needs saving and a client update; simulations are frequent (pipes)
         if (action.execute() && filled > 0) {
             changed.call();
         }
         return filled;
+    }
+
+    private int tankFor(FluidStack stack) {
+        for (int slot = 0; slot < stacks.size(); slot++) {
+            if (!stacks.get(slot).isEmpty() && FluidStack.isSameFluidSameComponents(stacks.get(slot), stack)) {
+                return slot;
+            }
+        }
+        for (int slot = 0; slot < stacks.size(); slot++) {
+            if (stacks.get(slot).isEmpty() && isFluidValid(slot, stack)) {
+                return slot;
+            }
+        }
+        return -1;
     }
 
     private int innerFill(int slot, Fluid fluid, int amount, boolean simulate) {
@@ -169,7 +198,7 @@ public class FluidPortHandler implements IFluidHandler {
             } else {
                 stack.setAmount(storedAmount + canBeFilled);
             }
-            rememberLockedFluid(fluid);
+            rememberLockedFluid(slot, fluid);
         }
         return canBeFilled;
     }
@@ -182,13 +211,12 @@ public class FluidPortHandler implements IFluidHandler {
 
         int drained = 0;
         for (int slot = 0; slot < stacks.size() && drained < stack.getAmount(); slot++) {
-            // ask each tank only for what is still missing, never more than requested in total
             drained += innerDrain(slot, stack.getFluid(), stack.getAmount() - drained, action.simulate()).getAmount();
         }
         if (action.execute() && drained > 0) {
             changed.call();
         }
-        return new FluidStack(stack.getFluid(), drained);
+        return drained == 0 ? FluidStack.EMPTY : new FluidStack(stack.getFluid(), drained);
     }
 
     public FluidStack innerDrain(int slot, Fluid fluid, int amount, boolean simulate) {
@@ -222,7 +250,7 @@ public class FluidPortHandler implements IFluidHandler {
         if (action.execute() && drained > 0) {
             changed.call();
         }
-        return new FluidStack(fluid, drained);
+        return drained == 0 ? FluidStack.EMPTY : new FluidStack(fluid, drained);
     }
 
     private Fluid findFirstFluid() {
@@ -237,14 +265,16 @@ public class FluidPortHandler implements IFluidHandler {
 
     public Tag serializeNBT() {
         var dataResult = NbtOps.INSTANCE.withEncoder(STACKS_CODEC).apply(stacks);
-        var result = dataResult.getOrThrow(false, Ref.LOG::error);
+        var result = dataResult.getOrThrow(__msg -> { Ref.LOG.error(__msg); return new IllegalStateException(__msg); });
         return result;
     }
 
     public void deserializeNBT(Tag nbt) {
         var dataResult = NbtOps.INSTANCE.withDecoder(STACKS_CODEC).apply(nbt);
-        var result = dataResult.getOrThrow(false, Ref.LOG::error);
-        stacks.clear();
-        stacks.addAll(result.getFirst());
+        var result = dataResult.getOrThrow(__msg -> { Ref.LOG.error(__msg); return new IllegalStateException(__msg); });
+        var saved = result.getFirst();
+        for (int i = 0; i < tanks; i++) {
+            stacks.set(i, i < saved.size() ? saved.get(i) : FluidStack.EMPTY);
+        }
     }
 }

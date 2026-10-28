@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [
+    " DB",
+    " IR",
+    "I  "
+  ],
+  "key": {
+    "D": "minecraft:diamond",
+    "B": "minecraft:paper",
+    "I": "minecraft:iron_ingot",
+    "R": "minecraft:redstone_block"
+  },
+  "result": {
+    "id": "mm:structure_builder",
+    "count": 1
+  }
+}

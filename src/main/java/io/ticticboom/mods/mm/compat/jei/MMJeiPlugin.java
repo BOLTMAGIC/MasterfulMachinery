@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.google.common.collect.ImmutableList;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
@@ -10,9 +12,15 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import io.ticticboom.mods.mm.compat.jei.ingredient.create.CreateRotationIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.create.CreateRotationIngredientRenderer;
 import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.entity.EntityIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.entity.EntityIngredientRenderer;
 import io.ticticboom.mods.mm.compat.jei.ingredient.energy.EnergyIngredientRenderer;
+import io.ticticboom.mods.mm.compat.jei.ingredient.heat.HeatIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.heat.HeatIngredientRenderer;
 import io.ticticboom.mods.mm.compat.jei.ingredient.mana.BotaniaManaIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.mana.BotaniaManaIngredientRenderer;
+import io.ticticboom.mods.mm.compat.jei.ingredient.matter.MatterIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.matter.MatterIngredientRenderer;
 import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientHelper;
 import io.ticticboom.mods.mm.compat.jei.ingredient.pncr.PneumaticAirIngredientRender;
 import io.ticticboom.mods.mm.config.MMConfig;
@@ -26,35 +34,32 @@ import mezz.jei.api.JeiPlugin;
 import mezz.jei.api.gui.handlers.IGuiContainerHandler;
 import mezz.jei.api.gui.builder.IClickableIngredientFactory;
 import mezz.jei.api.runtime.IClickableIngredient;
-import mezz.jei.api.forge.ForgeTypes;
-import mezz.jei.api.runtime.IJeiRuntime;
+import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.registration.*;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.renderer.Rect2i;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import io.ticticboom.mods.mm.compat.jei.ingredient.radiation.RadiationIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.radiation.RadiationIngredientRenderer;
+import io.ticticboom.mods.mm.compat.jei.ingredient.source.ArsSourceIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.source.ArsSourceIngredientRenderer;
+import io.ticticboom.mods.mm.compat.jei.ingredient.emc.EmcIngredientHelper;
+import io.ticticboom.mods.mm.compat.jei.ingredient.emc.EmcIngredientRenderer;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
 @SuppressWarnings("unused")
 @JeiPlugin
 public class MMJeiPlugin implements IModPlugin {
-    public static final ResourceLocation UID = Ref.id("jei_plugin");
 
     @Override
-    public @NotNull ResourceLocation getPluginUid() {
-        return UID;
-    }
-
-    public static final List<MMRecipeCategory> recipeCategories = new ArrayList<>();
-
-    @Override
-    public void onRuntimeAvailable(@NotNull IJeiRuntime jeiRuntime) {
+    public void onRuntimeAvailable(mezz.jei.api.runtime.IJeiRuntime jeiRuntime) {
         JeiRecipeLookup.setRuntime(jeiRuntime);
     }
 
@@ -63,9 +68,17 @@ public class MMJeiPlugin implements IModPlugin {
         JeiRecipeLookup.setRuntime(null);
     }
 
+    public static final Identifier UID = Ref.id("jei_plugin");
+
+    @Override
+    public @NotNull Identifier getPluginUid() {
+        return UID;
+    }
+
+    public static final List<MMRecipeCategory> recipeCategories = new ArrayList<>();
+
     @Override
     public void registerCategories(@NotNull IRecipeCategoryRegistration registration) {
-        // JEI re-runs registration on every world join and /reload; drop the previous run's categories
         recipeCategories.clear();
         if (MMConfig.JEI_RECIPE_SPLIT) {
             for (StructureModel parentStructure : StructureManager.STRUCTURES.values()) {
@@ -80,8 +93,7 @@ public class MMJeiPlugin implements IModPlugin {
     private void registerProcessRecipe(IRecipeCategoryRegistration registration, StructureModel parent) {
         List<RecipeModel> recipes;
         if (parent != null) {
-            recipes = MachineRecipeManager.RECIPES.values().stream()
-                    .filter(x -> x.allStructureIds().contains(parent.id())).collect(Collectors.toList());
+            recipes = MachineRecipeManager.RECIPES.values().stream().filter(x -> x.runsIn(parent.id())).collect(Collectors.toList());
         } else {
             recipes = new ArrayList<>(MachineRecipeManager.RECIPES.values());
         }
@@ -100,7 +112,7 @@ public class MMJeiPlugin implements IModPlugin {
         if (MMConfig.JEI_RECIPE_SPLIT) {
             for (var entry : recipeCategories) {
                 var recipes = MachineRecipeManager.RECIPES.values().stream()
-                        .filter(x -> x.allStructureIds().contains(entry.getStructureModel().id()))
+                        .filter(x -> x.runsIn(entry.getStructureModel().id()))
                         .sorted(java.util.Comparator.comparing(r -> r.id().toString()))
                         .flatMap(r -> FlexJeiPages.expand(r).stream())
                         .toList();
@@ -114,38 +126,66 @@ public class MMJeiPlugin implements IModPlugin {
             registration.addRecipes(MMRecipeCategory.RECIPE_TYPE, sorted);
         }
 
-        var sortedStructures = StructureManager.STRUCTURES.values().stream()
+        var sortedStructures = StructureManager.buildableStructures().stream()
                 .sorted(java.util.Comparator.comparing(s -> s.id().toString()))
                 .collect(Collectors.toList());
         registration.addRecipes(MMStructureCategory.RECIPE_TYPE, sortedStructures);
     }
 
 
+    /**
+     * JEI 29 saves bookmarked ingredients through a codec. MM's own ingredient types (energy, mana...) are display
+     * only, so they encode to their type name and are not restored.
+     */
+    private static <V> Codec<V> unsaved(String name) {
+        return Codec.STRING.comapFlatMap(s -> DataResult.error(() -> "MM " + name + " ingredients are not saved"), v -> name);
+    }
+
     @Override
     public void registerIngredients(IModIngredientRegistration registration) {
-        registration.register(MMJeiIngredients.ENERGY, ImmutableList.of(), new EnergyIngredientHelper(), new EnergyIngredientRenderer());
-        registration.register(MMJeiIngredients.PNEUMATIC_AIR, ImmutableList.of(), new PneumaticAirIngredientHelper(), new PneumaticAirIngredientRender());
-        registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer());
-        registration.register(MMJeiIngredients.CREATE_ROTATION, ImmutableList.of(), new CreateRotationIngredientHelper(), new CreateRotationIngredientRenderer());
+        registration.register(MMJeiIngredients.ENERGY, ImmutableList.of(), new EnergyIngredientHelper(), new EnergyIngredientRenderer(), unsaved("energy"));
+        registration.register(MMJeiIngredients.PNEUMATIC_AIR, ImmutableList.of(), new PneumaticAirIngredientHelper(), new PneumaticAirIngredientRender(), unsaved("pneumatic_air"));
+        registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer(), unsaved("botania_mana"));
+        registration.register(MMJeiIngredients.CREATE_ROTATION, ImmutableList.of(), new CreateRotationIngredientHelper(), new CreateRotationIngredientRenderer(), unsaved("create_rotation"));
+        registration.register(MMJeiIngredients.MEKANISM_HEAT, ImmutableList.of(), new HeatIngredientHelper(), new HeatIngredientRenderer(), unsaved("mekanism_heat"));
+        registration.register(MMJeiIngredients.REPLICATION_MATTER, ImmutableList.of(), new MatterIngredientHelper(), new MatterIngredientRenderer(), unsaved("replication_matter"));
+        registration.register(MMJeiIngredients.NUCLEAR_RADIATION, ImmutableList.of(), new RadiationIngredientHelper(), new RadiationIngredientRenderer(), unsaved("nuclear_radiation"));
+        registration.register(MMJeiIngredients.ENTITY, ImmutableList.of(), new EntityIngredientHelper(), new EntityIngredientRenderer(), unsaved("entity"));
+        registration.register(MMJeiIngredients.ARS_SOURCE, ImmutableList.of(), new ArsSourceIngredientHelper(), new ArsSourceIngredientRenderer(), unsaved("ars_source"));
+        registration.register(MMJeiIngredients.PROJECTE_EMC, ImmutableList.of(), new EmcIngredientHelper(), new EmcIngredientRenderer(), unsaved("projecte_emc"));
     }
 
     @Override
     public void registerRecipeCatalysts(@NotNull IRecipeCatalystRegistration registration) {
         for (var entry : recipeCategories) {
-            ResourceLocation location = entry.getStructureModel().controllerIds().getIds().get(0);
-            ItemStack stack = Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(location)).getDefaultInstance();
-            registration.addRecipeCatalyst(stack,entry.getRecipeType());
+            StructureModel structure = entry.getStructureModel();
+            if (structure == null) {
+                continue;
+            }
+            List<Identifier> controllerIds = structure.controllerIds().getIds();
+            if (controllerIds.isEmpty()) {
+                Ref.LOG.error("Skipping JEI catalyst for structure {}: it lists no controllerIds.", structure.id());
+                continue;
+            }
+            Identifier location = controllerIds.get(0);
+            ItemStack stack = BuiltInRegistries.ITEM.getValue(location).getDefaultInstance();
+            if (stack.isEmpty()) {
+                Ref.LOG.error("Skipping JEI catalyst for structure {}: no controller block '{}' exists. "
+                        + "Either it is misspelled, or the controller it names was not loaded.", structure.id(), location);
+                continue;
+            }
+            registration.addRecipeCatalyst(stack, entry.getRecipeType());
         }
     }
 
     @Override
     public void registerItemSubtypes(ISubtypeRegistration registration) {
-        registration.useNbtForSubtypes(MMRegisters.BLUEPRINT.get());
+        registration.registerSubtypeInterpreter(MMRegisters.BLUEPRINT.get(),
+                (stack, ctx) -> String.valueOf(ItemNbtUtil.getTag(stack)));
     }
 
     @Override
     public void registerGuiHandlers(@NotNull IGuiHandlerRegistration registration) {
-        // the multiblock tool screen's tabs hang outside its window; keep JEI's item list off them
         registration.addGuiContainerHandler(MultiblockToolScreen.class, new IGuiContainerHandler<>() {
             @Override
             public @NotNull List<Rect2i> getGuiExtraAreas(@NotNull MultiblockToolScreen screen) {
@@ -170,7 +210,7 @@ public class MMJeiPlugin implements IModPlugin {
                 var content = hovered.content();
                 return switch (content.kind()) {
                     case ITEM -> factory.createBuilder(content.item().copyWithCount(1)).buildWithArea(hovered.area());
-                    case FLUID -> factory.createBuilder(ForgeTypes.FLUID_STACK, content.fluid().copy()).buildWithArea(hovered.area());
+                    case FLUID -> factory.createBuilder(NeoForgeTypes.FLUID_STACK, content.fluid().copy()).buildWithArea(hovered.area());
                     default -> Optional.empty();
                 };
             }

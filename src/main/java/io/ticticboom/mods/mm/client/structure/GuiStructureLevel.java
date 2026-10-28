@@ -3,7 +3,8 @@ package io.ticticboom.mods.mm.client.structure;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -15,10 +16,6 @@ import org.jetbrains.annotations.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
-/**
- * The blocks of a structure preview, as a tiny read-only world, so block models can look at their neighbours.
- * Connected textures (AE2 quartz glass, CTM, Fusion...) need this, otherwise every block draws all its edges.
- */
 public class GuiStructureLevel implements BlockAndTintGetter {
     private final Map<BlockPos, BlockState> states = new HashMap<>();
     private final Map<BlockPos, BlockEntity> blockEntities = new HashMap<>();
@@ -52,15 +49,14 @@ public class GuiStructureLevel implements BlockAndTintGetter {
     }
 
     @Override
-    public float getShade(Direction direction, boolean shade) {
-        return 1f;
+    public CardinalLighting cardinalLighting() {
+        return CardinalLighting.DEFAULT;
     }
 
     @Override
     public LevelLightEngine getLightEngine() {
-        // previews are drawn full bright; models that ask get the client world's engine
         var level = Minecraft.getInstance().level;
-        return level != null ? level.getLightEngine() : null;
+        return level != null ? level.getLightEngine() : LevelLightEngine.EMPTY;
     }
 
     @Override
@@ -75,7 +71,7 @@ public class GuiStructureLevel implements BlockAndTintGetter {
     }
 
     @Override
-    public int getMinBuildHeight() {
+    public int getMinY() {
         return -2048;
     }
 }

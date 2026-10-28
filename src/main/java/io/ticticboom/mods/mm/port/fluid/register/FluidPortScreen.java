@@ -1,27 +1,28 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
+import io.ticticboom.mods.mm.client.FluidSprites;
+import net.minecraft.client.renderer.RenderPipelines;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.client.FluidRenderer;
 import io.ticticboom.mods.mm.client.gui.widgets.TankGauge;
 import io.ticticboom.mods.mm.client.util.CountFormat;
-import io.ticticboom.mods.mm.port.common.PortGuiLayout;
 import io.ticticboom.mods.mm.port.common.SlottedContainerScreen;
 import io.ticticboom.mods.mm.port.fluid.FluidPortHandler;
 import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
+import io.ticticboom.mods.mm.util.WidgetUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.InventoryMenu;
-import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.client.extensions.common.IClientFluidTypeExtensions;
-import net.minecraftforge.fluids.FluidStack;
+import net.minecraft.world.phys.Vec2;
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
+import net.neoforged.neoforge.fluids.FluidStack;
 
 import java.util.ArrayList;
+import java.util.List;
 
-/**
- * A fluid port holds one fluid type, shown as one big tank.
- */
 public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
     public FluidPortScreen(FluidPortMenu menu, Inventory inv, Component title) {
         super(menu, inv, title);
@@ -32,49 +33,83 @@ public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
         return ((FluidPortStorage) be.getStorage()).getHandler();
     }
 
-    @Override
-    protected void renderBg(GuiGraphics gfx, float partialTicks, int mouseX, int mouseY) {
-        gfx.blit(Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight);
-        int x = this.leftPos + PortGuiLayout.TANK_X;
-        int y = this.topPos + PortGuiLayout.TANK_Y;
-        TankGauge.drawFrame(gfx, x, y);
-
-        var handler = handler();
-        Fluid fluid = handler.storedFluid();
-        int amount = handler.getTotalAmount();
-        int capacity = handler.getTotalCapacity();
-        if (fluid != null && capacity > 0) {
-            var stack = new FluidStack(fluid, amount);
-            var props = IClientFluidTypeExtensions.of(fluid);
-            var sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(props.getStillTexture(stack));
-            TankGauge.drawFill(gfx, x, y, (double) amount / capacity, sprite, props.getTintColor(stack));
-        }
-        Component name = fluid == null ? null : new FluidStack(fluid, 1).getDisplayName();
-        TankGauge.drawLabel(gfx, this.font, x, y, name, amount, capacity, "mB");
+    private boolean singleTank() {
+        return handler().getTanks() == 1;
     }
 
     @Override
-    public void render(GuiGraphics gfx, int mouseX, int mouseY, float partialTicks) {
-        super.render(gfx, mouseX, mouseY, partialTicks);
-        int x = this.leftPos + PortGuiLayout.TANK_X;
-        int y = this.topPos + PortGuiLayout.TANK_Y;
-        if (!TankGauge.isHovered(mouseX, mouseY, x, y) || configPanel.isWithin(mouseX, mouseY)) {
+    public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        // the slotted background; a single tank draws its gauge panel over it
+        super.extractBackground(gfx, mouseX, mouseY, partialTicks);
+        if (!singleTank()) {
             return;
         }
+        gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
+        int x = this.leftPos + TankGauge.X;
+        int y = this.topPos + TankGauge.Y;
+        TankGauge.drawFrame(gfx, x, y);
         var handler = handler();
-        Fluid fluid = handler.storedFluid();
+        var stack = handler.getFluidInTank(0);
+        int capacity = handler.getTankCapacity(0);
+        if (!stack.isEmpty() && capacity > 0) {
+            TankGauge.drawFill(gfx, x, y, (double) stack.getAmount() / capacity, FluidSprites.still(stack), FluidSprites.tint(stack));
+        }
+        TankGauge.drawLabel(gfx, this.font, x, y, stack.isEmpty() ? null : stack.getHoverName(), stack.getAmount(), capacity, "mB");
+    }
+
+    @Override
+    protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        super.extractLabels(gfx, mouseX, mouseY);
+        if (singleTank()) {
+            return;
+        }
+        int i = firstSlotOnPage();
+        for (Vec2 slot : slots) {
+            int slotX = (int) slot.x + 1;
+            int slotY = (int) slot.y + 1;
+            var stack = menu.getStackInSlot(i);
+            FluidRenderer.INSTANCE.extractRenderState(gfx, slotX, slotY, stack, 16);
+            if (!stack.isEmpty()) {
+                CountFormat.drawSlotCount(gfx, slotX - 1, slotY - 1, stack.getAmount());
+            }
+            if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + slotX, this.topPos + slotY, 16, 16)) {
+                gfx.fillGradient(slotX, slotY, slotX + 16, slotY + 16, 0x80ffffff, 0x80ffffff);
+            }
+            i++;
+        }
+    }
+
+    @Override
+    protected void renderExtraTooltip(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
+        var handler = handler();
+        if (singleTank()) {
+            if (TankGauge.isHovered(mouseX, mouseY, this.leftPos + TankGauge.X, this.topPos + TankGauge.Y)) {
+                gfx.setComponentTooltipForNextFrame(this.font, tankTooltip(handler, 0), mouseX, mouseY);
+            }
+            return;
+        }
+        int i = firstSlotOnPage();
+        for (Vec2 slot : slots) {
+            if (WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + (int) slot.x + 1, this.topPos + (int) slot.y + 1, 16, 16)) {
+                gfx.setComponentTooltipForNextFrame(this.font, tankTooltip(handler, i), mouseX, mouseY);
+                return;
+            }
+            i++;
+        }
+    }
+
+    private static List<Component> tankTooltip(FluidPortHandler handler, int tank) {
+        var stack = handler.getFluidInTank(tank);
         var tooltip = new ArrayList<Component>();
-        tooltip.add(fluid == null
-                ? Component.translatable("gui.mm.port.tank.empty")
-                : new FluidStack(fluid, 1).getDisplayName());
-        tooltip.add(Component.literal(CountFormat.grouped(handler.getTotalAmount()) + " / "
-                + CountFormat.grouped(handler.getTotalCapacity()) + " mB").withStyle(ChatFormatting.GRAY));
-        Fluid locked = handler.getLockedFluid();
+        tooltip.add(stack.isEmpty() ? Component.translatable("gui.mm.port.tank.empty") : stack.getHoverName());
+        tooltip.add(Component.literal(CountFormat.grouped(stack.getAmount()) + " / "
+                + CountFormat.grouped(handler.getTankCapacity(tank)) + " mB").withStyle(ChatFormatting.GRAY));
         if (handler.isLocked()) {
+            var locked = handler.getLockedFluid(tank);
             tooltip.add(locked == null
                     ? Component.translatable("gui.mm.port.tank.locked_any").withStyle(ChatFormatting.GOLD)
-                    : Component.translatable("gui.mm.port.tank.locked", new FluidStack(locked, 1).getDisplayName()).withStyle(ChatFormatting.GOLD));
+                    : Component.translatable("gui.mm.port.tank.locked", new FluidStack(locked, 1).getHoverName()).withStyle(ChatFormatting.GOLD));
         }
-        gfx.renderComponentTooltip(this.font, tooltip, mouseX, mouseY);
+        return tooltip;
     }
 }

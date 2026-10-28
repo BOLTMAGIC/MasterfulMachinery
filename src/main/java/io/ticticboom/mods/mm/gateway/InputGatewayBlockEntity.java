@@ -1,43 +1,28 @@
 package io.ticticboom.mods.mm.gateway;
 
-import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import io.ticticboom.mods.mm.port.IPortStorage;
-import io.ticticboom.mods.mm.recipe.RecipeStorages;
-import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.MachineLinks;
+import io.ticticboom.mods.mm.port.IPortStorage;
+import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
-import org.jetbrains.annotations.NotNull;
+import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 
 public class InputGatewayBlockEntity extends BlockEntity {
-    /** How long the found input ports are trusted before looking again, in ticks. */
     private static final int REFRESH_TICKS = 20;
-
-    private final LazyOptional<IItemHandler> itemHandler = LazyOptional.of(() -> new GatewayItemHandler(this::inputs));
-    private final LazyOptional<IFluidHandler> fluidHandler = LazyOptional.of(() -> new GatewayFluidHandler(this::inputs));
-    private final LazyOptional<IEnergyStorage> energyHandler = LazyOptional.of(() -> new GatewayEnergyHandler(this::inputs));
-    // Mekanism chemical handlers (gas, infusion, pigment, slurry), made on first request; only used with Mekanism
-    private final Map<Capability<?>, LazyOptional<?>> chemicalHandlers = new HashMap<>();
-    private static final boolean MEKANISM = ModList.get().isLoaded("mekanism");
-
-    /** Every this many refreshes the machine is looked up from scratch. */
     private static final int RELINK_EVERY = 10;
+
+    private final IItemHandler itemHandler = new GatewayItemHandler(this::inputs);
+    private final IFluidHandler fluidHandler = new GatewayFluidHandler(this::inputs);
+    private final IEnergyStorage energyHandler = new GatewayEnergyHandler(this::inputs);
+    private Object chemicalHandler;
 
     private List<IPortStorage> cachedInputs = List.of();
     private long refreshAt = Long.MIN_VALUE;
@@ -49,10 +34,27 @@ public class InputGatewayBlockEntity extends BlockEntity {
         super(MMRegisters.INPUT_GATEWAY_BE.get(), pos, state);
     }
 
-    /**
-     * @return the input port storages of the machine this gateway feeds, empty if there is none.
-     * Looked up again at most once a second, as pipes insert every tick.
-     */
+    public IItemHandler itemHandler() {
+        return itemHandler;
+    }
+
+    public IFluidHandler fluidHandler() {
+        return fluidHandler;
+    }
+
+    public IEnergyStorage energyHandler() {
+        return energyHandler;
+    }
+
+    public Object chemicalHandler() {
+        if (chemicalHandler == null) {
+            // [26.1-pending] Mekanism has no 26.1.2 release yet: no chemical handler (only MekCapabilities asks for it)
+            // chemicalHandler = new GatewayChemicalHandler(this::inputs);
+            return null;
+        }
+        return chemicalHandler;
+    }
+
     List<IPortStorage> inputs() {
         if (!(level instanceof ServerLevel serverLevel)) {
             return List.of();
@@ -62,83 +64,31 @@ public class InputGatewayBlockEntity extends BlockEntity {
             return cachedInputs;
         }
         refreshAt = now + REFRESH_TICKS;
-        // re-check which machine we belong to now and then; in between only ask the known controller
         if (++refreshCount % RELINK_EVERY == 0) {
             controllerPos = null;
         }
-        cachedInputs = findInputs(serverLevel);
-        return cachedInputs;
-    }
-
-    private List<IPortStorage> findInputs(ServerLevel serverLevel) {
         MachineControllerBlockEntity controller = linkedController(serverLevel);
         if (controller == null) {
             controller = searchController(serverLevel);
             controllerPos = controller == null ? null : controller.getBlockPos();
         }
-        if (controller == null) {
-            return List.of();
-        }
-        RecipeStorages storages = controller.getCachedPortStorages();
-        if (storages == null) {
-            storages = controller.getStructure().getStorages(serverLevel, controller.getBlockPos());
-        }
-        return storages == null ? List.of() : new ArrayList<>(storages.inputStorages());
+        var storages = controller == null ? null : controller.getPortStorages();
+        cachedInputs = storages == null ? List.of() : storages.inputStorages();
+        return cachedInputs;
     }
 
     @Nullable
     private MachineControllerBlockEntity linkedController(ServerLevel serverLevel) {
-        if (controllerPos != null && serverLevel.getExistingBlockEntity(controllerPos) instanceof MachineControllerBlockEntity controller
-                && controller.getStructure() != null) {
+        if (controllerPos != null && serverLevel.isLoaded(controllerPos)
+                && serverLevel.getBlockEntity(controllerPos) instanceof MachineControllerBlockEntity controller
+                && controller.getPortStorages() != null) {
             return controller;
         }
-        controllerPos = null;
         return null;
     }
 
-    /**
-     * The gateway feeds a machine it is built into (standing in for a casing or glass block), or one
-     * whose input port it touches.
-     */
     @Nullable
     private MachineControllerBlockEntity searchController(ServerLevel serverLevel) {
         return MachineLinks.find(serverLevel, getBlockPos());
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if (cap == MMCapabilities.ITEM) {
-            return itemHandler.cast();
-        }
-        if (cap == MMCapabilities.FLUID) {
-            return fluidHandler.cast();
-        }
-        if (cap == MMCapabilities.ENERGY) {
-            return energyHandler.cast();
-        }
-        if (MEKANISM) {
-            LazyOptional<?> chemical = chemicalHandlers.get(cap);
-            if (chemical == null && !chemicalHandlers.containsKey(cap)) {
-                // null for capabilities that aren't chemical ones; remembered so they aren't checked again
-                chemical = GatewayChemicalHandler.create(cap, this::inputs);
-                chemicalHandlers.put(cap, chemical);
-            }
-            if (chemical != null) {
-                return chemical.cast();
-            }
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        itemHandler.invalidate();
-        fluidHandler.invalidate();
-        energyHandler.invalidate();
-        chemicalHandlers.values().forEach(handler -> {
-            if (handler != null) handler.invalidate();
-        });
-        chemicalHandlers.clear();
     }
 }

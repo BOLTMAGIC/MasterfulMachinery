@@ -1,6 +1,9 @@
 package io.ticticboom.mods.mm.event;
 
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
+import io.ticticboom.mods.mm.controller.single.register.SingleMachineScreen;
+import io.ticticboom.mods.mm.setup.MMRegisters;
+import net.minecraft.client.gui.screens.MenuScreens;
 import io.ticticboom.mods.mm.datagen.PackEventHandler;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
@@ -8,13 +11,13 @@ import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.setup.loader.ControllerLoader;
 import io.ticticboom.mods.mm.setup.loader.ExtraBlockLoader;
 import io.ticticboom.mods.mm.setup.loader.PortLoader;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.FMLConstructModEvent;
+import net.minecraft.resources.Identifier;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.fml.event.lifecycle.FMLConstructModEvent;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber
 public class SetupEventHandler {
 
     @SubscribeEvent
@@ -32,14 +35,15 @@ public class SetupEventHandler {
     public static void onClientSetup(FMLClientSetupEvent event) {
         event.enqueueWork(() -> {
             for (RegistryGroupHolder controller : MMControllerRegistry.CONTROLLERS) {
-                ResourceLocation type = controller.getRegistryId();
+                Identifier type = controller.getRegistryId();
                 MMControllerRegistry.get(type).registerScreen(controller);
             }
 
             for (RegistryGroupHolder port : MMPortRegistry.PORTS) {
-                ResourceLocation type = port.getRegistryId();
+                Identifier type = port.getRegistryId();
                 MMPortRegistry.get(type).registerScreen(port);
             }
+            MenuScreens.register(MMRegisters.SINGLE_MACHINE_MENU.get(), SingleMachineScreen::new);
             MachineRecipeManager.init();
         });
     }

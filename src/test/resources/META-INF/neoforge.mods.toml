@@ -1,0 +1,38 @@
+# Development-only companion mod. It ships no code beyond an empty @Mod entrypoint and exists so
+# the sample packs under src/test/resources/data/mmtest load in the dev client and server. It is
+# never published.
+modLoader="javafml" #mandatory
+# FML major version, not the Forge version the MDK template used here.
+loaderVersion="[4,)" #mandatory
+license="MIT"
+[[mods]] #mandatory
+modId="mmtest" #mandatory
+# Fixed rather than ${file.jarVersion}: the test source set is not packaged into a jar, so that
+# substitution has no manifest to read and resolves to 0.0NONE.
+version="1.0" #mandatory
+# Deliberately distinct from the main mod's name so the two are tellable apart in the mod list.
+displayName="Masterful Machinery Test Pack" #mandatory
+authors="ticticboom, BOLT_M4G1C" #optional
+description='''
+Development-only test data for Masterful Machinery. Provides the sample controllers, ports,
+structures and processes used to exercise the mod in a dev environment.
+'''
+[[dependencies.mmtest]]
+    modId="neoforge"
+    type="required"
+    versionRange="[26.1.2,)"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.mmtest]]
+    modId="minecraft"
+    type="required"
+    versionRange="[26.1.2,26.2)"
+    ordering="NONE"
+    side="BOTH"
+# The test data is all MM content, so it is useless without MM and must load after it.
+[[dependencies.mmtest]]
+    modId="mm"
+    type="required"
+    versionRange="[0,)"
+    ordering="AFTER"
+    side="BOTH"

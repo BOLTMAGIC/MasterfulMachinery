@@ -17,7 +17,7 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import java.util.function.Consumer;
 
@@ -34,26 +34,26 @@ public class CreateKineticPortType extends PortType {
     }
 
     @Override
-    public RegistryObject<BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
+    public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
         if (model.input()) {
-            return  MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> new CreateKineticPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+            return  MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> new CreateKineticPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
         } else {
-            return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> new CreateKineticGenPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+            return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> new CreateKineticGenPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
         }
     }
 
     @Override
-    public RegistryObject<Block> registerBlock(PortModel model, RegistryGroupHolder groupHolder) {
+    public DeferredHolder<Block, Block> registerBlock(PortModel model, RegistryGroupHolder groupHolder) {
         return MMRegisters.BLOCKS.register(model.id(), () -> new CreateKineticPortBlock(model, groupHolder));
     }
 
     @Override
-    public RegistryObject<Item> registerItem(PortModel model, RegistryGroupHolder groupHolder) {
+    public DeferredHolder<Item, Item> registerItem(PortModel model, RegistryGroupHolder groupHolder) {
         return MMRegisters.ITEMS.register(model.id(), () -> new CreateKineticPortBlockItem(model, groupHolder));
     }
 
     @Override
-    public RegistryObject<MenuType<?>> registerMenu(PortModel model, RegistryGroupHolder groupHolder) {
+    public DeferredHolder<MenuType<?>, MenuType<?>> registerMenu(PortModel model, RegistryGroupHolder groupHolder) {
         return null;
     }
 

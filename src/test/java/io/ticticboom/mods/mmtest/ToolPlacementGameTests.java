@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
@@ -14,26 +15,22 @@ import io.ticticboom.mods.mm.tool.ToolTarget;
 import io.netty.buffer.Unpooled;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
 
 import java.util.List;
 
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class ToolPlacementGameTests {
-    private static final ResourceLocation TOWER = ResourceLocation.tryBuild("mmtest", "test_tower");
+    private static final Identifier TOWER = Identifier.tryBuild("mmtest", "test_tower");
 
     @GameTest(template = "empty")
     public static void longRangeTargetUsesTheFirstLoadedBlockOnTheRay(GameTestHelper helper) {
-        var player = helper.makeMockPlayer();
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         BlockPos target = helper.absolutePos(new BlockPos(3, 2, 3));
         // The reused GameTest world may contain blocks from previous tall test structures above the template.
         for (int height = 1; height <= 45; height++) helper.getLevel().setBlockAndUpdate(target.above(height), Blocks.AIR.defaultBlockState());
@@ -55,12 +52,12 @@ public class ToolPlacementGameTests {
 
     @GameTest(template = "empty")
     public static void anchorKeepsThePlanWhenPlayerMovesAndTurns(GameTestHelper helper) {
-        var player = helper.makeMockPlayer();
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = true;
         ItemStack tool = MMRegisters.MULTIBLOCK_TOOL.get().getDefaultInstance();
         ToolData.setBuilderStructure(tool, TOWER);
         BlockPos clicked = helper.absolutePos(new BlockPos(3, 0, 3));
-        var anchor = new ToolData.Anchor(helper.getLevel().dimension().location(), clicked, Direction.UP, Direction.NORTH);
+        var anchor = new ToolData.Anchor(helper.getLevel().dimension().identifier(), clicked, Direction.UP, Direction.NORTH);
         ToolData.setAnchor(tool, anchor);
         ItemStack saved = tool.copy();
         check(helper, anchor.equals(ToolData.anchor(saved)), "anchor must survive item serialization/copy");
@@ -80,7 +77,7 @@ public class ToolPlacementGameTests {
         check(helper, ToolData.anchor(saved).equals(anchor), "extra rotation must keep the anchor");
         player.setPos(clicked.getX() + 80, clicked.getY() + 2, clicked.getZ());
         check(helper, ToolTarget.resolve(player, saved, 64) == null, "anchor must respect the server's range");
-        ToolData.setAnchor(saved, new ToolData.Anchor(ResourceLocation.tryBuild("minecraft", "the_nether"), clicked, Direction.UP, Direction.NORTH));
+        ToolData.setAnchor(saved, new ToolData.Anchor(Identifier.tryBuild("minecraft", "the_nether"), clicked, Direction.UP, Direction.NORTH));
         check(helper, ToolTarget.resolve(player, saved, 128) == null, "anchor from another dimension must be refused");
         ToolData.setBuilderStructure(saved, TOWER);
         check(helper, ToolData.anchor(saved) == null, "selecting a structure clears its old anchor");
@@ -89,7 +86,7 @@ public class ToolPlacementGameTests {
 
     @GameTest(template = "empty")
     public static void layerModeFinishesTheLowerLayerBeforeTheNextTick(GameTestHelper helper) {
-        var player = helper.makeMockPlayer();
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getInventory().add(new ItemStack(Blocks.STONE, 3));
         BlockPos lowA = helper.absolutePos(new BlockPos(2, 1, 2));
         BlockPos lowB = helper.absolutePos(new BlockPos(3, 1, 2));
@@ -108,7 +105,7 @@ public class ToolPlacementGameTests {
 
     @GameTest(template = "empty")
     public static void instantAndSequentialModesKeepCostsAndObstructionChecks(GameTestHelper helper) {
-        var player = helper.makeMockPlayer();
+        var player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getInventory().add(new ItemStack(Blocks.STONE, 3));
         BlockPos first = helper.absolutePos(new BlockPos(2, 1, 2));
         BlockPos blocked = helper.absolutePos(new BlockPos(3, 1, 2));
@@ -139,13 +136,13 @@ public class ToolPlacementGameTests {
         var sorted = ToolBuildMode.LAYER_BY_LAYER.order(plan, controller, true);
         check(helper, sorted.steps().get(0).pos().equals(controller) && sorted.steps().get(1).pos().getY() == 1
                 && sorted.unavailable() == 7, "MM controller must remain first, even above the lower layers");
-        FriendlyByteBuf buf = new FriendlyByteBuf(Unpooled.buffer());
+        RegistryFriendlyByteBuf buf = new RegistryFriendlyByteBuf(Unpooled.buffer(), helper.getLevel().registryAccess());
         try {
-            ToolBuildPkt.encode(new ToolBuildPkt(InteractionHand.OFF_HAND), buf);
-            check(helper, ToolBuildPkt.decode(buf).hand() == InteractionHand.OFF_HAND, "build packet must preserve offhand");
+            ToolBuildPkt.STREAM_CODEC.encode(buf, new ToolBuildPkt(InteractionHand.OFF_HAND));
+            check(helper, ToolBuildPkt.STREAM_CODEC.decode(buf).hand() == InteractionHand.OFF_HAND, "build packet must preserve offhand");
             buf.clear();
-            ToolAnchorPkt.encode(new ToolAnchorPkt(InteractionHand.MAIN_HAND), buf);
-            check(helper, ToolAnchorPkt.decode(buf).hand() == InteractionHand.MAIN_HAND, "anchor packet must preserve main hand");
+            ToolAnchorPkt.STREAM_CODEC.encode(buf, new ToolAnchorPkt(InteractionHand.MAIN_HAND));
+            check(helper, ToolAnchorPkt.STREAM_CODEC.decode(buf).hand() == InteractionHand.MAIN_HAND, "anchor packet must preserve main hand");
         } finally { buf.release(); }
         helper.succeed();
     }

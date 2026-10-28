@@ -9,14 +9,16 @@ import io.ticticboom.mods.mm.util.WorldUtil;
 import io.ticticboom.mods.mm.Ref;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.List;
 import java.util.Objects;
@@ -24,20 +26,23 @@ import java.util.function.Supplier;
 
 public class TagStructurePiece extends StructurePiece {
 
-    private final ResourceLocation tagId;
+    private final Identifier tagId;
     private final TagKey<Block> tagKey;
     private List<Block> tagBlocks;
 
 
-    public TagStructurePiece(ResourceLocation tagId) {
+    public TagStructurePiece(Identifier tagId) {
         this.tagId = tagId;
-        tagKey = TagKey.create(ForgeRegistries.BLOCKS.getRegistryKey(), tagId);
+        tagKey = TagKey.create(Registries.BLOCK, tagId);
     }
 
     @Override
     public void validateSetup(StructurePieceSetupMetadata meta) {
-        var tag = Objects.requireNonNull(ForgeRegistries.BLOCKS.tags()).getTag(tagKey);
-        tagBlocks = tag.stream().toList();
+        // Registry.getTag returns an Optional<HolderSet.Named<Block>> of holders rather than
+        // Forge's ITag of values, so an absent tag is an empty list instead of a null.
+        tagBlocks = BuiltInRegistries.BLOCK.get(tagKey)
+                .map(holders -> holders.stream().map(Holder::value).toList())
+                .orElse(List.of());
         if (tagBlocks.isEmpty()) {
             // Don't crash on empty tags; KubeJS may add entries at a different time than
             // when this validation runs. Log a warning and continue — runtime checks
@@ -59,7 +64,7 @@ public class TagStructurePiece extends StructurePiece {
 
     @Override
     public Component createDisplayComponent() {
-        return Component.translatable("mm.structure.piece.tag").append(Component.literal(tagId.toString()).withStyle(ChatFormatting.DARK_AQUA));
+        return Component.translatable("piece.mm.tag.description", Component.literal(tagId.toString()).withStyle(ChatFormatting.DARK_AQUA));
     }
 
     @Override
@@ -67,7 +72,7 @@ public class TagStructurePiece extends StructurePiece {
         json.addProperty("tag", tagId.toString());
         var blocksJson = new JsonArray();
         for (Block tagBlock : tagBlocks) {
-            blocksJson.add(Objects.requireNonNull(ForgeRegistries.BLOCKS.getKey(tagBlock)).toString());
+            blocksJson.add(Objects.requireNonNull(BuiltInRegistries.BLOCK.getKey(tagBlock)).toString());
         }
         json.add("possibleBlocks", blocksJson);
         return json;
@@ -77,11 +82,11 @@ public class TagStructurePiece extends StructurePiece {
     public JsonObject debugFound(Level level, BlockPos pos, StructureModel model, JsonObject json) {
         BlockState foundState = level.getBlockState(pos);
         var found = foundState.getBlock();
-        var foundId = ForgeRegistries.BLOCKS.getKey(found);
+        var foundId = BuiltInRegistries.BLOCK.getKey(found);
         assert foundId != null;
         json.addProperty("block", foundId.toString());
         var tagsJson = new JsonArray();
-        foundState.getTags().map(x -> x.location().toString()).forEach(tagsJson::add);
+        foundState.typeHolder().tags().map(x -> x.location().toString()).forEach(tagsJson::add);
         json.add("foundTags", tagsJson);
         return json;
     }

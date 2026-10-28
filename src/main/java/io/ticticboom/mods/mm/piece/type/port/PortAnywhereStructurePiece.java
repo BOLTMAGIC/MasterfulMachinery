@@ -16,26 +16,27 @@ import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
+import io.ticticboom.mods.mm.structure.StructureProblems;
 
 public class PortAnywhereStructurePiece extends StructurePiece {
 
     @Getter
-    private final ResourceLocation portId;
+    private final Identifier portId;
     @Getter
     private final Optional<Boolean> input;
     private final List<Block> blocks = new ArrayList<>();
 
-    public PortAnywhereStructurePiece(ResourceLocation portId, Optional<Boolean> input) {
+    public PortAnywhereStructurePiece(Identifier portId, Optional<Boolean> input) {
         this.portId = portId;
         this.input = input;
     }
@@ -45,14 +46,19 @@ public class PortAnywhereStructurePiece extends StructurePiece {
         for (RegistryGroupHolder port : MMPortRegistry.PORTS) {
             if (port.getBlock().get() instanceof IPortBlock pb) {
                 PortModel model = pb.getModel();
-                if (!model.id().equals(PortUtils.id(portId.getPath(), model.input()))) {
+                if (!PortUtils.matchesId(model.id(), model.input(), portId.getPath())) {
                     continue;
                 }
-                if (input.isPresent() && !input.get().equals(model.input())) {
+                if (!PortUtils.sideMatches(model.type(), model.input(), input)) {
                     continue;
                 }
                 blocks.add(port.getBlock().get());
             }
+        }
+        if (blocks.isEmpty()) {
+            StructureProblems.missingPort(meta.structureId(), portId);
+            Ref.LOG.error("Structure {} uses the port '{}', but no port config defines it. Machines built "
+                    + "from this structure will never form until that port is added.", meta.structureId(), portId);
         }
     }
 
@@ -70,7 +76,7 @@ public class PortAnywhereStructurePiece extends StructurePiece {
 
     @Override
     public Component createDisplayComponent() {
-        return Component.translatable("mm.structure.piece.port_anywhere").append(Component.literal(portId.toString()).withStyle(ChatFormatting.DARK_AQUA));
+        return Component.translatable("piece.mm.port_anywhere.description", Component.literal(portId.toString()).withStyle(ChatFormatting.DARK_AQUA));
     }
 
     @Override
@@ -84,7 +90,7 @@ public class PortAnywhereStructurePiece extends StructurePiece {
     @Override
     public JsonObject debugFound(Level level, BlockPos pos, StructureModel model, JsonObject json) {
         var foundBlock = WorldUtil.getBlockState(pos, (ServerLevel) level).getBlock();
-        var foundBlockId = ForgeRegistries.BLOCKS.getKey(foundBlock);
+        var foundBlockId = BuiltInRegistries.BLOCK.getKey(foundBlock);
         assert foundBlockId != null;
         json.addProperty("block", foundBlockId.toString());
         if (foundBlock instanceof IPortBlock pb) {

@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -7,20 +10,16 @@ import io.ticticboom.mods.mm.port.fluid.FluidPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 
 /**
  * A running recipe has already taken its inputs, so nothing may throw it away before its outputs are made.
@@ -28,8 +27,7 @@ import net.minecraftforge.registries.ForgeRegistries;
  * gold + copper out, with a one-slot output port; mmtest:fluid_fit_test puts water + lava into one 1000 mB tank;
  * mmtest:tick_output_test makes 1 gold a tick for 20 ticks into a port that holds 5.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class RecipePauseGameTests {
     private static final String TEMPLATE = "empty";
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
@@ -49,8 +47,8 @@ public class RecipePauseGameTests {
                 // a player breaks a block that isn't part of the machine
                 .thenExecute(() -> {
                     BlockPos pos = helper.absolutePos(NEARBY);
-                    MinecraftForge.EVENT_BUS.post(new BlockEvent.BreakEvent(helper.getLevel(), pos,
-                            helper.getLevel().getBlockState(pos), helper.makeMockPlayer()));
+                    NeoForge.EVENT_BUS.post(new BreakBlockEvent(helper.getLevel(), pos,
+                            helper.getLevel().getBlockState(pos), helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL)));
                     helper.setBlock(NEARBY, Blocks.AIR);
                 })
                 .thenWaitUntil(() -> check(helper, count(helper, OUTPUT, Items.GOLD_INGOT) == 1,
@@ -141,7 +139,7 @@ public class RecipePauseGameTests {
         helper.setBlock(CONTROLLER, block(controllerId).defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
         helper.setBlock(INPUT, block(input));
         helper.setBlock(OUTPUT, block(output));
-        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+        return (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER, BlockEntity.class);
     }
 
     private static int takeAll(GameTestHelper helper, BlockPos port) {
@@ -154,7 +152,7 @@ public class RecipePauseGameTests {
     }
 
     private static int fluidStored(GameTestHelper helper, BlockPos port) {
-        if (!(helper.getBlockEntity(port) instanceof AbstractPortBlockEntity be) || !(be.getStorage() instanceof FluidPortStorage fluids)) {
+        if (!(helper.getBlockEntity(port, BlockEntity.class) instanceof AbstractPortBlockEntity be) || !(be.getStorage() instanceof FluidPortStorage fluids)) {
             throw new IllegalStateException("no fluid port at " + port);
         }
         int total = 0;
@@ -165,7 +163,7 @@ public class RecipePauseGameTests {
     }
 
     private static void formed(GameTestHelper helper, MachineControllerBlockEntity controller, String structure) {
-        ResourceLocation id = ResourceLocation.tryBuild("mmtest", structure);
+        Identifier id = Identifier.tryBuild("mmtest", structure);
         check(helper, controller.getStructure() != null && controller.getStructure().id().equals(id), structure + " not formed yet");
     }
 
@@ -181,14 +179,14 @@ public class RecipePauseGameTests {
     }
 
     private static ItemPortStorage storage(GameTestHelper helper, BlockPos relative) {
-        if (helper.getBlockEntity(relative) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
+        if (helper.getBlockEntity(relative, BlockEntity.class) instanceof AbstractPortBlockEntity port && port.getStorage() instanceof ItemPortStorage items) {
             return items;
         }
         throw new IllegalStateException("no item port at " + relative);
     }
 
     private static Block block(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("mm:" + id + " is not registered");
         }

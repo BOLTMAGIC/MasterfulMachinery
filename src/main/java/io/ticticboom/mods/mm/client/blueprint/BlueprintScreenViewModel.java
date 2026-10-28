@@ -15,7 +15,7 @@ public class BlueprintScreenViewModel {
     private StructureModel structure;
 
    @Getter
-    private final List<StructureModel> availableStructures = StructureManager.STRUCTURES.values().stream().toList();
+    private final List<StructureModel> availableStructures = StructureManager.buildableStructures();
 
     public BlueprintScreenViewModel() {
         this.structure = availableStructures.get(0);

@@ -1,7 +1,5 @@
 package io.ticticboom.mods.mm.util;
 
-import io.ticticboom.mods.mm.builder.AssemblyPlanner;
-import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import io.ticticboom.mods.mm.structure.StructureModel;
@@ -10,7 +8,7 @@ import io.ticticboom.mods.mm.structure.layout.StructureLayoutPiece;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
@@ -22,12 +20,13 @@ import net.minecraft.world.phys.AABB;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Small, conservative helper for creative-only structure pasting from blueprint items.
  *
- * This intentionally does not try to be a full schematic system. It places the lowest fitting
- * port tier, and the first candidate for other pieces, refuses to overwrite solid blocks,
+ * This intentionally does not try to be a full schematic system. It places the first
+ * possible block candidate for each structure piece, refuses to overwrite solid blocks,
  * and leaves normal survival gameplay untouched.
  */
 public final class StructurePasteUtil {
@@ -40,7 +39,7 @@ public final class StructurePasteUtil {
         PastePlan pastePlan = createPlanForPlacementAnchor(model, clickedPos.relative(clickedFace), rotation, frontDirection);
         List<PlannedBlock> plan = pastePlan.blocks();
         if (plan.isEmpty()) {
-            return PasteResult.failure(Component.translatable("message.mm.blueprint.paste_empty"));
+            return PasteResult.failure(Component.translatable("message.mm.blueprint.paste_failed_empty"));
         }
 
         List<BlockPos> obstructed = findObstructions(level, plan);
@@ -52,7 +51,7 @@ public final class StructurePasteUtil {
             level.setBlock(planned.pos(), planned.state(), Block.UPDATE_ALL);
         }
 
-        return PasteResult.success(Component.translatable("message.mm.blueprint.pasted", model.name(), plan.size()));
+        return PasteResult.success(Component.translatable("message.mm.blueprint.pasted", model.displayName(), plan.size()));
     }
 
     /**
@@ -100,9 +99,8 @@ public final class StructurePasteUtil {
         return plan;
     }
 
-    /** The first registered controller block of the structure, or null. */
     public static Block findControllerBlock(StructureModel model) {
-        for (ResourceLocation controllerId : model.controllerIds().getIds()) {
+        for (Identifier controllerId : model.controllerIds().getIds()) {
             Block block = MMControllerRegistry.getControllerBlock(controllerId);
             if (block != null) {
                 return block;
@@ -112,8 +110,12 @@ public final class StructurePasteUtil {
     }
 
     private static BlockState createBlockState(StructureLayoutPiece layoutPiece, BlockPos pos, Rotation rotation) {
-        // lowest fitting port tier instead of whatever happens to be registered first
-        Block block = AssemblyPlanner.chooseBlock(layoutPiece.piece(), new TierPrefs(), b -> false);
+        List<Block> blocks = layoutPiece.piece().createBlocksSupplier().get();
+        if (blocks == null || blocks.isEmpty()) {
+            return null;
+        }
+
+        Block block = blocks.stream().filter(Objects::nonNull).findFirst().orElse(null);
         if (block == null) {
             return null;
         }
@@ -152,10 +154,6 @@ public final class StructurePasteUtil {
         return bounds;
     }
 
-    /**
-     * The shift that moves a structure occupying {@code bounds} so the anchor becomes its bottom-middle-front block;
-     * shared with the multiblock tool's non-MM structures.
-     */
     public static BlockPos offsetBottomMiddleFrontToAnchor(BlockPos anchorPos, Direction frontDirection, AABB bounds) {
         Direction.Axis frontAxis = frontDirection.getAxis();
         Direction.Axis sideAxis = frontAxis == Direction.Axis.X ? Direction.Axis.Z : Direction.Axis.X;
@@ -223,26 +221,31 @@ public final class StructurePasteUtil {
         return min + ((max - min) / 2);
     }
 
-    private static Component obstructionMessage(List<BlockPos> obstructed) {
-        return obstructionMessage("message.mm.blueprint.paste_blocked", obstructed);
+    public static Component obstructionMessage(String key, List<BlockPos> obstructed) {
+        return Component.translatable(key, obstructed.size(), positionList(obstructed));
     }
 
-    /** {@code key} gets the number of obstructed positions and the first few of them as "x y z, ...". */
-    public static Component obstructionMessage(String key, List<BlockPos> obstructed) {
-        var message = new StringBuilder();
-
+    private static String positionList(List<BlockPos> obstructed) {
+        var positions = new StringBuilder();
         int shown = Math.min(MAX_OBSTRUCTION_EXAMPLES, obstructed.size());
         for (int i = 0; i < shown; i++) {
             if (i > 0) {
-                message.append(", ");
+                positions.append(", ");
             }
             BlockPos pos = obstructed.get(i);
-            message.append(pos.getX()).append(' ').append(pos.getY()).append(' ').append(pos.getZ());
+            positions.append(pos.getX()).append(' ').append(pos.getY()).append(' ').append(pos.getZ());
         }
         if (obstructed.size() > shown) {
-            message.append(", ...");
+            positions.append(", ...");
         }
-        return Component.translatable(key, obstructed.size(), message.toString());
+        return positions.toString();
+    }
+
+    private static Component obstructionMessage(List<BlockPos> obstructed) {
+        String key = obstructed.size() == 1
+                ? "message.mm.blueprint.paste_blocked.single"
+                : "message.mm.blueprint.paste_blocked.multiple";
+        return obstructionMessage(key, obstructed);
     }
 
     public record PastePlan(BlockPos controllerPos, List<PlannedBlock> blocks) {

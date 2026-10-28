@@ -24,7 +24,7 @@
       "block": "mm:energy_port_output"
     },
     "L": {
-      "tag": "forge:ores"
+      "tag": "c:ores"
     }
   }
 }

@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mmtest;
 
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJob;
 import io.ticticboom.mods.mm.builder.AssemblyPlanner;
@@ -13,10 +15,9 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -25,11 +26,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.Rotation;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 
 import java.util.List;
 import java.util.Map;
@@ -40,13 +38,12 @@ import java.util.function.Consumer;
  * (tiers 1-3) from src/test/gameTestConfig, and the mmtest:assembly_test structure: "FCGS" where F takes
  * tiers 1-3, G is glass and S takes only tier 3.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class AssemblyGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
     /** "ACO": A is an anywhere port_type (input, tiers 2-3), O an output port_type (tiers 1-3). */
-    private static final ResourceLocation EXTRA = ResourceLocation.tryBuild("mmtest", "assembly_extra");
+    private static final Identifier EXTRA = Identifier.tryBuild("mmtest", "assembly_extra");
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     // offsets from the controller in the unrotated layout
     private static final BlockPos FLEX = new BlockPos(-1, 0, 0);
@@ -83,7 +80,7 @@ public class AssemblyGameTests {
         StructureModel structure = structure(helper);
         check(helper, !structure.formed(helper.getLevel(), controller), "structure formed before assembly");
 
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = true;
         AssemblyJob job = assemble(helper, structure, controller, Direction.NORTH, new TierPrefs(), player);
 
@@ -102,7 +99,7 @@ public class AssemblyGameTests {
         Rotation rotation = AssemblyPlanner.bestRotation(helper.getLevel(), structure, controller, Direction.EAST);
         check(helper, rotation == Rotation.CLOCKWISE_90, "an empty site should follow the facing, got " + rotation);
 
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = true;
         var prefs = new TierPrefs();
         prefs.set(PortTiers.key(Ref.Ports.ITEM, true), 2);
@@ -122,7 +119,7 @@ public class AssemblyGameTests {
         // something the player built where the glass belongs
         helper.getLevel().setBlockAndUpdate(controller.offset(GLASS), Blocks.STONE.defaultBlockState());
 
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         check(helper, !player.getAbilities().instabuild, "mock player should not be instabuild");
         Block small = port("s");
         Block large = port("l");
@@ -151,7 +148,7 @@ public class AssemblyGameTests {
         // the player already put a tier 2 port where tiers 1-3 fit; the preference (lowest) would be tier 1
         helper.getLevel().setBlockAndUpdate(controller.offset(FLEX), port("m").defaultBlockState());
 
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = true;
         AssemblyJob job = assemble(helper, structure, controller, Direction.NORTH, new TierPrefs(), player);
 
@@ -166,7 +163,7 @@ public class AssemblyGameTests {
     public static void playerWhoMayNotBuildPlacesNothing(GameTestHelper helper) {
         BlockPos controller = placeController(helper, Direction.NORTH);
         StructureModel structure = structure(helper);
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().mayBuild = false; // adventure mode
         player.getInventory().add(new ItemStack(port("s"), 2));
         player.getInventory().add(new ItemStack(port("l"), 1));
@@ -186,7 +183,7 @@ public class AssemblyGameTests {
     public static void cancelledPlaceEventIsUndoneAndRefunded(GameTestHelper helper) {
         BlockPos controller = placeController(helper, Direction.NORTH);
         StructureModel structure = structure(helper);
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getInventory().add(new ItemStack(port("s"), 2));
         player.getInventory().add(new ItemStack(port("l"), 1));
         player.getInventory().add(new ItemStack(Blocks.GLASS, 5));
@@ -197,12 +194,12 @@ public class AssemblyGameTests {
                 event.setCanceled(true);
             }
         };
-        MinecraftForge.EVENT_BUS.addListener(claims);
+        NeoForge.EVENT_BUS.addListener(claims);
         AssemblyJob job;
         try {
             job = assemble(helper, structure, controller, Direction.NORTH, new TierPrefs(), player);
         } finally {
-            MinecraftForge.EVENT_BUS.unregister(claims);
+            NeoForge.EVENT_BUS.unregister(claims);
         }
 
         check(helper, job.placed() == 0, "expected nothing placed, got " + job.placed());
@@ -214,17 +211,17 @@ public class AssemblyGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void plainStacksAreUsedBeforeRenamedOnes(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack named = new ItemStack(Blocks.GLASS, 1);
-        named.setHoverName(Component.literal("Keep me"));
+        named.set(net.minecraft.core.component.DataComponents.CUSTOM_NAME, Component.literal("Keep me"));
         player.getInventory().add(named);
         player.getInventory().add(new ItemStack(Blocks.GLASS, 1));
 
         ItemStack taken = PlayerMaterials.take(player, Blocks.GLASS);
 
-        check(helper, taken != null && !taken.hasTag(), "a plain glass should be taken, got " + taken);
+        check(helper, taken != null && taken.isComponentsPatchEmpty(), "a plain glass should be taken, got " + taken);
         check(helper, count(player, Blocks.GLASS.asItem()) == 1, "one glass should be left");
-        check(helper, player.getInventory().items.stream().anyMatch(stack -> stack.is(Items.GLASS) && stack.hasCustomHoverName()),
+        check(helper, player.getInventory().getNonEquipmentItems().stream().anyMatch(stack -> stack.is(Items.GLASS) && stack.has(net.minecraft.core.component.DataComponents.CUSTOM_NAME)),
                 "the renamed glass should be kept");
         helper.succeed();
     }
@@ -255,7 +252,7 @@ public class AssemblyGameTests {
         check(helper, helper.getLevel().getBlockEntity(pos) instanceof MachineControllerBlockEntity, "no controller block entity");
         var controller = (MachineControllerBlockEntity) helper.getLevel().getBlockEntity(pos);
 
-        List<ResourceLocation> ids = controller.getAssemblyCandidates().stream().map(StructureModel::id).toList();
+        List<Identifier> ids = controller.getAssemblyCandidates().stream().map(StructureModel::id).toList();
         check(helper, ids.equals(List.of(EXTRA, STRUCTURE)), "candidates should be sorted by id, got " + ids);
 
         String input = PortTiers.key(Ref.Ports.ITEM, true);
@@ -265,7 +262,7 @@ public class AssemblyGameTests {
         var stored = controller.getAssemblyTiers().asMap();
         check(helper, stored.equals(Map.of(input, 3)), "expected only " + input + "=3, got " + stored);
 
-        controller.setAssemblyStructureId(ResourceLocation.tryBuild("mmtest", "not_a_candidate"));
+        controller.setAssemblyStructureId(Identifier.tryBuild("mmtest", "not_a_candidate"));
         check(helper, controller.getAssemblyStructureId() == null, "an unknown structure id should be ignored");
         controller.setAssemblyStructureId(STRUCTURE);
         check(helper, STRUCTURE.equals(controller.getAssemblyStructureId()), "a candidate id should be stored");
@@ -276,7 +273,7 @@ public class AssemblyGameTests {
     public static void outOfEnergyStops(GameTestHelper helper) {
         BlockPos controller = placeController(helper, Direction.NORTH);
         StructureModel structure = structure(helper);
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         player.getAbilities().instabuild = true;
 
         Rotation rotation = AssemblyPlanner.bestRotation(helper.getLevel(), structure, controller, Direction.NORTH);
@@ -380,7 +377,7 @@ public class AssemblyGameTests {
     }
 
     private static BlockPos placeController(GameTestHelper helper, Direction facing) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id("assembly_test"));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id("assembly_test"));
         check(helper, block != null && block != Blocks.AIR, "controller mm:assembly_test is not registered");
         helper.setBlock(CONTROLLER, block.defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, facing));
         return helper.absolutePos(CONTROLLER);
@@ -390,7 +387,7 @@ public class AssemblyGameTests {
         return structure(helper, STRUCTURE);
     }
 
-    private static StructureModel structure(GameTestHelper helper, ResourceLocation id) {
+    private static StructureModel structure(GameTestHelper helper, Identifier id) {
         StructureModel model = StructureManager.STRUCTURES.get(id);
         check(helper, model != null, "structure " + id + " is not loaded");
         return model;
@@ -402,7 +399,7 @@ public class AssemblyGameTests {
 
     private static Block port(String size, boolean input) {
         String id = "test_item_" + size + (input ? "_input" : "_output");
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("port mm:" + id + " is not registered");
         }
@@ -438,7 +435,7 @@ public class AssemblyGameTests {
 
     private static int count(Player player, Item item) {
         int total = 0;
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (stack.is(item)) {
                 total += stack.getCount();
             }

@@ -1,16 +1,9 @@
 package io.ticticboom.mods.mm.util;
 
-/**
- * Case-insensitive search that keeps string indices valid: characters are compared one by one (as
- * {@link String#regionMatches(boolean, int, String, int, int)} does), so a returned index always points into the
- * original text, unlike an index into {@code text.toLowerCase()}, which may be longer (Turkish 'İ' lower-cases to
- * two chars).
- */
 public final class TextMatch {
     private TextMatch() {
     }
 
-    /** @return the first index in {@code text} where {@code query} is found ignoring case, -1 when not; 0 for an empty query */
     public static int indexOfIgnoreCase(String text, String query) {
         if (query.isEmpty()) {
             return 0;

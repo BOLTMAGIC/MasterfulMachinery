@@ -3,6 +3,7 @@ package io.ticticboom.mods.mm.port.item.compat;
 import io.ticticboom.mods.mm.compat.kjs.builder.PortConfigBuilderJS;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
+import io.ticticboom.mods.mm.port.item.ItemPortHandler;
 import io.ticticboom.mods.mm.port.item.ItemPortStorageModel;
 
 public class ItemPortConfigBuilderJS extends PortConfigBuilderJS {
@@ -35,7 +36,7 @@ public class ItemPortConfigBuilderJS extends PortConfigBuilderJS {
     }
 
     public ItemPortConfigBuilderJS slotCapacity(int slotCapacity) {
-        this.slotCapacity = slotCapacity;
+        this.slotCapacity = Math.max(0, Math.min(ItemPortHandler.MAX_SLOT_CAPACITY, slotCapacity));
         return this;
     }
 }

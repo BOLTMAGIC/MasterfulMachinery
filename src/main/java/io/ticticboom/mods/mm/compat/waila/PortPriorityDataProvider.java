@@ -4,7 +4,7 @@ import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -15,7 +15,7 @@ import snownee.jade.api.config.IPluginConfig;
  * Provides the currently configured priority of a Port to Jade (Waila) tooltips.
  */
 public class PortPriorityDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("port_priority");
+    public static final Identifier UID = Ref.id("port_priority");
     public static final String KEY = "PortPriority";
 
     public static final PortPriorityDataProvider INSTANCE = new PortPriorityDataProvider();
@@ -35,7 +35,7 @@ public class PortPriorityDataProvider implements IServerDataProvider<BlockAccess
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 
@@ -43,7 +43,7 @@ public class PortPriorityDataProvider implements IServerDataProvider<BlockAccess
     public void appendTooltip(ITooltip tooltip, BlockAccessor blockAccessor, IPluginConfig iPluginConfig) {
         CompoundTag data = blockAccessor.getServerData();
         if (data.contains(KEY)) {
-            int prio = data.getInt(KEY);
+            int prio = data.getIntOr(KEY, 0);
             tooltip.add(Component.translatable("tooltip.mm.port_priority", prio));
         }
     }

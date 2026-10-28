@@ -43,9 +43,9 @@ public class PneumaticAirPortHandler extends MachineAirHandler {
     }
 
     @Override
-    public void setConnectedFaces(List<Direction> sides) {
+    public void setConnectableFaces(java.util.Collection<Direction> sides) {
         changed.call();
-        super.setConnectedFaces(sides);
+        super.setConnectableFaces(sides);
     }
 
     @Override

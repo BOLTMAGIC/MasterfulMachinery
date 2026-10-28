@@ -1,21 +1,24 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.minecraft.server.level.ServerPlayer;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureSync;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
-/**
- * Server -> client: chunk {@code index} of {@code total} of the builder structure list sync number {@code batch}.
- * See {@link BuildableStructureSync}.
- */
-public record BuildableStructureSyncPkt(int batch, int index, int total, List<BuildableStructure> structures) {
+public record BuildableStructureSyncPkt(int batch, int index, int total, List<BuildableStructure> structures) implements CustomPacketPayload {
+    public static final Type<BuildableStructureSyncPkt> TYPE = new Type<>(Ref.id("buildable_structure_sync"));
 
-    public static void encode(BuildableStructureSyncPkt pkt, FriendlyByteBuf buf) {
+    public static final StreamCodec<RegistryFriendlyByteBuf, BuildableStructureSyncPkt> STREAM_CODEC = StreamCodec.of((buf, pkt) -> encode(pkt, buf), BuildableStructureSyncPkt::decode);
+
+
+    public static void encode(BuildableStructureSyncPkt pkt, RegistryFriendlyByteBuf buf) {
         buf.writeVarInt(pkt.batch);
         buf.writeVarInt(pkt.index);
         buf.writeVarInt(pkt.total);
@@ -25,7 +28,7 @@ public record BuildableStructureSyncPkt(int batch, int index, int total, List<Bu
         }
     }
 
-    public static BuildableStructureSyncPkt decode(FriendlyByteBuf buf) {
+    public static BuildableStructureSyncPkt decode(RegistryFriendlyByteBuf buf) {
         int batch = buf.readVarInt();
         int index = buf.readVarInt();
         int total = buf.readVarInt();
@@ -40,8 +43,12 @@ public record BuildableStructureSyncPkt(int batch, int index, int total, List<Bu
         return new BuildableStructureSyncPkt(batch, index, total, List.copyOf(structures));
     }
 
-    public static void handle(BuildableStructureSyncPkt pkt, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> BuildableStructureSync.receive(pkt));
-        ctx.get().setPacketHandled(true);
+    public static void handle(BuildableStructureSyncPkt pkt, IPayloadContext ctx) {
+        ctx.enqueueWork(() -> BuildableStructureSync.receive(pkt));
+    }
+
+    @Override
+    public Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

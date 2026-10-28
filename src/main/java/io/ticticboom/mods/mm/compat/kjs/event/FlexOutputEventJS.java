@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.compat.kjs.event;
 
-import dev.latvian.mods.kubejs.event.EventJS;
+import dev.latvian.mods.kubejs.event.KubeEvent;
 import net.minecraft.world.item.ItemStack;
 
 /**
@@ -15,7 +15,7 @@ import net.minecraft.world.item.ItemStack;
  * item until the next reload, so the event runs once per kind of item, not every tick. Server side only: JEI shows
  * the template results.
  */
-public class FlexOutputEventJS extends EventJS {
+public class FlexOutputEventJS implements KubeEvent {
     private final String recipeId;
     private final String from;
     private final ItemStack input;

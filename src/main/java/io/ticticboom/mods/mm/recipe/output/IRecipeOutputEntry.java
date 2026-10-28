@@ -11,47 +11,39 @@ import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import net.minecraft.world.level.Level;
 
-import java.util.List;
-
 public interface IRecipeOutputEntry {
     boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state);
     void output(Level level, RecipeStorages storages, RecipeStateModel state);
     default void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {}
     void ditchRecipe(Level level, RecipeStorages storages, RecipeStateModel state);
-    void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid);
 
     /**
-     * @return what this entry can output, each with its chance (0-1), for the controller screen
+     * What this run puts into the output ports when it finishes, as the state's rolls decide it (chance, weighted
+     * pick). RecipeOutputs checks that the outputs of all entries fit together.
      */
-    default List<DisplayedOutput> displayedOutputs() {
-        return List.of();
+    default java.util.List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
+        return java.util.List.of();
     }
 
-    /**
-     * @param state the recipe's current state (captured items, etc.), or null if running
-     * @return what this entry can output, each with its chance (0-1), for the controller screen
-     */
-    default List<DisplayedOutput> displayedOutputs(@org.jetbrains.annotations.Nullable RecipeStateModel state) {
+    /** What this run may put into the output ports every tick ("per_tick"); the recipe waits while it doesn't fit. */
+    default java.util.List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
+        return java.util.List.of();
+    }
+
+    default java.util.List<DisplayedOutput> displayedOutputs() {
+        return java.util.List.of();
+    }
+    /** What a run with this state puts out, for the controller screen; flex outputs list the kinds it took. */
+    default java.util.List<DisplayedOutput> displayedOutputs(@org.jetbrains.annotations.Nullable RecipeStateModel state) {
         return displayedOutputs();
-    }
-
-    /**
-     * What this run puts into the output ports when it finishes, as the last canOutput decided it (chance,
-     * weighted pick). RecipeOutputs checks that the outputs of all entries fit together.
-     */
-    default List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
-        return List.of();
-    }
-
-    /** What this run puts into the output ports every tick ("per_tick"); the recipe waits while it doesn't fit. */
-    default List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
-        return List.of();
     }
 
     /** How many JEI slots setRecipe adds without a focus, for sizing the recipe's slot grid. */
     default int jeiSlotCount(RecipeModel model) {
         return displayedOutputs().size();
     }
+
+    void setRecipe(IRecipeLayoutBuilder builder, RecipeModel model, IFocusGroup focus, IJeiHelpers helpers, SlotGrid grid);
 
     JsonObject debugExpected(Level level, RecipeStorages storages, RecipeStateModel model, JsonObject jsonObject);
 }

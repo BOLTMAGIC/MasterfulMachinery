@@ -1,8 +1,7 @@
 {
   "required": true,
   "package": "io.ticticboom.mods.mm.mixin",
-  "compatibilityLevel": "JAVA_17",
-  "refmap": "mm.refmap.json",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [
     "DediServerMixin",
     "ServerLifecycleHooksMixin",

@@ -1,30 +1,43 @@
 package io.ticticboom.mods.mm.compat.kjs.builder;
 
-import dev.latvian.mods.rhino.util.HideFromJS;
+import io.ticticboom.mods.mm.util.ColorUtil;
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import dev.latvian.mods.rhino.util.HideFromJS;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
-import io.ticticboom.mods.mm.config.MMClientConfig;
+import io.ticticboom.mods.mm.compat.kjs.KubeJsValues;
 import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.model.RecipeSelectionMode;
+import io.ticticboom.mods.mm.util.ParserUtils;
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.controller.single.SingleMachineSlot;
+import io.ticticboom.mods.mm.controller.single.SingleMachines;
+import io.ticticboom.mods.mm.port.MMPortRegistry;
+import lombok.AccessLevel;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.function.Consumer;
+import java.util.Map;
 
 @Getter
 public class ControllerBuilderJS {
     private final String id;
     private String name;
-    private ResourceLocation type;
+    private JsonElement nameSpec;
+    private Identifier type;
     private boolean parallelProcessingDefault = false;
     private int maxParallelRecipes = -1;
     private RecipeSelectionMode recipeSelectionMode = RecipeSelectionMode.DEFAULT;
-    private String unformedColor;
-    private String idleColor;
-    private String workingColor;
-    private String workingSound;
-    private String workingParticle;
-    private Integer workingSoundInterval;
+    private final Map<String, String> textures = new LinkedHashMap<>();
+    @Getter(AccessLevel.NONE)
+    private final List<PendingSlot> slots = new ArrayList<>();
     private JsonElement geoModel;
+
+    private record PendingSlot(String id, Identifier type, boolean input, Consumer<PortConfigBuilderJS> config) {
+    }
 
     @HideFromJS
     public ControllerBuilderJS(String id) {
@@ -32,14 +45,101 @@ public class ControllerBuilderJS {
     }
 
     public ControllerBuilderJS type(String id) {
-        var rl = ResourceLocation.tryParse(id);
+        var rl = Identifier.tryParse(id);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + id);
         this.type = rl;
         return this;
     }
 
-    public ControllerBuilderJS name(String name) {
-        this.name = name;
+    public ControllerBuilderJS slot(String id, String type, boolean input, Consumer<PortConfigBuilderJS> config) {
+        var rl = Identifier.tryParse(type);
+        if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + type);
+        slots.add(new PendingSlot(id, rl, input, config));
+        return this;
+    }
+
+    public ControllerBuilderJS slot(String id, String type, boolean input) {
+        return slot(id, type, input, config -> {
+        });
+    }
+
+    public ControllerBuilderJS overlay(String texture) {
+        return putTexture("overlay", texture);
+    }
+
+    public ControllerBuilderJS texture(String texture) {
+        return putTexture("texture", texture);
+    }
+
+    public ControllerBuilderJS model(String model) {
+        return putTexture("model", model);
+    }
+
+    public ControllerBuilderJS idleOverlay(String texture) {
+        return putTexture("idleOverlay", texture);
+    }
+
+    public ControllerBuilderJS workingOverlay(String texture) {
+        return putTexture("workingOverlay", texture);
+    }
+
+    public ControllerBuilderJS idleModel(String model) {
+        return putTexture("idleModel", model);
+    }
+
+    public ControllerBuilderJS workingModel(String model) {
+        return putTexture("workingModel", model);
+    }
+
+    @HideFromJS
+    private ControllerBuilderJS putTexture(String key, String texture) {
+        var rl = Identifier.tryParse(texture);
+        if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + texture);
+        textures.put(key, rl.toString());
+        return this;
+    }
+
+    public ControllerBuilderJS workingSound(String sound) {
+        return putTexture("workingSound", sound);
+    }
+
+    public ControllerBuilderJS workingSoundInterval(int ticks) {
+        if (ticks < 1) throw new IllegalArgumentException("workingSoundInterval must be at least 1 tick: " + ticks);
+        textures.put("workingSoundInterval", Integer.toString(ticks));
+        return this;
+    }
+
+    public ControllerBuilderJS geoModel(JsonElement geoModel) {
+        this.geoModel = geoModel;
+        return this;
+    }
+
+    public ControllerBuilderJS workingParticle(String particle) {
+        return putTexture("workingParticle", particle);
+    }
+
+    public ControllerBuilderJS unformedColor(String color) {
+        return putColor("unformedColor", color);
+    }
+
+    public ControllerBuilderJS idleColor(String color) {
+        return putColor("idleColor", color);
+    }
+
+    public ControllerBuilderJS workingColor(String color) {
+        return putColor("workingColor", color);
+    }
+
+    @HideFromJS
+    private ControllerBuilderJS putColor(String key, String color) {
+        if (ColorUtil.parse(color) == null) throw new IllegalArgumentException("Invalid color, expected #RRGGBB: " + color);
+        textures.put(key, color);
+        return this;
+    }
+
+    public ControllerBuilderJS name(Object name) {
+        this.nameSpec = KubeJsValues.toJson(name);
+        this.name = ParserUtils.parseComponentKey(nameSpec);
         return this;
     }
 
@@ -63,81 +163,20 @@ public class ControllerBuilderJS {
         return this;
     }
 
-    /** Screen color while the multiblock is not built, as "#RRGGBB"; overrides the client config. */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS unformedColor(String color) {
-        this.unformedColor = checkColor(color);
-        return this;
-    }
-
-    /** Screen color while the multiblock is built but idle, as "#RRGGBB"; overrides the client config. */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS idleColor(String color) {
-        this.idleColor = checkColor(color);
-        return this;
-    }
-
-    /** Screen color while a recipe is running, as "#RRGGBB"; overrides the client config. */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS workingColor(String color) {
-        this.workingColor = checkColor(color);
-        return this;
-    }
-
-    /** Sound played now and then while a recipe is running, e.g. "minecraft:block.blastfurnace.fire_crackle". */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS workingSound(String sound) {
-        this.workingSound = checkId(sound);
-        return this;
-    }
-
-    /** Ticks between two plays of the working sound (default 40, two seconds); match it to the sound's length. */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS workingSoundInterval(int ticks) {
-        if (ticks < 1) throw new IllegalArgumentException("workingSoundInterval must be at least 1 tick: " + ticks);
-        this.workingSoundInterval = ticks;
-        return this;
-    }
-
-    /** Particle shown on the controller's front while a recipe is running, e.g. "minecraft:smoke" (particles without options only). */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS workingParticle(String particle) {
-        this.workingParticle = checkId(particle);
-        return this;
-    }
-
-    /**
-     * GeckoLib model drawn while the machine is formed (needs GeckoLib), e.g.
-     * {model: 'mm:geo/core.geo.json', texture: 'mm:textures/block/core.png', animations: 'mm:animations/core.animation.json',
-     *  idle: 'animation.core.idle', working: 'animation.core.working', offset: [0, 1, 2], scale: 1, rotate: true, glow: false}.
-     * A structure's geoModel replaces this one.
-     */
-    @SuppressWarnings("unused")
-    public ControllerBuilderJS geoModel(JsonObject geoModel) {
-        this.geoModel = geoModel;
-        return this;
-    }
-
-    private static String checkId(String id) {
-        if (ResourceLocation.tryParse(id) == null) throw new IllegalArgumentException("Invalid id: " + id);
-        return id;
-    }
-
-    private static String checkColor(String color) {
-        if (MMClientConfig.parseColor(color) == null) throw new IllegalArgumentException("Invalid color, expected #RRGGBB: " + color);
-        return color;
-    }
-
     @HideFromJS
     public ControllerModel build() {
-        var model = ControllerModel.create(id, type, name, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
-        if (unformedColor != null) model.config().addProperty("unformedColor", unformedColor);
-        if (idleColor != null) model.config().addProperty("idleColor", idleColor);
-        if (workingColor != null) model.config().addProperty("workingColor", workingColor);
-        if (workingSound != null) model.config().addProperty("workingSound", workingSound);
-        if (workingParticle != null) model.config().addProperty("workingParticle", workingParticle);
-        if (workingSoundInterval != null) model.config().addProperty("workingSoundInterval", workingSoundInterval);
-        if (geoModel != null) model.config().add(GeoModelConfig.KEY, geoModel);
+        if (Ref.Controller.SINGLE.equals(type)) {
+            var defined = new ArrayList<SingleMachineSlot>();
+            for (PendingSlot slot : slots) {
+                defined.add(new SingleMachineSlot(slot.id(), slot.type(), slot.input(), MMPortRegistry.requirePortType(slot.type()).createStorageFactory(slot.config())));
+            }
+            SingleMachines.define(id, defined);
+        }
+        var model = ControllerModel.createStyled(id, type, nameSpec, parallelProcessingDefault, maxParallelRecipes, recipeSelectionMode);
+        textures.forEach(model.config()::addProperty);
+        if (geoModel != null) {
+            model.config().add(GeoModelConfig.KEY, geoModel);
+        }
         return model;
     }
 }

@@ -1,17 +1,16 @@
 package io.ticticboom.mods.mm.port.botania.mana.register;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.cap.BotaniaCapabilities;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.botania.mana.BotaniaManaPortStorage;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
@@ -21,72 +20,39 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import vazkii.botania.api.BotaniaAPI;
-import vazkii.botania.api.BotaniaAPIClient;
-import vazkii.botania.api.block.WandHUD;
-import vazkii.botania.api.mana.ManaBlockType;
-import vazkii.botania.api.mana.ManaNetworkAction;
-import vazkii.botania.api.mana.ManaPool;
-import vazkii.botania.api.mana.ManaReceiver;
-import vazkii.botania.client.core.helper.RenderHelper;
-import vazkii.botania.client.gui.HUDHandler;
-import vazkii.botania.common.handler.ManaNetworkHandler;
-import vazkii.botania.common.item.BotaniaItems;
-import vazkii.botania.common.item.ManaTabletItem;
 
 import java.util.Optional;
 
-public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool, IPortBlockEntity {
+/**
+ * Botania has no 1.21.1 release, so this block entity is stubbed: the mana storage, menu wiring
+ * and serialisation are intact, but every hook into Botania is removed. MMPortRegistry only
+ * registers the mana port when Botania is loaded, so on 1.21.1 this class is unreachable.
+ *
+ * <p>The restored version lives on the feature/botania-1.21.1 branch, built against a local
+ * Botania build in libs/. Merge that once Botania publishes a 1.21.1 artifact.
+ *
+ * <p>The 1.21.1 API differs from the 1.20.1 one this was written against: ManaPool no longer has
+ * getColor/setColor, ManaBlockType.POOL and ManaNetworkHandler.isPoolIn are gone because pools
+ * are not part of the mana network any more, capabilities come from
+ * BotaniaNeoForgeCapabilities.getBlockApiLookupById rather than being declared, and
+ * WandHUD.renderHUD takes a Window and Font instead of a Minecraft.
+ */
+public class BotaniaManaPortBlockEntity extends BlockEntity implements IPortBlockEntity {
 
     private final PortModel model;
     private final RegistryGroupHolder groupHolder;
     private final BotaniaManaPortStorage storage;
-    private final WandHud wandHud = new WandHud(this);
-    private final LazyOptional<WandHUD> wandHudCap = LazyOptional.of(() -> wandHud);
-    private final LazyOptional<ManaReceiver> manaReceiverCap = LazyOptional.of(() -> this);
-    private long lastTick = 0;
 
     public BotaniaManaPortBlockEntity(PortModel model, RegistryGroupHolder groupHolder, BlockPos pos, BlockState state) {
         super(groupHolder.getBe().get(), pos, state);
         this.model = model;
         this.groupHolder = groupHolder;
         this.storage = (BotaniaManaPortStorage) model.config().createPortStorage(this::setChanged);
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap, @Nullable Direction side) {
-        if (cap == BotaniaCapabilities.WAND_HUD) {
-            return wandHudCap.cast();
-        }
-        if (cap == BotaniaCapabilities.MANA_RECEIVER) {
-            return manaReceiverCap.cast();
-        }
-        return super.getCapability(cap, side);
-    }
-
-    public void tick() {
-        if(lastTick == level.getGameTime()) return;
-        lastTick = level.getGameTime();
-        boolean inNetwork = ManaNetworkHandler.instance.isPoolIn(level, this);
-        if (!inNetwork && !this.isRemoved()) {
-            BotaniaAPI.instance().getManaNetworkInstance().fireManaNetworkEvent(this, ManaBlockType.POOL, ManaNetworkAction.ADD);
-        }
-    }
-
-    public void setRemoved() {
-        super.setRemoved();
-        BotaniaAPI.instance().getManaNetworkInstance().fireManaNetworkEvent(this, ManaBlockType.POOL, ManaNetworkAction.REMOVE);
-        this.wandHudCap.invalidate();
-        this.manaReceiverCap.invalidate();
     }
 
     @Override
@@ -106,7 +72,7 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
 
     @Override
     public Component getDisplayName() {
-        return Component.translatable("container.mm.port.botania_mana");
+        return Component.translatable("port.mm.botania_mana.title");
     }
 
     @Nullable
@@ -115,48 +81,39 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
         return null;
     }
 
-    @Override
+    // --- ManaPool implementation, kept unannotated while Botania is unavailable ---
+
     public boolean isOutputtingPower() {
         return !this.model.input();
     }
 
-
-    @Override
     public int getMaxMana() {
         return storage.getCapacity();
     }
 
-    @Override
     public Optional<DyeColor> getColor() {
         return Optional.of(DyeColor.CYAN);
     }
 
-    @Override
     public void setColor(Optional<DyeColor> optional) {
-
     }
 
-    @Override
     public Level getManaReceiverLevel() {
         return level;
     }
 
-    @Override
     public BlockPos getManaReceiverPos() {
         return this.getBlockPos();
     }
 
-    @Override
     public int getCurrentMana() {
         return storage.getStored();
     }
 
-    @Override
     public boolean isFull() {
         return storage.getStored() >= storage.getCapacity();
     }
 
-    @Override
     public void receiveMana(int i) {
         if (i < 0) {
             storage.extractMana(i, false);
@@ -165,36 +122,47 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
         }
     }
 
-    @Override
     public boolean canReceiveManaFromBursts() {
         return this.model.input();
     }
 
+    // --- serialisation, unaffected by Botania ---
+
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
-        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag()));
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        var tag = new CompoundTag();
+        saveLegacy(tag, LegacyNbt.registries(level));
+        LegacyNbt.write(output, tag);
     }
 
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
-        storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY));
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
+    }
+
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        storage.load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
     }
 
     @Override
     public void setChanged() {
         super.setChanged();
-        if (level.isClientSide()){
+        if (level == null || level.isClientSide()) {
             return;
         }
         level.sendBlockUpdated(getBlockPos(), this.getBlockState(), this.getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag);
+        saveLegacy(tag, registries);
         return tag;
     }
 
@@ -202,34 +170,5 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements ManaPool,
     @Override
     public Packet<ClientGamePacketListener> getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
-    }
-
-    public static class WandHud implements WandHUD {
-        private final BotaniaManaPortBlockEntity pool;
-
-        public WandHud(BotaniaManaPortBlockEntity pool) {
-            this.pool = pool;
-        }
-
-        public void renderHUD(GuiGraphics gui, Minecraft mc) {
-            ItemStack poolStack = new ItemStack(this.pool.getBlockState().getBlock());
-            String name = poolStack.getHoverName().getString();
-            int centerX = mc.getWindow().getGuiScaledWidth() / 2;
-            int centerY = mc.getWindow().getGuiScaledHeight() / 2;
-            int width = Math.max(102, mc.font.width(name)) + 4;
-            RenderHelper.renderHUDBox(gui, centerX - width / 2, centerY + 8, centerX + width / 2, centerY + 48);
-            BotaniaAPIClient.instance().drawSimpleManaHUD(gui, 38399, this.pool.getCurrentMana(), this.pool.getMaxMana(), name);
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(770, 771);
-            int arrowU = this.pool.isOutputtingPower() ? 22 : 0;
-            int arrowV = 38;
-            RenderHelper.drawTexturedModalRect(gui, HUDHandler.manaBar, centerX - 11, centerY + 30, arrowU, arrowV, 22, 15);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            ItemStack tablet = new ItemStack(BotaniaItems.manaTablet);
-            ManaTabletItem.setStackCreative(tablet);
-            gui.renderItem(tablet, centerX - 31, centerY + 30);
-            gui.renderItem(poolStack, centerX + 15, centerY + 30);
-            RenderSystem.disableBlend();
-        }
     }
 }

@@ -1,14 +1,13 @@
 package io.ticticboom.mods.mm.builder;
 
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
 
-/** Blocks for assembly come out of the player's inventory (nothing is needed in creative). */
 public final class PlayerMaterials {
     private PlayerMaterials() {
     }
@@ -21,7 +20,7 @@ public final class PlayerMaterials {
         if (item == Items.AIR) {
             return false;
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (buildable(stack, item)) {
                 return true;
             }
@@ -29,20 +28,10 @@ public final class PlayerMaterials {
         return false;
     }
 
-    /**
-     * True when stack can be placed as item's block. Stacks carrying block entity data (a filled chest, a configured
-     * machine) are skipped: the block is placed in its default state, so that data would be lost.
-     */
     public static boolean buildable(ItemStack stack, Item item) {
-        return stack.is(item) && stack.getTagElement(BlockItem.BLOCK_ENTITY_TAG) == null;
+        return stack.is(item) && !stack.has(DataComponents.BLOCK_ENTITY_DATA);
     }
 
-    /**
-     * Takes one block's item, preferring plain stacks so renamed or otherwise tagged items are used last; never one
-     * carrying block entity data (see {@link #buildable}).
-     *
-     * @return the taken item (empty in creative, where nothing is taken), or null when the player has none
-     */
     public static @Nullable ItemStack take(Player player, Block block) {
         if (player.getAbilities().instabuild) {
             return ItemStack.EMPTY;
@@ -51,12 +40,12 @@ public final class PlayerMaterials {
         if (item == Items.AIR) {
             return null;
         }
-        var items = player.getInventory().items;
+        var items = player.getInventory().getNonEquipmentItems();
         int tagged = -1;
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);
             if (buildable(stack, item)) {
-                if (!stack.hasTag()) {
+                if (stack.getComponentsPatch().isEmpty()) {
                     return takeOne(player, stack);
                 }
                 if (tagged < 0) {
@@ -67,7 +56,6 @@ public final class PlayerMaterials {
         return tagged < 0 ? null : takeOne(player, items.get(tagged));
     }
 
-    /** Gives back what {@link #take} returned. */
     public static void refund(Player player, ItemStack taken) {
         if (!taken.isEmpty()) {
             player.getInventory().placeItemBackInInventory(taken);

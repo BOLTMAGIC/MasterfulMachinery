@@ -1,10 +1,16 @@
 package io.ticticboom.mods.mm.port.common;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortPart;
 import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
+import net.minecraft.core.Direction;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -16,53 +22,76 @@ import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
+
 public abstract class AbstractPortBlockEntity extends BlockEntity implements IPortBlockEntity, IPortPart {
 
+    static final int SYNC_INTERVAL = 10;
+    private static final String FRONT_KEY = "MMMachineFront";
+    private static final String STATE_KEY = "MMMachineState";
+    private static final String COLORS_KEY = "MMMachineColors";
+
     protected long lastTick = 0;
-    // game time of the last markChangedWithoutSync that told neighbors (comparators)
-    private long lastMarkedTick = Long.MIN_VALUE;
     @Nullable
     protected PortAutoIO autoIO;
-    // status light colors of the machine this port belongs to (unformed, idle, working; -1 = client config),
-    // set by the controller; null when the machine doesn't set its own colors
+    @Nullable
+    private Direction machineFront;
+    private ControllerState machineState = ControllerState.UNFORMED;
+    @Nullable
+    private BlockPos controllerPos;
     @Nullable
     private int[] machineColors;
-    private static final String MACHINE_COLORS_KEY = "MMMachineColors";
+    private long changeCount = 0;
+    private long lastSync = Long.MIN_VALUE / 2;
+    private boolean syncPending = false;
+    // game time of the last setChanged that told neighbors (comparators)
+    private long lastMarkedTick = Long.MIN_VALUE;
 
-    public AbstractPortBlockEntity(BlockEntityType<?> p_155228_, BlockPos p_155229_, BlockState p_155230_) {
-        super(p_155228_, p_155229_, p_155230_);
+    public AbstractPortBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState state) {
+        super(type, pos, state);
     }
 
-    /**
-     * @return the auto push/pull feature of this port, or null if the port type doesn't support it
-     */
     @Nullable
     public PortAutoIO getAutoIO() {
         return autoIO;
     }
 
-    /**
-     * @param state 0 unformed, 1 idle, 2 working
-     * @return the machine's own status light color for that state, or -1 to use the client config
-     */
-    public int getMachineColor(int state) {
-        return machineColors == null ? -1 : machineColors[state];
+    @Nullable
+    public Direction getMachineFront() {
+        return machineFront;
     }
 
-    /** Set by the controller of the machine the port belongs to; null clears. Sent to clients when it changes. */
-    public void setMachineColors(@Nullable int[] colors) {
-        if (java.util.Arrays.equals(machineColors, colors)) {
+    public ControllerState getMachineState() {
+        return machineState;
+    }
+
+    public int getMachineColor(ControllerState state) {
+        return machineColors == null ? -1 : machineColors[state.ordinal()];
+    }
+
+    @Nullable
+    public BlockPos getControllerPos() {
+        return controllerPos;
+    }
+
+    public void setMachineInfo(@Nullable BlockPos controller, @Nullable Direction front, ControllerState state, @Nullable int[] colors) {
+        if (java.util.Objects.equals(controller, controllerPos) && front == machineFront && state == machineState && Arrays.equals(colors, machineColors)) {
             return;
         }
-        machineColors = colors == null ? null : colors.clone();
-        setChanged();
+        controllerPos = controller;
+        machineFront = front;
+        machineState = state;
+        machineColors = colors;
         if (level != null && !level.isClientSide()) {
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+            level.blockEntityChanged(getBlockPos());
+            requestSync();
         }
     }
 
     public void tick() {
-        if (level == null || lastTick == level.getGameTime()) return;
+        if (level == null || lastTick == level.getGameTime()) {
+            return;
+        }
         lastTick = level.getGameTime();
         if (autoIO != null) {
             autoIO.tick();
@@ -70,32 +99,50 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag) {
-        tag.put(Ref.NBT_STORAGE_KEY, getStorage().save(new CompoundTag()));
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        var tag = new CompoundTag();
+        saveLegacy(tag, LegacyNbt.registries(level));
+        LegacyNbt.write(output, tag);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.put(Ref.NBT_STORAGE_KEY, getStorage().save(new CompoundTag(), registries));
         if (autoIO != null) {
             autoIO.save(tag);
         }
-        if (machineColors != null) {
-            tag.putIntArray(MACHINE_COLORS_KEY, machineColors);
+        if (machineFront != null) {
+            tag.putByte(FRONT_KEY, (byte) machineFront.get2DDataValue());
         }
-        super.saveAdditional(tag);
+        tag.putByte(STATE_KEY, (byte) machineState.ordinal());
+        if (machineColors != null) {
+            tag.putIntArray(COLORS_KEY, machineColors);
+        }
     }
 
-    @Override
-    public void load(CompoundTag tag) {
-        getStorage().load(tag.getCompound(Ref.NBT_STORAGE_KEY));
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        getStorage().load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
         if (autoIO != null) {
             autoIO.load(tag);
         }
-        int[] loaded = tag.getIntArray(MACHINE_COLORS_KEY);
-        machineColors = loaded.length == 3 ? loaded : null;
-        super.load(tag);
+        machineFront = tag.contains(FRONT_KEY) ? Direction.from2DDataValue(tag.getByteOr(FRONT_KEY, (byte) 0)) : null;
+        var states = ControllerState.values();
+        int state = tag.getByteOr(STATE_KEY, (byte) 0);
+        machineState = state >= 0 && state < states.length ? states[state] : ControllerState.UNFORMED;
+        int[] colors = tag.getIntArray(COLORS_KEY).orElse(new int[0]);
+        machineColors = colors.length == states.length ? colors : null;
     }
 
     @Override
-    public @NotNull CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag);
+        saveLegacy(tag, registries);
         return tag;
     }
 
@@ -106,36 +153,55 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     }
 
     @Override
-    public void setChanged() {
-        if (level == null || level.isClientSide()){
-            return;
-        }
-        markChangedWithoutSync();
-        syncBlockEntityToClients();
+    public long changeCount() {
+        return changeCount;
     }
 
-    /** Mark persisted state dirty without immediately serializing and sending the full block entity. */
-    protected void markChangedWithoutSync() {
+    @Override
+    public void setChanged() {
         if (level == null || level.isClientSide()) {
             return;
         }
         // ports change many times a tick (each insert/extract); comparators read the final contents when they
-        // update, so neighbors are told once a tick. The chunk is still marked dirty every time (a save may
-        // have happened in between).
+        // update, so neighbors are told once a tick. The chunk is still marked dirty every time (a save may have
+        // happened in between).
         long gameTime = level.getGameTime();
         if (gameTime == lastMarkedTick) {
             level.blockEntityChanged(worldPosition);
-            return;
+        } else {
+            lastMarkedTick = gameTime;
+            super.setChanged();
         }
-        lastMarkedTick = gameTime;
-        super.setChanged();
+        changeCount++;
+        requestSync();
     }
 
-    /** Send the current block-entity data to clients tracking this position. */
-    protected void syncBlockEntityToClients() {
-        if (level == null || level.isClientSide()) {
+    private void requestSync() {
+        if (syncPending) {
             return;
         }
-        level.sendBlockUpdated(getBlockPos(), this.getBlockState(), this.getBlockState(), Block.UPDATE_CLIENTS);
+        if (level.getGameTime() - lastSync >= SYNC_INTERVAL) {
+            sendSync();
+        } else {
+            syncPending = true;
+            PortSyncQueue.add(this);
+        }
+    }
+
+    boolean flushSync() {
+        if (level == null || isRemoved()) {
+            return true;
+        }
+        if (level.getGameTime() - lastSync < SYNC_INTERVAL) {
+            return false;
+        }
+        syncPending = false;
+        sendSync();
+        return true;
+    }
+
+    private void sendSync() {
+        lastSync = level.getGameTime();
+        level.sendBlockUpdated(getBlockPos(), getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 }

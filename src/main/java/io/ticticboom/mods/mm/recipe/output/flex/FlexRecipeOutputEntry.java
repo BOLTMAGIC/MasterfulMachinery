@@ -18,6 +18,7 @@ import io.ticticboom.mods.mm.recipe.flex.OutputSimulation;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.DisplayedOutput;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
+import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.ChanceUtils;
 import lombok.Getter;
 import mezz.jei.api.constants.VanillaTypes;
@@ -26,13 +27,13 @@ import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import mezz.jei.api.recipe.RecipeIngredientRole;
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponentPatch;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -46,10 +47,10 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
 
-    /** An item kind (item + NBT) used as a cache key. */
-    private record Key(Item item, @Nullable CompoundTag tag) {
+    /** An item kind (item + components) used as a cache key. */
+    private record Key(Item item, DataComponentPatch components) {
         static Key of(ItemStack stack) {
-            return new Key(stack.getItem(), stack.getTag() == null ? null : stack.getTag().copy());
+            return new Key(stack.getItem(), stack.getComponentsPatch());
         }
     }
 
@@ -67,7 +68,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     @Nullable
     private final String scaleBy;
 
-    private ResourceLocation recipeId;
+    private Identifier recipeId;
     private FlexRecipeIngredientEntry input;
 
     // the client (JEI) and the integrated server share recipe objects; only the server asks scripts
@@ -76,7 +77,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     private final Map<OutputKey, SingleItemPortIngredient> outputIngredients = new ConcurrentHashMap<>();
     private volatile List<DisplayedOutput> displayed;
 
-    private boolean shouldRun = true;
+    private final String chanceRollKey;
 
     public FlexRecipeOutputEntry(String from, FlexTemplate template, int count, boolean copyNbt, double chance, boolean perTick, @Nullable String scaleBy) {
         this.from = from;
@@ -86,9 +87,21 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         this.chance = chance;
         this.perTick = perTick;
         this.scaleBy = scaleBy;
+        this.chanceRollKey = "fc" + AmountRange.nextRollKey();
     }
 
-    public void bind(ResourceLocation recipeId, FlexRecipeIngredientEntry input) {
+    /** The chance is rolled once per run and kept in its state (per tick for "per_tick" outputs). */
+    private boolean shouldRun(@Nullable RecipeStateModel state) {
+        if (chance >= 1) {
+            return true;
+        }
+        if (perTick || state == null) {
+            return ChanceUtils.shouldProceed(chance);
+        }
+        return chance >= state.getRollToken(chanceRollKey);
+    }
+
+    public void bind(Identifier recipeId, FlexRecipeIngredientEntry input) {
         this.recipeId = recipeId;
         this.input = input;
     }
@@ -117,14 +130,14 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         if (result.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        if (copyNbt && inputStack.getTag() != null) {
-            result.setTag(inputStack.getTag().copy());
+        if (copyNbt && !inputStack.getComponentsPatch().isEmpty()) {
+            result.applyComponents(inputStack.getComponentsPatch());
         }
         return result;
     }
 
     private int amount(RecipeStateModel state) {
-        return scaleBy == null ? count : IPortIngredient.scaleAmount(count, state.getCount(scaleBy));
+        return scaleBy == null ? count : AmountRange.scaleAmount(count, state.getCount(scaleBy));
     }
 
     /**
@@ -139,7 +152,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
             return null;
         }
         return outputIngredients.computeIfAbsent(new OutputKey(Key.of(result), amount), k ->
-                new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(result.getItem()), amount, result.getTag(), true));
+                new SingleItemPortIngredient(BuiltInRegistries.ITEM.getKey(result.getItem()), AmountRange.of(amount), null, false, result.getComponentsPatch()));
     }
 
     /** What to put in the output ports this run: one output per kind of item the flex input took. */
@@ -159,8 +172,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public boolean canOutput(Level level, RecipeStorages storages, RecipeStateModel state) {
-        shouldRun = ChanceUtils.shouldProceed(chance);
-        if (!shouldRun) {
+        if (!shouldRun(state)) {
             return true;
         }
         var outputs = outputsFor(level, state);
@@ -168,12 +180,12 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
             return outputs.get(0).canOutput(level, storages, state);
         }
         // several kinds share the same empty slots: they have to fit together
-        return outputs.isEmpty() || new OutputSimulation(storages).tryAdd(level, outputs);
+        return outputs.isEmpty() || new OutputSimulation(level, storages).tryAdd(level, outputs, state);
     }
 
     @Override
     public void output(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if (!perTick && shouldRun) {
+        if (!perTick && shouldRun(state)) {
             for (SingleItemPortIngredient output : outputsFor(level, state)) {
                 output.output(level, storages, state);
             }
@@ -182,7 +194,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public void processTick(Level level, RecipeStorages storages, RecipeStateModel state) {
-        if (perTick && shouldRun) {
+        if (perTick && shouldRun(state)) {
             for (SingleItemPortIngredient output : outputsFor(level, state)) {
                 output.output(level, storages, state);
             }
@@ -191,12 +203,13 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
 
     @Override
     public List<IPortIngredient> plannedOutputs(Level level, RecipeStateModel state) {
-        return !perTick && shouldRun ? List.copyOf(outputsFor(level, state)) : List.of();
+        return !perTick && shouldRun(state) ? List.copyOf(outputsFor(level, state)) : List.of();
     }
 
     @Override
     public List<IPortIngredient> plannedTickOutputs(Level level, RecipeStateModel state) {
-        return perTick && shouldRun ? List.copyOf(outputsFor(level, state)) : List.of();
+        // a per-tick chance is rolled again on every tick, so room is kept as if it always hits
+        return perTick ? List.copyOf(outputsFor(level, state)) : List.of();
     }
 
     @Override
@@ -229,7 +242,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         for (ItemStack output : outputs) {
             // the first kind with a valid output stands for the rest
             if (!output.isEmpty()) {
-                var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(output.getItem()), count, output.getTag(), true);
+                var ingredient = new SingleItemPortIngredient(BuiltInRegistries.ITEM.getKey(output.getItem()), AmountRange.of(count), null, false, output.getComponentsPatch());
                 result.add(new DisplayedOutput(ingredient, chance));
                 break;
             }
@@ -248,7 +261,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
                 for (ItemStack item : captured) {
                     ItemStack output = resolve(null, item);
                     if (!output.isEmpty()) {
-                        var ingredient = new SingleItemPortIngredient(ForgeRegistries.ITEMS.getKey(output.getItem()), count, output.getTag(), true);
+                        var ingredient = new SingleItemPortIngredient(BuiltInRegistries.ITEM.getKey(output.getItem()), AmountRange.of(count), null, false, output.getComponentsPatch());
                         result.add(new DisplayedOutput(ingredient, chance));
                     }
                 }

@@ -1,18 +1,18 @@
 package io.ticticboom.mods.mm.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import io.ticticboom.mods.mm.util.ColorUtil;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/** The existing Forge settings exposed by the in-game MM config screen. */
 public final class MMConfigOptions {
     public enum Scope { SERVER, CLIENT }
     public enum Kind { BOOLEAN, INTEGER, COLOR, BUILD_MODE }
 
     public record Option(String key, String label, Scope scope, Kind kind, int min, int max,
-                         ForgeConfigSpec.ConfigValue<?> value) {
+                         ModConfigSpec.ConfigValue<?> value) {
         public String current() { return String.valueOf(value.get()); }
 
         public boolean valid(String text) {
@@ -23,7 +23,7 @@ public final class MMConfigOptions {
                         int parsed = Integer.parseInt(text);
                         yield parsed >= min && parsed <= max;
                     }
-                    case COLOR -> MMClientConfig.parseColor(text) != null;
+                    case COLOR -> ColorUtil.parse(text) != null;
                     case BUILD_MODE -> {
                         try {
                             io.ticticboom.mods.mm.tool.ToolBuildMode.valueOf(text);
@@ -41,20 +41,20 @@ public final class MMConfigOptions {
             try {
                 switch (kind) {
                     case BOOLEAN -> {
-                        ((ForgeConfigSpec.BooleanValue) value).set(Boolean.parseBoolean(text));
+                        ((ModConfigSpec.BooleanValue) value).set(Boolean.parseBoolean(text));
                     }
                     case INTEGER -> {
                         int parsed = Integer.parseInt(text);
-                        ((ForgeConfigSpec.IntValue) value).set(parsed);
+                        ((ModConfigSpec.IntValue) value).set(parsed);
                     }
                     case COLOR -> {
-                        @SuppressWarnings("unchecked") ForgeConfigSpec.ConfigValue<String> color =
-                                (ForgeConfigSpec.ConfigValue<String>) value;
+                        @SuppressWarnings("unchecked") ModConfigSpec.ConfigValue<String> color =
+                                (ModConfigSpec.ConfigValue<String>) value;
                         color.set(text.startsWith("#") ? text : "#" + text);
                     }
                     case BUILD_MODE -> {
-                        @SuppressWarnings("unchecked") ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> mode =
-                                (ForgeConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode>) value;
+                        @SuppressWarnings("unchecked") ModConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode> mode =
+                                (ModConfigSpec.EnumValue<io.ticticboom.mods.mm.tool.ToolBuildMode>) value;
                         mode.set(io.ticticboom.mods.mm.tool.ToolBuildMode.valueOf(text));
                     }
                 }
@@ -70,7 +70,6 @@ public final class MMConfigOptions {
     private static final MMClientConfig C = MMConfigSetup.CLIENT;
 
     public static final List<Option> SERVER = List.of(
-            bool("asyncValidation", "Async structure validation", Scope.SERVER, S.asyncStructureValidation),
             integer("structureValidationRate", "Validation interval (ticks)", Scope.SERVER, S.structureValidationRate, 1, 100),
             bool("debugTool", "Debug tool enabled", Scope.SERVER, S.debugTool),
             bool("splitRecipesJei", "Split JEI recipes by structure", Scope.SERVER, S.splitRecipesJei),
@@ -84,7 +83,6 @@ public final class MMConfigOptions {
             integer("network_link.outputInterval", "Network output interval (ticks)", Scope.SERVER, S.networkLinkOutputInterval, 1, 1200),
             bool("network_link.opBypass", "Operator network bypass", Scope.SERVER, S.networkLinkOpBypass),
             bool("network_link.sendContentsOnRemove", "Send port contents on removal", Scope.SERVER, S.networkLinkSendOnRemove),
-            integer("network_link.controllerSearchRadius", "Controller search radius", Scope.SERVER, S.networkLinkSearchRadius, 4, 64),
             integer("tool.energyCapacity", "Structure Builder FE capacity", Scope.SERVER, S.toolEnergyCapacity, 1, Integer.MAX_VALUE),
             integer("tool.energyPerPlacedBlock", "FE per placed block", Scope.SERVER, S.toolEnergyPerPlacedBlock, 0, Integer.MAX_VALUE),
             integer("tool.energyPerDismantledBlock", "FE per dismantled block", Scope.SERVER, S.toolEnergyPerDismantledBlock, 0, Integer.MAX_VALUE),
@@ -109,15 +107,15 @@ public final class MMConfigOptions {
 
     private MMConfigOptions() {}
 
-    private static Option bool(String key, String label, Scope scope, ForgeConfigSpec.BooleanValue value) {
+    private static Option bool(String key, String label, Scope scope, ModConfigSpec.BooleanValue value) {
         return new Option(key, label, scope, Kind.BOOLEAN, 0, 0, value);
     }
 
-    private static Option integer(String key, String label, Scope scope, ForgeConfigSpec.IntValue value, int min, int max) {
+    private static Option integer(String key, String label, Scope scope, ModConfigSpec.IntValue value, int min, int max) {
         return new Option(key, label, scope, Kind.INTEGER, min, max, value);
     }
 
-    private static Option color(String key, String label, ForgeConfigSpec.ConfigValue<String> value) {
+    private static Option color(String key, String label, ModConfigSpec.ConfigValue<String> value) {
         return new Option(key, label, Scope.CLIENT, Kind.COLOR, 0, 0, value);
     }
 

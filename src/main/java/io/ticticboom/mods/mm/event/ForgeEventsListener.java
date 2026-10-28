@@ -1,25 +1,36 @@
 package io.ticticboom.mods.mm.event;
 
+import net.minecraft.world.entity.EquipmentSlot;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureLoader;
-import io.ticticboom.mods.mm.net.MMNetwork;
+import io.ticticboom.mods.mm.util.ItemNbtUtil;
+
+import io.ticticboom.mods.mm.net.packet.ProcessesSyncPkt;
+import io.ticticboom.mods.mm.net.packet.StructureSyncPkt;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PacketDistributor;
+import io.ticticboom.mods.mm.util.ItemComponentUtil;
+import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.network.PacketDistributor;
+import io.ticticboom.mods.mm.item.MultiblockSaverItem;
+import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.Ref;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber
 public class ForgeEventsListener {
 
     @SubscribeEvent
-    public static void registerReloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new StructureManager());
-        event.addListener(new MachineRecipeManager());
-        event.addListener(new BuildableStructureLoader());
+    public static void registerReloadListeners(AddServerReloadListenersEvent event) {
+        ItemComponentUtil.setRegistries(event.getRegistryAccess());
+        event.addListener(Ref.id("structures"), new StructureManager());
+        event.addListener(Ref.id("recipes"), new MachineRecipeManager());
+        event.addListener(Ref.id("buildable_structures"), new BuildableStructureLoader());
     }
 
     @SubscribeEvent
@@ -27,8 +38,13 @@ public class ForgeEventsListener {
         // clear any stored corners on the saver item when a player joins (world reload/start safety)
         if (event.getEntity() instanceof ServerPlayer sp) clearSavedCorners(sp);
 
-        // structures and recipes are synced in DatapackSyncHandler, before JEI builds its recipe list
-        MMNetwork.INSTANCE.send(PacketDistributor.PLAYER.with(() -> ((ServerPlayer) event.getEntity())),
+        var structurePacket = new StructureSyncPkt(StructureManager.STRUCTURES);
+        PacketDistributor.sendToPlayer((ServerPlayer) event.getEntity(), structurePacket);
+        
+        var processPacket  = new ProcessesSyncPkt(MachineRecipeManager.RECIPES);
+        PacketDistributor.sendToPlayer((ServerPlayer) event.getEntity(), processPacket);
+        // the Structure Builder's range and placement settings, before the player uses it
+        PacketDistributor.sendToPlayer((ServerPlayer) event.getEntity(),
                 new io.ticticboom.mods.mm.net.packet.MMConfigSyncPkt(io.ticticboom.mods.mm.config.MMConfigOptions.serverSnapshot()));
     }
 
@@ -44,30 +60,20 @@ public class ForgeEventsListener {
     private static void clearSavedCorners(ServerPlayer player) {
         var inv = player.getInventory();
         // main inventory
-        for (var stack : inv.items) {
-            if (stack != null && stack.getItem() == io.ticticboom.mods.mm.setup.MMRegisters.MULTIBLOCK_SAVER.get()) {
-                if (stack.hasTag()) {
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS1);
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS2);
+        for (var stack : inv.getNonEquipmentItems()) {
+            if (stack != null && stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get()) {
+                if (ItemNbtUtil.hasTag(stack)) {
+                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
+                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS2));
                 }
             }
         }
-        // offhand
-        for (var stack : inv.offhand) {
-            if (stack != null && stack.getItem() == io.ticticboom.mods.mm.setup.MMRegisters.MULTIBLOCK_SAVER.get()) {
-                if (stack.hasTag()) {
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS1);
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS2);
-                }
-            }
-        }
-        // armour
-        for (var stack : inv.armor) {
-            if (stack != null && stack.getItem() == io.ticticboom.mods.mm.setup.MMRegisters.MULTIBLOCK_SAVER.get()) {
-                if (stack.hasTag()) {
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS1);
-                    stack.getOrCreateTag().remove(io.ticticboom.mods.mm.item.MultiblockSaverItem.NBT_POS2);
-                }
+        // offhand and armour
+        for (var slot : EquipmentSlot.values()) {
+            var stack = player.getItemBySlot(slot);
+            if (stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get() && ItemNbtUtil.hasTag(stack)) {
+                ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
+                ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS2));
             }
         }
     }

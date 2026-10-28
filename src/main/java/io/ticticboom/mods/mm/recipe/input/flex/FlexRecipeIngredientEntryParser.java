@@ -1,10 +1,10 @@
 package io.ticticboom.mods.mm.recipe.input.flex;
 
 import com.google.gson.JsonElement;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.ArrayList;
 import java.util.function.Predicate;
@@ -44,16 +44,16 @@ public class FlexRecipeIngredientEntryParser implements IRecipeIngredientEntryPa
         if (value.endsWith(":*")) {
             String namespace = value.substring(0, value.length() - 2);
             return stack -> {
-                ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+                Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
                 return id != null && id.getNamespace().equals(namespace);
             };
         }
-        ResourceLocation id = parseId(value, text);
-        return stack -> id.equals(ForgeRegistries.ITEMS.getKey(stack.getItem()));
+        Identifier id = parseId(value, text);
+        return stack -> id.equals(BuiltInRegistries.ITEM.getKey(stack.getItem()));
     }
 
-    private static ResourceLocation parseId(String value, String text) {
-        ResourceLocation id = ResourceLocation.tryParse(value);
+    private static Identifier parseId(String value, String text) {
+        Identifier id = Identifier.tryParse(value);
         if (id == null) {
             throw new RuntimeException("Flex input 'exclude' entry '" + text + "' should be an item id, a #tag or modid:*");
         }

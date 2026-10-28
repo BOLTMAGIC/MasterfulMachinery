@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.compat.kjs.event;
 
-import dev.latvian.mods.kubejs.event.EventJS;
+import dev.latvian.mods.kubejs.event.KubeEvent;
 import lombok.Getter;
 
 import java.util.ArrayList;
@@ -18,12 +18,11 @@ import java.util.Map;
  * })
  * </pre>
  */
-public class BuilderStructureEventJS extends EventJS {
+public class BuilderStructureEventJS implements KubeEvent {
     @Getter
     private final List<String> removed = new ArrayList<>();
     @Getter
     private final List<String> removedNamespaces = new ArrayList<>();
-    // id -> resource location of the .nbt file
     @Getter
     private final Map<String, String> added = new LinkedHashMap<>();
 

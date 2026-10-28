@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mmtest;
 
+import net.minecraft.core.registries.BuiltInRegistries;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.DismantleJob;
@@ -15,10 +16,9 @@ import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.chat.contents.TranslatableContents;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
@@ -29,11 +29,8 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.gametest.GameTestHolder;
-import net.minecraftforge.gametest.PrefixGameTestTemplate;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -44,12 +41,11 @@ import java.util.function.Consumer;
  * Dismantling a formed assembly_test ("FCGS") with the Multiblock Tool: blocks go into the tool's store, port
  * contents drop like normal breaking, build rights and claims are respected, energy is paid per block.
  */
-@GameTestHolder("mmtest")
-@PrefixGameTestTemplate(false)
+@GameTestHolder
 public class DismantleGameTests {
     private static final String TEMPLATE = "empty";
-    private static final ResourceLocation STRUCTURE = ResourceLocation.tryBuild("mmtest", "assembly_test");
-    private static final ResourceLocation PREVIEW_STRUCTURE = ResourceLocation.tryBuild("mmtest", "preview_test");
+    private static final Identifier STRUCTURE = Identifier.tryBuild("mmtest", "assembly_test");
+    private static final Identifier PREVIEW_STRUCTURE = Identifier.tryBuild("mmtest", "preview_test");
     private static final int START_FE = 1000;
     private static final BlockPos CONTROLLER = new BlockPos(3, 1, 3);
     private static final BlockPos FLEX = new BlockPos(-1, 0, 0);
@@ -60,7 +56,7 @@ public class DismantleGameTests {
     public static void dismantleReturnsBlocks(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             // aiming at the glass finds the machine it belongs to
             ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller.offset(GLASS));
@@ -93,7 +89,7 @@ public class DismantleGameTests {
             var handler = ((ItemPortStorage) port.getStorage()).getHandler();
             ItemStack left = handler.insertItem(0, new ItemStack(Items.DIAMOND, 5), false);
             check(helper, left.isEmpty(), "the port should take the diamonds, left " + left);
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
 
             DismantleJob job = run(helper, player, prepare(helper, player, tool, controller));
@@ -115,7 +111,7 @@ public class DismantleGameTests {
     public static void dismantleRespectsBuildRights(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             player.getAbilities().mayBuild = false; // adventure mode / protected area
 
@@ -138,22 +134,22 @@ public class DismantleGameTests {
     public static void dismantleRespectsClaims(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
             // a claim mod refusing only the glass
             BlockPos glass = controller.offset(GLASS);
-            Consumer<BlockEvent.BreakEvent> claims = event -> {
+            Consumer<BreakBlockEvent> claims = event -> {
                 if (event.getPlayer() == player && event.getPos().equals(glass)) {
                     event.setCanceled(true);
                 }
             };
-            MinecraftForge.EVENT_BUS.addListener(claims);
+            NeoForge.EVENT_BUS.addListener(claims);
             DismantleJob job;
             try {
                 job = run(helper, player, prepared);
             } finally {
-                MinecraftForge.EVENT_BUS.unregister(claims);
+                NeoForge.EVENT_BUS.unregister(claims);
             }
 
             int fe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
@@ -168,7 +164,7 @@ public class DismantleGameTests {
     public static void dismantleStopsOutOfEnergy(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             int fe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
             var energy = new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get());
@@ -191,23 +187,23 @@ public class DismantleGameTests {
     public static void dismantleOutOfEnergyPostsNoBreakEvent(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             int fe = MMConfigSetup.COMMON.toolEnergyPerDismantledBlock.get();
             new ToolEnergy(tool, MMConfigSetup.COMMON.toolEnergyCapacity.get()).extractEnergy(START_FE - 2 * fe, false);
             ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
             List<BlockPos> events = new ArrayList<>();
-            Consumer<BlockEvent.BreakEvent> listener = event -> {
+            Consumer<BreakBlockEvent> listener = event -> {
                 if (event.getPlayer() == player) {
                     events.add(event.getPos());
                 }
             };
-            MinecraftForge.EVENT_BUS.addListener(listener);
+            NeoForge.EVENT_BUS.addListener(listener);
             DismantleJob job;
             try {
                 job = run(helper, player, prepared);
             } finally {
-                MinecraftForge.EVENT_BUS.unregister(listener);
+                NeoForge.EVENT_BUS.unregister(listener);
             }
 
             check(helper, job.outOfEnergy() && job.removed() == 2, "expected 2 removed, then out of energy; got " + job.removed());
@@ -220,7 +216,7 @@ public class DismantleGameTests {
     public static void dismantleSkipsBlockSwappedMidJob(GameTestHelper helper) {
         BlockPos controller = buildMachine(helper);
         helper.startSequence().thenWaitUntil(() -> expectFormed(helper, controller)).thenExecute(() -> {
-            Player player = helper.makeMockPlayer();
+            Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
             ItemStack tool = tool(player);
             ToolDismantles.Prepared prepared = prepare(helper, player, tool, controller);
             DismantleJob job = prepared.job(helper.getLevel());
@@ -249,7 +245,7 @@ public class DismantleGameTests {
         BlockPos controller = helper.absolutePos(CONTROLLER);
         helper.getLevel().setBlockAndUpdate(controller, controllerBlock().defaultBlockState().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH));
         helper.getLevel().setBlockAndUpdate(controller.offset(GLASS), Blocks.GLASS.defaultBlockState());
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         ItemStack tool = tool(player);
 
         expectError(helper, ToolDismantles.prepare(helper.getLevel(), player, tool, controller.offset(GLASS)), "message.mm.tool.dismantle.no_machine");
@@ -281,8 +277,12 @@ public class DismantleGameTests {
             }
             check(helper, DismantlePlanner.previewPositions(level, stray).isEmpty(), "a block of no machine has no preview");
 
-            // broken: like the server, the controller alone and nothing for its former pieces
+            // broken: like the server, the controller alone and nothing for its former pieces. The 26.1 base revalidates
+            // a machine on its next tick, scheduled by the break (as BreakBlockEvent does for a player)
             level.removeBlock(controller.offset(GLASS), false);
+            io.ticticboom.mods.mm.util.WorldUtil.scheduleNearbyValidation(level, controller.offset(GLASS));
+        }).thenWaitUntil(() -> check(helper, !controllerEntity(helper, controller).isFormed(), "the broken machine should unform"))
+                .thenExecute(() -> {
             check(helper, DismantlePlanner.previewPositions(level, controller).equals(List.of(controller)),
                     "an unformed controller previews only itself");
             check(helper, DismantlePlanner.previewPositions(level, controller.offset(STRICT)).isEmpty(),
@@ -320,7 +320,7 @@ public class DismantleGameTests {
 
     @GameTest(template = TEMPLATE)
     public static void dismantleConfirmWithinThreeSeconds(GameTestHelper helper) {
-        Player player = helper.makeMockPlayer();
+        Player player = helper.makeMockPlayer(net.minecraft.world.level.GameType.SURVIVAL);
         BlockPos controller = helper.absolutePos(CONTROLLER);
         BlockPos other = controller.east(5);
         var dimension = helper.getLevel().dimension();
@@ -401,7 +401,7 @@ public class DismantleGameTests {
     }
 
     private static int storeCount(ItemStack tool, Item item) {
-        var store = new ToolStore(tool);
+        var store = new ToolStore(tool, net.minecraft.core.RegistryAccess.EMPTY);
         int total = 0;
         for (int i = 0; i < store.getSlots(); i++) {
             if (store.getStackInSlot(i).is(item)) {
@@ -424,7 +424,7 @@ public class DismantleGameTests {
     }
 
     private static Block registered(String id) {
-        Block block = ForgeRegistries.BLOCKS.getValue(Ref.id(id));
+        Block block = BuiltInRegistries.BLOCK.getValue(Ref.id(id));
         if (block == null || block == Blocks.AIR) {
             throw new IllegalStateException("block mm:" + id + " is not registered");
         }
@@ -435,5 +435,9 @@ public class DismantleGameTests {
         if (!condition) {
             helper.fail(message);
         }
+    }
+
+    private static MachineControllerBlockEntity controllerEntity(GameTestHelper helper, BlockPos absolute) {
+        return (MachineControllerBlockEntity) helper.getLevel().getBlockEntity(absolute);
     }
 }

@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -21,12 +21,12 @@ public class PneumaticAirIngredientHelper  implements IIngredientHelper<Pneumati
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull PneumaticAirStack ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull PneumaticAirStack ingredient, @NotNull UidContext context) {
         return "pneumaticcraft/air";
     }
 
     @Override
-    public @NotNull ResourceLocation getResourceLocation(@NotNull PneumaticAirStack ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull PneumaticAirStack ingredient) {
         return Ref.id("pneumaticcraft/air");
     }
 

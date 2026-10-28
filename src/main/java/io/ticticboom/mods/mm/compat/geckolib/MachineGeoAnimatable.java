@@ -3,14 +3,13 @@ package io.ticticboom.mods.mm.compat.geckolib;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.core.animatable.GeoAnimatable;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
-import software.bernie.geckolib.util.GeckoLibUtil;
-import software.bernie.geckolib.util.RenderUtils;
+import com.geckolib.animatable.GeoAnimatable;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.util.GeckoLibUtil;
 
 /**
  * One machine's model, client side: loops "idle" while formed and "working" while a recipe runs, unless its
@@ -29,10 +28,6 @@ public class MachineGeoAnimatable implements GeoAnimatable {
     // the controller screen's Animation switch: the model stands still in its rest pose
     private boolean animationsHidden = false;
 
-    /**
-     * @param idleName    null if the model has no idle animation (it stands still)
-     * @param workingName null if the model has no working animation
-     */
     public MachineGeoAnimatable(GeoModelConfig config, @Nullable String idleName, @Nullable String workingName) {
         this.config = config;
         this.idle = idleName == null ? null : RawAnimation.begin().thenLoop(idleName);
@@ -56,7 +51,7 @@ public class MachineGeoAnimatable implements GeoAnimatable {
         if (idle == null && working == null) {
             return;
         }
-        controllers.add(new AnimationController<>(this, "machine", TRANSITION_TICKS, animState -> {
+        controllers.add(new AnimationController<MachineGeoAnimatable>("machine", TRANSITION_TICKS, animState -> {
             RawAnimation animation = animationsHidden ? null : state == ControllerState.WORKING ? working : idle;
             return animation == null ? PlayState.STOP : animState.setAndContinue(animation);
         }));
@@ -65,10 +60,5 @@ public class MachineGeoAnimatable implements GeoAnimatable {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return cache;
-    }
-
-    @Override
-    public double getTick(Object object) {
-        return RenderUtils.getCurrentTick();
     }
 }

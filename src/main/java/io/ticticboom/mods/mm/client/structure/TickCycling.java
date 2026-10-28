@@ -2,7 +2,7 @@ package io.ticticboom.mods.mm.client.structure;
 
 import lombok.Getter;
 import lombok.Setter;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 
 import java.util.List;
 
@@ -11,7 +11,6 @@ public class TickCycling<T> {
 
     @Getter
     private final List<T> part;
-    // cycle interval in game ticks; driven by wall-clock time so the speed doesn't depend on FPS
     @Setter
     private int interval = 1;
     private long startMillis = Util.getMillis();

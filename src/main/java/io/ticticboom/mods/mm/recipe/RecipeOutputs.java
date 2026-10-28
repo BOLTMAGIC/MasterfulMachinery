@@ -40,7 +40,7 @@ public record RecipeOutputs(
         for (IRecipeOutputEntry output : outputs) {
             planned.addAll(output.plannedOutputs(level, model));
         }
-        return fitTogether(level, storages, planned);
+        return fitTogether(level, storages, planned, model);
     }
 
     /**
@@ -57,13 +57,13 @@ public record RecipeOutputs(
                 return false;
             }
         }
-        return fitTogether(level, storages, planned);
+        return fitTogether(level, storages, planned, model);
     }
 
     /** Outputs that each fit alone: do the ones that can be simulated fit next to each other? */
-    private static boolean fitTogether(Level level, RecipeStorages storages, List<IPortIngredient> outputs) {
+    private static boolean fitTogether(Level level, RecipeStorages storages, List<IPortIngredient> outputs, RecipeStateModel model) {
         var simulated = outputs.stream().filter(IPortIngredient::canSimulateOutput).toList();
-        return simulated.size() < 2 || new OutputSimulation(storages).tryAdd(level, simulated);
+        return simulated.size() < 2 || new OutputSimulation(level, storages).tryAdd(level, simulated, model);
     }
 
     public void process(Level level, RecipeStorages storages, RecipeStateModel model) {

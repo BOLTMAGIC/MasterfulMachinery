@@ -4,23 +4,16 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraftforge.fml.ModList;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
+import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
-/**
- * Draws a machine's GeckoLib model. The only implementation lives in compat.geckolib and is only loaded when
- * GeckoLib is installed, so MM itself never touches GeckoLib classes.
- */
 public interface GeoBridge {
 
-    /**
-     * @param pose already at the model's origin, rotated and scaled (see ControllerGeoRenderer)
-     */
     void render(MachineControllerBlockEntity be, GeoModelConfig config, ControllerState state, PoseStack pose,
-                MultiBufferSource buffers, int light);
+                SubmitNodeCollector collector, CameraRenderState camera, int light, float partialTick);
 
-    /** @return the GeckoLib bridge, or null without GeckoLib */
     @Nullable
     static GeoBridge get() {
         return Holder.INSTANCE;

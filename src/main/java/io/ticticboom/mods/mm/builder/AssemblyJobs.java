@@ -1,8 +1,9 @@
 package io.ticticboom.mods.mm.builder;
 
-import io.ticticboom.mods.mm.Ref;
-import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.tool.ToolDismantles;
+import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.config.MMConfig;
+import io.ticticboom.mods.mm.config.MMConfigSetup;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -10,10 +11,10 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.event.server.ServerStoppingEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.server.ServerStoppingEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
@@ -21,8 +22,7 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.UUID;
 
-/** Runs assemblies and dismantles on the server tick; one job of either kind per player. */
-@Mod.EventBusSubscriber(modid = Ref.ID)
+@EventBusSubscriber(modid = Ref.ID)
 public final class AssemblyJobs {
     private static final double MAX_DISTANCE_SQR = 64 * 64;
     private static final int MISSING_SHOWN = 2;
@@ -31,25 +31,20 @@ public final class AssemblyJobs {
     private AssemblyJobs() {
     }
 
-    /** A job of either kind, ticked each server tick. */
-    private interface Running {
+    interface Running {
         ServerLevel level();
 
         BlockPos center();
 
-        /** A message to stop with before ticking, or null to go on. */
         @Nullable
         Component stopReason();
 
-        /** @return true when done */
         boolean tick(ServerPlayer player, int budget);
 
         Component summary();
 
-        /** Shown when the job stops because the player went too far or left the dimension. */
         Component tooFar();
 
-        /** Shown when the player tries to start another job meanwhile. */
         Component busy();
     }
 
@@ -86,7 +81,6 @@ public final class AssemblyJobs {
         }
     }
 
-    /** A dismantle paired with the sink its blocks go into. */
     private record Dismantle(DismantleJob job, ItemSink sink) implements Running {
         public ServerLevel level() {
             return job.level;
@@ -97,7 +91,7 @@ public final class AssemblyJobs {
         }
 
         public @Nullable Component stopReason() {
-            return null; // the job removes the controller itself
+            return null;
         }
 
         public boolean tick(ServerPlayer player, int budget) {
@@ -117,21 +111,6 @@ public final class AssemblyJobs {
         }
     }
 
-    /**
-     * One server tick of a build: waits while the source is not {@link MaterialSource#ready ready} (e.g. the tool's
-     * store is open), else lets it re-read its state and places up to budget blocks.
-     *
-     * @return true when done
-     */
-    public static boolean tickBuild(Player player, AssemblyJob job, MaterialSource source, int budget) {
-        if (!source.ready()) {
-            return false;
-        }
-        source.beginTick();
-        return job.tick(player, source, budget);
-    }
-
-    /** One server tick of a dismantle, paused and refreshed like {@link #tickBuild}. */
     public static boolean tickDismantle(Player player, DismantleJob job, ItemSink sink, int budget) {
         if (!sink.ready()) {
             return false;
@@ -140,103 +119,8 @@ public final class AssemblyJobs {
         return job.tick(player, sink, budget);
     }
 
-    /** What to tell a player who tries to start a job while one runs ("already assembling/dismantling"), or null. */
-    public static @Nullable Component busyMessage(ServerPlayer player) {
-        Running running = JOBS.get(player.getUUID());
-        return running == null ? null : running.busy();
-    }
-
-    /** The controller's own Assemble: draws from the player's inventory, 0 FE per block. */
-    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
-        return start(player, controllerPos, plan, new PlayerMaterialSource(player), 0);
-    }
-
-    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
-        return start(player, controllerPos, plan, source, perBlockFe, true);
-    }
-
-    /**
-     * @param requiresController false for another mod's multiblock (no MM controller): controllerPos is then only the
-     *                           center used for the distance check
-     */
-    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
-                                boolean requiresController) {
-        return start(player, controllerPos, plan, source, perBlockFe, requiresController, false);
-    }
-
-    /** An instant tool build uses the same placement checks and resources, but finishes within one server tick. */
-    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
-                                boolean requiresController, boolean instant) {
-        if (JOBS.containsKey(player.getUUID())) {
-            return false;
-        }
-        AssemblyJob job = requiresController
-                ? AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe)
-                : AssemblyJob.createWithoutController(player.serverLevel(), controllerPos, plan, perBlockFe);
-        JOBS.put(player.getUUID(), new Build(job, source, instant, false, controllerPos,
-                io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL));
-        return true;
-    }
-
-    public static boolean startTool(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source,
-                                    int perBlockFe, boolean requiresController, BlockPos targetPos, boolean instantPreference) {
-        if (JOBS.containsKey(player.getUUID())) return false;
-        var mode = MMConfigSetup.COMMON.toolBuildMode.get().forTool(instantPreference);
-        AssemblyJob job = AssemblyJob.createTool(player.serverLevel(), controllerPos, plan, perBlockFe, requiresController, mode);
-        JOBS.put(player.getUUID(), new Build(job, source, false, true, targetPos.immutable(), mode));
-        return true;
-    }
-
-    /** Starts a dismantle; false when the player already runs a job. */
     public static boolean startDismantle(ServerPlayer player, DismantleJob job, ItemSink sink) {
-        if (JOBS.containsKey(player.getUUID())) {
-            return false;
-        }
-        JOBS.put(player.getUUID(), new Dismantle(job, sink));
-        return true;
-    }
-
-    @SubscribeEvent
-    public static void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || JOBS.isEmpty()) {
-            return;
-        }
-        int budget = MMConfigSetup.COMMON.assemblyBlocksPerTick.get();
-        Iterator<Map.Entry<UUID, Running>> it = JOBS.entrySet().iterator();
-        while (it.hasNext()) {
-            var entry = it.next();
-            Running job = entry.getValue();
-            ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
-            double distanceSqr = job instanceof Build build && build.tool()
-                    ? Math.pow(MMConfigSetup.COMMON.toolBuildRange.get() + 1.0D, 2) : MAX_DISTANCE_SQR;
-            if (player == null || player.level() != job.level()
-                    || (job instanceof Build build && build.tool()
-                        ? player.getEyePosition().distanceToSqr(job.center().getCenter())
-                        : player.distanceToSqr(job.center().getCenter())) > distanceSqr) {
-                if (player != null) {
-                    player.displayClientMessage(job.tooFar(), true);
-                }
-                it.remove();
-                continue;
-            }
-            Component stop = job.stopReason();
-            if (stop != null) {
-                player.displayClientMessage(stop, true);
-                it.remove();
-                continue;
-            }
-            int jobBudget = job instanceof Build build && build.instant() ? Integer.MAX_VALUE : budget;
-            if (job.tick(player, jobBudget)) {
-                player.displayClientMessage(job.summary(), true);
-                it.remove();
-            }
-        }
-    }
-
-    @SubscribeEvent
-    public static void onServerStopping(ServerStoppingEvent event) {
-        JOBS.clear();
-        ToolDismantles.clear();
+        return startRunning(player, new Dismantle(job, sink));
     }
 
     private static Component summary(DismantleJob job) {
@@ -253,7 +137,105 @@ public final class AssemblyJobs {
         return text;
     }
 
-    /** What the player is told when a build ends: placed, missing, blocked, ... and anything about the source. */
+    public static boolean tickBuild(Player player, AssemblyJob job, MaterialSource source, int budget) {
+        if (!source.ready()) {
+            return false;
+        }
+        source.beginTick();
+        return job.tick(player, source, budget);
+    }
+
+    public static @Nullable Component busyMessage(ServerPlayer player) {
+        Running running = JOBS.get(player.getUUID());
+        return running == null ? null : running.busy();
+    }
+
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan) {
+        return start(player, controllerPos, plan, new PlayerMaterialSource(player), 0);
+    }
+
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe) {
+        return start(player, controllerPos, plan, source, perBlockFe, true);
+    }
+
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
+                                boolean requiresController) {
+        return start(player, controllerPos, plan, source, perBlockFe, requiresController, false);
+    }
+
+    public static boolean start(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source, int perBlockFe,
+                                boolean requiresController, boolean instant) {
+        if (JOBS.containsKey(player.getUUID())) {
+            return false;
+        }
+        AssemblyJob job = requiresController
+                ? AssemblyJob.create(player.level(), controllerPos, plan, perBlockFe)
+                : AssemblyJob.createWithoutController(player.level(), controllerPos, plan, perBlockFe);
+        JOBS.put(player.getUUID(), new Build(job, source, instant, false, controllerPos,
+                io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL));
+        return true;
+    }
+
+    public static boolean startTool(ServerPlayer player, BlockPos controllerPos, AssemblyPlanner.Plan plan, MaterialSource source,
+                                    int perBlockFe, boolean requiresController, BlockPos targetPos, boolean instantPreference) {
+        if (JOBS.containsKey(player.getUUID())) return false;
+        var mode = MMConfigSetup.COMMON.toolBuildMode.get().forTool(instantPreference);
+        AssemblyJob job = AssemblyJob.createTool(player.level(), controllerPos, plan, perBlockFe, requiresController, mode);
+        JOBS.put(player.getUUID(), new Build(job, source, false, true, targetPos.immutable(), mode));
+        return true;
+    }
+
+    static boolean startRunning(ServerPlayer player, Running running) {
+        if (JOBS.containsKey(player.getUUID())) {
+            return false;
+        }
+        JOBS.put(player.getUUID(), running);
+        return true;
+    }
+
+    @SubscribeEvent
+    public static void onServerTick(ServerTickEvent.Post event) {
+        if (JOBS.isEmpty()) {
+            return;
+        }
+        int budget = MMConfig.ASSEMBLY_BLOCKS_PER_TICK;
+        Iterator<Map.Entry<UUID, Running>> it = JOBS.entrySet().iterator();
+        while (it.hasNext()) {
+            var entry = it.next();
+            Running job = entry.getValue();
+            ServerPlayer player = event.getServer().getPlayerList().getPlayer(entry.getKey());
+            double distanceSqr = job instanceof Build build && build.tool()
+                    ? Math.pow(MMConfigSetup.COMMON.toolBuildRange.get() + 1.0D, 2) : MAX_DISTANCE_SQR;
+            if (player == null || player.level() != job.level()
+                    || (job instanceof Build build && build.tool()
+                        ? player.getEyePosition().distanceToSqr(job.center().getCenter())
+                        : player.distanceToSqr(job.center().getCenter())) > distanceSqr) {
+                if (player != null) {
+                    player.sendOverlayMessage(job.tooFar());
+                }
+                it.remove();
+                continue;
+            }
+            Component stop = job.stopReason();
+            if (stop != null) {
+                player.sendOverlayMessage(stop);
+                it.remove();
+                continue;
+            }
+            int jobBudget = job instanceof Build build && build.instant() ? Integer.MAX_VALUE : budget;
+            if (job.tick(player, jobBudget)) {
+                player.sendOverlayMessage(job.summary());
+                it.remove();
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onServerStopping(ServerStoppingEvent event) {
+        JOBS.clear();
+        ToolDismantles.clear();
+    }
+
     public static Component summary(AssemblyJob job, MaterialSource source) {
         MutableComponent text = Component.translatable("message.mm.assemble.done", job.placed);
         if (!job.missing.isEmpty()) {

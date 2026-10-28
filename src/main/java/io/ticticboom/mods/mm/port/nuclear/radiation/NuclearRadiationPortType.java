@@ -1,0 +1,66 @@
+package io.ticticboom.mods.mm.port.nuclear.radiation;
+
+import io.ticticboom.mods.mm.compat.kjs.builder.PortConfigBuilderJS;
+import io.ticticboom.mods.mm.model.PortModel;
+import io.ticticboom.mods.mm.port.IPortParser;
+import io.ticticboom.mods.mm.port.IPortStorageFactory;
+import io.ticticboom.mods.mm.port.PortType;
+import io.ticticboom.mods.mm.port.nuclear.radiation.compat.NuclearRadiationConfigBuilderJS;
+import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortBlock;
+import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortBlockEntity;
+import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortBlockItem;
+import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortMenu;
+import io.ticticboom.mods.mm.port.nuclear.radiation.register.NuclearRadiationPortScreen;
+import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
+import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.world.inventory.MenuType;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.registries.DeferredHolder;
+
+import java.util.function.Consumer;
+
+public class NuclearRadiationPortType extends PortType {
+
+    @Override
+    public IPortParser getParser() {
+        return new NuclearRadiationPortParser();
+    }
+
+    @Override
+    public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) ->
+                new NuclearRadiationPortBlockEntity(model, groupHolder, model.input(), p, s), groupHolder.getBlock().get()));
+    }
+
+    @Override
+    public DeferredHolder<Block, Block> registerBlock(PortModel model, RegistryGroupHolder groupHolder) {
+        return MMRegisters.BLOCKS.register(model.id(), () -> new NuclearRadiationPortBlock(model, groupHolder, model.input()));
+    }
+
+    @Override
+    public DeferredHolder<Item, Item> registerItem(PortModel model, RegistryGroupHolder groupHolder) {
+        return MMRegisters.ITEMS.register(model.id(), () -> new NuclearRadiationPortBlockItem(model, groupHolder));
+    }
+
+    @Override
+    public DeferredHolder<MenuType<?>, MenuType<?>> registerMenu(PortModel model, RegistryGroupHolder groupHolder) {
+        return MMRegisters.MENUS.register(model.id(), () -> IMenuTypeExtension.create((i, o, u) -> new NuclearRadiationPortMenu(model, groupHolder, i, o, u)));
+    }
+
+    @Override
+    @SuppressWarnings("unchecked")
+    public void registerScreen(RegistryGroupHolder groupHolder) {
+        MenuScreens.register((MenuType<NuclearRadiationPortMenu>) groupHolder.getMenu().get(), NuclearRadiationPortScreen::new);
+    }
+
+    @Override
+    public IPortStorageFactory createStorageFactory(Consumer<PortConfigBuilderJS> consumer) {
+        var builder = new NuclearRadiationConfigBuilderJS();
+        consumer.accept(builder);
+        return new NuclearRadiationPortStorageFactory((NuclearRadiationPortStorageModel) builder.build());
+    }
+}

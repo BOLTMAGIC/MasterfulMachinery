@@ -1,62 +1,72 @@
 package io.ticticboom.mods.mm.port.common.autoio;
 
 import io.ticticboom.mods.mm.cap.MMCapabilities;
+import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.energy.IEnergyStorage;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
+import net.neoforged.neoforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
-/**
- * Transfer strategies for {@link PortAutoIO}, all built on the standard Forge capabilities
- * so they work with any neighbor (chests, tanks, pipes, cables, other ports).
- */
 public final class PortTransfers {
 
     private PortTransfers() {
     }
 
     public static IPortTransfer items(Supplier<IItemHandler> self) {
-        return between(MMCapabilities.ITEM, self, PortTransfers::moveItems);
+        return between(MMCapabilities::item, self, PortTransfers::moveItems);
     }
 
     public static IPortTransfer fluids(Supplier<IFluidHandler> self) {
-        return between(MMCapabilities.FLUID, self, PortTransfers::moveFluids);
+        return between(MMCapabilities::fluid, self, PortTransfers::moveFluids);
     }
 
     public static IPortTransfer energy(Supplier<IEnergyStorage> self) {
-        return (neighbor, face, pull, ticks) -> neighbor.getCapability(MMCapabilities.ENERGY, face).ifPresent(other -> {
+        return (level, pos, face, pull, ticks) -> {
+            var other = MMCapabilities.energy(level, pos, face);
+            if (other == null) {
+                return;
+            }
             IEnergyStorage own = self.get();
-            // energy handlers are rate limited per call, so repeat once per elapsed tick
             for (int i = 0; i < ticks; i++) {
                 if (!(pull ? moveEnergy(other, own) : moveEnergy(own, other))) {
                     break;
                 }
             }
-        });
+        };
     }
 
-    public static <H> IPortTransfer between(Capability<H> cap, Supplier<H> self, BiConsumer<H, H> mover) {
-        return (neighbor, face, pull, ticks) -> neighbor.getCapability(cap, face).ifPresent(other -> {
+    /** Finds a handler of one kind on a block, MM's or another mod's. */
+    @FunctionalInterface
+    public interface HandlerLookup<H> {
+        @Nullable H find(Level level, BlockPos pos, @Nullable Direction side);
+    }
+
+    public static <H> IPortTransfer between(HandlerLookup<H> lookup, Supplier<H> self, BiConsumer<H, H> mover) {
+        return (level, pos, face, pull, ticks) -> {
+            var other = lookup.find(level, pos, face);
+            if (other == null) {
+                return;
+            }
             H own = self.get();
             if (pull) {
                 mover.accept(other, own);
             } else {
                 mover.accept(own, other);
             }
-        });
+        };
     }
 
     public static void moveItems(IItemHandler from, IItemHandler to) {
         for (int slot = 0; slot < from.getSlots(); slot++) {
-            // port slots can hold more than a stack (slotCapacity), so move in stack-sized chunks:
-            // not every inventory accepts oversized stacks
             int budget = from.getSlotLimit(slot);
             while (budget > 0) {
                 ItemStack inSlot = from.getStackInSlot(slot);
@@ -85,7 +95,6 @@ public final class PortTransfers {
         ItemStack extracted = from.extractItem(slot, count, false);
         ItemStack leftover = ItemHandlerHelper.insertItemStacked(to, extracted, false);
         if (!leftover.isEmpty()) {
-            // the target changed between simulate and execute, give the rest back
             from.insertItem(slot, leftover, false);
         }
         return extracted.getCount() - leftover.getCount();
@@ -95,7 +104,6 @@ public final class PortTransfers {
         for (int tank = 0; tank < from.getTanks(); tank++) {
             FluidStack fluid = from.getFluidInTank(tank);
             if (!fluid.isEmpty()) {
-                // tryFluidTransfer(destination, source, resource, doTransfer): "to" comes first, and true actually moves it
                 FluidUtil.tryFluidTransfer(to, from, fluid.copy(), true);
             }
         }
