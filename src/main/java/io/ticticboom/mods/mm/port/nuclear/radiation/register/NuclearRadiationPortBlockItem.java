@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.nuclear.radiation.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -14,7 +15,7 @@ public class NuclearRadiationPortBlockItem extends BlockItem implements IPortIte
     private final RegistryGroupHolder groupHolder;
 
     public NuclearRadiationPortBlockItem(PortModel model, RegistryGroupHolder groupHolder) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

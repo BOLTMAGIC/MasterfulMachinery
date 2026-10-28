@@ -16,7 +16,7 @@ public class GearboxBlock extends Block implements IExtraBlock {
     private final RegistryGroupHolder groupHolder;
 
     public GearboxBlock(ExtraBlockModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.controller.IControllerPart;
 import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -13,7 +14,7 @@ public class MachineControllerBlockItem extends BlockItem implements IController
     private final RegistryGroupHolder groupHolder;
 
     public MachineControllerBlockItem(ControllerModel model, RegistryGroupHolder groupHolder) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

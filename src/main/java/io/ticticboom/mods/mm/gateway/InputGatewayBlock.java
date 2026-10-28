@@ -20,10 +20,10 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 
 public class InputGatewayBlock extends BaseEntityBlock {
-    private static final MapCodec<InputGatewayBlock> CODEC = simpleCodec(properties -> new InputGatewayBlock());
+    private static final MapCodec<InputGatewayBlock> CODEC = simpleCodec(InputGatewayBlock::new);
 
-    public InputGatewayBlock() {
-        super(BlockUtils.createBlockProperties());
+    public InputGatewayBlock(Properties properties) {
+        super(properties);
     }
 
     @Override

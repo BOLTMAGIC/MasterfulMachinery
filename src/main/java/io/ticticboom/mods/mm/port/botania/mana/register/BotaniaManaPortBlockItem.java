@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.botania.mana.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -15,7 +16,7 @@ public class BotaniaManaPortBlockItem extends BlockItem implements IPortItem {
     private final RegistryGroupHolder groupHolder;
 
     public BotaniaManaPortBlockItem(PortModel model, RegistryGroupHolder groupHolder) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

@@ -35,7 +35,7 @@ public class ProjectEEmcPortBlock extends Block implements IPortBlock, EntityBlo
     private final RegistryGroupHolder groupHolder;
 
     public ProjectEEmcPortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         registerDefaultState(stateDefinition.any().setValue(FILL, 0));

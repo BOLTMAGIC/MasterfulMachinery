@@ -33,7 +33,7 @@ public class ReplicationMatterPortBlock extends Block implements IPortBlock, Ent
     private final boolean isInput;
 
     public ReplicationMatterPortBlock(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;

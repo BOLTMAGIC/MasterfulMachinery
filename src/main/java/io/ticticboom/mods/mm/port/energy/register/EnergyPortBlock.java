@@ -33,7 +33,7 @@ public class EnergyPortBlock extends Block implements IPortBlock, EntityBlock {
     private final boolean isInput;
 
     public EnergyPortBlock(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;

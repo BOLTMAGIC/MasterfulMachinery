@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.replication.link.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -13,7 +14,7 @@ public class ReplicationLinkPortBlockItem extends BlockItem implements IPortItem
     private final PortModel model;
 
     public ReplicationLinkPortBlockItem(PortModel model, RegistryGroupHolder groupHolder) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
     }
 

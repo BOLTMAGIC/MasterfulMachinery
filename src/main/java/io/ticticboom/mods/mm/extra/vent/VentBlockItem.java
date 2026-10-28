@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.extra.vent;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.extra.ExtraBlockModel;
 import io.ticticboom.mods.mm.extra.IExtraBlockPart;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
@@ -13,7 +14,7 @@ public class VentBlockItem extends BlockItem implements IExtraBlockPart {
     private final RegistryGroupHolder groupHolder;
 
     public VentBlockItem(ExtraBlockModel model, RegistryGroupHolder groupHolder) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

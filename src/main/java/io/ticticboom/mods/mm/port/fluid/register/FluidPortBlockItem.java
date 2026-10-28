@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.port.IPortPart;
@@ -15,7 +16,7 @@ public class FluidPortBlockItem extends BlockItem implements IPortItem {
     private PortModel model;
 
     public FluidPortBlockItem(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
     }
 

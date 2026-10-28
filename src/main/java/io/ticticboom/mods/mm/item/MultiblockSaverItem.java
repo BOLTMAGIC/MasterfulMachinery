@@ -29,8 +29,8 @@ public class MultiblockSaverItem extends Item {
     public static final String NBT_POS1 = "MMPos1";
     public static final String NBT_POS2 = "MMPos2";
 
-    public MultiblockSaverItem() {
-        super(new Properties().stacksTo(1));
+    public MultiblockSaverItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override

@@ -14,8 +14,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.context.UseOnContext;
 
 public class DebugToolItem extends Item {
-    public DebugToolItem() {
-        super(new Properties().stacksTo(1));
+    public DebugToolItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override

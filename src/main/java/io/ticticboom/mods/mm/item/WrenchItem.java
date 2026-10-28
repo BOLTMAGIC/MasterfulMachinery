@@ -26,8 +26,8 @@ public class WrenchItem extends Item {
             PortSides.Relative.BACK, PortSides.Relative.LEFT, PortSides.Relative.RIGHT};
     private static final Direction[] SUMMARY_COMPASS = {Direction.UP, Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST};
 
-    public WrenchItem() {
-        super(new Item.Properties().stacksTo(1));
+    public WrenchItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override

@@ -28,7 +28,7 @@ public class Ae2PatternPortBlock extends Block implements IPortBlock, EntityBloc
     private final RegistryGroupHolder groupHolder;
 
     public Ae2PatternPortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

@@ -24,7 +24,7 @@ public class BotaniaManaPortBlock extends Block implements IPortBlock, EntityBlo
     private final RegistryGroupHolder groupHolder;
 
     public BotaniaManaPortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

@@ -34,7 +34,7 @@ public class ArsSourcePortBlock extends Block implements IPortBlock, EntityBlock
     private final RegistryGroupHolder groupHolder;
 
     public ArsSourcePortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         registerDefaultState(stateDefinition.any().setValue(FILL, 0));

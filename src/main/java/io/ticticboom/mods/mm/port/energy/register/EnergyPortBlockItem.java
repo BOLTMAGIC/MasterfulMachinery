@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.energy.register;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortItem;
 import io.ticticboom.mods.mm.port.IPortPart;
@@ -15,7 +16,7 @@ public class EnergyPortBlockItem extends BlockItem implements IPortItem {
     private final boolean isInput;
 
     public EnergyPortBlockItem(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(groupHolder.getBlock().get(), new Properties());
+        super(groupHolder.getBlock().get(), BlockUtils.blockItemProperties(groupHolder.getItem().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;

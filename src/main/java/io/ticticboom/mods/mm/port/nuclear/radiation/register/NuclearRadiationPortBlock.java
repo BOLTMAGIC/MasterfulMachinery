@@ -29,7 +29,7 @@ public class NuclearRadiationPortBlock extends Block implements EntityBlock, IPo
     private final boolean isInput;
 
     public NuclearRadiationPortBlock(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
         this.isInput = isInput;

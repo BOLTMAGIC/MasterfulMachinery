@@ -27,8 +27,8 @@ public class BlueprintItem extends Item {
     public static final String TAG_STRUCTURE = "MMStructure";
     public static final String TAG_STRUCTURE_NAME = "MMStructureName";
 
-    public BlueprintItem() {
-        super(new Properties());
+    public BlueprintItem(Properties properties) {
+        super(properties);
     }
 
     @Override

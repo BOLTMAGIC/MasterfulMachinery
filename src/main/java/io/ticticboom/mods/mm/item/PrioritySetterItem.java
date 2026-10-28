@@ -26,8 +26,8 @@ public class PrioritySetterItem extends Item {
     public static final String NBT_KEY = "mm:priority";
     public static final int MAX_PRIORITY = 10;
 
-    public PrioritySetterItem() {
-        super(new Properties().stacksTo(1));
+    public PrioritySetterItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     @Override

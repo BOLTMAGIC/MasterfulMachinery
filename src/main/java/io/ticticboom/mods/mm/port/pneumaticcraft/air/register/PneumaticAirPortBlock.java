@@ -33,7 +33,7 @@ private final RegistryGroupHolder groupHolder;
 private final boolean isInput;
 
     public PneumaticAirPortBlock(PortModel model, RegistryGroupHolder groupHolder, boolean isInput) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
 
         this.model = model;
         this.groupHolder = groupHolder;

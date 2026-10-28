@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.setup;
 
+import io.ticticboom.mods.mm.util.BlockUtils;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import io.ticticboom.mods.mm.tool.ToolComponents;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
@@ -34,30 +35,30 @@ import java.util.List;
 
 @SuppressWarnings("unused")
 public class MMRegisters {
-    public static final DeferredRegister<Block> BLOCKS = DeferredRegister.create(BuiltInRegistries.BLOCK, Ref.ID);
-    public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(BuiltInRegistries.ITEM, Ref.ID);
+    public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(Ref.ID);
+    public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(Ref.ID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES = DeferredRegister.create(BuiltInRegistries.BLOCK_ENTITY_TYPE, Ref.ID);
     public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(BuiltInRegistries.MENU, Ref.ID);
     public static final DeferredRegister<CreativeModeTab> TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, Ref.ID);
 
-    public static final DeferredHolder<Item, BlueprintItem> BLUEPRINT = ITEMS.register("blueprint", BlueprintItem::new);
-    public static final DeferredHolder<Item, Item> DEBUG_TOOL = ITEMS.register("debug_tool", DebugToolItem::new);
-    public static final DeferredHolder<Item, Item> PRIORITY_SETTER = ITEMS.register("priority_setter", PrioritySetterItem::new);
-    public static final DeferredHolder<Item, MultiblockSaverItem> MULTIBLOCK_SAVER = ITEMS.register("multiblock_saver", MultiblockSaverItem::new);
+    public static final DeferredHolder<Item, BlueprintItem> BLUEPRINT = ITEMS.registerItem("blueprint", BlueprintItem::new);
+    public static final DeferredHolder<Item, Item> DEBUG_TOOL = ITEMS.registerItem("debug_tool", DebugToolItem::new);
+    public static final DeferredHolder<Item, Item> PRIORITY_SETTER = ITEMS.registerItem("priority_setter", PrioritySetterItem::new);
+    public static final DeferredHolder<Item, MultiblockSaverItem> MULTIBLOCK_SAVER = ITEMS.registerItem("multiblock_saver", MultiblockSaverItem::new);
 
-    public static final DeferredHolder<Item, MultiblockToolItem> MULTIBLOCK_TOOL = ITEMS.register("structure_builder", MultiblockToolItem::new);
+    public static final DeferredHolder<Item, MultiblockToolItem> MULTIBLOCK_TOOL = ITEMS.registerItem("structure_builder", MultiblockToolItem::new);
     public static final DeferredHolder<MenuType<?>, MenuType<MultiblockToolMenu>> MULTIBLOCK_TOOL_MENU = MENUS.register("structure_builder",
             () -> IMenuTypeExtension.create(MultiblockToolMenu::new));
     public static final DeferredHolder<MenuType<?>, MenuType<SingleMachineMenu>> SINGLE_MACHINE_MENU = MENUS.register("single_machine",
             () -> IMenuTypeExtension.create(SingleMachineMenu::new));
-    public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.register("wrench", WrenchItem::new);
-    public static final DeferredHolder<Block, InputGatewayBlock> INPUT_GATEWAY = BLOCKS.register("input_gateway", InputGatewayBlock::new);
-    public static final DeferredHolder<Item, BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new TooltipBlockItem(INPUT_GATEWAY.get(), new Item.Properties(), 4));
+    public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.registerItem("wrench", WrenchItem::new);
+    public static final DeferredHolder<Block, InputGatewayBlock> INPUT_GATEWAY = BLOCKS.registerBlock("input_gateway", InputGatewayBlock::new, () -> BlockUtils.createBlockProperties());
+    public static final DeferredHolder<Item, BlockItem> INPUT_GATEWAY_ITEM = ITEMS.registerItem("input_gateway", properties -> new TooltipBlockItem(INPUT_GATEWAY.get(), properties.useBlockDescriptionPrefix(), 4));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<InputGatewayBlockEntity>> INPUT_GATEWAY_BE = BLOCK_ENTITIES.register("input_gateway",
             () -> new BlockEntityType<>(InputGatewayBlockEntity::new, INPUT_GATEWAY.get()));
 
-    public static final DeferredHolder<Block, PatternPortBlock> PATTERN_PORT = BLOCKS.register("pattern_port", PatternPortBlock::new);
-    public static final DeferredHolder<Item, BlockItem> PATTERN_PORT_ITEM = ITEMS.register("pattern_port", () -> new TooltipBlockItem(PATTERN_PORT.get(), new Item.Properties(), 4));
+    public static final DeferredHolder<Block, PatternPortBlock> PATTERN_PORT = BLOCKS.registerBlock("pattern_port", PatternPortBlock::new, () -> BlockUtils.createBlockProperties());
+    public static final DeferredHolder<Item, BlockItem> PATTERN_PORT_ITEM = ITEMS.registerItem("pattern_port", properties -> new TooltipBlockItem(PATTERN_PORT.get(), properties.useBlockDescriptionPrefix(), 4));
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PatternPortBlockEntity>> PATTERN_PORT_BE = BLOCK_ENTITIES.register("pattern_port",
             () -> new BlockEntityType<>(PatternPortBlockEntity::new, PATTERN_PORT.get()));

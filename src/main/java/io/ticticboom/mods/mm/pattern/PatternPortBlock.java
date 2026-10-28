@@ -21,10 +21,10 @@ import java.util.List;
  * on the machine straight away, without going through the input ports. Stores nothing itself and has no GUI.
  */
 public class PatternPortBlock extends BaseEntityBlock {
-    private static final MapCodec<PatternPortBlock> CODEC = simpleCodec(properties -> new PatternPortBlock());
+    private static final MapCodec<PatternPortBlock> CODEC = simpleCodec(PatternPortBlock::new);
 
-    public PatternPortBlock() {
-        super(BlockUtils.createBlockProperties());
+    public PatternPortBlock(Properties properties) {
+        super(properties);
     }
 
     @Override

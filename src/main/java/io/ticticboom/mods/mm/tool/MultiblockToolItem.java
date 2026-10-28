@@ -38,8 +38,8 @@ public class MultiblockToolItem extends Item {
     private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
     private static Supplier<Component> anchorKeyName = () -> Component.literal("G");
 
-    public MultiblockToolItem() {
-        super(new Item.Properties().stacksTo(1));
+    public MultiblockToolItem(Properties properties) {
+        super(properties.stacksTo(1));
     }
 
     public static void setDismantleKeyName(Supplier<Component> name) {

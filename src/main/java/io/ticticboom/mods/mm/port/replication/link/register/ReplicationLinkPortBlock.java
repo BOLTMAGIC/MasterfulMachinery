@@ -30,7 +30,7 @@ public class ReplicationLinkPortBlock extends Block implements IPortBlock, Entit
     private final RegistryGroupHolder groupHolder;
 
     public ReplicationLinkPortBlock(PortModel model, RegistryGroupHolder groupHolder) {
-        super(BlockUtils.createBlockProperties());
+        super(BlockUtils.createBlockProperties(groupHolder.getBlock().getId()));
         this.model = model;
         this.groupHolder = groupHolder;
     }

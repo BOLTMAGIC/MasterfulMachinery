@@ -1,5 +1,9 @@
 package io.ticticboom.mods.mm.util;
 
+import net.minecraft.world.item.Item;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -72,5 +76,15 @@ public class BlockUtils {
     public static BlockBehaviour.Properties createBlockProperties() {
         return BlockBehaviour.Properties.ofFullCopy(Blocks.IRON_BLOCK).requiresCorrectToolForDrops().strength(5f, 5f)
                 .sound(SoundType.METAL);
+    }
+
+    /** Since 1.21.2 a block's properties carry its registry id, set before the block is constructed. */
+    public static BlockBehaviour.Properties createBlockProperties(Identifier id) {
+        return createBlockProperties().setId(ResourceKey.create(Registries.BLOCK, id));
+    }
+
+    /** Properties for the block item registered under id, named like its block (block.mm.<id>). */
+    public static Item.Properties blockItemProperties(Identifier id) {
+        return new Item.Properties().setId(ResourceKey.create(Registries.ITEM, id)).useBlockDescriptionPrefix();
     }
 }
