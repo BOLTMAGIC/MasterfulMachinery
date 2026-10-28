@@ -2,12 +2,12 @@ package io.ticticboom.mods.mm.port.entity;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.UUID;
 
 public record PortEntity(
-        ResourceLocation type,
+        Identifier type,
         UUID uuid,
         CompoundTag data,
         boolean hadAi,
@@ -15,11 +15,11 @@ public record PortEntity(
         boolean wasSilent
 ) {
 
-    public static PortEntity stored(ResourceLocation type, UUID uuid, CompoundTag data) {
+    public static PortEntity stored(Identifier type, UUID uuid, CompoundTag data) {
         return new PortEntity(type, uuid, data, true, false, false);
     }
 
-    public static PortEntity pinned(ResourceLocation type, UUID uuid, boolean hadAi, boolean wasInvulnerable, boolean wasSilent) {
+    public static PortEntity pinned(Identifier type, UUID uuid, boolean hadAi, boolean wasInvulnerable, boolean wasSilent) {
         return new PortEntity(type, uuid, null, hadAi, wasInvulnerable, wasSilent);
     }
 
@@ -47,7 +47,7 @@ public record PortEntity(
     }
 
     public static PortEntity load(CompoundTag tag) {
-        var type = ResourceLocation.tryParse(tag.getString("Type"));
+        var type = Identifier.tryParse(tag.getString("Type"));
         if (type == null) {
             return null;
         }

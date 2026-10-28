@@ -30,7 +30,7 @@ import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector2i;
@@ -57,7 +57,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     private final MutableComponent title = Component.translatable("jei.mm.category.structure");
     private static final int LAYER_WIDGET_WIDTH = 80;
     private static final int LAYER_WIDGET_Y = RENDER_SIZE.y - 12;
-    private final Map<ResourceLocation, Integer> selectedLayers = new HashMap<>();
+    private final Map<Identifier, Integer> selectedLayers = new HashMap<>();
 
     public MMStructureCategory(final IGuiHelper helper) {
         this.helper = helper;
@@ -71,7 +71,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     }
 
     @Override
-    public ResourceLocation getRegistryName(StructureModel recipe) {
+    public Identifier getRegistryName(StructureModel recipe) {
         return recipe.id();
     }
 
@@ -98,7 +98,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, StructureModel recipe, @NotNull IFocusGroup focuses) {
         var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST);
-        for (ResourceLocation id : recipe.controllerIds().getIds()) {
+        for (Identifier id : recipe.controllerIds().getIds()) {
             Item controller = MMControllerRegistry.getControllerItem(id);
             if (controller != null) {
                 catalysts.addItemStack(controller.getDefaultInstance());

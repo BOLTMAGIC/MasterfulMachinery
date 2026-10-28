@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import io.ticticboom.mods.mm.util.PortUtils;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.function.Supplier;
 
@@ -16,7 +16,7 @@ public record PortModel(
         String name,
         Supplier<Component> displayNameSource,
         IdList controllerIds,
-        ResourceLocation type,
+        Identifier type,
         IPortStorageFactory config,
         JsonObject jsonConfig,
         boolean input) {
@@ -25,17 +25,17 @@ public record PortModel(
         return displayNameSource.get();
     }
 
-    public ResourceLocation overlayTexture() {
+    public Identifier overlayTexture() {
         var specific = ParserUtils.parseOptionalId(jsonConfig, input ? "inputOverlay" : "outputOverlay");
         return specific != null ? specific : ParserUtils.parseOptionalId(jsonConfig, "overlay");
     }
 
-    public ResourceLocation baseTexture() {
+    public Identifier baseTexture() {
         var specific = ParserUtils.parseOptionalId(jsonConfig, input ? "inputTexture" : "outputTexture");
         return specific != null ? specific : ParserUtils.parseOptionalId(jsonConfig, "texture");
     }
 
-    public ResourceLocation customModel() {
+    public Identifier customModel() {
         var specific = ParserUtils.parseOptionalId(jsonConfig, input ? "inputModel" : "outputModel");
         return specific != null ? specific : ParserUtils.parseOptionalId(jsonConfig, "model");
     }
@@ -70,11 +70,11 @@ public record PortModel(
         return new PortModel(id, name, displayName, controllerIds, type, storageFactory, json, input);
     }
 
-    public static PortModel create(String id, String name, IdList controllerIds, ResourceLocation type, IPortStorageFactory config, boolean input) {
+    public static PortModel create(String id, String name, IdList controllerIds, Identifier type, IPortStorageFactory config, boolean input) {
         return create(id, name, null, controllerIds, type, config, input);
     }
 
-    public static PortModel create(String id, String name, String sideName, IdList controllerIds, ResourceLocation type, IPortStorageFactory config, boolean input) {
+    public static PortModel create(String id, String name, String sideName, IdList controllerIds, Identifier type, IPortStorageFactory config, boolean input) {
         var sided = PortUtils.sided(type);
         var fid = PortUtils.id(id, input, sided);
         var fname = sideName != null ? sideName : (sided ? PortUtils.name(name, input) : name);
@@ -83,7 +83,7 @@ public record PortModel(
         return new PortModel(fid, fname, () -> literal, controllerIds, type, config, json, input);
     }
 
-    public static PortModel createStyled(String id, JsonElement nameSpec, JsonElement sideSpec, IdList controllerIds, ResourceLocation type, IPortStorageFactory config, boolean input) {
+    public static PortModel createStyled(String id, JsonElement nameSpec, JsonElement sideSpec, IdList controllerIds, Identifier type, IPortStorageFactory config, boolean input) {
         var sided = PortUtils.sided(type);
         var fid = PortUtils.id(id, input, sided);
         String fname;
@@ -109,7 +109,7 @@ public record PortModel(
         return new PortModel(fid, fname, display, controllerIds, type, config, json, input);
     }
 
-    public static JsonObject paramsToJson(String id, String name, IdList controllerIds, ResourceLocation type, IPortStorageFactory config, boolean input) {
+    public static JsonObject paramsToJson(String id, String name, IdList controllerIds, Identifier type, IPortStorageFactory config, boolean input) {
         JsonObject json = new JsonObject();
         json.addProperty("id", id);
         json.addProperty("name", name);

@@ -8,7 +8,7 @@ import io.ticticboom.mods.mm.net.packet.BuildableStructureSyncPkt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
@@ -105,7 +105,7 @@ public final class BuildableStructureSync {
 
     @Nullable
     public static BuildableStructure read(FriendlyByteBuf buf) {
-        ResourceLocation id = buf.readResourceLocation();
+        Identifier id = buf.readResourceLocation();
         Vec3i size = new Vec3i(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
         int paletteSize = buf.readVarInt();
         List<BlockState> palette = new ArrayList<>(Math.min(paletteSize, 4096));

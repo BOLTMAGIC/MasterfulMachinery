@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
 import io.ticticboom.mods.mm.recipe.RecipeModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -17,7 +17,7 @@ import java.util.Set;
 class RecipeCandidateIndex {
     private final RecipeRequirements[] requirements;
     // Every exact item input points to the recipes that consume it.
-    private final Map<ResourceLocation, int[]> positionsByItem = new HashMap<>();
+    private final Map<Identifier, int[]> positionsByItem = new HashMap<>();
     // recipes with no specific item input (tags, fluids, energy...), checked whatever items the ports hold
     private final int[] unindexedPositions;
     private final int[] allPositions;
@@ -25,7 +25,7 @@ class RecipeCandidateIndex {
     RecipeCandidateIndex(List<RecipeModel> structureRecipes) {
         requirements = new RecipeRequirements[structureRecipes.size()];
         allPositions = new int[structureRecipes.size()];
-        Map<ResourceLocation, List<Integer>> byItem = new HashMap<>();
+        Map<Identifier, List<Integer>> byItem = new HashMap<>();
         List<Integer> unindexed = new ArrayList<>();
         for (int i = 0; i < structureRecipes.size(); i++) {
             var req = RecipeRequirements.of(structureRecipes.get(i));
@@ -34,7 +34,7 @@ class RecipeCandidateIndex {
             if (req.itemIds().isEmpty()) {
                 unindexed.add(i);
             } else {
-                for (ResourceLocation item : req.itemIds()) {
+                for (Identifier item : req.itemIds()) {
                     byItem.computeIfAbsent(item, k -> new ArrayList<>()).add(i);
                 }
             }
@@ -55,11 +55,11 @@ class RecipeCandidateIndex {
     /**
      * @return positions, ascending, of the recipes whose item, fluid and energy inputs the ports might hold
      */
-    int[] candidates(Set<ResourceLocation> itemIds, Set<ResourceLocation> fluidIds, boolean hasEnergy) {
+    int[] candidates(Set<Identifier> itemIds, Set<Identifier> fluidIds, boolean hasEnergy) {
         BitSet found = new BitSet(requirements.length);
         BitSet tested = new BitSet(requirements.length);
         addMatching(unindexedPositions, itemIds, fluidIds, hasEnergy, tested, found);
-        for (ResourceLocation item : itemIds) {
+        for (Identifier item : itemIds) {
             int[] positions = positionsByItem.get(item);
             if (positions != null) addMatching(positions, itemIds, fluidIds, hasEnergy, tested, found);
         }
@@ -71,7 +71,7 @@ class RecipeCandidateIndex {
         return result;
     }
 
-    private void addMatching(int[] positions, Set<ResourceLocation> itemIds, Set<ResourceLocation> fluidIds,
+    private void addMatching(int[] positions, Set<Identifier> itemIds, Set<Identifier> fluidIds,
                              boolean hasEnergy, BitSet tested, BitSet out) {
         for (int position : positions) {
             if (tested.get(position)) continue;

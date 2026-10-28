@@ -16,7 +16,7 @@ import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -31,12 +31,12 @@ import io.ticticboom.mods.mm.structure.StructureProblems;
 public class PortAnywhereStructurePiece extends StructurePiece {
 
     @Getter
-    private final ResourceLocation portId;
+    private final Identifier portId;
     @Getter
     private final Optional<Boolean> input;
     private final List<Block> blocks = new ArrayList<>();
 
-    public PortAnywhereStructurePiece(ResourceLocation portId, Optional<Boolean> input) {
+    public PortAnywhereStructurePiece(Identifier portId, Optional<Boolean> input) {
         this.portId = portId;
         this.input = input;
     }

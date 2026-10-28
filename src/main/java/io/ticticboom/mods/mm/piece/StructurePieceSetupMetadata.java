@@ -1,10 +1,10 @@
 package io.ticticboom.mods.mm.piece;
 
 import io.ticticboom.mods.mm.structure.StructureModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public record StructurePieceSetupMetadata(
-        ResourceLocation structureId,
+        Identifier structureId,
         StructureModel model
 ) {
 }

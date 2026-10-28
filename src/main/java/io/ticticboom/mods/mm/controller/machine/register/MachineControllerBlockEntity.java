@@ -58,7 +58,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -98,12 +98,12 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     private enum RedstoneMode { IGNORED, WITH_REDSTONE, WITHOUT_REDSTONE }
 
-    private record Candidate(RecipeModel recipe, @Nullable ResourceLocation inputKey, RecipeStateModel state, long lastUse) {
+    private record Candidate(RecipeModel recipe, @Nullable Identifier inputKey, RecipeStateModel state, long lastUse) {
     }
 
     private final ControllerModel model;
     private final RegistryGroupHolder groupHolder;
-    private final ResourceLocation controllerId;
+    private final Identifier controllerId;
     private final int validationOffset;
 
     @Getter
@@ -116,7 +116,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private boolean pendingValidation = true;
     private long lastTick = Long.MIN_VALUE;
 
-    private final Map<ResourceLocation, RecipeStateModel> activeRecipes = new HashMap<>();
+    private final Map<Identifier, RecipeStateModel> activeRecipes = new HashMap<>();
     // crafts pushed by AE2 into a Pattern Port; they run next to activeRecipes, each with its own buffer
     private final List<PatternRun> patternRuns = new ArrayList<>();
     @Getter
@@ -124,15 +124,15 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private RecipeStorages portStorages = null;
     private List<EntityPortStorage> speedStorages = List.of();
     private RedstoneMode redstoneMode = RedstoneMode.IGNORED;
-    private final Set<ResourceLocation> failedRecipes = new HashSet<>();
+    private final Set<Identifier> failedRecipes = new HashSet<>();
 
-    private final Set<ResourceLocation> cachedItemIds = new HashSet<>();
-    private final Set<ResourceLocation> cachedFluidIds = new HashSet<>();
+    private final Set<Identifier> cachedItemIds = new HashSet<>();
+    private final Set<Identifier> cachedFluidIds = new HashSet<>();
     private boolean cachedHasEnergy = false;
     private boolean storageContentCacheValid = false;
     private long lastResourceScanTime = -1;
     private long lastStorageChangeCount = -1;
-    private final Map<ResourceLocation, Long> recipeNextCheckTime = new HashMap<>();
+    private final Map<Identifier, Long> recipeNextCheckTime = new HashMap<>();
 
     private List<RecipeModel> cachedStructureRecipes = null;
     private int cachedRecipeVersion = -1;
@@ -140,18 +140,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // positions in cachedStructureRecipes of the recipes the cached port contents might run; null = rebuild
     private int[] candidatePositions = null;
     private int nextRecipeCheckIndex = 0;
-    private ResourceLocation lastStartedRecipeId = null;
+    private Identifier lastStartedRecipeId = null;
     private long lastRecipeStartTime = Long.MIN_VALUE;
     private long lastProgressTime = Long.MIN_VALUE;
     private RecipeSelectionMode recipeModeOverride = null;
     private String customName = null;
     private long recipeSelectionSequence = 0L;
-    private final Map<ResourceLocation, Long> inputItemLastStartedSequence = new HashMap<>();
-    private final Map<ResourceLocation, Long> recipeLastStartedSequence = new HashMap<>();
+    private final Map<Identifier, Long> inputItemLastStartedSequence = new HashMap<>();
+    private final Map<Identifier, Long> recipeLastStartedSequence = new HashMap<>();
 
     @Getter
-    private ResourceLocation selectedRecipeId = null;
-    private ResourceLocation requestedRecipeId = null;
+    private Identifier selectedRecipeId = null;
+    private Identifier requestedRecipeId = null;
     private Object requestOwner = null;
     private long requestExpiresAt = 0L;
     private int requestedCrafts = 0;
@@ -173,7 +173,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private boolean linkExportRequested = false;
     private long lastLinkExport = -1L;
     private final TierPrefs assemblyTiers = new TierPrefs();
-    private ResourceLocation assemblyStructureId = null;
+    private Identifier assemblyStructureId = null;
     private boolean wasActive = false;
     private long lastSync = Long.MIN_VALUE / 2;
     @Getter
@@ -665,22 +665,22 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     /** The Round Robin key of a flex kind: its item id, plus its components when it has any. */
-    private static ResourceLocation flexInputKey(ItemStack stack) {
-        ResourceLocation id = BuiltInRegistries.ITEM.getKey(stack.getItem());
+    private static Identifier flexInputKey(ItemStack stack) {
+        Identifier id = BuiltInRegistries.ITEM.getKey(stack.getItem());
         var components = stack.getComponentsPatch();
         if (components.isEmpty()) return id;
-        return ResourceLocation.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "__flex_c_" + Integer.toHexString(components.hashCode()));
+        return Identifier.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "__flex_c_" + Integer.toHexString(components.hashCode()));
     }
 
     /** The kind, of those the flex inputs took into this state, that waited longest; null without flex kinds. */
     @Nullable
-    private ResourceLocation flexPrimaryKey(RecipeModel recipe, RecipeStateModel state) {
-        ResourceLocation key = null;
+    private Identifier flexPrimaryKey(RecipeModel recipe, RecipeStateModel state) {
+        Identifier key = null;
         long oldest = Long.MAX_VALUE;
         for (var input : recipe.inputs().inputs()) {
             if (input instanceof FlexRecipeIngredientEntry flex) {
                 for (ItemStack kind : state.getCaptured(flex.getName())) {
-                    ResourceLocation kindKey = flexInputKey(kind);
+                    Identifier kindKey = flexInputKey(kind);
                     long lastUse = inputItemLastStartedSequence.getOrDefault(kindKey, Long.MIN_VALUE);
                     if (key == null || lastUse < oldest) {
                         key = kindKey;
@@ -692,7 +692,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return key;
     }
 
-    private boolean isEligible(RecipeModel recipe, @Nullable ResourceLocation requested, long gameTime) {
+    private boolean isEligible(RecipeModel recipe, @Nullable Identifier requested, long gameTime) {
         if (activeRecipes.containsKey(recipe.id())) {
             return false;
         }
@@ -757,7 +757,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return (allowParallel || running == 0) && underLimit;
     }
 
-    private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable ResourceLocation inputKey, RecipeStateModel state) {
+    private boolean startRecipe(RecipeModel recipe, long gameTime, @Nullable Identifier inputKey, RecipeStateModel state) {
         if (MMInteropManager.KUBEJS.isPresent() && !MMInteropManager.KUBEJS.get().postRecipeStarted(this, recipe.id())) {
             recipeNextCheckTime.put(recipe.id(), gameTime + SKIP_COOLDOWN);
             return false;
@@ -1117,7 +1117,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
-    public void setAssemblyStructureId(ResourceLocation id) {
+    public void setAssemblyStructureId(Identifier id) {
         if (findAssemblyCandidate(id) == null || id.equals(assemblyStructureId)) {
             return;
         }
@@ -1126,7 +1126,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     public List<StructureModel> getAssemblyCandidates() {
-        var byId = new TreeMap<ResourceLocation, StructureModel>();
+        var byId = new TreeMap<Identifier, StructureModel>();
         for (StructureModel candidate : StructureManager.getStructuresForController(controllerId)) {
             byId.put(candidate.id(), candidate);
         }
@@ -1146,7 +1146,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return candidates.isEmpty() ? null : candidates.get(0);
     }
 
-    public @Nullable StructureModel findAssemblyCandidate(@Nullable ResourceLocation id) {
+    public @Nullable StructureModel findAssemblyCandidate(@Nullable Identifier id) {
         if (id == null) {
             return null;
         }
@@ -1259,7 +1259,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Override
     protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
         CompoundTag recipesTag = new CompoundTag();
-        for (Map.Entry<ResourceLocation, RecipeStateModel> entry : activeRecipes.entrySet()) {
+        for (Map.Entry<Identifier, RecipeStateModel> entry : activeRecipes.entrySet()) {
             recipesTag.put(entry.getKey().toString(), entry.getValue().save(new CompoundTag(), registries));
         }
         tag.put("activeRecipes", recipesTag);
@@ -1306,7 +1306,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         tag.putLong("recipeSelectionSequence", recipeSelectionSequence);
         if (!inputItemLastStartedSequence.isEmpty()) {
             CompoundTag inputHistoryTag = new CompoundTag();
-            for (Map.Entry<ResourceLocation, Long> entry : inputItemLastStartedSequence.entrySet()) {
+            for (Map.Entry<Identifier, Long> entry : inputItemLastStartedSequence.entrySet()) {
                 inputHistoryTag.putLong(entry.getKey().toString(), entry.getValue());
             }
             tag.put("inputItemLastStartedSequence", inputHistoryTag);
@@ -1333,14 +1333,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         CompoundTag recipesTag = tag.getCompound("activeRecipes");
         for (String key : recipesTag.getAllKeys()) {
-            ResourceLocation recipeId = ResourceLocation.tryParse(key);
+            Identifier recipeId = Identifier.tryParse(key);
             if (recipeId != null) {
                 activeRecipes.put(recipeId, RecipeStateModel.load(recipesTag.getCompound(key), registries));
             }
         }
-        structure = tag.contains("structureId") ? StructureManager.STRUCTURES.get(ResourceLocation.tryParse(tag.getString("structureId"))) : null;
+        structure = tag.contains("structureId") ? StructureManager.STRUCTURES.get(Identifier.tryParse(tag.getString("structureId"))) : null;
         isFormed = tag.contains("isFormed") ? tag.getBoolean("isFormed") : structure != null;
-        lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? ResourceLocation.tryParse(tag.getString("lastStartedRecipeId")) : null;
+        lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? Identifier.tryParse(tag.getString("lastStartedRecipeId")) : null;
         lastRecipeStartTime = tag.contains("lastRecipeStartTime") ? tag.getLong("lastRecipeStartTime") : Long.MIN_VALUE;
         lastProgressTime = tag.contains("lastProgressTime") ? tag.getLong("lastProgressTime") : Long.MIN_VALUE;
         recipeModeOverride = tag.contains("RecipeSelectionMode") ? RecipeSelectionMode.parse(tag.getString("RecipeSelectionMode")) : null;
@@ -1351,13 +1351,13 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         networkLink = tag.contains("NetworkLink") ? LinkData.load(tag.getCompound("NetworkLink")) : null;
         lastLinkExport = tag.contains("LastLinkExport") ? tag.getLong("LastLinkExport") : -1L;
         assemblyTiers.copyFrom(TierPrefs.load(tag.getCompound("AssemblyTiers")));
-        assemblyStructureId = tag.contains("AssemblyStructure") ? ResourceLocation.tryParse(tag.getString("AssemblyStructure")) : null;
-        selectedRecipeId = tag.contains("selectedRecipe") ? ResourceLocation.tryParse(tag.getString("selectedRecipe")) : null;
+        assemblyStructureId = tag.contains("AssemblyStructure") ? Identifier.tryParse(tag.getString("AssemblyStructure")) : null;
+        selectedRecipeId = tag.contains("selectedRecipe") ? Identifier.tryParse(tag.getString("selectedRecipe")) : null;
         recipeSelectionSequence = tag.getLong("recipeSelectionSequence");
         inputItemLastStartedSequence.clear();
         CompoundTag inputHistoryTag = tag.getCompound("inputItemLastStartedSequence");
         for (String key : inputHistoryTag.getAllKeys()) {
-            ResourceLocation itemId = ResourceLocation.tryParse(key);
+            Identifier itemId = Identifier.tryParse(key);
             if (itemId != null) {
                 inputItemLastStartedSequence.put(itemId, inputHistoryTag.getLong(key));
             }
@@ -1420,7 +1420,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return getRecipeSelectionMode() == RecipeSelectionMode.MANUAL;
     }
 
-    public void selectRecipe(@Nullable ResourceLocation recipeId) {
+    public void selectRecipe(@Nullable Identifier recipeId) {
         if (recipeId != null) {
             var recipe = MachineRecipeManager.RECIPES.get(recipeId);
             if (recipe == null || structure == null || !recipe.runsIn(structure.id())) {
@@ -1432,7 +1432,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         markChanged();
     }
 
-    public void requestRecipe(Object owner, ResourceLocation recipeId, long gameTime, int crafts) {
+    public void requestRecipe(Object owner, Identifier recipeId, long gameTime, int crafts) {
         if (!recipeId.equals(requestedRecipeId)) {
             var recipe = MachineRecipeManager.RECIPES.get(recipeId);
             if (recipe == null || structure == null || !recipe.runsIn(structure.id())) {
@@ -1446,7 +1446,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         requestExpiresAt = gameTime + REQUEST_TIMEOUT;
     }
 
-    public void clearRequest(Object owner, ResourceLocation recipeId) {
+    public void clearRequest(Object owner, Identifier recipeId) {
         if (owner == requestOwner && recipeId.equals(requestedRecipeId)) {
             requestedRecipeId = null;
             requestOwner = null;
@@ -1501,11 +1501,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return lastLinkExport;
     }
 
-    public boolean isRecipeRunning(ResourceLocation recipeId) {
+    public boolean isRecipeRunning(Identifier recipeId) {
         return activeRecipes.containsKey(recipeId);
     }
 
-    private @Nullable ResourceLocation activeRequest(long gameTime) {
+    private @Nullable Identifier activeRequest(long gameTime) {
         if (requestedRecipeId != null && gameTime > requestExpiresAt) {
             requestedRecipeId = null;
             requestOwner = null;

@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.port.replication.matter.compat;
 import io.ticticboom.mods.mm.compat.kjs.builder.PortConfigBuilderJS;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.replication.matter.ReplicationMatterPortStorageModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +12,7 @@ import java.util.List;
 public class ReplicationMatterConfigBuilderJS extends PortConfigBuilderJS {
 
     private int capacity = ReplicationMatterPortStorageModel.DEFAULT_CAPACITY;
-    private final List<ResourceLocation> matter = new ArrayList<>();
+    private final List<Identifier> matter = new ArrayList<>();
     private int tanks = 0;
     private int priority = 0;
     private boolean network = true;
@@ -23,7 +23,7 @@ public class ReplicationMatterConfigBuilderJS extends PortConfigBuilderJS {
     }
 
     public ReplicationMatterConfigBuilderJS matter(String type) {
-        this.matter.add(ResourceLocation.parse(type));
+        this.matter.add(Identifier.parse(type));
         return this;
     }
 

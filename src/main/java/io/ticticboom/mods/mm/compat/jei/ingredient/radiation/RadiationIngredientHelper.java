@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.util.RadiationText;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,8 +27,8 @@ public class RadiationIngredientHelper implements IIngredientHelper<RadiationIng
     }
 
     @Override
-    public @NotNull ResourceLocation getResourceLocation(@NotNull RadiationIngredient ingredient) {
-        var parsed = ingredient.isotope() == null ? null : ResourceLocation.tryParse(ingredient.isotope());
+    public @NotNull Identifier getResourceLocation(@NotNull RadiationIngredient ingredient) {
+        var parsed = ingredient.isotope() == null ? null : Identifier.tryParse(ingredient.isotope());
         return parsed != null ? parsed : Ref.id("nuclear_radiation/any");
     }
 

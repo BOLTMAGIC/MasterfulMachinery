@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import net.minecraft.core.Direction;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.client.model.generators.*;
@@ -42,7 +42,7 @@ public class MMBlockstateProvider extends BlockStateProvider {
         }
     }
 
-    public BlockModelBuilder dynamicBlockNorthOverlay(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation overlayTexture) {
+    public BlockModelBuilder dynamicBlockNorthOverlay(Identifier loc, Identifier baseTexture, Identifier overlayTexture) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
             .texture("particle", overlayTexture)
                 .transforms()
@@ -77,7 +77,7 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
-    public BlockModelBuilder controllerModel(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation frameTexture, ResourceLocation screenTexture) {
+    public BlockModelBuilder controllerModel(Identifier loc, Identifier baseTexture, Identifier frameTexture, Identifier screenTexture) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                 .texture("particle", frameTexture)
                 .transforms()
@@ -125,7 +125,7 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
-    public BlockModelBuilder dynamicBlock(ResourceLocation loc, ResourceLocation baseTexture, ResourceLocation overlayTexture) {
+    public BlockModelBuilder dynamicBlock(Identifier loc, Identifier baseTexture, Identifier overlayTexture) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                 .texture("particle", overlayTexture)
                 .transforms()
@@ -157,7 +157,7 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
-    public BlockModelBuilder connectedBlock(ResourceLocation loc, ResourceLocation overlayTexture) {
+    public BlockModelBuilder connectedBlock(Identifier loc, Identifier overlayTexture) {
         var builder = models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(mcLoc("block/block")))
                 .texture("particle", Ref.id("block/base_block_ctm0"))
                 .texture("overlay", overlayTexture);
@@ -180,7 +180,7 @@ public class MMBlockstateProvider extends BlockStateProvider {
                 .end();
     }
 
-    public BlockModelBuilder customBlock(ResourceLocation loc, ResourceLocation model) {
+    public BlockModelBuilder customBlock(Identifier loc, Identifier model) {
         return models().getBuilder(loc.toString()).parent(new ModelFile.UncheckedModelFile(model));
     }
 

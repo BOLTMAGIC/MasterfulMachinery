@@ -21,15 +21,15 @@ import io.ticticboom.mods.mm.compat.jei.SlotGridEntry;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.util.AmountRange;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public record RecipeModel(
-        ResourceLocation id,
-        ResourceLocation structureId,
+        Identifier id,
+        Identifier structureId,
         int ticks,
         RecipeInputs inputs,
         RecipeOutputs outputs,
@@ -40,7 +40,7 @@ public record RecipeModel(
         boolean requestOnly,
         JsonObject config
 ) {
-    public static RecipeModel parse(JsonObject json, ResourceLocation id) {
+    public static RecipeModel parse(JsonObject json, Identifier id) {
         AmountRange.resetKeyAllocation();
         var structrueId = ParserUtils.parseId(json, "structureId");
         var ticks = json.get("ticks").getAsInt();
@@ -63,7 +63,7 @@ public record RecipeModel(
     /**
      * Checks the mode and the names that entries refer to, and connects flex outputs to their flex input.
      */
-    private static void linkEntries(ResourceLocation id, RecipeMode mode, @Nullable FlexCost cost, RecipeInputs inputs, RecipeOutputs outputs) {
+    private static void linkEntries(Identifier id, RecipeMode mode, @Nullable FlexCost cost, RecipeInputs inputs, RecipeOutputs outputs) {
         // count, then flex inputs first: the others are paid per run with the cost multiplier the flex inputs set
         inputs.inputs().sort(Comparator.comparingInt((IRecipeIngredientEntry input) -> input instanceof CountRecipeIngredientEntry ? 0
                 : input instanceof FlexRecipeIngredientEntry ? 1 : 2));
@@ -132,12 +132,12 @@ public record RecipeModel(
         return id.getNamespace() + "/" + id.getPath() + ".json";
     }
 
-    public List<ResourceLocation> allStructureIds() {
-        var ids = new ArrayList<ResourceLocation>();
+    public List<Identifier> allStructureIds() {
+        var ids = new ArrayList<Identifier>();
         ids.add(structureId);
         if (config != null && config.has("structureIds") && config.get("structureIds").isJsonArray()) {
             for (JsonElement e : config.getAsJsonArray("structureIds")) {
-                var id = ResourceLocation.tryParse(e.getAsString());
+                var id = Identifier.tryParse(e.getAsString());
                 if (id != null && !ids.contains(id)) {
                     ids.add(id);
                 }
@@ -146,7 +146,7 @@ public record RecipeModel(
         return ids;
     }
 
-    public boolean runsIn(ResourceLocation structure) {
+    public boolean runsIn(Identifier structure) {
         return allStructureIds().contains(structure);
     }
 

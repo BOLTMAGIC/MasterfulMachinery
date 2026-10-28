@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 
 import java.util.Collection;
@@ -47,7 +47,7 @@ public final class PortTiers {
         }
     }
 
-    public static String key(ResourceLocation portTypeId, boolean input) {
+    public static String key(Identifier portTypeId, boolean input) {
         return portTypeId + (input ? "/input" : "/output");
     }
 

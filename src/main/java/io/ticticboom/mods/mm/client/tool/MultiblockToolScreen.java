@@ -35,7 +35,7 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
@@ -90,7 +90,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private enum Tab {
         STRUCTURES("structures"), MATERIALS("materials"), SETTINGS("settings"), CONFIG("config"), ADMIN("admin");
 
-        final ResourceLocation icon;
+        final Identifier icon;
 
         Tab(String iconName) {
             this.icon = Ref.id("textures/gui/tool_tabs/" + iconName + ".png");
@@ -156,7 +156,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
         for (BuildableStructure structure : BuildableStructureRegistry.CLIENT.all()) {
             entries.add(GalleryList.Entry.of(structure));
         }
-        ResourceLocation selectedId = selected != null ? selected.id() : selectedBuilder != null ? selectedBuilder.id() : null;
+        Identifier selectedId = selected != null ? selected.id() : selectedBuilder != null ? selectedBuilder.id() : null;
         this.gallery = new GalleryList(font, entries, selectedId, selectedBuilder != null, this::select, this::openCategoryPopup);
         this.materials = new ToolMaterialsTab(font, menu, prefs, false);
         this.compactMaterials = new ToolMaterialsTab(font, menu, prefs, true);

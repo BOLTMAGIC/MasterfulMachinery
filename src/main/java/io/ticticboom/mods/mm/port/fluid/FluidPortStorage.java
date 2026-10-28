@@ -18,7 +18,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.capabilities.BlockCapability;
@@ -89,7 +89,7 @@ public class FluidPortStorage implements IPortStorage, ILockablePortStorage {
         var lockedList = tag.getList("LockedFluids", Tag.TAG_STRING);
         var lockedFluids = new Fluid[lockedList.size()];
         for (int i = 0; i < lockedList.size(); i++) {
-            var id = ResourceLocation.tryParse(lockedList.getString(i));
+            var id = Identifier.tryParse(lockedList.getString(i));
             var fluid = id == null ? Fluids.EMPTY : BuiltInRegistries.FLUID.get(id);
             lockedFluids[i] = fluid == Fluids.EMPTY ? null : fluid;
         }

@@ -4,12 +4,12 @@ import io.ticticboom.mods.mm.extra.ExtraBlockModel;
 import net.minecraft.network.chat.Component;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 @Getter
 public class ExtraBlockBuilderJS {
     private final String id;
-    private ResourceLocation type;
+    private Identifier type;
     private String name;
     private String connectGroup;
 
@@ -22,7 +22,7 @@ public class ExtraBlockBuilderJS {
         return this;
     }
 
-    public ExtraBlockBuilderJS type(ResourceLocation type) {
+    public ExtraBlockBuilderJS type(Identifier type) {
         this.type = type;
         return this;
     }

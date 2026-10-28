@@ -11,7 +11,7 @@ import io.ticticboom.mods.mm.structure.attachment.visuals.FluidVolumeVisual;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,8 +20,8 @@ import java.util.function.Consumer;
 @Getter
 public class StructureBuilderJS {
 
-    private final List<ResourceLocation> controllers = new ArrayList<>();
-    private final ResourceLocation id;
+    private final List<Identifier> controllers = new ArrayList<>();
+    private final Identifier id;
     private String name;
     private Consumer<StructureLayoutBuilderJS> layoutConsumer;
     private int maxParallelRecipes = -1;
@@ -29,7 +29,7 @@ public class StructureBuilderJS {
     private JsonElement geoModel;
 
     public StructureBuilderJS(String id) {
-        this.id = ResourceLocation.tryParse(id);
+        this.id = Identifier.tryParse(id);
     }
 
     public StructureBuilderJS name(String name) {
@@ -38,7 +38,7 @@ public class StructureBuilderJS {
     }
 
     public StructureBuilderJS controllerId(String id) {
-        controllers.add(ResourceLocation.tryParse(id));
+        controllers.add(Identifier.tryParse(id));
         return this;
     }
 

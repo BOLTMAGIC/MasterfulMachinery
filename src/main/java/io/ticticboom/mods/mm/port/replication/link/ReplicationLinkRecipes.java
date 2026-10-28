@@ -10,7 +10,7 @@ import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,7 +22,7 @@ public class ReplicationLinkRecipes {
     private static List<ItemStack> craftable = List.of();
     private static int craftableVersion = -1;
 
-    public static List<ItemStack> outputs(ResourceLocation structureId) {
+    public static List<ItemStack> outputs(Identifier structureId) {
         var result = new ArrayList<ItemStack>();
         for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(structureId)) {
             for (ItemStack stack : itemOutputs(recipe)) {
@@ -65,7 +65,7 @@ public class ReplicationLinkRecipes {
             if (!(holder.getBlock().get() instanceof IPortBlock block) || !Ref.Ports.REPLICATION_LINK.equals(block.getModel().type())) {
                 continue;
             }
-            for (ResourceLocation controllerId : block.getModel().controllerIds().getIds()) {
+            for (Identifier controllerId : block.getModel().controllerIds().getIds()) {
                 for (StructureModel structure : StructureManager.getStructuresForController(controllerId)) {
                     for (ItemStack stack : outputs(structure.id())) {
                         addUnique(result, stack);

@@ -11,7 +11,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -26,7 +26,7 @@ import java.util.Map;
 
 public final class MMConfigScreen extends Screen {
     private enum Page { SERVER, CLIENT, EFFECTS }
-    private record EffectRow(ResourceLocation id, String name, @Nullable String field) {}
+    private record EffectRow(Identifier id, String name, @Nullable String field) {}
     private static final int ROW = 17;
     private static final int BG = 0xFF202126;
     private static final int PANEL = 0xFF303139;
@@ -40,7 +40,7 @@ public final class MMConfigScreen extends Screen {
     @Nullable private Map<String, String> serverValues;
     @Nullable private MMConfigOptions.Option editing;
     @Nullable private EffectRow editingEffect;
-    @Nullable private ResourceLocation expandedController;
+    @Nullable private Identifier expandedController;
     @Nullable private EditBox editor;
     @Nullable private Component error;
     private int scroll;
@@ -78,15 +78,15 @@ public final class MMConfigScreen extends Screen {
     }
 
     private List<EffectRow> effectRows() {
-        Map<ResourceLocation, String> controllers = new LinkedHashMap<>();
+        Map<Identifier, String> controllers = new LinkedHashMap<>();
         for (var holder : MMControllerRegistry.CONTROLLERS) {
             var block = holder.getBlock().get();
             if (block instanceof IControllerPart) {
-                ResourceLocation id = BuiltInRegistries.BLOCK.getKey(block);
+                Identifier id = BuiltInRegistries.BLOCK.getKey(block);
                 if (id != null) controllers.put(id, block.getName().getString());
             }
         }
-        for (ResourceLocation id : WorkingEffectsConfig.snapshot().keySet())
+        for (Identifier id : WorkingEffectsConfig.snapshot().keySet())
             controllers.putIfAbsent(id, id.toString());
         var sorted = new ArrayList<>(controllers.entrySet());
         sorted.sort(Comparator.comparing(entry -> entry.getValue().toLowerCase(java.util.Locale.ROOT)));

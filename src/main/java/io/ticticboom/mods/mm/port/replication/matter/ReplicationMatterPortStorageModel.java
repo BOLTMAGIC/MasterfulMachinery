@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,7 +13,7 @@ import java.util.function.Supplier;
 
 public record ReplicationMatterPortStorageModel(
         int capacity,
-        List<ResourceLocation> matter,
+        List<Identifier> matter,
         Supplier<Boolean> network,
         int priority,
         int tierRank
@@ -42,8 +42,8 @@ public record ReplicationMatterPortStorageModel(
         return new ReplicationMatterPortStorageModel(capacity, Collections.unmodifiableList(matter), network, clampPriority(priority), tierRank);
     }
 
-    private static List<ResourceLocation> parseMatter(JsonObject json) {
-        var result = new ArrayList<ResourceLocation>();
+    private static List<Identifier> parseMatter(JsonObject json) {
+        var result = new ArrayList<Identifier>();
         if (!json.has("matter") || json.get("matter").isJsonNull()) {
             return result;
         }

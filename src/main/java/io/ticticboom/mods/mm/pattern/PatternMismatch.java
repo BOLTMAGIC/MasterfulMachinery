@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.pattern;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Locale;
@@ -14,7 +14,7 @@ import java.util.Locale;
  * @param patternAmount  how much of it the pattern has (0: none)
  * @param recipeAmount   how much of it the recipe uses or makes (0: none)
  */
-public record PatternMismatch(Reason reason, ResourceLocation what, long patternAmount, long recipeAmount) {
+public record PatternMismatch(Reason reason, Identifier what, long patternAmount, long recipeAmount) {
 
     public enum Reason {
         /** No recipe of the machine makes the pattern's main output. */
@@ -40,7 +40,7 @@ public record PatternMismatch(Reason reason, ResourceLocation what, long pattern
 
     @Nullable
     public static PatternMismatch load(CompoundTag tag) {
-        ResourceLocation what = ResourceLocation.tryParse(tag.getString("What"));
+        Identifier what = Identifier.tryParse(tag.getString("What"));
         if (what == null) {
             return null;
         }

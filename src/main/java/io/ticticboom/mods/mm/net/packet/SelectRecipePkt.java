@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -50,7 +50,7 @@ public class SelectRecipePkt implements CustomPacketPayload {
                 return;
             }
             if (level.getBlockEntity(pkt.pos) instanceof MachineControllerBlockEntity controller) {
-                controller.selectRecipe(pkt.recipeId.isEmpty() ? null : ResourceLocation.tryParse(pkt.recipeId));
+                controller.selectRecipe(pkt.recipeId.isEmpty() ? null : Identifier.tryParse(pkt.recipeId));
             }
         });
     }

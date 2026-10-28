@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.recipe.flex;
 
 import io.ticticboom.mods.mm.compat.mysticalagriculture.MACrops;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -37,7 +37,7 @@ public final class FlexItems {
      * @return the item for this input (count 1, no NBT), or empty if the input doesn't match or the item doesn't exist
      */
     public static ItemStack resolve(FlexTemplate template, ItemStack input) {
-        ResourceLocation inputId = BuiltInRegistries.ITEM.getKey(input.getItem());
+        Identifier inputId = BuiltInRegistries.ITEM.getKey(input.getItem());
         if (inputId == null) {
             return ItemStack.EMPTY;
         }
@@ -52,7 +52,7 @@ public final class FlexItems {
         if (text.equals("{ma:crux}")) {
             return fromMA(input, MACrops.Info::crux);
         }
-        ResourceLocation outputId = ResourceLocation.tryParse(text);
+        Identifier outputId = Identifier.tryParse(text);
         if (outputId == null || !BuiltInRegistries.ITEM.containsKey(outputId)) {
             return ItemStack.EMPTY;
         }

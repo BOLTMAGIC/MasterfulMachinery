@@ -13,7 +13,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.MultiblockToolMenu;
 import io.ticticboom.mods.mm.tool.ToolData;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -64,19 +64,19 @@ public record ToolSettingsPkt(Action action, String key, int value) implements C
     }
 
     public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
-                                Predicate<ResourceLocation> structureExists, Map<String, Integer> maxTierByKey) {
+                                Predicate<Identifier> structureExists, Map<String, Integer> maxTierByKey) {
         return apply(tool, action, key, value, structureExists, id -> false, maxTierByKey);
     }
 
     public static boolean apply(@Nullable ItemStack tool, Action action, String key, int value,
-                                Predicate<ResourceLocation> structureExists, Predicate<ResourceLocation> builderStructureExists,
+                                Predicate<Identifier> structureExists, Predicate<Identifier> builderStructureExists,
                                 Map<String, Integer> maxTierByKey) {
         if (tool == null || !(tool.getItem() instanceof MultiblockToolItem)) {
             return false;
         }
         switch (action) {
             case SELECT_STRUCTURE -> {
-                ResourceLocation id = ResourceLocation.tryParse(key);
+                Identifier id = Identifier.tryParse(key);
                 if (id == null) {
                     return false;
                 }

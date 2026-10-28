@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.builder;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 
 import java.util.Collections;
@@ -8,7 +8,7 @@ import java.util.NavigableMap;
 import java.util.Optional;
 
 public interface TieredPortPiece {
-    ResourceLocation getPortTypeId();
+    Identifier getPortTypeId();
 
     Optional<Boolean> getInput();
 

@@ -12,12 +12,12 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
 public class PortStatusLightRenderer implements BlockEntityRenderer<BlockEntity> {
-    private static final ResourceLocation TEXTURE = Ref.id("textures/block/base_ports/port_light.png");
+    private static final Identifier TEXTURE = Ref.id("textures/block/base_ports/port_light.png");
     private static final float OUT = 0.002f;
     private static final float[][] UV = {{0, 1}, {1, 1}, {1, 0}, {0, 0}};
 

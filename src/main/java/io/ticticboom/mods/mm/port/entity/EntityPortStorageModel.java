@@ -4,7 +4,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 
 import java.util.ArrayList;
@@ -23,8 +23,8 @@ public record EntityPortStorageModel(
         int zoneWidth,
         int zoneHeight,
         int zoneDepth,
-        List<ResourceLocation> entities,
-        List<ResourceLocation> tags,
+        List<Identifier> entities,
+        List<Identifier> tags,
         int tierRank
 ) implements IPortStorageModel {
 
@@ -94,8 +94,8 @@ public record EntityPortStorageModel(
         return zoneWidth == 1 && zoneHeight == 1 && zoneDepth == 1;
     }
 
-    private static List<ResourceLocation> parseIds(JsonObject json, String field) {
-        var result = new ArrayList<ResourceLocation>();
+    private static List<Identifier> parseIds(JsonObject json, String field) {
+        var result = new ArrayList<Identifier>();
         if (!json.has(field) || json.get(field).isJsonNull()) {
             return result;
         }

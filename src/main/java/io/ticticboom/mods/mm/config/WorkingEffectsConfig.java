@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.ticticboom.mods.mm.Ref;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.loading.FMLPaths;
 import org.jetbrains.annotations.Nullable;
 
@@ -27,7 +27,7 @@ public final class WorkingEffectsConfig {
             + "overrides the controller's KubeJS/JSON settings; an empty string turns it off. interval = ticks between sounds. Reload with F3+T. "
             + "Example: \"mm:auto_crusher\": {\"sound\": \"minecraft:block.grindstone.use\", \"interval\": 25, \"particle\": \"minecraft:smoke\"}";
 
-    private static Map<ResourceLocation, Entry> entries = Map.of();
+    private static Map<Identifier, Entry> entries = Map.of();
     private static boolean loaded;
     private static int generation;
 
@@ -35,7 +35,7 @@ public final class WorkingEffectsConfig {
     }
 
     @Nullable
-    public static Entry get(ResourceLocation controllerId) {
+    public static Entry get(Identifier controllerId) {
         if (!loaded) reload();
         return entries.get(controllerId);
     }
@@ -45,7 +45,7 @@ public final class WorkingEffectsConfig {
         return generation;
     }
 
-    public static Map<ResourceLocation, Entry> snapshot() {
+    public static Map<Identifier, Entry> snapshot() {
         if (!loaded) reload();
         return Map.copyOf(entries);
     }
@@ -61,10 +61,10 @@ public final class WorkingEffectsConfig {
                 return false;
             }
         }
-        return value.isEmpty() || ResourceLocation.tryParse(value) != null;
+        return value.isEmpty() || Identifier.tryParse(value) != null;
     }
 
-    public static synchronized boolean setOverride(ResourceLocation controller, String field, String value) {
+    public static synchronized boolean setOverride(Identifier controller, String field, String value) {
         if (!validOverride(field, value)) return false;
         try {
             JsonObject json = Files.exists(FILE)
@@ -103,10 +103,10 @@ public final class WorkingEffectsConfig {
                 return;
             }
             JsonObject json = JsonParser.parseString(Files.readString(FILE, StandardCharsets.UTF_8)).getAsJsonObject();
-            Map<ResourceLocation, Entry> read = new HashMap<>();
+            Map<Identifier, Entry> read = new HashMap<>();
             for (Map.Entry<String, JsonElement> e : json.entrySet()) {
                 if (e.getKey().startsWith("_")) continue;
-                ResourceLocation id = ResourceLocation.tryParse(e.getKey());
+                Identifier id = Identifier.tryParse(e.getKey());
                 if (id == null || !e.getValue().isJsonObject()) {
                     Ref.LOG.warn("Ignoring {} in {}: expected a controller id with an object", e.getKey(), FILE);
                     continue;

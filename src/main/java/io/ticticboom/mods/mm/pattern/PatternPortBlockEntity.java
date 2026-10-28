@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.MachineLinks;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -36,7 +36,7 @@ public class PatternPortBlockEntity extends BlockEntity {
     @Nullable
     private PatternMismatch noRecipeWhy;
     // recipe found per (pattern, structure), until recipes reload
-    private final Map<List<Object>, Optional<ResourceLocation>> recipeByPattern = new HashMap<>();
+    private final Map<List<Object>, Optional<Identifier>> recipeByPattern = new HashMap<>();
     private int recipeGeneration = -1;
 
     public PatternPortBlockEntity(BlockPos pos, BlockState state) {

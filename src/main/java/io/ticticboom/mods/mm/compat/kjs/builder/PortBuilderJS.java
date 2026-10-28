@@ -9,7 +9,7 @@ import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.port.PortSides;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -22,9 +22,9 @@ import io.ticticboom.mods.mm.util.PortUtils;
 public class PortBuilderJS {
 
     private final String id;
-    private ResourceLocation type;
+    private Identifier type;
     private String name;
-    private final List<ResourceLocation> controllers = new ArrayList<>();
+    private final List<Identifier> controllers = new ArrayList<>();
     private Consumer<PortConfigBuilderJS> builder;
     private PortSides sides = PortSides.BOTH;
     private String inputName;
@@ -77,7 +77,7 @@ public class PortBuilderJS {
 
     @HideFromJS
     private PortBuilderJS putTexture(String key, String texture) {
-        var rl = ResourceLocation.tryParse(texture);
+        var rl = Identifier.tryParse(texture);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + texture);
         textures.put(key, rl.toString());
         return this;
@@ -108,14 +108,14 @@ public class PortBuilderJS {
 
     @SuppressWarnings("unused")
     public PortBuilderJS controllerId(String controllerId) {
-        var rl = ResourceLocation.tryParse(controllerId);
+        var rl = Identifier.tryParse(controllerId);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + controllerId);
         controllers.add(rl);
         return this;
     }
 
     public PortBuilderJS config(String type, Consumer<PortConfigBuilderJS> builder) {
-        var rl = ResourceLocation.tryParse(type);
+        var rl = Identifier.tryParse(type);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + type);
         this.type = rl;
         this.builder = builder;

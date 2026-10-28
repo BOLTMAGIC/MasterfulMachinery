@@ -42,7 +42,7 @@ public class EntityPortStorageFactory implements IPortStorageFactory {
         return json;
     }
 
-    private static JsonArray ids(java.util.List<net.minecraft.resources.ResourceLocation> values) {
+    private static JsonArray ids(java.util.List<net.minecraft.resources.Identifier> values) {
         var array = new JsonArray();
         for (var value : values) {
             array.add(value.toString());

@@ -18,7 +18,7 @@ import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -34,7 +34,7 @@ import io.ticticboom.mods.mm.util.PortUtils;
 public class PortTypeAnywhereStructurePiece extends StructurePiece implements TieredPortPiece {
 
     @Getter
-    private final ResourceLocation portTypeId;
+    private final Identifier portTypeId;
     @Getter
     private final Optional<Boolean> input;
     @Getter
@@ -46,18 +46,18 @@ public class PortTypeAnywhereStructurePiece extends StructurePiece implements Ti
     @Getter
     private final NavigableMap<Integer, Block> blocksByRank = new TreeMap<>();
 
-    public PortTypeAnywhereStructurePiece(ResourceLocation portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
+    public PortTypeAnywhereStructurePiece(Identifier portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
         this.portTypeId = portTypeId;
         this.input = input;
         this.minTier = minTier;
         this.maxTier = maxTier;
     }
 
-    public PortTypeAnywhereStructurePiece(ResourceLocation portTypeId, Optional<Boolean> input, int minTier) {
+    public PortTypeAnywhereStructurePiece(Identifier portTypeId, Optional<Boolean> input, int minTier) {
         this(portTypeId, input, minTier, Integer.MAX_VALUE);
     }
 
-    public static PortTypeAnywhereStructurePiece create(ResourceLocation portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
+    public static PortTypeAnywhereStructurePiece create(Identifier portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
         return new PortTypeAnywhereStructurePiece(portTypeId, input, minTier, maxTier);
     }
 

@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -90,7 +90,7 @@ public class BlueprintItem extends Item {
         };
     }
 
-    public ItemStack getStructureInstance(ResourceLocation structureId) {
+    public ItemStack getStructureInstance(Identifier structureId) {
         ItemStack defaultInstance = getDefaultInstance();
         ItemNbtUtil.mutate(defaultInstance, __t -> __t.putString(TAG_STRUCTURE, structureId.toString()));
 
@@ -103,17 +103,17 @@ public class BlueprintItem extends Item {
     }
 
     @Nullable
-    public static ResourceLocation getStructureId(ItemStack stack) {
+    public static Identifier getStructureId(ItemStack stack) {
         if (!ItemNbtUtil.hasTag(stack)) {
             return null;
         }
 
         assert ItemNbtUtil.getTag(stack) != null;
-        return ResourceLocation.tryParse(ItemNbtUtil.getTag(stack).getString(TAG_STRUCTURE));
+        return Identifier.tryParse(ItemNbtUtil.getTag(stack).getString(TAG_STRUCTURE));
     }
 
     public static StructureModel getStructure(ItemStack stack) {
-        ResourceLocation id = getStructureId(stack);
+        Identifier id = getStructureId(stack);
         if (id == null) {
             return null;
         }
@@ -138,7 +138,7 @@ public class BlueprintItem extends Item {
             }
         }
 
-        ResourceLocation id = getStructureId(stack);
+        Identifier id = getStructureId(stack);
         return id == null ? null : Component.literal(id.toString());
     }
 }

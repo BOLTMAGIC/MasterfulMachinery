@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.builder.DismantlePlanner;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -184,7 +184,7 @@ public class MultiblockToolItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        ResourceLocation structure = ToolData.structure(stack);
+        Identifier structure = ToolData.structure(stack);
         if (structure == null) {
             structure = ToolData.builderStructure(stack);
         }

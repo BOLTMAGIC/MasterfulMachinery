@@ -4,7 +4,7 @@ import io.ticticboom.mods.mm.port.common.ISlottedPortStorageModel;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.material.Fluid;
 
@@ -26,11 +26,11 @@ public record FluidPortStorageModel(
         }
         for (String entry : fluids) {
             if (entry.startsWith("#")) {
-                var tag = TagKey.create(Registries.FLUID, ResourceLocation.parse(entry.substring(1)));
+                var tag = TagKey.create(Registries.FLUID, Identifier.parse(entry.substring(1)));
                 if (fluid.builtInRegistryHolder().is(tag)) {
                     return true;
                 }
-            } else if (ResourceLocation.parse(entry).equals(BuiltInRegistries.FLUID.getKey(fluid))) {
+            } else if (Identifier.parse(entry).equals(BuiltInRegistries.FLUID.getKey(fluid))) {
                 return true;
             }
         }

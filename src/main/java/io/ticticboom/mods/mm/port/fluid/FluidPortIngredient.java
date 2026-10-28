@@ -18,7 +18,7 @@ import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -30,9 +30,9 @@ public class FluidPortIngredient implements IPortIngredient {
     private final AmountRange amount;
     private final Fluid fluid;
     @Getter
-    private final ResourceLocation fluidId;
+    private final Identifier fluidId;
 
-    public FluidPortIngredient(ResourceLocation fluidId, AmountRange amount) {
+    public FluidPortIngredient(Identifier fluidId, AmountRange amount) {
         this.amount = amount;
         this.fluidId = fluidId;
         fluid = BuiltInRegistries.FLUID.get(fluidId);

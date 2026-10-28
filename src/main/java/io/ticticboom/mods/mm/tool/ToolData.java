@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,7 +22,7 @@ public final class ToolData {
 
     private static final String ANCHOR_KEY = "PlacementAnchor";
 
-    public record Anchor(ResourceLocation dimension, BlockPos pos, Direction face, Direction facing) {
+    public record Anchor(Identifier dimension, BlockPos pos, Direction face, Direction facing) {
         public Anchor {
             pos = pos.immutable();
             if (facing.getAxis().isVertical()) throw new IllegalArgumentException("Anchor facing must be horizontal");
@@ -34,7 +34,7 @@ public final class ToolData {
         CompoundTag root = tag(stack);
         if (!root.contains(ANCHOR_KEY, Tag.TAG_COMPOUND)) return null;
         CompoundTag tag = root.getCompound(ANCHOR_KEY);
-        ResourceLocation dimension = ResourceLocation.tryParse(tag.getString("Dimension"));
+        Identifier dimension = Identifier.tryParse(tag.getString("Dimension"));
         Direction face = Direction.byName(tag.getString("Face"));
         Direction facing = Direction.byName(tag.getString("Facing"));
         if (dimension == null || face == null || facing == null || facing.getAxis().isVertical()
@@ -68,23 +68,23 @@ public final class ToolData {
         return ToolComponents.read(stack, ToolComponents.SETTINGS);
     }
 
-    public static @Nullable ResourceLocation structure(ItemStack stack) {
+    public static @Nullable Identifier structure(ItemStack stack) {
         CompoundTag tag = tag(stack);
         if (!tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || tag.getBoolean(BUILDER_KEY)) {
             return null;
         }
-        return ResourceLocation.tryParse(tag.getString(STRUCTURE_KEY));
+        return Identifier.tryParse(tag.getString(STRUCTURE_KEY));
     }
 
-    public static @Nullable ResourceLocation builderStructure(ItemStack stack) {
+    public static @Nullable Identifier builderStructure(ItemStack stack) {
         CompoundTag tag = tag(stack);
         if (!tag.contains(STRUCTURE_KEY, Tag.TAG_STRING) || !tag.getBoolean(BUILDER_KEY)) {
             return null;
         }
-        return ResourceLocation.tryParse(tag.getString(STRUCTURE_KEY));
+        return Identifier.tryParse(tag.getString(STRUCTURE_KEY));
     }
 
-    public static void setStructure(ItemStack stack, @Nullable ResourceLocation id) {
+    public static void setStructure(ItemStack stack, @Nullable Identifier id) {
         ToolComponents.update(stack, ToolComponents.SETTINGS, tag -> {
             // a new selection is placed fresh: the old anchor was for the old structure
             tag.remove(ANCHOR_KEY);
@@ -97,7 +97,7 @@ public final class ToolData {
         });
     }
 
-    public static void setBuilderStructure(ItemStack stack, ResourceLocation id) {
+    public static void setBuilderStructure(ItemStack stack, Identifier id) {
         ToolComponents.update(stack, ToolComponents.SETTINGS, tag -> {
             // a new selection is placed fresh: the old anchor was for the old structure
             tag.remove(ANCHOR_KEY);

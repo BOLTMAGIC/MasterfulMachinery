@@ -15,7 +15,7 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -35,7 +35,7 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
     private final TagKey<Item> tag;
     private final ConditionalLazy<List<ItemStack>> stacks;
 
-    public TagItemPortIngredient(ResourceLocation tagId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
+    public TagItemPortIngredient(Identifier tagId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
         super(count, createPredicate(tagId), requiredNbt, nbtStrong, components);
         this.tag = ItemTags.create(tagId);
         // Registry.getTag returns an Optional<HolderSet.Named<Item>> of holders rather than
@@ -69,7 +69,7 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
         return all.isEmpty() ? null : PortContent.item(all.get(0).copyWithCount(1), all.get(0).getCount());
     }
 
-    private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
+    private static Predicate<ItemStack> createPredicate(Identifier id) {
         var key = ItemTags.create(id);
         return  i -> i.is(key);
     }

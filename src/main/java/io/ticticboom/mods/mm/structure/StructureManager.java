@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.setup.MMRegisters;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -26,11 +26,11 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
         super(Ref.GSON, "mm/structures");
     }
 
-    public static final Map<ResourceLocation, StructureModel> STRUCTURES = new HashMap<>();
-    public static final Map<ResourceLocation, ItemStack> STRUCTURE_BLUEPRINTS = new HashMap<>();
-    public static final Map<ResourceLocation, List<StructureModel>> STRUCTURES_BY_CONTROLLER = new HashMap<>();
+    public static final Map<Identifier, StructureModel> STRUCTURES = new HashMap<>();
+    public static final Map<Identifier, ItemStack> STRUCTURE_BLUEPRINTS = new HashMap<>();
+    public static final Map<Identifier, List<StructureModel>> STRUCTURES_BY_CONTROLLER = new HashMap<>();
 
-    public static List<StructureModel> getStructuresForController(ResourceLocation controllerId) {
+    public static List<StructureModel> getStructuresForController(Identifier controllerId) {
         if (controllerId == null) return List.of();
         var list = STRUCTURES_BY_CONTROLLER.get(controllerId);
         if (list == null) return List.of();
@@ -50,13 +50,13 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(@NotNull Map<ResourceLocation, JsonElement> jsons, @NotNull ResourceManager resourceManager, ProfilerFiller profilerFiller) {
+    protected void apply(@NotNull Map<Identifier, JsonElement> jsons, @NotNull ResourceManager resourceManager, ProfilerFiller profilerFiller) {
         profilerFiller.push("MM Structures");
         receiveStructures(jsons);
         profilerFiller.pop();
     }
 
-    public static void receiveStructures(Map<ResourceLocation, JsonElement> jsons) {
+    public static void receiveStructures(Map<Identifier, JsonElement> jsons) {
         STRUCTURES.clear();
         STRUCTURES_BY_CONTROLLER.clear();
         try {
@@ -64,7 +64,7 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
             // Parsed independently for the same reason as recipes: one structure referencing a
             // port from an uninstalled integration mod should not make the world unloadable.
             int skipped = 0;
-            for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {
+            for (Map.Entry<Identifier, JsonElement> entry : jsons.entrySet()) {
                 if (SingleMachines.isImplicitStructure(entry.getKey())) {
                     continue;
                 }
@@ -104,15 +104,15 @@ public class StructureManager extends SimpleJsonResourceReloadListener {
         return STRUCTURES.values().stream().filter(s -> !SingleMachines.isImplicitStructure(s.id())).toList();
     }
 
-    private static void storeStructure(ResourceLocation id, StructureModel structure) {
+    private static void storeStructure(Identifier id, StructureModel structure) {
         STRUCTURES.put(id, structure);
         STRUCTURE_BLUEPRINTS.put(id, MMRegisters.BLUEPRINT.get().getStructureInstance(id));
-        for (ResourceLocation controllerId : structure.controllerIds().getIds()) {
+        for (Identifier controllerId : structure.controllerIds().getIds()) {
             indexByController(controllerId, structure);
         }
     }
 
-    private static void indexByController(ResourceLocation controllerId, StructureModel structure) {
+    private static void indexByController(Identifier controllerId, StructureModel structure) {
         var list = STRUCTURES_BY_CONTROLLER.computeIfAbsent(controllerId, x -> new ArrayList<>());
         list.removeIf(existing -> existing.id().equals(structure.id()));
         list.add(structure);

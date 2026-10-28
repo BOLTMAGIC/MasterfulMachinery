@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
 import net.neoforged.neoforge.client.model.generators.ModelFile;
@@ -24,12 +24,12 @@ public class PortUtils {
         return sided ? id(id, input) : id;
     }
 
-    public static boolean sided(ResourceLocation type) {
+    public static boolean sided(Identifier type) {
         var portType = MMPortRegistry.get(type);
         return portType == null || portType.hasSides();
     }
 
-    public static boolean sideMatches(ResourceLocation type, boolean modelInput, java.util.Optional<Boolean> wanted) {
+    public static boolean sideMatches(Identifier type, boolean modelInput, java.util.Optional<Boolean> wanted) {
         if (!sided(type)) {
             return true;
         }
@@ -54,11 +54,11 @@ public class PortUtils {
     }
 
     public static void commonGenerateModel(MMBlockstateProvider provider, RegistryGroupHolder groupHolder,
-            boolean isInput, ResourceLocation inputOverlay, ResourceLocation outputOverlay) {
+            boolean isInput, Identifier inputOverlay, Identifier outputOverlay) {
         var block = groupHolder.getBlock().get();
         var base = Ref.Textures.BASE_BLOCK;
         var overlay = isInput ? inputOverlay : outputOverlay;
-        ResourceLocation custom = null;
+        Identifier custom = null;
         if (block instanceof IPortBlock portBlock) {
             var model = portBlock.getModel();
             base = Objects.requireNonNullElse(model.baseTexture(), base);
@@ -75,7 +75,7 @@ public class PortUtils {
     }
 
     public static void fillStageGenerateModel(MMBlockstateProvider provider, RegistryGroupHolder groupHolder,
-            boolean isInput, ResourceLocation inputOverlay, ResourceLocation outputOverlay,
+            boolean isInput, Identifier inputOverlay, Identifier outputOverlay,
             IntegerProperty fill, int maxFill) {
         var block = groupHolder.getBlock().get();
         var packOverridesTextures = block instanceof IPortBlock portBlock
@@ -94,7 +94,7 @@ public class PortUtils {
         var models = new ModelFile[maxFill + 1];
         models[maxFill] = provider.dynamicBlock(id, base, stageTexture(overlay, maxFill));
         for (int stage = 0; stage < maxFill; stage++) {
-            var stageId = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "_fill" + stage);
+            var stageId = Identifier.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "_fill" + stage);
             models[stage] = provider.dynamicBlock(stageId, base, stageTexture(overlay, stage));
         }
         provider.getVariantBuilder(block).forAllStates(state -> ConfiguredModel.builder()
@@ -102,7 +102,7 @@ public class PortUtils {
                 .build());
     }
 
-    private static ResourceLocation stageTexture(ResourceLocation overlay, int stage) {
-        return ResourceLocation.fromNamespaceAndPath(overlay.getNamespace(), overlay.getPath() + "_fill" + stage);
+    private static Identifier stageTexture(Identifier overlay, int stage) {
+        return Identifier.fromNamespaceAndPath(overlay.getNamespace(), overlay.getPath() + "_fill" + stage);
     }
 }

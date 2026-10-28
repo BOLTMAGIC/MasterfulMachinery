@@ -6,7 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -16,14 +16,14 @@ import org.jetbrains.annotations.Nullable;
  */
 @Getter
 public final class PatternRun {
-    private final ResourceLocation recipeId;
+    private final Identifier recipeId;
     private final RecipeStateModel state;
     private final PatternBuffer buffer;
     private final BlockPos returnPos;
     private final Direction returnFace;
     private boolean returning;
 
-    public PatternRun(ResourceLocation recipeId, RecipeStateModel state, PatternBuffer buffer, BlockPos returnPos, Direction returnFace) {
+    public PatternRun(Identifier recipeId, RecipeStateModel state, PatternBuffer buffer, BlockPos returnPos, Direction returnFace) {
         this.recipeId = recipeId;
         this.state = state;
         this.buffer = buffer;
@@ -49,7 +49,7 @@ public final class PatternRun {
     /** @return null if the data is broken */
     @Nullable
     public static PatternRun load(CompoundTag tag, HolderLookup.Provider registries) {
-        ResourceLocation recipeId = ResourceLocation.tryParse(tag.getString("Recipe"));
+        Identifier recipeId = Identifier.tryParse(tag.getString("Recipe"));
         Direction face = Direction.byName(tag.getString("ReturnFace"));
         if (recipeId == null || face == null || !tag.contains("ReturnPos")) {
             return null;

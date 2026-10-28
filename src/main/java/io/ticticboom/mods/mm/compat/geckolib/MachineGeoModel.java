@@ -1,23 +1,23 @@
 package io.ticticboom.mods.mm.compat.geckolib;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import software.bernie.geckolib.model.GeoModel;
 
 public class MachineGeoModel extends GeoModel<MachineGeoAnimatable> {
 
     @Override
-    public ResourceLocation getModelResource(MachineGeoAnimatable animatable) {
+    public Identifier getModelResource(MachineGeoAnimatable animatable) {
         return animatable.config().model();
     }
 
     @Override
-    public ResourceLocation getTextureResource(MachineGeoAnimatable animatable) {
+    public Identifier getTextureResource(MachineGeoAnimatable animatable) {
         return animatable.config().texture();
     }
 
     @Override
-    public ResourceLocation getAnimationResource(MachineGeoAnimatable animatable) {
-        ResourceLocation animations = animatable.config().animations();
+    public Identifier getAnimationResource(MachineGeoAnimatable animatable) {
+        Identifier animations = animatable.config().animations();
         return animations != null ? animations : animatable.config().model();
     }
 }

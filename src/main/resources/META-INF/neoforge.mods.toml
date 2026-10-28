@@ -42,7 +42,7 @@ config="mixins.mm.compat.json"
     # The type of dependency: required, optional, incompatible or discouraged
     type="required" #mandatory
     # The version range of the dependency
-    versionRange="[21.1.0,)" #mandatory
+    versionRange="[26.1.2,)" #mandatory
     # An ordering relationship for the dependency - BEFORE, AFTER or NONE
     ordering="NONE"
     # Side this dependency is applied on - BOTH, CLIENT or SERVER
@@ -52,30 +52,24 @@ config="mixins.mm.compat.json"
     modId="minecraft"
     type="required"
 # This version range declares a minimum of the current minecraft version up to but not including the next major version
-    versionRange="[1.21.1,1.21.2)"
+    versionRange="[26.1.2,26.2)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.mm]]
     modId="jei"
     type="required"
-    versionRange="[19,20)"
+    versionRange="[29,)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.mm]]
     modId="kubejs"
     type="optional"
-    versionRange="[2101,2102)"
+    versionRange="[26.1.2-8,)"
     ordering="BEFORE"
     side="BOTH"
 [[dependencies.mm]]
     modId="geckolib"
     type="optional"
-    versionRange="[4.5,)"
-    ordering="NONE"
-    side="BOTH"
-[[dependencies.mm]]
-    modId="create"
-    type="optional"
-    versionRange="[6.0.10,6.1.0)"
+    versionRange="[5,)"
     ordering="NONE"
     side="BOTH"

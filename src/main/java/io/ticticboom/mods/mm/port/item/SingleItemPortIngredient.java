@@ -18,7 +18,7 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -35,14 +35,14 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     private final Item item;
     private final ItemStack stack;
     @Getter
-    private final ResourceLocation itemId;
+    private final Identifier itemId;
 
     @Override
     protected Item indexedItem() {
         return item;
     }
 
-    public SingleItemPortIngredient(ResourceLocation itemId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
+    public SingleItemPortIngredient(Identifier itemId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
         super(count, createPredicate(itemId), requiredNbt, nbtStrong, components);
         this.itemId = itemId;
         item = BuiltInRegistries.ITEM.get(itemId);
@@ -77,7 +77,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
         return stack.copyWithCount(1);
     }
 
-    private static Predicate<ItemStack> createPredicate(ResourceLocation id) {
+    private static Predicate<ItemStack> createPredicate(Identifier id) {
         var item = BuiltInRegistries.ITEM.get(id);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", id));

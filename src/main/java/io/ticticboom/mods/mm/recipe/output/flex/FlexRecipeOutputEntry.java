@@ -30,7 +30,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.component.DataComponentPatch;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -68,7 +68,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
     @Nullable
     private final String scaleBy;
 
-    private ResourceLocation recipeId;
+    private Identifier recipeId;
     private FlexRecipeIngredientEntry input;
 
     // the client (JEI) and the integrated server share recipe objects; only the server asks scripts
@@ -101,7 +101,7 @@ public class FlexRecipeOutputEntry implements IRecipeOutputEntry {
         return chance >= state.getRollToken(chanceRollKey);
     }
 
-    public void bind(ResourceLocation recipeId, FlexRecipeIngredientEntry input) {
+    public void bind(Identifier recipeId, FlexRecipeIngredientEntry input) {
         this.recipeId = recipeId;
         this.input = input;
     }

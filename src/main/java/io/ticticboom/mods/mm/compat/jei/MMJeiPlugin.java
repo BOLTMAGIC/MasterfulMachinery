@@ -34,7 +34,7 @@ import mezz.jei.api.gui.builder.IClickableIngredientFactory;
 import mezz.jei.api.runtime.IClickableIngredient;
 import mezz.jei.api.neoforge.NeoForgeTypes;
 import mezz.jei.api.registration.*;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -66,10 +66,10 @@ public class MMJeiPlugin implements IModPlugin {
         JeiRecipeLookup.setRuntime(null);
     }
 
-    public static final ResourceLocation UID = Ref.id("jei_plugin");
+    public static final Identifier UID = Ref.id("jei_plugin");
 
     @Override
-    public @NotNull ResourceLocation getPluginUid() {
+    public @NotNull Identifier getPluginUid() {
         return UID;
     }
 
@@ -152,12 +152,12 @@ public class MMJeiPlugin implements IModPlugin {
             if (structure == null) {
                 continue;
             }
-            List<ResourceLocation> controllerIds = structure.controllerIds().getIds();
+            List<Identifier> controllerIds = structure.controllerIds().getIds();
             if (controllerIds.isEmpty()) {
                 Ref.LOG.error("Skipping JEI catalyst for structure {}: it lists no controllerIds.", structure.id());
                 continue;
             }
-            ResourceLocation location = controllerIds.get(0);
+            Identifier location = controllerIds.get(0);
             ItemStack stack = BuiltInRegistries.ITEM.get(location).getDefaultInstance();
             if (stack.isEmpty()) {
                 Ref.LOG.error("Skipping JEI catalyst for structure {}: no controller block '{}' exists. "

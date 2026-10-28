@@ -2,18 +2,18 @@ package io.ticticboom.mods.mm.port.replication.matter;
 
 import com.buuz135.replication.ReplicationRegistry;
 import com.buuz135.replication.api.IMatterType;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class MatterTypes {
 
-    public static IMatterType get(ResourceLocation id) {
+    public static IMatterType get(Identifier id) {
         if (id == null || ReplicationRegistry.MATTER_TYPES_REGISTRY == null) {
             return null;
         }
         return ReplicationRegistry.MATTER_TYPES_REGISTRY.get(id);
     }
 
-    public static ResourceLocation idOf(IMatterType type) {
+    public static Identifier idOf(IMatterType type) {
         if (type == null || ReplicationRegistry.MATTER_TYPES_REGISTRY == null) {
             return null;
         }

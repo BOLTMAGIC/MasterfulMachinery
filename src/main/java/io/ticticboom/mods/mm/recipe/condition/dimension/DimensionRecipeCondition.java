@@ -5,14 +5,14 @@ import net.minecraft.network.chat.Component;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.recipe.condition.IRecipeCondition;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 
 public class DimensionRecipeCondition implements IRecipeCondition {
 
-    private final ResourceLocation id;
+    private final Identifier id;
 
-    public DimensionRecipeCondition(ResourceLocation id) {
+    public DimensionRecipeCondition(Identifier id) {
         this.id = id;
     }
 

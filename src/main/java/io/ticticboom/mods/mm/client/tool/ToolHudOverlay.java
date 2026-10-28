@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.builder.me.HudState;
@@ -25,7 +25,7 @@ import java.util.List;
 
 @EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = EventBusSubscriber.Bus.GAME)
 public final class ToolHudOverlay {
-    public static final ResourceLocation ID = Ref.id("tool_hud");
+    public static final Identifier ID = Ref.id("tool_hud");
     public static final LayeredDraw.Layer OVERLAY = ToolHudOverlay::render;
     private static final long SHOW_MS = 5000;
     private static final int BAR_SEGMENTS = 10;

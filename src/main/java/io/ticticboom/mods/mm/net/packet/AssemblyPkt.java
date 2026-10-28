@@ -13,7 +13,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.Nullable;
@@ -42,17 +42,17 @@ public record AssemblyPkt(BlockPos pos, Action action, String key, int value) im
             switch (pkt.action) {
                 case SET_TIER -> controller.setAssemblyTier(pkt.key, pkt.value);
                 case SET_STRUCTURE -> {
-                    ResourceLocation id = ResourceLocation.tryParse(pkt.key);
+                    Identifier id = Identifier.tryParse(pkt.key);
                     if (id != null) {
                         controller.setAssemblyStructureId(id);
                     }
                 }
-                case START -> start(sender, controller, ResourceLocation.tryParse(pkt.key));
+                case START -> start(sender, controller, Identifier.tryParse(pkt.key));
             }
         });
     }
 
-    private static void start(ServerPlayer player, MachineControllerBlockEntity controller, @Nullable ResourceLocation shownId) {
+    private static void start(ServerPlayer player, MachineControllerBlockEntity controller, @Nullable Identifier shownId) {
         StructureModel structure = controller.findAssemblyCandidate(shownId);
         if (structure == null) {
             structure = controller.getAssemblyStructure();

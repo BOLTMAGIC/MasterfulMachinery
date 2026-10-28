@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.client.util;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 /**
  * 1.21 removed GuiGraphics.blitNineSlicedSized. Its replacement, blitSprite, only nine-slices
@@ -15,7 +15,7 @@ public final class NineSliceUtil {
     private NineSliceUtil() {
     }
 
-    public static void blitNineSliced(GuiGraphics gfx, ResourceLocation texture,
+    public static void blitNineSliced(GuiGraphics gfx, Identifier texture,
                                       int x, int y, int width, int height,
                                       int sliceLeft, int sliceTop, int sliceRight, int sliceBottom,
                                       int uWidth, int vHeight, int uOffset, int vOffset,
@@ -51,7 +51,7 @@ public final class NineSliceUtil {
         }
     }
 
-    private static void blit(GuiGraphics gfx, ResourceLocation texture, int x, int y, int w, int h,
+    private static void blit(GuiGraphics gfx, Identifier texture, int x, int y, int w, int h,
                              int u, int v, int uw, int vh, int texW, int texH) {
         if (w <= 0 || h <= 0) {
             return;

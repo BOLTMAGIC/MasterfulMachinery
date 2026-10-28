@@ -1,10 +1,10 @@
 package io.ticticboom.mods.mm.client.texture;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
-public record GuiTexture(ResourceLocation texture, int u, int v, int uW, int vH, int texW, int texH) {
-    public static GuiTexture of(ResourceLocation texture, int u, int v, int uW, int vH, int texW, int texH) {
+public record GuiTexture(Identifier texture, int u, int v, int uW, int vH, int texW, int texH) {
+    public static GuiTexture of(Identifier texture, int u, int v, int uW, int vH, int texW, int texH) {
         return new GuiTexture(texture, u, v, uW, vH, texW, texH);
     }
 

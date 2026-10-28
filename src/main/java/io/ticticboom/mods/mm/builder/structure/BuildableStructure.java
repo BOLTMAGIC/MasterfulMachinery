@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.builder.structure;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -21,14 +21,14 @@ public final class BuildableStructure {
     public record Placement(BlockPos pos, BlockState state) {
     }
 
-    private final ResourceLocation id;
+    private final Identifier id;
     private final Vec3i size;
     private final List<Placement> blocks;
     private final String group;
     @Nullable
     private final Block unbuildableBlock;
 
-    private BuildableStructure(ResourceLocation id, Vec3i size, List<Placement> blocks) {
+    private BuildableStructure(Identifier id, Vec3i size, List<Placement> blocks) {
         this.id = id;
         this.size = size;
         this.blocks = List.copyOf(blocks);
@@ -36,11 +36,11 @@ public final class BuildableStructure {
         this.unbuildableBlock = firstUnbuildable(this.blocks);
     }
 
-    public static BuildableStructure of(ResourceLocation id, Vec3i size, List<Placement> blocks) {
+    public static BuildableStructure of(Identifier id, Vec3i size, List<Placement> blocks) {
         return new BuildableStructure(id, size, blocks);
     }
 
-    public ResourceLocation id() {
+    public Identifier id() {
         return id;
     }
 
@@ -79,11 +79,11 @@ public final class BuildableStructure {
         return unbuildableBlock;
     }
 
-    public static String langKey(ResourceLocation id) {
+    public static String langKey(Identifier id) {
         return "structure." + id.getNamespace() + "." + id.getPath().replace('/', '.');
     }
 
-    public static String fallbackName(ResourceLocation id) {
+    public static String fallbackName(Identifier id) {
         String file = id.getPath().substring(id.getPath().lastIndexOf('/') + 1);
         StringBuilder name = new StringBuilder();
         for (String word : file.split("[_\\-\\s]+")) {
@@ -98,10 +98,10 @@ public final class BuildableStructure {
         return name.isEmpty() ? file : name.toString();
     }
 
-    private static String groupOf(ResourceLocation id, List<Placement> blocks) {
+    private static String groupOf(Identifier id, List<Placement> blocks) {
         Map<String, Integer> counts = new HashMap<>();
         for (Placement placement : blocks) {
-            ResourceLocation blockId = BuiltInRegistries.BLOCK.getKey(placement.state().getBlock());
+            Identifier blockId = BuiltInRegistries.BLOCK.getKey(placement.state().getBlock());
             if (blockId != null && !blockId.getNamespace().equals("minecraft")) {
                 counts.merge(blockId.getNamespace(), 1, Integer::sum);
             }

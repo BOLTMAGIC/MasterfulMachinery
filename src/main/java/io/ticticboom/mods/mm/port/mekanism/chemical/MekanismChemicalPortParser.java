@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.port.IPortParser;
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import mekanism.api.chemical.Chemical;
 import mekanism.api.chemical.ChemicalStack;
 import io.ticticboom.mods.mm.port.IPortIngredient;
@@ -22,7 +22,7 @@ public class MekanismChemicalPortParser implements IPortParser {
         return new MekanismChemicalPortIngredient(chemical, amount);
     }
 
-    protected static ResourceLocation parseChemicalId(JsonObject json, String preferred) {
+    protected static Identifier parseChemicalId(JsonObject json, String preferred) {
         for (String key : new String[] {preferred, "chemical", "gas", "slurry", "pigment", "infuse"}) {
             var found = ParserUtils.parseOptionalId(json, key);
             if (found != null) {

@@ -19,7 +19,7 @@ import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -35,7 +35,7 @@ import io.ticticboom.mods.mm.util.PortUtils;
 public class PortTypeStructurePiece extends StructurePiece implements TieredPortPiece {
 
     @Getter
-    private final ResourceLocation portTypeId;
+    private final Identifier portTypeId;
     @Getter
     private final Optional<Boolean> input;
     @Getter
@@ -47,7 +47,7 @@ public class PortTypeStructurePiece extends StructurePiece implements TieredPort
     @Getter
     private final NavigableMap<Integer, Block> blocksByRank = new TreeMap<>();
 
-    public PortTypeStructurePiece(ResourceLocation portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
+    public PortTypeStructurePiece(Identifier portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
         this.portTypeId = portTypeId;
         this.input = input;
         this.minTier = minTier;
@@ -56,12 +56,12 @@ public class PortTypeStructurePiece extends StructurePiece implements TieredPort
 
     // Backwards-compatible constructor: if maxTier wasn't provided, accept any upper tier
     @SuppressWarnings("unused")
-    public PortTypeStructurePiece(ResourceLocation portTypeId, Optional<Boolean> input, int minTier) {
+    public PortTypeStructurePiece(Identifier portTypeId, Optional<Boolean> input, int minTier) {
         this(portTypeId, input, minTier, Integer.MAX_VALUE);
     }
 
     @SuppressWarnings("unused")
-    public static PortTypeStructurePiece create(ResourceLocation portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
+    public static PortTypeStructurePiece create(Identifier portTypeId, Optional<Boolean> input, int minTier, int maxTier) {
         return new PortTypeStructurePiece(portTypeId, input, minTier, maxTier);
     }
 

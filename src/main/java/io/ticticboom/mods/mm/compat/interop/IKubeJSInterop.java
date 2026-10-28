@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.compat.interop;
 import java.util.function.Function;
 import net.minecraft.nbt.CompoundTag;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.extra.ExtraBlockModel;
 import io.ticticboom.mods.mm.model.ControllerModel;
@@ -20,11 +20,11 @@ public interface IKubeJSInterop {
     List<PortModel> postRegisterPorts();
     List<ExtraBlockModel> postRegisterExtraBlocks();
 
-    List<BuildableStructure> postBuilderStructures(List<BuildableStructure> loaded, Function<ResourceLocation, CompoundTag> reader);
+    List<BuildableStructure> postBuilderStructures(List<BuildableStructure> loaded, Function<Identifier, CompoundTag> reader);
 
-    boolean postRecipeStarted(MachineControllerBlockEntity controller, ResourceLocation recipeId);
+    boolean postRecipeStarted(MachineControllerBlockEntity controller, Identifier recipeId);
 
-    void postRecipeFinished(MachineControllerBlockEntity controller, ResourceLocation recipeId);
+    void postRecipeFinished(MachineControllerBlockEntity controller, Identifier recipeId);
 
     /**
      * MMEvents.flexOutput: lets scripts pick what a flex output makes from an input item.
@@ -32,7 +32,7 @@ public interface IKubeJSInterop {
      * @return null to keep the template result, an empty stack to not accept the input, else the output item
      */
     @org.jetbrains.annotations.Nullable
-    default net.minecraft.world.item.ItemStack resolveFlexOutput(ResourceLocation recipeId, String from,
+    default net.minecraft.world.item.ItemStack resolveFlexOutput(Identifier recipeId, String from,
                                                                  net.minecraft.world.item.ItemStack input,
                                                                  net.minecraft.world.item.ItemStack templateResult) {
         return null;

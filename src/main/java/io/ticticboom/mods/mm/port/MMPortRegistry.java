@@ -22,15 +22,15 @@ import io.ticticboom.mods.mm.port.replication.matter.ReplicationMatterPortType;
 import io.ticticboom.mods.mm.port.replication.matter.feature.ReplicationMatterPipeHook;
 import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.fml.ModList;
 
 import java.util.*;
 
 public class MMPortRegistry {
-    private static final Map<ResourceLocation, PortType> PORT_TYPES = new HashMap<>();
+    private static final Map<Identifier, PortType> PORT_TYPES = new HashMap<>();
     public static List<RegistryGroupHolder> PORTS = new ArrayList<>();
-    public static final Map<ResourceLocation, List<PortModel>> PORT_MODELS_BY_CONTROLLER = new HashMap<>();
+    public static final Map<Identifier, List<PortModel>> PORT_MODELS_BY_CONTROLLER = new HashMap<>();
 
     public static void init() {
         register(Ref.Ports.ITEM, new ItemPortType());
@@ -77,11 +77,11 @@ public class MMPortRegistry {
         }
     }
 
-    public static PortType get(ResourceLocation id) {
+    public static PortType get(Identifier id) {
         return PORT_TYPES.get(id);
     }
 
-    public static void register(ResourceLocation id, PortType type) {
+    public static void register(Identifier id, PortType type) {
         PORT_TYPES.put(id, type);
     }
 
@@ -92,10 +92,10 @@ public class MMPortRegistry {
      * to one of those without the mod installed used to surface as a bare NullPointerException
      * deep inside recipe parsing, with nothing naming the port or the mod.
      */
-    public static PortType requirePortType(ResourceLocation id) {
+    public static PortType requirePortType(Identifier id) {
         var type = PORT_TYPES.get(id);
         if (type == null) {
-            var known = new ArrayList<>(PORT_TYPES.keySet().stream().map(ResourceLocation::toString).sorted().toList());
+            var known = new ArrayList<>(PORT_TYPES.keySet().stream().map(Identifier::toString).sorted().toList());
             throw new RuntimeException("Unknown port type '" + id + "'. Either it is misspelled, or the mod "
                     + "providing it is not installed. Registered port types: " + String.join(", ", known));
         }
@@ -108,7 +108,7 @@ public class MMPortRegistry {
             try {
                 if (holder.getBlock().get() instanceof IPortBlock bp) {
                     var model = bp.getModel();
-                    for (ResourceLocation controllerId : model.controllerIds().getIds()) {
+                    for (Identifier controllerId : model.controllerIds().getIds()) {
                         PORT_MODELS_BY_CONTROLLER.computeIfAbsent(controllerId, x -> new ArrayList<>()).add(model);
                     }
                 }
@@ -166,7 +166,7 @@ public class MMPortRegistry {
         throw new RuntimeException("Unsupported ingredient format: " + element);
     }
 
-    public static List<PortModel> getPortModelsForControllerId(ResourceLocation id) {
+    public static List<PortModel> getPortModelsForControllerId(Identifier id) {
         if (id == null) return List.of();
         var list = PORT_MODELS_BY_CONTROLLER.get(id);
         if (list == null) return List.of();

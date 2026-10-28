@@ -5,7 +5,7 @@ import mezz.jei.api.ingredients.IIngredientRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.TooltipFlag;
 import org.jetbrains.annotations.NotNull;
@@ -17,8 +17,8 @@ import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MatterIngredientRenderer implements IIngredientRenderer<MatterIngredient> {
-    private static final ResourceLocation MATTER_SPRITE = ResourceLocation.fromNamespaceAndPath("replication", "block/matter");
-    private static final Map<ResourceLocation, Optional<ResourceLocation>> ICONS = new ConcurrentHashMap<>();
+    private static final Identifier MATTER_SPRITE = Identifier.fromNamespaceAndPath("replication", "block/matter");
+    private static final Map<Identifier, Optional<Identifier>> ICONS = new ConcurrentHashMap<>();
 
     @Override
     public void render(GuiGraphics gfx, @NotNull MatterIngredient ingredient) {
@@ -37,9 +37,9 @@ public class MatterIngredientRenderer implements IIngredientRenderer<MatterIngre
         RenderSystem.disableBlend();
     }
 
-    private static Optional<ResourceLocation> icon(ResourceLocation matter) {
+    private static Optional<Identifier> icon(Identifier matter) {
         return ICONS.computeIfAbsent(matter, id -> {
-            var texture = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "textures/gui/mattertypes/" + id.getPath() + ".png");
+            var texture = Identifier.fromNamespaceAndPath(id.getNamespace(), "textures/gui/mattertypes/" + id.getPath() + ".png");
             return Minecraft.getInstance().getResourceManager().getResource(texture).map(resource -> texture);
         });
     }

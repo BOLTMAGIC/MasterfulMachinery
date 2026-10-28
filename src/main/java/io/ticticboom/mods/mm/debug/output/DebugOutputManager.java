@@ -14,7 +14,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import lombok.SneakyThrows;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.fml.loading.FMLPaths;
@@ -46,7 +46,7 @@ public class DebugOutputManager {
             data.setRecipeDefs(MachineRecipeManager.getRecipeForStructureIds(data.getStructureIds()));
 
             // run structure form audits
-            var storagesMap = new HashMap<ResourceLocation, RecipeStorages>();
+            var storagesMap = new HashMap<Identifier, RecipeStorages>();
 
             for (StructureModel structureDef : data.structureDefs) {
                 JsonObject json = structureDef.debugFormed(level, pos);

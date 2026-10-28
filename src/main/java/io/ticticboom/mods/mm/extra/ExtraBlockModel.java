@@ -3,13 +3,13 @@ package io.ticticboom.mods.mm.extra;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.util.ParserUtils;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public record ExtraBlockModel(
         String id,
         String name,
         Component displayName,
-        ResourceLocation type,
+        Identifier type,
         String connectGroup
 ) {
     public static ExtraBlockModel parse(JsonObject json) {
@@ -18,7 +18,7 @@ public record ExtraBlockModel(
         // the block actually displays when the pack supplied a translation key.
         String name = ParserUtils.parseComponentKey(json.get("name"));
         Component displayName = ParserUtils.parseComponent(json.get("name"));
-        ResourceLocation type = ParserUtils.parseId(json, "type");
+        Identifier type = ParserUtils.parseId(json, "type");
         String connectGroup = json.has("connectGroup") ? json.get("connectGroup").getAsString() : null;
         return new ExtraBlockModel(id, name, displayName, type, connectGroup);
     }

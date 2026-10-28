@@ -29,7 +29,7 @@ import mezz.jei.api.recipe.category.IRecipeCategory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.NotNull;
 
 public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
@@ -46,10 +46,10 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
     private final int height;
 
     @Override
-    public ResourceLocation getRegistryName(RecipeModel recipe) {
+    public Identifier getRegistryName(RecipeModel recipe) {
         if (recipe.config() != null && recipe.config().has(FlexRecipeIngredientEntry.JEI_PAGE)) {
             // JEI page copies of a flex recipe need their own names
-            return ResourceLocation.fromNamespaceAndPath(recipe.id().getNamespace(),
+            return Identifier.fromNamespaceAndPath(recipe.id().getNamespace(),
                     recipe.id().getPath() + "/jei_page_" + recipe.config().get(FlexRecipeIngredientEntry.JEI_PAGE).getAsInt());
         }
         return recipe.id();

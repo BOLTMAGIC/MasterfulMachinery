@@ -12,7 +12,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -64,7 +64,7 @@ public class EntityPortStorage implements IPortStorage {
     public List<net.minecraft.network.chat.Component> describeContents() {
         var lines = new ArrayList<net.minecraft.network.chat.Component>();
         lines.add(net.minecraft.network.chat.Component.translatable("jade.mm.port.mobs", entities.size(), model.capacity()));
-        var counts = new java.util.LinkedHashMap<ResourceLocation, Integer>();
+        var counts = new java.util.LinkedHashMap<Identifier, Integer>();
         for (var entry : entities) {
             counts.merge(entry.type(), 1, Integer::sum);
         }

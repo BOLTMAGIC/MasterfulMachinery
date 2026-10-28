@@ -1,12 +1,12 @@
 package io.ticticboom.mods.mm.port;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
 import org.jetbrains.annotations.Nullable;
 
-public record PortContent(Kind kind, ItemStack item, FluidStack fluid, @Nullable ResourceLocation sprite, int tint,
+public record PortContent(Kind kind, ItemStack item, FluidStack fluid, @Nullable Identifier sprite, int tint,
                           @Nullable Component name, long amount, long capacity, String unit) {
 
     public enum Kind { ITEM, FLUID, CHEMICAL, ENERGY }
@@ -20,7 +20,7 @@ public record PortContent(Kind kind, ItemStack item, FluidStack fluid, @Nullable
                 stack.isEmpty() ? null : stack.getHoverName(), stack.getAmount(), capacity, "mB");
     }
 
-    public static PortContent chemical(@Nullable Component name, @Nullable ResourceLocation sprite, int tint, long amount, long capacity) {
+    public static PortContent chemical(@Nullable Component name, @Nullable Identifier sprite, int tint, long amount, long capacity) {
         return new PortContent(Kind.CHEMICAL, ItemStack.EMPTY, FluidStack.EMPTY, sprite, tint, name, amount, capacity, "mB");
     }
 

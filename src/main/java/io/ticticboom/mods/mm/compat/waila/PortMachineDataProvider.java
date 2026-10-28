@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -14,7 +14,7 @@ import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
 
 public class PortMachineDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("port_machine");
+    public static final Identifier UID = Ref.id("port_machine");
     private static final String PORT_KEY = "MMPort";
     private static final String MACHINE_KEY = "Machine";
     private static final String STATUS_KEY = "MachineStatus";
@@ -42,7 +42,7 @@ public class PortMachineDataProvider implements IServerDataProvider<BlockAccesso
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 

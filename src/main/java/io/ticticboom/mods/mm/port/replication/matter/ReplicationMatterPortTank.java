@@ -4,14 +4,14 @@ import com.buuz135.replication.api.IMatterType;
 import com.buuz135.replication.api.matter_fluid.MatterStack;
 import com.buuz135.replication.api.matter_fluid.MatterTank;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 public class ReplicationMatterPortTank extends MatterTank {
 
-    private final ResourceLocation filter;
+    private final Identifier filter;
     private final INotifyChangeFunction changed;
 
-    public ReplicationMatterPortTank(int capacity, ResourceLocation filter, INotifyChangeFunction changed) {
+    public ReplicationMatterPortTank(int capacity, Identifier filter, INotifyChangeFunction changed) {
         super(capacity);
         this.filter = filter;
         this.changed = changed;
@@ -28,7 +28,7 @@ public class ReplicationMatterPortTank extends MatterTank {
         return filter.equals(MatterTypes.idOf(stack.getMatterType()));
     }
 
-    public ResourceLocation getFilter() {
+    public Identifier getFilter() {
         return filter;
     }
 

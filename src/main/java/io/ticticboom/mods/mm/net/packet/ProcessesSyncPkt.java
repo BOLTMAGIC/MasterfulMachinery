@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.util.ItemComponentUtil;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -24,11 +24,11 @@ public class ProcessesSyncPkt implements CustomPacketPayload {
     public static final StreamCodec<RegistryFriendlyByteBuf, ProcessesSyncPkt> STREAM_CODEC =
             StreamCodec.of(ProcessesSyncPkt::encode, ProcessesSyncPkt::decode);
 
-    public Map<ResourceLocation, JsonElement> recipes;
+    public Map<Identifier, JsonElement> recipes;
 
-    public ProcessesSyncPkt(Map<ResourceLocation, RecipeModel> recipes) {
+    public ProcessesSyncPkt(Map<Identifier, RecipeModel> recipes) {
         this.recipes = new HashMap<>();
-        for (Map.Entry<ResourceLocation, RecipeModel> entry : recipes.entrySet()) {
+        for (Map.Entry<Identifier, RecipeModel> entry : recipes.entrySet()) {
             this.recipes.put(entry.getKey(), entry.getValue().config());
         }
     }
@@ -40,7 +40,7 @@ public class ProcessesSyncPkt implements CustomPacketPayload {
 
     public static void encode(RegistryFriendlyByteBuf buf, ProcessesSyncPkt packet) {
         buf.writeVarInt(packet.recipes.size());
-        for (Map.Entry<ResourceLocation, JsonElement> entry : packet.recipes.entrySet()) {
+        for (Map.Entry<Identifier, JsonElement> entry : packet.recipes.entrySet()) {
             buf.writeResourceLocation(entry.getKey());
             buf.writeUtf(entry.getValue().toString());
         }

@@ -8,7 +8,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.material.Fluid;
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
@@ -74,7 +74,7 @@ public class FluidRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         Fluid fluid = stack.getFluid();
         var prop = IClientFluidTypeExtensions.of(fluid);
-        ResourceLocation fluidStill = prop.getStillTexture();
+        Identifier fluidStill = prop.getStillTexture();
         return minecraft.getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(fluidStill);
     }
 }

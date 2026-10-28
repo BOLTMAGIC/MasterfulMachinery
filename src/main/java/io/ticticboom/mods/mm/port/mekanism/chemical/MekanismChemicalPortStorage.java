@@ -18,7 +18,7 @@ import mekanism.api.chemical.attribute.ChemicalAttributeValidator;
 import mekanism.common.capabilities.Capabilities;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.neoforged.neoforge.capabilities.BlockCapability;
 import org.jetbrains.annotations.Nullable;
 
@@ -122,7 +122,7 @@ public class MekanismChemicalPortStorage implements IPortStorage, ILockablePortS
         lockedType = null;
         chemicalTank.deserializeNBT(registries, tag.getCompound("handler"));
         if (locked && tag.contains("LockedType")) {
-            var id = ResourceLocation.tryParse(tag.getString("LockedType"));
+            var id = Identifier.tryParse(tag.getString("LockedType"));
             var chemical = id == null ? null : MekanismAPI.CHEMICAL_REGISTRY.get(id);
             lockedType = chemical == null || chemical.isEmptyType() ? null : chemical;
         }

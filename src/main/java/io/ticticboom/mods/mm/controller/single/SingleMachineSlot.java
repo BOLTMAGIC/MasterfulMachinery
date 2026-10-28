@@ -1,7 +1,7 @@
 package io.ticticboom.mods.mm.controller.single;
 
 import io.ticticboom.mods.mm.port.IPortStorageFactory;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
-public record SingleMachineSlot(String id, ResourceLocation type, boolean input, IPortStorageFactory factory) {
+public record SingleMachineSlot(String id, Identifier type, boolean input, IPortStorageFactory factory) {
 }

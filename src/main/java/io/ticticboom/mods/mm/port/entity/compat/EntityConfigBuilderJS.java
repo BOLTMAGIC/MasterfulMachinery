@@ -4,7 +4,7 @@ import io.ticticboom.mods.mm.compat.kjs.builder.PortConfigBuilderJS;
 import io.ticticboom.mods.mm.port.IPortStorageModel;
 import io.ticticboom.mods.mm.port.entity.EntityPortMode;
 import io.ticticboom.mods.mm.port.entity.EntityPortStorageModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,8 +23,8 @@ public class EntityConfigBuilderJS extends PortConfigBuilderJS {
     private int zoneWidth = 1;
     private int zoneHeight = 1;
     private int zoneDepth = 1;
-    private final List<ResourceLocation> entities = new ArrayList<>();
-    private final List<ResourceLocation> tags = new ArrayList<>();
+    private final List<Identifier> entities = new ArrayList<>();
+    private final List<Identifier> tags = new ArrayList<>();
 
     public EntityConfigBuilderJS capacity(int capacity) {
         this.capacity = capacity;
@@ -78,12 +78,12 @@ public class EntityConfigBuilderJS extends PortConfigBuilderJS {
     }
 
     public EntityConfigBuilderJS entity(String entity) {
-        this.entities.add(ResourceLocation.parse(entity));
+        this.entities.add(Identifier.parse(entity));
         return this;
     }
 
     public EntityConfigBuilderJS tag(String tag) {
-        this.tags.add(ResourceLocation.parse(tag));
+        this.tags.add(Identifier.parse(tag));
         return this;
     }
 

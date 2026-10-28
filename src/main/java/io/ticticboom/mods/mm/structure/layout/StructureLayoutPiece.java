@@ -10,7 +10,7 @@ import io.ticticboom.mods.mm.piece.modifier.StructurePieceModifier;
 import io.ticticboom.mods.mm.piece.type.StructurePiece;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Rotation;
@@ -49,7 +49,7 @@ public record StructureLayoutPiece(StructurePiece piece, List<StructurePieceModi
     }
 
     @SuppressWarnings("unused")
-    public static StructureLayoutPiece parse(JsonObject json, ResourceLocation structureId, String keyChar) {
+    public static StructureLayoutPiece parse(JsonObject json, Identifier structureId, String keyChar) {
         var piece = MMStructurePieceRegistry.findPieceType(json);
         var modifiers = MMStructurePieceRegistry.findModifierTypes(json);
         assert piece != null;

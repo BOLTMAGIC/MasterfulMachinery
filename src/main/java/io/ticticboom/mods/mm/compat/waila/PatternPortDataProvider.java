@@ -7,7 +7,7 @@ import io.ticticboom.mods.mm.pattern.PatternRun;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -18,7 +18,7 @@ import java.util.Locale;
 
 /** Jade tooltip of a Pattern Port: its machine, the patterns running, outputs waiting and why the last push was refused. */
 public class PatternPortDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("pattern_port");
+    public static final Identifier UID = Ref.id("pattern_port");
     private static final String MACHINE_KEY = "PatternMachine";
     private static final String RUNS_KEY = "PatternRuns";
     private static final String RETURNING_KEY = "PatternReturning";
@@ -55,7 +55,7 @@ public class PatternPortDataProvider implements IServerDataProvider<BlockAccesso
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 

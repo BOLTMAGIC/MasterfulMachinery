@@ -1,6 +1,6 @@
 package io.ticticboom.mods.mm.builder.structure;
 
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
@@ -12,7 +12,7 @@ public final class BuildableStructureRegistry {
     public static final BuildableStructureRegistry SERVER = new BuildableStructureRegistry();
     public static final BuildableStructureRegistry CLIENT = new BuildableStructureRegistry();
 
-    private record Snapshot(Map<ResourceLocation, BuildableStructure> byId, List<BuildableStructure> sorted) {
+    private record Snapshot(Map<Identifier, BuildableStructure> byId, List<BuildableStructure> sorted) {
     }
 
     private volatile Snapshot snapshot = new Snapshot(Map.of(), List.of());
@@ -25,12 +25,12 @@ public final class BuildableStructureRegistry {
     }
 
     @Nullable
-    public BuildableStructure get(ResourceLocation id) {
+    public BuildableStructure get(Identifier id) {
         return snapshot.byId().get(id);
     }
 
     public void replace(Collection<BuildableStructure> next) {
-        var map = new TreeMap<ResourceLocation, BuildableStructure>();
+        var map = new TreeMap<Identifier, BuildableStructure>();
         for (BuildableStructure structure : next) {
             map.put(structure.id(), structure);
         }

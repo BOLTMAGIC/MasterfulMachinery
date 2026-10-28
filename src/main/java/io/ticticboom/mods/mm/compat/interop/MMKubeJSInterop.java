@@ -11,7 +11,7 @@ import io.ticticboom.mods.mm.compat.kjs.event.BuilderStructureEventJS;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureParser;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
 import io.ticticboom.mods.mm.Ref;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import io.ticticboom.mods.mm.compat.kjs.event.MachineRecipeEventJS;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.compat.kjs.MMKubeEvents;
@@ -65,7 +65,7 @@ public class MMKubeJSInterop implements IKubeJSInterop {
     }
 
     @Override
-    public boolean postRecipeStarted(MachineControllerBlockEntity controller, ResourceLocation recipeId) {
+    public boolean postRecipeStarted(MachineControllerBlockEntity controller, Identifier recipeId) {
         if (!MMKubeEvents.RECIPE_STARTED.hasListeners()) {
             return true;
         }
@@ -73,7 +73,7 @@ public class MMKubeJSInterop implements IKubeJSInterop {
     }
 
     @Override
-    public net.minecraft.world.item.ItemStack resolveFlexOutput(ResourceLocation recipeId, String from,
+    public net.minecraft.world.item.ItemStack resolveFlexOutput(Identifier recipeId, String from,
                                                                 net.minecraft.world.item.ItemStack input,
                                                                 net.minecraft.world.item.ItemStack templateResult) {
         if (recipeId == null || !MMKubeEvents.FLEX_OUTPUT.hasListeners()) {
@@ -85,14 +85,14 @@ public class MMKubeJSInterop implements IKubeJSInterop {
     }
 
     @Override
-    public void postRecipeFinished(MachineControllerBlockEntity controller, ResourceLocation recipeId) {
+    public void postRecipeFinished(MachineControllerBlockEntity controller, Identifier recipeId) {
         if (MMKubeEvents.RECIPE_FINISHED.hasListeners()) {
             MMKubeEvents.RECIPE_FINISHED.post(new MachineRecipeEventJS(controller, recipeId.toString()), recipeId);
         }
     }
 
     @Override
-    public List<BuildableStructure> postBuilderStructures(List<BuildableStructure> loaded, Function<ResourceLocation, CompoundTag> reader) {
+    public List<BuildableStructure> postBuilderStructures(List<BuildableStructure> loaded, Function<Identifier, CompoundTag> reader) {
         if (!MMKubeEvents.BUILDER_STRUCTURES.hasListeners()) {
             return loaded;
         }
@@ -100,15 +100,15 @@ public class MMKubeJSInterop implements IKubeJSInterop {
         MMKubeEvents.BUILDER_STRUCTURES.post(event);
         Set<String> removed = new HashSet<>(event.getRemoved());
         Set<String> removedNamespaces = new HashSet<>(event.getRemovedNamespaces());
-        Map<ResourceLocation, BuildableStructure> result = new LinkedHashMap<>();
+        Map<Identifier, BuildableStructure> result = new LinkedHashMap<>();
         for (BuildableStructure structure : loaded) {
             if (!removed.contains(structure.id().toString()) && !removedNamespaces.contains(structure.id().getNamespace())) {
                 result.put(structure.id(), structure);
             }
         }
         event.getAdded().forEach((idText, fileText) -> {
-            ResourceLocation id = ResourceLocation.tryParse(idText);
-            ResourceLocation file = ResourceLocation.tryParse(fileText);
+            Identifier id = Identifier.tryParse(idText);
+            Identifier file = Identifier.tryParse(fileText);
             CompoundTag nbt = id == null || file == null ? null : reader.apply(file);
             if (nbt == null) {
                 Ref.LOG.warn("MMEvents.builderStructures: can't read {} for {}", fileText, idText);

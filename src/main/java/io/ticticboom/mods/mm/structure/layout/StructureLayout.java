@@ -14,7 +14,7 @@ import io.ticticboom.mods.mm.util.PortUtils;
 import io.ticticboom.mods.mm.util.WorldUtil;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
@@ -352,7 +352,7 @@ public class StructureLayout {
             PortTypeStructurePiece normalPT = null;
             if (requiredPiece instanceof PortTypeAnywhereStructurePiece) pta = (PortTypeAnywhereStructurePiece) requiredPiece;
             if (requiredPiece instanceof PortTypeStructurePiece) normalPT = (PortTypeStructurePiece) requiredPiece;
-            ResourceLocation expectedType = pta != null ? pta.getPortTypeId() : normalPT.getPortTypeId();
+            Identifier expectedType = pta != null ? pta.getPortTypeId() : normalPT.getPortTypeId();
             Optional<Boolean> expectedInputOpt = pta != null ? pta.getInput() : normalPT.getInput();
             int minTier = pta != null ? pta.getMinTier() : normalPT.getMinTier();
             int maxTier = pta != null ? pta.getMaxTier() : normalPT.getMaxTier();
@@ -415,7 +415,7 @@ public class StructureLayout {
         return new RecipeStorages(inputStorages, outputStorages, sources);
     }
 
-    public static StructureLayout parse(JsonObject json, ResourceLocation structureId) {
+    public static StructureLayout parse(JsonObject json, Identifier structureId) {
         var raw = getCharGrid(json);
         var pieces = getPieces(json, structureId);
         boolean portsAnywhere = false;
@@ -443,7 +443,7 @@ public class StructureLayout {
         }
     }
 
-    private static Map<StructureKeyChar, StructureLayoutPiece> getPieces(JsonObject json, ResourceLocation structureId) {
+    private static Map<StructureKeyChar, StructureLayoutPiece> getPieces(JsonObject json, Identifier structureId) {
         Map<StructureKeyChar, StructureLayoutPiece> pieces = new HashMap<>();
         for (var key : json.getAsJsonObject("key").asMap().entrySet()) {
             JsonObject jsonKey = key.getValue().getAsJsonObject();

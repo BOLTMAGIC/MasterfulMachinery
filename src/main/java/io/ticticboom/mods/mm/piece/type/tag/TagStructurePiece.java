@@ -12,7 +12,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.Level;
@@ -26,12 +26,12 @@ import java.util.function.Supplier;
 
 public class TagStructurePiece extends StructurePiece {
 
-    private final ResourceLocation tagId;
+    private final Identifier tagId;
     private final TagKey<Block> tagKey;
     private List<Block> tagBlocks;
 
 
-    public TagStructurePiece(ResourceLocation tagId) {
+    public TagStructurePiece(Identifier tagId) {
         this.tagId = tagId;
         tagKey = TagKey.create(Registries.BLOCK, tagId);
     }

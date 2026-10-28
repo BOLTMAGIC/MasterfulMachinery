@@ -5,7 +5,7 @@ import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -33,7 +33,7 @@ public final class BuildableStructureParser {
         }
     }
 
-    public static Result parse(ResourceLocation id, CompoundTag nbt) {
+    public static Result parse(Identifier id, CompoundTag nbt) {
         ListTag palette;
         if (nbt.contains("palette", Tag.TAG_LIST)) {
             palette = nbt.getList("palette", Tag.TAG_COMPOUND);
@@ -47,7 +47,7 @@ public final class BuildableStructureParser {
         for (int i = 0; i < palette.size(); i++) {
             CompoundTag entry = palette.getCompound(i);
             String name = entry.getString("Name");
-            ResourceLocation blockId = ResourceLocation.tryParse(name);
+            Identifier blockId = Identifier.tryParse(name);
             if (blockId == null || !BuiltInRegistries.BLOCK.containsKey(blockId)) {
                 return Result.skip("unknown block " + name);
             }

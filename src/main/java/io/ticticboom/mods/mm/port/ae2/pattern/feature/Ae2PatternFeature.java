@@ -33,7 +33,7 @@ import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -52,12 +52,12 @@ public class Ae2PatternFeature implements ICraftingProvider {
 
     private final Ae2PatternPortBlockEntity port;
     private final IManagedGridNode node;
-    private final Map<AEItemKey, ResourceLocation> recipesByPattern = new HashMap<>();
+    private final Map<AEItemKey, Identifier> recipesByPattern = new HashMap<>();
 
     private List<IPatternDetails> patterns = List.of();
-    private ResourceLocation patternStructure = null;
+    private Identifier patternStructure = null;
     private int patternRecipeVersion = -1;
-    private ResourceLocation pushedRecipe = null;
+    private Identifier pushedRecipe = null;
     private long pushedAt = 0;
     private List<Ae2KeyBridge> bridges;
 
@@ -122,7 +122,7 @@ public class Ae2PatternFeature implements ICraftingProvider {
         ICraftingProvider.requestUpdate(node);
     }
 
-    private List<IPatternDetails> buildPatterns(ServerLevel level, ResourceLocation structureId) {
+    private List<IPatternDetails> buildPatterns(ServerLevel level, Identifier structureId) {
         var result = new ArrayList<IPatternDetails>();
         for (RecipeModel recipe : MachineRecipeManager.getRecipesByStrucutreId(structureId)) {
             var inputs = patternInputs(recipe);

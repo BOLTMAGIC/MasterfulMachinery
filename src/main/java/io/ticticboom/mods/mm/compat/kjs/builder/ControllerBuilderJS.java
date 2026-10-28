@@ -14,7 +14,7 @@ import io.ticticboom.mods.mm.controller.single.SingleMachines;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import lombok.AccessLevel;
 import lombok.Getter;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -27,7 +27,7 @@ public class ControllerBuilderJS {
     private final String id;
     private String name;
     private JsonElement nameSpec;
-    private ResourceLocation type;
+    private Identifier type;
     private boolean parallelProcessingDefault = false;
     private int maxParallelRecipes = -1;
     private RecipeSelectionMode recipeSelectionMode = RecipeSelectionMode.DEFAULT;
@@ -36,7 +36,7 @@ public class ControllerBuilderJS {
     private final List<PendingSlot> slots = new ArrayList<>();
     private JsonElement geoModel;
 
-    private record PendingSlot(String id, ResourceLocation type, boolean input, Consumer<PortConfigBuilderJS> config) {
+    private record PendingSlot(String id, Identifier type, boolean input, Consumer<PortConfigBuilderJS> config) {
     }
 
     @HideFromJS
@@ -45,14 +45,14 @@ public class ControllerBuilderJS {
     }
 
     public ControllerBuilderJS type(String id) {
-        var rl = ResourceLocation.tryParse(id);
+        var rl = Identifier.tryParse(id);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + id);
         this.type = rl;
         return this;
     }
 
     public ControllerBuilderJS slot(String id, String type, boolean input, Consumer<PortConfigBuilderJS> config) {
-        var rl = ResourceLocation.tryParse(type);
+        var rl = Identifier.tryParse(type);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + type);
         slots.add(new PendingSlot(id, rl, input, config));
         return this;
@@ -93,7 +93,7 @@ public class ControllerBuilderJS {
 
     @HideFromJS
     private ControllerBuilderJS putTexture(String key, String texture) {
-        var rl = ResourceLocation.tryParse(texture);
+        var rl = Identifier.tryParse(texture);
         if (rl == null) throw new IllegalArgumentException("Invalid resource location: " + texture);
         textures.put(key, rl.toString());
         return this;

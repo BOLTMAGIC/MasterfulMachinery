@@ -6,7 +6,7 @@ import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.level.biome.Biome;
 import org.jetbrains.annotations.Nullable;
@@ -21,7 +21,7 @@ public class BiomeRecipeCondition implements IRecipeCondition {
     public BiomeRecipeCondition(String biome) {
         this.biome = biome;
         boolean isTag = biome.startsWith("#");
-        var id = ResourceLocation.tryParse(isTag ? biome.substring(1) : biome);
+        var id = Identifier.tryParse(isTag ? biome.substring(1) : biome);
         if (id == null) {
             throw new IllegalArgumentException("Invalid biome or biome tag in recipe condition: " + biome);
         }

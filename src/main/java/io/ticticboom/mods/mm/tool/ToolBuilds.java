@@ -17,7 +17,7 @@ import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -53,12 +53,12 @@ public final class ToolBuilds {
     }
 
     public static @Nullable StructureModel selectedStructure(ItemStack tool) {
-        ResourceLocation id = ToolData.structure(tool);
+        Identifier id = ToolData.structure(tool);
         return id == null ? null : StructureManager.STRUCTURES.get(id);
     }
 
     public static @Nullable MachineControllerBlockEntity acceptingController(Level level, BlockPos pos, ItemStack tool) {
-        ResourceLocation id = ToolData.structure(tool);
+        Identifier id = ToolData.structure(tool);
         if (id != null && level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller) {
             StructureModel model = selectedStructure(tool);
             if (model == null) return null;
@@ -73,7 +73,7 @@ public final class ToolBuilds {
     }
 
     public static @Nullable BuildableStructure selectedBuilderStructure(ItemStack tool) {
-        ResourceLocation id = ToolData.builderStructure(tool);
+        Identifier id = ToolData.builderStructure(tool);
         return id == null ? null : BuildableStructureRegistry.SERVER.get(id);
     }
 

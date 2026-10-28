@@ -9,7 +9,7 @@ import io.ticticboom.mods.mm.util.WorldUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
@@ -20,10 +20,10 @@ import java.util.function.Supplier;
 
 public class BlockStructurePiece extends StructurePiece {
 
-    private final ResourceLocation blockId;
+    private final Identifier blockId;
     private Block block;
 
-    public BlockStructurePiece(ResourceLocation blockId) {
+    public BlockStructurePiece(Identifier blockId) {
         this.blockId = blockId;
     }
 

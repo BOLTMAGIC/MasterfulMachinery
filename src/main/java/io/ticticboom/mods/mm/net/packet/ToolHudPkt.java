@@ -9,7 +9,7 @@ import net.minecraft.network.RegistryFriendlyByteBuf;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.builder.me.HudState;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -54,7 +54,7 @@ public record ToolHudPkt(HudState state) implements CustomPacketPayload {
         int count = buf.readVarInt();
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            ResourceLocation id = buf.readResourceLocation();
+            Identifier id = buf.readResourceLocation();
             Item item = BuiltInRegistries.ITEM.get(id);
             if (item != null && item != Items.AIR && items.size() < HudState.ICONS) {
                 items.add(item);

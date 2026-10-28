@@ -20,7 +20,7 @@ import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntryParser;
 import io.ticticboom.mods.mm.recipe.output.simple.SimpleRecipeOutputEntryParser;
 import io.ticticboom.mods.mm.util.ParserUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -37,12 +37,12 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         init();
     }
 
-    public static final Map<ResourceLocation, RecipeModel> RECIPES = new HashMap<>();
-    public static final Map<String, Map<ResourceLocation, RecipeModel>> RECIPES_BY_STRUCTURE = new HashMap<>();
+    public static final Map<Identifier, RecipeModel> RECIPES = new HashMap<>();
+    public static final Map<String, Map<Identifier, RecipeModel>> RECIPES_BY_STRUCTURE = new HashMap<>();
     public static int RECIPE_VERSION = 0;
-    public static final Map<ResourceLocation, IRecipeIngredientEntryParser> ENTRY_INGREDIENT_PARSERS = new HashMap<>();
-    public static final Map<ResourceLocation, IRecipeOutputEntryParser> ENTRY_OUTPUT_PARSERS = new HashMap<>();
-    public static final Map<ResourceLocation, IRecipeConditionParser> CONDITION_PARSERS = new HashMap<>();
+    public static final Map<Identifier, IRecipeIngredientEntryParser> ENTRY_INGREDIENT_PARSERS = new HashMap<>();
+    public static final Map<Identifier, IRecipeOutputEntryParser> ENTRY_OUTPUT_PARSERS = new HashMap<>();
+    public static final Map<Identifier, IRecipeConditionParser> CONDITION_PARSERS = new HashMap<>();
 
     public static void init() {
         CONDITION_PARSERS.clear();
@@ -79,11 +79,11 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
         return CONDITION_PARSERS.get(typeId).parse(json);
     }
 
-    public static List<RecipeModel> getRecipeForStructureIds(List<ResourceLocation> structureIds) {
+    public static List<RecipeModel> getRecipeForStructureIds(List<Identifier> structureIds) {
         return RECIPES.values().stream().filter(x -> x.allStructureIds().stream().anyMatch(structureIds::contains)).toList();
     }
 
-    public static Collection<RecipeModel> getRecipesByStrucutreId(ResourceLocation id) {
+    public static Collection<RecipeModel> getRecipesByStrucutreId(Identifier id) {
         if(RECIPES_BY_STRUCTURE.containsKey(id.toString())) {
             return RECIPES_BY_STRUCTURE.get(id.toString()).values();
         }
@@ -91,7 +91,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> jsons, ResourceManager resourceManager, ProfilerFiller profilerFiller) {
+    protected void apply(Map<Identifier, JsonElement> jsons, ResourceManager resourceManager, ProfilerFiller profilerFiller) {
         profilerFiller.push("MM Machine Recipe Processes");
         recieveRecipes(jsons);
         profilerFiller.pop();
@@ -100,7 +100,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
     /** Goes up on every recipe (re)load, so caches of recipes can tell they are stale. */
     public static int generation = 0;
 
-    public static void recieveRecipes(Map<ResourceLocation, JsonElement> jsons) {
+    public static void recieveRecipes(Map<Identifier, JsonElement> jsons) {
         RECIPES.clear();
         generation++;
         Ref.LCTX.reset("MM Machine Recipe Processes");
@@ -110,8 +110,8 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
             // recipe is a pack shipping content for an integration mod that is not installed,
             // which should degrade rather than make the world unloadable.
             int skipped = 0;
-            for (Map.Entry<ResourceLocation, JsonElement> entry : jsons.entrySet()) {
-                ResourceLocation id = entry.getKey();
+            for (Map.Entry<Identifier, JsonElement> entry : jsons.entrySet()) {
+                Identifier id = entry.getKey();
                 Ref.LCTX.push("Loading Recipe: " + id);
                 try {
                     RECIPES.put(id, RecipeModel.parse(entry.getValue().getAsJsonObject(), id));
@@ -143,7 +143,7 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
     private static void cacheRecipesByStructure() {
         RECIPES_BY_STRUCTURE.clear();
         for (RecipeModel model : RECIPES.values()) {
-            for (ResourceLocation structureId : model.allStructureIds()) {
+            for (Identifier structureId : model.allStructureIds()) {
                 RECIPES_BY_STRUCTURE.computeIfAbsent(structureId.toString(), x -> new HashMap<>()).put(model.id(), model);
             }
         }

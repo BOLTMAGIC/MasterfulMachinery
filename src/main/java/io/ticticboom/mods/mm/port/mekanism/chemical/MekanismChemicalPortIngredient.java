@@ -19,13 +19,13 @@ import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import io.ticticboom.mods.mm.Ref;
 
 public class MekanismChemicalPortIngredient implements IPortIngredient {
 
-    protected final ResourceLocation id;
+    protected final Identifier id;
     protected final long amount;
 
     protected final ChemicalStack stack;
@@ -36,7 +36,7 @@ public class MekanismChemicalPortIngredient implements IPortIngredient {
         return new ChemicalStack(id, amount);
     }
 
-    public Chemical findChemical(ResourceLocation id) {
+    public Chemical findChemical(Identifier id) {
         return MekanismAPI.CHEMICAL_REGISTRY.get(id);
     }
 
@@ -44,11 +44,11 @@ public class MekanismChemicalPortIngredient implements IPortIngredient {
         return MekanismChemicalPortStorage.class;
     }
 
-    public ResourceLocation getTypeId() {
+    public Identifier getTypeId() {
         return Ref.Ports.MEK_CHEMICAL;
     }
 
-    public MekanismChemicalPortIngredient(ResourceLocation chemical, long amount) {
+    public MekanismChemicalPortIngredient(Identifier chemical, long amount) {
         this.id = chemical;
         this.amount = amount;
         this.chemical = findChemical(id);
@@ -59,10 +59,10 @@ public class MekanismChemicalPortIngredient implements IPortIngredient {
     }
 
     /**
-     * Returns the ResourceLocation id of the chemical this ingredient refers to.
+     * Returns the Identifier id of the chemical this ingredient refers to.
      * Used by controllers to perform lightweight pre-checks by id.
      */
-    public ResourceLocation getChemicalId() {
+    public Identifier getChemicalId() {
         return this.id;
     }
 

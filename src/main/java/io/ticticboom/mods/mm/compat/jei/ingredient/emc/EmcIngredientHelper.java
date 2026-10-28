@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 public class EmcIngredientHelper implements IIngredientHelper<EmcStack> {
@@ -25,7 +25,7 @@ public class EmcIngredientHelper implements IIngredientHelper<EmcStack> {
     }
 
     @Override
-    public ResourceLocation getResourceLocation(EmcStack stack) {
+    public Identifier getResourceLocation(EmcStack stack) {
         return Ref.id("projecte/emc");
     }
 

@@ -18,21 +18,21 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import io.ticticboom.mods.mm.compat.jei.ingredient.matter.MatterIngredientNames;
 
 public class ReplicationMatterPortIngredient implements IPortIngredient {
 
-    private final ResourceLocation matterId;
+    private final Identifier matterId;
     private final AmountRange amount;
 
-    public ReplicationMatterPortIngredient(ResourceLocation matterId, AmountRange amount) {
+    public ReplicationMatterPortIngredient(Identifier matterId, AmountRange amount) {
         this.matterId = matterId;
         this.amount = amount;
     }
 
-    public ResourceLocation getMatterId() {
+    public Identifier getMatterId() {
         return matterId;
     }
 

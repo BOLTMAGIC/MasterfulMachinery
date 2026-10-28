@@ -5,14 +5,14 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.ticticboom.mods.mm.Ref;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-public record GeoModelConfig(ResourceLocation model, ResourceLocation texture, @Nullable ResourceLocation animations,
+public record GeoModelConfig(Identifier model, Identifier texture, @Nullable Identifier animations,
                              @Nullable String idle, @Nullable String working,
                              double offsetX, double offsetY, double offsetZ, float scale, boolean rotate, boolean glow) {
 
@@ -26,9 +26,9 @@ public record GeoModelConfig(ResourceLocation model, ResourceLocation texture, @
             throw new IllegalArgumentException("geoModel must be an object (or \"none\" on a structure)");
         }
         JsonObject o = json.getAsJsonObject();
-        ResourceLocation model = id(o, "model", true);
-        ResourceLocation texture = id(o, "texture", true);
-        ResourceLocation animations = id(o, "animations", false);
+        Identifier model = id(o, "model", true);
+        Identifier texture = id(o, "texture", true);
+        Identifier animations = id(o, "animations", false);
         String idle = text(o, "idle");
         String working = text(o, "working");
         double[] offset = {0, 0, 0};
@@ -52,14 +52,14 @@ public record GeoModelConfig(ResourceLocation model, ResourceLocation texture, @
     }
 
     @Nullable
-    private static ResourceLocation id(JsonObject o, String key, boolean required) {
+    private static Identifier id(JsonObject o, String key, boolean required) {
         if (!o.has(key) || o.get(key).isJsonNull()) {
             if (required) {
                 throw new IllegalArgumentException("geoModel needs '" + key + "'");
             }
             return null;
         }
-        ResourceLocation id = ResourceLocation.tryParse(o.get(key).getAsString());
+        Identifier id = Identifier.tryParse(o.get(key).getAsString());
         if (id == null) {
             throw new IllegalArgumentException("geoModel '" + key + "' is not a valid id: " + o.get(key).getAsString());
         }

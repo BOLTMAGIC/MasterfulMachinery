@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 public class ArsSourceIngredientHelper implements IIngredientHelper<ArsSourceStack> {
@@ -25,7 +25,7 @@ public class ArsSourceIngredientHelper implements IIngredientHelper<ArsSourceSta
     }
 
     @Override
-    public ResourceLocation getResourceLocation(ArsSourceStack stack) {
+    public Identifier getResourceLocation(ArsSourceStack stack) {
         return Ref.id("ars_nouveau/source");
     }
 

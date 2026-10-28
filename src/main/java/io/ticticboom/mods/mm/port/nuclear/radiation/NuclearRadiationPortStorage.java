@@ -23,7 +23,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -269,7 +269,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         var id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
         for (String entry : model.carriers()) {
             if (entry.startsWith("#")) {
-                var tag = ResourceLocation.tryParse(entry.substring(1));
+                var tag = Identifier.tryParse(entry.substring(1));
                 if (tag != null && stack.is(TagKey.create(Registries.ITEM, tag))) {
                     return true;
                 }

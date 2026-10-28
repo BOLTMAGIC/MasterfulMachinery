@@ -19,27 +19,27 @@ import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.builder.IRecipeSlotBuilder;
 import mezz.jei.api.helpers.IJeiHelpers;
 import mezz.jei.api.recipe.IFocusGroup;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 
 public class EntityPortIngredient implements IPortIngredient {
 
-    private final ResourceLocation entityId;
-    private final ResourceLocation tagId;
+    private final Identifier entityId;
+    private final Identifier tagId;
     private final AmountRange amount;
 
-    public EntityPortIngredient(ResourceLocation entityId, ResourceLocation tagId, AmountRange amount) {
+    public EntityPortIngredient(Identifier entityId, Identifier tagId, AmountRange amount) {
         this.entityId = entityId;
         this.tagId = tagId;
         this.amount = amount;
     }
 
-    public ResourceLocation getEntityId() {
+    public Identifier getEntityId() {
         return entityId;
     }
 
-    public ResourceLocation getTagId() {
+    public Identifier getTagId() {
         return tagId;
     }
 

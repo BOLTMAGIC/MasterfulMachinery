@@ -5,7 +5,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
@@ -42,7 +42,7 @@ public record LinkData(UUID owner, String ownerName, NetworkPos network) {
 
         @Nullable
         public static NetworkPos load(CompoundTag tag) {
-            ResourceLocation dim = ResourceLocation.tryParse(tag.getString("Dim"));
+            Identifier dim = Identifier.tryParse(tag.getString("Dim"));
             if (dim == null || !tag.contains("Pos")) {
                 return null;
             }

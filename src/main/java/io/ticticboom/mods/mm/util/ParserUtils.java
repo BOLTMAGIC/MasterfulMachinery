@@ -5,7 +5,7 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentSerialization;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -15,18 +15,18 @@ import java.util.function.Supplier;
 
 public class ParserUtils {
 
-    public static ResourceLocation parseId(JsonElement json) {
+    public static Identifier parseId(JsonElement json) {
         var s = json.getAsString();
-        var rl = ResourceLocation.tryParse(s);
+        var rl = Identifier.tryParse(s);
         if (rl == null) throw new RuntimeException("Invalid resource location: " + s);
         return rl;
     }
 
-    public static ResourceLocation parseId(JsonObject json, String key) {
+    public static Identifier parseId(JsonObject json, String key) {
         return parseId(json.get(key));
     }
 
-    public static ResourceLocation parseOptionalId(JsonObject json, String key) {
+    public static Identifier parseOptionalId(JsonObject json, String key) {
         if (json == null || !json.has(key) || json.get(key).isJsonNull()) {
             return null;
         }

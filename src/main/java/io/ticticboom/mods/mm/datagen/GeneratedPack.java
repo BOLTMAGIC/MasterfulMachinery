@@ -7,7 +7,7 @@ import com.google.gson.JsonParseException;
 import com.mojang.logging.LogUtils;
 import net.minecraft.FileUtil;
 import net.minecraft.Util;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
@@ -97,12 +97,12 @@ public class GeneratedPack implements PackResources {
     }
 
     @Nullable
-    public IoSupplier<InputStream> getResource(PackType p_249352_, ResourceLocation p_251715_) {
+    public IoSupplier<InputStream> getResource(PackType p_249352_, Identifier p_251715_) {
         Path path = this.root.resolve(p_249352_.getDirectory()).resolve(p_251715_.getNamespace());
         return getResource(p_251715_, path);
     }
 
-    public static IoSupplier<InputStream> getResource(ResourceLocation p_250145_, Path p_251046_) {
+    public static IoSupplier<InputStream> getResource(Identifier p_250145_, Path p_251046_) {
         return FileUtil.decomposePath(p_250145_.getPath()).mapOrElse((p_251647_) -> {
             Path path = FileUtil.resolvePath(p_251046_, p_251647_);
             return returnFileIfExists(path);
@@ -134,7 +134,7 @@ public class GeneratedPack implements PackResources {
         })) {
             stream.forEach((p_249092_) -> {
                 String s = PATH_JOINER.join(p_249514_.relativize(p_249092_));
-                ResourceLocation resourcelocation = ResourceLocation.tryBuild(p_249455_, s);
+                Identifier resourcelocation = Identifier.tryBuild(p_249455_, s);
                 if (resourcelocation == null) {
                     Util.logAndPauseIfInIde(String.format(Locale.ROOT, "Invalid path in pack: %s:%s, ignoring", p_249455_, s));
                 } else {

@@ -12,7 +12,7 @@ import io.ticticboom.mods.mm.port.replication.link.ReplicationLinkRecipes;
 import io.ticticboom.mods.mm.port.replication.link.register.ReplicationLinkPortBlockEntity;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.capabilities.Capabilities;
@@ -30,10 +30,10 @@ public class ReplicationLinkFeature {
     private boolean joined = false;
     private boolean unloaded = false;
     private List<MatterPattern> patterns = List.of();
-    private ResourceLocation patternStructure = null;
+    private Identifier patternStructure = null;
     private int patternRecipeVersion = -1;
     private String taskId = null;
-    private ResourceLocation requestedRecipe = null;
+    private Identifier requestedRecipe = null;
     private String startsTask = null;
     private int startsForTask = 0;
 

@@ -3,7 +3,7 @@ package io.ticticboom.mods.mm.controller.machine.register;
 import net.minecraft.util.RandomSource;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.particles.SimpleParticleType;
 import io.ticticboom.mods.mm.config.WorkingEffectsConfig;
@@ -176,8 +176,8 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
         workingEffectsGeneration = generation;
         var blockId = groupHolder.getBlock().getId();
         var entry = WorkingEffectsConfig.get(blockId);
-        ResourceLocation soundId = entry != null && entry.sound() != null ? idOrNull(entry.sound()) : model.workingSound();
-        ResourceLocation particleId = entry != null && entry.particle() != null ? idOrNull(entry.particle()) : model.workingParticle();
+        Identifier soundId = entry != null && entry.sound() != null ? idOrNull(entry.sound()) : model.workingSound();
+        Identifier particleId = entry != null && entry.particle() != null ? idOrNull(entry.particle()) : model.workingParticle();
         workingSoundInterval = entry != null && entry.interval() != null ? entry.interval() : model.workingSoundInterval();
 
         workingSound = null;
@@ -201,8 +201,8 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     }
 
     @Nullable
-    private static ResourceLocation idOrNull(String id) {
-        return id.isBlank() ? null : ResourceLocation.tryParse(id);
+    private static Identifier idOrNull(String id) {
+        return id.isBlank() ? null : Identifier.tryParse(id);
     }
 
     public boolean usesTintedScreen() {

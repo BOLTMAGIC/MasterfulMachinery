@@ -5,20 +5,20 @@ import io.ticticboom.mods.mm.port.fluid.FluidPortIngredient;
 import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.HashSet;
 import java.util.Set;
 
-record RecipeRequirements(Set<ResourceLocation> itemIds, Set<ResourceLocation> fluidIds, boolean energy,
-                          @Nullable ResourceLocation primaryItem) {
+record RecipeRequirements(Set<Identifier> itemIds, Set<Identifier> fluidIds, boolean energy,
+                          @Nullable Identifier primaryItem) {
 
     static RecipeRequirements of(RecipeModel recipe) {
-        var items = new HashSet<ResourceLocation>();
-        var fluids = new HashSet<ResourceLocation>();
+        var items = new HashSet<Identifier>();
+        var fluids = new HashSet<Identifier>();
         boolean energy = false;
-        ResourceLocation primary = null;
+        Identifier primary = null;
         for (var input : recipe.inputs().inputs()) {
             if (!(input instanceof ConsumeRecipeIngredientEntry entry)) {
                 continue;

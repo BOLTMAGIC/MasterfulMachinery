@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockE
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -15,7 +15,7 @@ import snownee.jade.api.config.IPluginConfig;
 import java.util.Locale;
 
 public class ControllerDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("controller_progress");
+    public static final Identifier UID = Ref.id("controller_progress");
     private static final String STATUS_KEY = "Status";
     private static final String PROGRESS_KEY = "Progress";
     private static final String RUNNING_KEY = "Running";
@@ -46,7 +46,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 

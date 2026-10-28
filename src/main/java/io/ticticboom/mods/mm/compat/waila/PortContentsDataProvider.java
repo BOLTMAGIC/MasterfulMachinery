@@ -7,7 +7,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import snownee.jade.api.BlockAccessor;
 import snownee.jade.api.IBlockComponentProvider;
 import snownee.jade.api.IServerDataProvider;
@@ -17,7 +17,7 @@ import snownee.jade.api.ui.BoxStyle;
 import snownee.jade.api.ui.IElementHelper;
 
 public class PortContentsDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
-    public static final ResourceLocation UID = Ref.id("port_contents");
+    public static final Identifier UID = Ref.id("port_contents");
     public static final String KEY = "PortContents";
     public static final String FILL_KEY = "PortFill";
     public static final String FILL_COLOR_KEY = "PortFillColor";
@@ -86,7 +86,7 @@ public class PortContentsDataProvider implements IServerDataProvider<BlockAccess
     }
 
     @Override
-    public ResourceLocation getUid() {
+    public Identifier getUid() {
         return UID;
     }
 }

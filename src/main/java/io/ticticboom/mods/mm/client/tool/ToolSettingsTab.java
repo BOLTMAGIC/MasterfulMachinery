@@ -11,7 +11,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.level.block.Block;
 import org.jetbrains.annotations.Nullable;
@@ -246,7 +246,7 @@ public class ToolSettingsTab {
     static Component rowName(String key, NavigableMap<Integer, Block> tiers) {
         int slash = key.lastIndexOf('/');
         boolean input = key.endsWith("/input");
-        ResourceLocation type = ResourceLocation.tryParse(slash < 0 ? key : key.substring(0, slash));
+        Identifier type = Identifier.tryParse(slash < 0 ? key : key.substring(0, slash));
         Component typeName;
         String langKey = type == null ? "" : "tooltip." + type.getNamespace() + ".port_type." + type.getPath().replace('/', '_');
         if (Language.getInstance().has(langKey)) {

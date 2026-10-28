@@ -8,7 +8,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
@@ -28,7 +28,7 @@ public final class StructureCategories extends SavedData {
     private static final int MAX_ASSIGNMENTS = 4096;
 
     public record Snapshot(List<String> categories, Map<String, String> assignments, long revision) {
-        public String category(ResourceLocation id, boolean builder) {
+        public String category(Identifier id, boolean builder) {
             return assignments.getOrDefault(key(id, builder), DEFAULT);
         }
     }
@@ -40,7 +40,7 @@ public final class StructureCategories extends SavedData {
 
     public enum Action { CREATE, RENAME, DELETE, ASSIGN }
 
-    public static String key(ResourceLocation id, boolean builder) {
+    public static String key(Identifier id, boolean builder) {
         return (builder ? "builder|" : "mm|") + id;
     }
 
@@ -57,8 +57,8 @@ public final class StructureCategories extends SavedData {
     }
 
     /** Puts machines and other mods' structures in a category once, the first time the world sees them. */
-    public void importDefaults(Collection<ResourceLocation> machines, Collection<BuildableStructure> builders) {
-        for (ResourceLocation id : machines) {
+    public void importDefaults(Collection<Identifier> machines, Collection<BuildableStructure> builders) {
+        for (Identifier id : machines) {
             importDefault(key(id, false), "Custom Multiblocks");
         }
         for (BuildableStructure structure : builders) {
@@ -70,7 +70,7 @@ public final class StructureCategories extends SavedData {
                 case "crazy_ae2" -> "Crazy AE2";
                 case "woot" -> "Woot";
                 case "" -> structure.groupName();
-                default -> BuildableStructure.fallbackName(ResourceLocation.fromNamespaceAndPath(structure.id().getNamespace(), folder));
+                default -> BuildableStructure.fallbackName(Identifier.fromNamespaceAndPath(structure.id().getNamespace(), folder));
             };
             importDefault(key(structure.id(), true), category);
         }
@@ -179,11 +179,11 @@ public final class StructureCategories extends SavedData {
         int split = key.indexOf('|');
         if (split < 1 || split == key.length() - 1) return false;
         if (!key.startsWith("builder|") && !key.startsWith("mm|")) return false;
-        return ResourceLocation.tryParse(key.substring(split + 1)) != null;
+        return Identifier.tryParse(key.substring(split + 1)) != null;
     }
 
     private static boolean knownStructure(String key) {
-        ResourceLocation id = ResourceLocation.tryParse(key.substring(key.indexOf('|') + 1));
+        Identifier id = Identifier.tryParse(key.substring(key.indexOf('|') + 1));
         return key.startsWith("builder|") ? BuildableStructureRegistry.SERVER.get(id) != null
                 : StructureManager.STRUCTURES.containsKey(id);
     }

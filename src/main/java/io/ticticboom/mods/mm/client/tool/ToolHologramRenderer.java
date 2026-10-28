@@ -22,7 +22,7 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
@@ -71,7 +71,7 @@ public final class ToolHologramRenderer {
         ItemStack tool = ToolKeys.heldTool(player);
         Object structure = tool.isEmpty() ? null : ToolBuilds.selectedStructure(tool);
         if (structure == null && !tool.isEmpty()) {
-            ResourceLocation builderId = ToolData.builderStructure(tool);
+            Identifier builderId = ToolData.builderStructure(tool);
             structure = builderId == null ? null : BuildableStructureRegistry.CLIENT.get(builderId);
         }
         ToolTarget target = structure == null ? null : ToolTarget.resolve(player, tool, ToolPlacementSettings.range());

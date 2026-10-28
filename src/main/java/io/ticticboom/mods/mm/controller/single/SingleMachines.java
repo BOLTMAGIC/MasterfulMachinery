@@ -8,7 +8,7 @@ import io.ticticboom.mods.mm.model.ControllerModel;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
 import io.ticticboom.mods.mm.setup.loader.ControllerLoader;
 import io.ticticboom.mods.mm.structure.StructureModel;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 public final class SingleMachines {
 
-    private static final Set<ResourceLocation> SUPPORTED = Set.of(Ref.Ports.ITEM, Ref.Ports.FLUID, Ref.Ports.ENERGY, Ref.Ports.MEK_CHEMICAL);
+    private static final Set<Identifier> SUPPORTED = Set.of(Ref.Ports.ITEM, Ref.Ports.FLUID, Ref.Ports.ENERGY, Ref.Ports.MEK_CHEMICAL);
     private static final Map<String, List<SingleMachineSlot>> SLOTS = new HashMap<>();
 
     private SingleMachines() {
@@ -37,7 +37,7 @@ public final class SingleMachines {
             }
             if (!SUPPORTED.contains(slot.type())) {
                 throw new RuntimeException(String.format("Slot '%s' of the single-block machine '%s' is %s, which single-block machines do not support. Supported types: %s",
-                        slot.id(), controllerId, slot.type(), SUPPORTED.stream().map(ResourceLocation::toString).sorted().collect(Collectors.joining(", "))));
+                        slot.id(), controllerId, slot.type(), SUPPORTED.stream().map(Identifier::toString).sorted().collect(Collectors.joining(", "))));
             }
         }
         SLOTS.put(controllerId, List.copyOf(slots));
@@ -61,7 +61,7 @@ public final class SingleMachines {
         for (JsonElement element : config.getAsJsonArray("slots")) {
             var json = element.getAsJsonObject();
             var id = json.get("id").getAsString();
-            var type = ResourceLocation.parse(json.get("type").getAsString());
+            var type = Identifier.parse(json.get("type").getAsString());
             var input = json.get("input").getAsBoolean();
             var portConfig = json.has("config") ? json.getAsJsonObject("config") : new JsonObject();
             var factory = MMPortRegistry.requirePortType(type).getParser().parseStorage(portConfig);
@@ -74,7 +74,7 @@ public final class SingleMachines {
         return Ref.Controller.SINGLE.equals(model.type());
     }
 
-    public static boolean isImplicitStructure(ResourceLocation structureId) {
+    public static boolean isImplicitStructure(Identifier structureId) {
         if (!Ref.ID.equals(structureId.getNamespace())) {
             return false;
         }
@@ -82,8 +82,8 @@ public final class SingleMachines {
         return model != null && isSingle(model);
     }
 
-    public static Map<ResourceLocation, StructureModel> implicitStructures() {
-        var result = new HashMap<ResourceLocation, StructureModel>();
+    public static Map<Identifier, StructureModel> implicitStructures() {
+        var result = new HashMap<Identifier, StructureModel>();
         for (ControllerModel model : ControllerLoader.CONTROLLER_MODELS.values()) {
             if (!isSingle(model)) {
                 continue;

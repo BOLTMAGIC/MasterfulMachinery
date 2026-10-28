@@ -5,7 +5,7 @@ import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.ingredients.subtypes.UidContext;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 public class BotaniaManaIngredientHelper implements IIngredientHelper<BotaniaManaStack> {
@@ -25,7 +25,7 @@ public class BotaniaManaIngredientHelper implements IIngredientHelper<BotaniaMan
     }
 
     @Override
-    public ResourceLocation getResourceLocation(BotaniaManaStack botaniaManaStack) {
+    public Identifier getResourceLocation(BotaniaManaStack botaniaManaStack) {
         return Ref.id("botania/mana");
     }
 

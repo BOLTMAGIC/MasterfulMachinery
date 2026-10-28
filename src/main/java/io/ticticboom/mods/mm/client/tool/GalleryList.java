@@ -11,7 +11,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ public class GalleryList {
     private static final int HOVER = 0x30FFFFFF;
     private static final Set<String> COLLAPSED = new HashSet<>();
 
-    public record Entry(ResourceLocation id, String name, String namespace, boolean builder, Object structure) {
+    public record Entry(Identifier id, String name, String namespace, boolean builder, Object structure) {
         public static Entry of(StructureModel model) {
             return new Entry(model.id(), model.name(), model.id().getNamespace(), false, model);
         }
@@ -44,7 +44,7 @@ public class GalleryList {
             return new Entry(structure.id(), structure.displayName().getString(), structure.group(), true, structure);
         }
 
-        public boolean is(@Nullable ResourceLocation otherId, boolean otherBuilder) {
+        public boolean is(@Nullable Identifier otherId, boolean otherBuilder) {
             return id.equals(otherId) && builder == otherBuilder;
         }
     }
@@ -70,10 +70,10 @@ public class GalleryList {
     private int height;
     private boolean draggingScrollbar;
     @Nullable
-    private ResourceLocation selected;
+    private Identifier selected;
     private boolean selectedBuilder;
 
-    public GalleryList(Font font, Collection<Entry> structures, @Nullable ResourceLocation selected, boolean selectedBuilder,
+    public GalleryList(Font font, Collection<Entry> structures, @Nullable Identifier selected, boolean selectedBuilder,
                        Consumer<Entry> onSelect, Consumer<Entry> onCategorize) {
         this.font = font;
         this.onSelect = onSelect;
@@ -119,7 +119,7 @@ public class GalleryList {
         refresh();
     }
 
-    private static String machineKey(ResourceLocation id) {
+    private static String machineKey(Identifier id) {
         String path = id.getPath();
         String name = path.substring(path.lastIndexOf('/') + 1).toLowerCase(Locale.ROOT);
         String version = "";

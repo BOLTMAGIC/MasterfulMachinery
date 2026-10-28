@@ -12,7 +12,7 @@ import io.ticticboom.mods.mm.structure.layout.StructureKeyChar;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -29,7 +29,7 @@ public class VisualsStructureAttachment extends StructureAttachment {
     }
 
     @Override
-    public ResourceLocation getId() {
+    public Identifier getId() {
         return Ref.StructureAttachments.VISUALS;
     }
 

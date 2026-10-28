@@ -19,7 +19,7 @@ import lombok.Setter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
@@ -35,7 +35,7 @@ import java.util.List;
 
 public class StructureModel {
 
-    private final ResourceLocation id;
+    private final Identifier id;
     private final String name;
     private final Component displayName;
     private final IdList controllerIds;
@@ -59,7 +59,7 @@ public class StructureModel {
     private SlotGrid grid;
 
     public StructureModel(
-            ResourceLocation id,
+            Identifier id,
             String name,
             IdList controllerIds,
             StructureLayout layout,
@@ -70,7 +70,7 @@ public class StructureModel {
     }
 
     public StructureModel(
-            ResourceLocation id,
+            Identifier id,
             String name,
             Component displayName,
             IdList controllerIds,
@@ -94,9 +94,9 @@ public class StructureModel {
     @OnlyIn(Dist.CLIENT)
     public PositionedCyclingBlockRenderer controllerUiRenderer() {
         BlockPos pos = new BlockPos(0, 0, 0);
-        List<ResourceLocation> ids = controllerIds.getIds();
+        List<Identifier> ids = controllerIds.getIds();
         var res = new ArrayList<GuiBlockRenderer>();
-        for (ResourceLocation id : ids) {
+        for (Identifier id : ids) {
             Block controllerBlock = MMControllerRegistry.getControllerBlock(id);
             GuiBlockRenderer gbr = new GuiBlockRenderer(controllerBlock, List.of());
             gbr.setupAt(pos);
@@ -105,7 +105,7 @@ public class StructureModel {
         return new PositionedCyclingBlockRenderer(res, pos);
     }
 
-    public static StructureModel parse(JsonObject json, ResourceLocation structureId) {
+    public static StructureModel parse(JsonObject json, Identifier structureId) {
         // "name" accepts a plain string or a { "translation": "key" } object.
         var name = ParserUtils.parseComponentKey(json.get("name"));
         var displayName = ParserUtils.parseComponent(json.get("name"));
@@ -115,11 +115,11 @@ public class StructureModel {
         return new StructureModel(structureId, name, displayName, ids, layout, attachments, json);
     }
 
-    public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout) {
+    public static JsonObject paramsToJson(Identifier id, String name, IdList controllerIds, StructureLayout layout) {
         return paramsToJson(id, name, controllerIds, layout, -1);
     }
 
-    public static JsonObject paramsToJson(ResourceLocation id, String name, IdList controllerIds, StructureLayout layout, int maxParallelRecipes) {
+    public static JsonObject paramsToJson(Identifier id, String name, IdList controllerIds, StructureLayout layout, int maxParallelRecipes) {
         var json = new JsonObject();
         json.addProperty("id", id.toString());
         json.addProperty("name", name);
@@ -218,7 +218,7 @@ public class StructureModel {
         return renderer;
     }
 
-    public ResourceLocation id() {
+    public Identifier id() {
         return id;
     }
 
@@ -261,7 +261,7 @@ public class StructureModel {
         }
         countedPartItems = new ArrayList<>(result.values());
         var controllerList = new ArrayList<ItemStack>();
-        for (ResourceLocation controller : controllerIds.getIds()) {
+        for (Identifier controller : controllerIds.getIds()) {
             Block controllerBlock = MMControllerRegistry.getControllerBlock(controller);
             assert controllerBlock != null;
             controllerList.add(controllerBlock.asItem().getDefaultInstance());
