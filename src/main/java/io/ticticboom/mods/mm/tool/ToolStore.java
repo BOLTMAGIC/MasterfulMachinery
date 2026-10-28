@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.tool;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.neoforged.neoforge.transfer.access.ItemAccess;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -93,10 +95,9 @@ public class ToolStore extends ItemStackHandler {
                 && !stack.has(DataComponents.BLOCK_ENTITY_DATA)
                 && !stack.has(DataComponents.CONTAINER)
                 && !stack.has(DataComponents.BUNDLE_CONTENTS)
-                && stack.getCapability(Capabilities.ItemHandler.ITEM) == null;
+                && stack.getCapability(Capabilities.Item.ITEM, ItemAccess.forStack(stack)) == null;
     }
 
-    @Override
     public @NotNull CompoundTag serializeNBT(HolderLookup.@NotNull Provider provider) {
         var nbt = new CompoundTag();
         var list = new ListTag();
@@ -105,7 +106,7 @@ public class ToolStore extends ItemStackHandler {
             if (stack.isEmpty()) {
                 continue;
             }
-            var itemTag = (CompoundTag) stack.copyWithCount(1).save(provider);
+            var itemTag = (CompoundTag) LegacyNbt.saveItem(stack.copyWithCount(1), provider);
             itemTag.putInt("Slot", i);
             itemTag.putInt(COUNT_KEY, stack.getCount());
             list.add(itemTag);
@@ -115,7 +116,6 @@ public class ToolStore extends ItemStackHandler {
         return nbt;
     }
 
-    @Override
     public void deserializeNBT(HolderLookup.@NotNull Provider provider, @NotNull CompoundTag nbt) {
         setSize(nbt.contains("Size") ? nbt.getIntOr("Size", 0) : SLOTS);
         ListTag items = nbt.getListOrEmpty("Items");
@@ -125,7 +125,7 @@ public class ToolStore extends ItemStackHandler {
             if (slot < 0 || slot >= stacks.size()) {
                 continue;
             }
-            ItemStack stack = ItemStack.parseOptional(provider, itemTag);
+            ItemStack stack = LegacyNbt.parseItem(provider, itemTag);
             if (!stack.isEmpty() && itemTag.contains(COUNT_KEY)) {
                 stack.setCount(itemTag.getIntOr(COUNT_KEY, 0));
             }

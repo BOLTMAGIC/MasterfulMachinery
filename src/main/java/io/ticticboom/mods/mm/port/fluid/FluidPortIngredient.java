@@ -35,7 +35,7 @@ public class FluidPortIngredient implements IPortIngredient {
     public FluidPortIngredient(Identifier fluidId, AmountRange amount) {
         this.amount = amount;
         this.fluidId = fluidId;
-        fluid = BuiltInRegistries.FLUID.get(fluidId);
+        fluid = BuiltInRegistries.FLUID.getValue(fluidId);
         if (fluid == null) {
             throw new RuntimeException(String.format("Could not find fluid [%s] which is required by an MM recipe", fluidId));
         }
@@ -209,6 +209,6 @@ public class FluidPortIngredient implements IPortIngredient {
     @Override
     public net.minecraft.network.chat.Component displayName() {
         return new net.neoforged.neoforge.fluids.FluidStack(
-                net.minecraft.core.registries.BuiltInRegistries.FLUID.get(getFluidId()), 1).getHoverName();
+                net.minecraft.core.registries.BuiltInRegistries.FLUID.getValue(getFluidId()), 1).getHoverName();
     }
 }

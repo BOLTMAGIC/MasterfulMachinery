@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -28,7 +29,7 @@ public record MMConfigEditPkt(String key, String value) implements CustomPacketP
     public static void handle(MMConfigEditPkt packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = ctx.player() instanceof ServerPlayer sp ? sp : null;
-            if (player == null || !player.hasPermissions(2)) return;
+            if (player == null || !player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) return;
             MMConfigOptions.Option option = MMConfigOptions.server(packet.key);
             if (option == null || !option.set(packet.value)) return;
             MMConfig.bake();

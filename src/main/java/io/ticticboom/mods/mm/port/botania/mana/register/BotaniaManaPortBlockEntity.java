@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.botania.mana.register;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -126,14 +129,24 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements IPortBloc
     // --- serialisation, unaffected by Botania ---
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
-        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        var tag = new CompoundTag();
+        saveLegacy(tag, LegacyNbt.registries(level));
+        LegacyNbt.write(output, tag);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
+    }
+
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         storage.load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
     }
 
@@ -149,7 +162,7 @@ public class BotaniaManaPortBlockEntity extends BlockEntity implements IPortBloc
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag, registries);
+        saveLegacy(tag, registries);
         return tag;
     }
 

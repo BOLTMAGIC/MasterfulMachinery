@@ -39,7 +39,7 @@ public class StructureSyncPkt implements CustomPacketPayload {
         buf.writeInt(packet.structures.size());
         for (Map.Entry<Identifier, JsonElement> strcture : packet.structures.entrySet()) {
             String string = strcture.getValue().toString();
-            buf.writeResourceLocation(strcture.getKey());
+            buf.writeIdentifier(strcture.getKey());
             buf.writeUtf(string);
         }
     }
@@ -49,7 +49,7 @@ public class StructureSyncPkt implements CustomPacketPayload {
         int initialCapacity = buf.readInt();
         packet.structures = new HashMap<>(initialCapacity);
         for (int i = 0; i < initialCapacity; i++) {
-            Identifier key = buf.readResourceLocation();
+            Identifier key = buf.readIdentifier();
             String string = buf.readUtf();
             packet.structures.put(key, JsonParser.parseString(string));
         }

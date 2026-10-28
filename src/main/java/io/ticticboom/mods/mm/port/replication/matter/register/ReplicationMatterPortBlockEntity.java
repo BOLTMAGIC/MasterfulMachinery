@@ -83,21 +83,21 @@ public abstract class ReplicationMatterPortBlockEntity extends AbstractPortBlock
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
-        super.saveAdditional(tag, registries);
+        super.saveLegacy(tag, registries);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         storage.load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
-        super.loadAdditional(tag, registries);
+        super.loadLegacy(tag, registries);
     }
 
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag, registries);
+        saveLegacy(tag, registries);
         return tag;
     }
 

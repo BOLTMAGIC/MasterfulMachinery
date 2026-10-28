@@ -68,20 +68,6 @@ public class NuclearRadiationPortBlock extends Block implements EntityBlock, IPo
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && level.getBlockEntity(pos) instanceof NuclearRadiationPortBlockEntity port) {
-            var items = port.getRadiationStorage().getItems();
-            for (int i = 0; i < items.getSlots(); i++) {
-                var stack = items.getStackInSlot(i);
-                if (!stack.isEmpty()) {
-                    Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack.copy());
-                }
-            }
-        }
-        super.onRemove(state, level, pos, newState, movedByPiston);
-    }
-
-    @Override
     public MutableComponent getName() {
         var name = model.displayName();
         return name != null ? name.copy() : super.getName();

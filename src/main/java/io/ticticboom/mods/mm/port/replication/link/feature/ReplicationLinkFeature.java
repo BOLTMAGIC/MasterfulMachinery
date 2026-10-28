@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.replication.link.feature;
 
+import io.ticticboom.mods.mm.cap.MMCapabilities;
 import com.buuz135.replication.api.pattern.MatterPattern;
 import com.buuz135.replication.api.task.IReplicationTask;
 import com.buuz135.replication.calculation.ReplicationCalculation;
@@ -213,7 +214,7 @@ public class ReplicationLinkFeature {
         if (storages == null) {
             return;
         }
-        var target = level.getCapability(Capabilities.ItemHandler.BLOCK, task.getSource(), Direction.UP);
+        var target = MMCapabilities.item(level, task.getSource(), Direction.UP);
         if (target == null) {
             return;
         }

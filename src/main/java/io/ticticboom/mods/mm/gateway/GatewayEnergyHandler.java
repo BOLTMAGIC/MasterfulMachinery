@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.gateway;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import net.neoforged.neoforge.energy.IEnergyStorage;
@@ -7,7 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class GatewayEnergyHandler implements IEnergyStorage {
+public class GatewayEnergyHandler implements IEnergyStorage, TransferSnapshot {
     private final Supplier<List<IPortStorage>> inputs;
     private final Supplier<List<IPortStorage>> outputs;
 
@@ -35,6 +36,16 @@ public class GatewayEnergyHandler implements IEnergyStorage {
         var result = handlers(inputs.get());
         result.addAll(handlers(outputs.get()));
         return result;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return GatewaySnapshots.create(all());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        GatewaySnapshots.restore(snapshot);
     }
 
     @Override

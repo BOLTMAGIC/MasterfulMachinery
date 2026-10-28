@@ -40,7 +40,7 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
         this.tag = ItemTags.create(tagId);
         // Registry.getTag returns an Optional<HolderSet.Named<Item>> of holders rather than
         // Forge's ITag of values, so an absent tag yields an empty list instead of a null.
-        stacks = ConditionalLazy.create(() -> BuiltInRegistries.ITEM.getTag(tag)
+        stacks = ConditionalLazy.create(() -> BuiltInRegistries.ITEM.get(tag)
                 .map(holders -> holders.stream().map(holder -> {
                     // use display stacks with the real required count so external transfer/encode handlers
                     // that read the ItemStack count (rather than the JEI badge) get the correct amount.
@@ -50,7 +50,7 @@ public class TagItemPortIngredient extends BaseItemPortIngredient {
                     return s;
                 }).toList())
                 .orElseGet(List::of),
-                () -> BuiltInRegistries.ITEM.getTag(tag).map(holders -> holders.size() > 0).orElse(false), List.of());
+                () -> BuiltInRegistries.ITEM.get(tag).map(holders -> holders.size() > 0).orElse(false), List.of());
     }
 
     @Override

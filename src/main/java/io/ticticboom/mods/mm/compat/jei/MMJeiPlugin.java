@@ -158,7 +158,7 @@ public class MMJeiPlugin implements IModPlugin {
                 continue;
             }
             Identifier location = controllerIds.get(0);
-            ItemStack stack = BuiltInRegistries.ITEM.get(location).getDefaultInstance();
+            ItemStack stack = BuiltInRegistries.ITEM.getValue(location).getDefaultInstance();
             if (stack.isEmpty()) {
                 Ref.LOG.error("Skipping JEI catalyst for structure {}: no controller block '{}' exists. "
                         + "Either it is misspelled, or the controller it names was not loaded.", structure.id(), location);

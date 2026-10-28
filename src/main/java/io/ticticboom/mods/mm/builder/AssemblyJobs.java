@@ -169,8 +169,8 @@ public final class AssemblyJobs {
             return false;
         }
         AssemblyJob job = requiresController
-                ? AssemblyJob.create(player.serverLevel(), controllerPos, plan, perBlockFe)
-                : AssemblyJob.createWithoutController(player.serverLevel(), controllerPos, plan, perBlockFe);
+                ? AssemblyJob.create(player.level(), controllerPos, plan, perBlockFe)
+                : AssemblyJob.createWithoutController(player.level(), controllerPos, plan, perBlockFe);
         JOBS.put(player.getUUID(), new Build(job, source, instant, false, controllerPos,
                 io.ticticboom.mods.mm.tool.ToolBuildMode.SEQUENTIAL));
         return true;
@@ -180,7 +180,7 @@ public final class AssemblyJobs {
                                     int perBlockFe, boolean requiresController, BlockPos targetPos, boolean instantPreference) {
         if (JOBS.containsKey(player.getUUID())) return false;
         var mode = MMConfigSetup.COMMON.toolBuildMode.get().forTool(instantPreference);
-        AssemblyJob job = AssemblyJob.createTool(player.serverLevel(), controllerPos, plan, perBlockFe, requiresController, mode);
+        AssemblyJob job = AssemblyJob.createTool(player.level(), controllerPos, plan, perBlockFe, requiresController, mode);
         JOBS.put(player.getUUID(), new Build(job, source, false, true, targetPos.immutable(), mode));
         return true;
     }

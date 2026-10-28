@@ -45,7 +45,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     public SingleItemPortIngredient(Identifier itemId, AmountRange count, CompoundTag requiredNbt, boolean nbtStrong, DataComponentPatch components) {
         super(count, createPredicate(itemId), requiredNbt, nbtStrong, components);
         this.itemId = itemId;
-        item = BuiltInRegistries.ITEM.get(itemId);
+        item = BuiltInRegistries.ITEM.getValue(itemId);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", itemId));
         }
@@ -78,7 +78,7 @@ public class SingleItemPortIngredient extends BaseItemPortIngredient {
     }
 
     private static Predicate<ItemStack> createPredicate(Identifier id) {
-        var item = BuiltInRegistries.ITEM.get(id);
+        var item = BuiltInRegistries.ITEM.getValue(id);
         if (item == null) {
             throw new RuntimeException(String.format("Could not find item [%s] which is required by an MM recipe", id));
         }

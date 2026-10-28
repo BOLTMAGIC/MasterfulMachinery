@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.entity;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -35,7 +36,7 @@ public record PortEntity(
         var tag = new CompoundTag();
         tag.putString("Type", type.toString());
         if (uuid != null) {
-            tag.putUUID("Uuid", uuid);
+            LegacyNbt.putUuid(tag, "Uuid", uuid);
         }
         if (data != null) {
             tag.put("Data", data);
@@ -51,11 +52,11 @@ public record PortEntity(
         if (type == null) {
             return null;
         }
-        var uuid = tag.hasUUID("Uuid") ? tag.getUUID("Uuid") : null;
-        var data = tag.contains("Data") ? tag.getCompound("Data") : null;
+        var uuid = LegacyNbt.getUuid(tag, "Uuid");
+        var data = tag.contains("Data") ? tag.getCompoundOrEmpty("Data") : null;
         return new PortEntity(type, uuid, data,
                 !tag.contains("HadAi") || tag.getBooleanOr("HadAi", false),
-                tag.getBoolean("WasInvulnerable"),
-                tag.getBoolean("WasSilent"));
+                tag.getBooleanOr("WasInvulnerable", false),
+                tag.getBooleanOr("WasSilent", false));
     }
 }

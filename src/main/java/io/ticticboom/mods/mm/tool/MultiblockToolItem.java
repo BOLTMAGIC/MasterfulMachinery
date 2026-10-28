@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.tool;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import io.ticticboom.mods.mm.config.MMConfig;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
@@ -11,7 +13,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -48,15 +49,15 @@ public class MultiblockToolItem extends Item {
     public static void setAnchorKeyName(Supplier<Component> name) { anchorKeyName = name; }
 
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!player.isShiftKeyDown()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
         if (!level.isClientSide()) {
             openStore((ServerPlayer) player, stack, hand);
         }
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static void openStore(ServerPlayer player, ItemStack stack, InteractionHand hand) {
@@ -103,7 +104,7 @@ public class MultiblockToolItem extends Item {
                 openStore(serverPlayer, context.getItemInHand(), context.getHand());
             }
         }
-        return InteractionResult.sidedSuccess(context.getLevel().isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static InteractionResult build(UseOnContext context) {
@@ -111,14 +112,14 @@ public class MultiblockToolItem extends Item {
         Player player = context.getPlayer();
         ItemStack stack = context.getItemInHand();
         if (player instanceof ServerPlayer serverPlayer) return buildTarget(serverPlayer, stack);
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     public static InteractionResult buildTarget(ServerPlayer player, ItemStack stack) {
         Level level = player.level();
         if (!player.isAlive() || player.isSpectator() || !(stack.getItem() instanceof MultiblockToolItem)) return InteractionResult.FAIL;
-        if (player.getCooldowns().isOnCooldown(stack.getItem())) return InteractionResult.FAIL;
-        player.getCooldowns().addCooldown(stack.getItem(), 4);
+        if (player.getCooldowns().isOnCooldown(stack)) return InteractionResult.FAIL;
+        player.getCooldowns().addCooldown(stack, 4);
         // an MM structure or another mod's; the server checks it still exists
         if (ToolData.structure(stack) == null && ToolData.builderStructure(stack) == null) {
             player.sendOverlayMessage(Component.translatable("message.mm.tool.no_structure"));
@@ -156,7 +157,7 @@ public class MultiblockToolItem extends Item {
     }
 
     private static boolean noticeDue(ServerPlayer player) {
-        int now = player.server.getTickCount();
+        int now = player.level().getServer().getTickCount();
         Integer last = LAST_NOTICE.get(player.getUUID());
         if (last != null && now - last >= 0 && now - last < NOTICE_TICKS) {
             return false;
@@ -183,31 +184,31 @@ public class MultiblockToolItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
         Identifier structure = ToolData.structure(stack);
         if (structure == null) {
             structure = ToolData.builderStructure(stack);
         }
         if (structure != null) {
-            tooltip.add(Component.translatable("tooltip.mm.structure_builder.structure", structure.toString()).withStyle(ChatFormatting.GRAY));
+            tooltip.accept(Component.translatable("tooltip.mm.structure_builder.structure", structure.toString()).withStyle(ChatFormatting.GRAY));
         } else {
-            tooltip.add(Component.translatable("tooltip.mm.structure_builder.no_structure").withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.accept(Component.translatable("tooltip.mm.structure_builder.no_structure").withStyle(ChatFormatting.DARK_GRAY));
         }
         int capacity = MMConfig.TOOL_ENERGY_CAPACITY;
         int energy = ToolEnergy.of(stack).getEnergyStored();
-        tooltip.add(Component.translatable("tooltip.mm.structure_builder.energy", energy, capacity).withStyle(ChatFormatting.GRAY));
+        tooltip.accept(Component.translatable("tooltip.mm.structure_builder.energy", energy, capacity).withStyle(ChatFormatting.GRAY));
         var network = NetworkLink.AVAILABLE ? ToolData.network(stack) : null;
         if (network != null) {
-            tooltip.add(Component.translatable("tooltip.mm.structure_builder.network",
-                    network.pos().toShortString(), network.dimension().location().getPath()).withStyle(ChatFormatting.AQUA));
+            tooltip.accept(Component.translatable("tooltip.mm.structure_builder.network",
+                    network.pos().toShortString(), network.dimension().identifier().getPath()).withStyle(ChatFormatting.AQUA));
         } else if (NetworkLink.AVAILABLE) {
-            tooltip.add(Component.translatable("tooltip.mm.structure_builder.no_network").withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.accept(Component.translatable("tooltip.mm.structure_builder.no_network").withStyle(ChatFormatting.DARK_GRAY));
         }
-        tooltip.add(Component.translatable("tooltip.mm.structure_builder.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.accept(Component.translatable("tooltip.mm.structure_builder.usage", dismantleKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
         ToolData.Anchor anchor = ToolData.anchor(stack);
-        tooltip.add(Component.translatable("tooltip.mm.structure_builder.anchor_key", anchorKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.accept(Component.translatable("tooltip.mm.structure_builder.anchor_key", anchorKeyName.get()).withStyle(ChatFormatting.DARK_GRAY));
         if (anchor != null) {
-            tooltip.add(Component.translatable("message.mm.tool.anchor.set", anchor.pos().toShortString()).withStyle(ChatFormatting.AQUA));
+            tooltip.accept(Component.translatable("message.mm.tool.anchor.set", anchor.pos().toShortString()).withStyle(ChatFormatting.AQUA));
         }
     }
 }

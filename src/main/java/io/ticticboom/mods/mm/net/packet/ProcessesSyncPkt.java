@@ -41,7 +41,7 @@ public class ProcessesSyncPkt implements CustomPacketPayload {
     public static void encode(RegistryFriendlyByteBuf buf, ProcessesSyncPkt packet) {
         buf.writeVarInt(packet.recipes.size());
         for (Map.Entry<Identifier, JsonElement> entry : packet.recipes.entrySet()) {
-            buf.writeResourceLocation(entry.getKey());
+            buf.writeIdentifier(entry.getKey());
             buf.writeUtf(entry.getValue().toString());
         }
     }
@@ -51,7 +51,7 @@ public class ProcessesSyncPkt implements CustomPacketPayload {
         packet.recipes = new HashMap<>();
         int count = buf.readVarInt();
         for (int i = 0; i < count; i++) {
-            packet.recipes.put(buf.readResourceLocation(), JsonParser.parseString(buf.readUtf()));
+            packet.recipes.put(buf.readIdentifier(), JsonParser.parseString(buf.readUtf()));
         }
         return packet;
     }

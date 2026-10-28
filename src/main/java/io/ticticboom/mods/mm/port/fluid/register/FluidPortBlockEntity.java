@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.fluid.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.ticticboom.mods.mm.Ref;
@@ -82,5 +83,13 @@ public class FluidPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public PortModel getModel() {
         return model;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            NetworkLink.beforePortRemoved(level, pos);
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

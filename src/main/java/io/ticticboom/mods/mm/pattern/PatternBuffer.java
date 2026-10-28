@@ -121,7 +121,7 @@ public final class PatternBuffer {
             int amount = (int) Math.min(Integer.MAX_VALUE, stack.amount());
             return switch (stack.kind()) {
                 case ITEM -> {
-                    var probe = new ItemStack(BuiltInRegistries.ITEM.get(stack.id()));
+                    var probe = new ItemStack(BuiltInRegistries.ITEM.getValue(stack.id()));
                     probe.applyComponents(stack.components());
                     if (probe.isEmpty() || items.canInsert(probe, amount) > 0) {
                         yield false;
@@ -130,7 +130,7 @@ public final class PatternBuffer {
                     yield true;
                 }
                 case FLUID -> {
-                    var fluid = new FluidStack(BuiltInRegistries.FLUID.get(stack.id()), amount);
+                    var fluid = new FluidStack(BuiltInRegistries.FLUID.getValue(stack.id()), amount);
                     if (fluid.isEmpty() || fluids.getHandler().fill(fluid, IFluidHandler.FluidAction.SIMULATE) < amount) {
                         yield false;
                     }
@@ -151,9 +151,9 @@ public final class PatternBuffer {
             int taking = (int) Math.min(Math.min(has, amount), Integer.MAX_VALUE);
             if (taking > 0) {
                 switch (stack.kind()) {
-                    case ITEM -> items.getHandler().extractMatching(BuiltInRegistries.ITEM.get(stack.id()),
+                    case ITEM -> items.getHandler().extractMatching(BuiltInRegistries.ITEM.getValue(stack.id()),
                             s -> s.getComponentsPatch().equals(stack.components()), taking, false);
-                    case FLUID -> fluids.getHandler().drain(new FluidStack(BuiltInRegistries.FLUID.get(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
+                    case FLUID -> fluids.getHandler().drain(new FluidStack(BuiltInRegistries.FLUID.getValue(stack.id()), taking), IFluidHandler.FluidAction.EXECUTE);
                     case CHEMICAL -> { } // [26.1-pending] Mekanism: PatternChemicals.remove(chemicals, taking);
                 }
             }

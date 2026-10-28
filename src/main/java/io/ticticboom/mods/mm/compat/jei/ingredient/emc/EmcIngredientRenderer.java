@@ -21,7 +21,7 @@ public class EmcIngredientRenderer implements IIngredientRenderer<EmcStack> {
     @Override
     public void render(GuiGraphics guiGraphics, @NotNull EmcStack stack) {
         if (icon == null) {
-            icon = BuiltInRegistries.ITEM.get(ICON).getDefaultInstance();
+            icon = BuiltInRegistries.ITEM.getValue(ICON).getDefaultInstance();
         }
         guiGraphics.renderFakeItem(icon, 0, 0);
     }

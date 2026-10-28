@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.networklink;
 
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.ChatFormatting;
@@ -8,7 +9,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.common.util.TriState;
+import net.minecraft.util.TriState;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.level.BlockEvent;
 
@@ -37,7 +38,7 @@ public final class NetworkLinkProtection {
     }
 
     @SubscribeEvent(priority = EventPriority.HIGH)
-    public void onBreak(BlockEvent.BreakEvent event) {
+    public void onBreak(BreakBlockEvent event) {
         if (event.getLevel().isClientSide() || !(event.getLevel() instanceof net.minecraft.world.level.Level level)) {
             return;
         }

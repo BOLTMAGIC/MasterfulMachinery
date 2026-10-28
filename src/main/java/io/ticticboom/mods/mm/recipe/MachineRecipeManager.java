@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.recipe;
 
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.util.ExtraCodecs;
 import io.ticticboom.mods.mm.recipe.condition.biome.BiomeRecipeCondition;
 import io.ticticboom.mods.mm.recipe.condition.height.HeightRecipeCondition;
 import io.ticticboom.mods.mm.recipe.condition.redstone.RedstoneRecipeCondition;
@@ -30,10 +32,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class MachineRecipeManager extends SimpleJsonResourceReloadListener {
+public class MachineRecipeManager extends SimpleJsonResourceReloadListener<JsonElement> {
 
     public MachineRecipeManager() {
-        super(Ref.GSON, "mm/processes");
+        super(ExtraCodecs.JSON, FileToIdConverter.json("mm/processes"));
         init();
     }
 

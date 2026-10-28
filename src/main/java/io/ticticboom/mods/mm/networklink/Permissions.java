@@ -17,7 +17,7 @@ public final class Permissions {
         if (player.getUUID().equals(owner)) {
             return true;
         }
-        if (MMConfig.NETWORK_LINK_OP_BYPASS && player.hasPermissions(2)) {
+        if (MMConfig.NETWORK_LINK_OP_BYPASS && player.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER)) {
             return true;
         }
         return FTB_TEAMS && FtbTeamsCompat.sameTeam(player.getUUID(), owner);

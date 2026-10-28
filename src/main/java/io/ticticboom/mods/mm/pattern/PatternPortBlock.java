@@ -43,10 +43,4 @@ public class PatternPortBlock extends BaseEntityBlock {
         return new PatternPortBlockEntity(pos, state);
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        for (int line = 1; line <= 4; line++) {
-            tooltip.add(Component.translatable("block.mm.pattern_port.tooltip." + line).withStyle(ChatFormatting.GRAY));
-        }
-    }
 }

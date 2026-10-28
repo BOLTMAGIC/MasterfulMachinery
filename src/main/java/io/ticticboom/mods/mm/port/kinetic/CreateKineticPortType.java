@@ -36,9 +36,9 @@ public class CreateKineticPortType extends PortType {
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
         if (model.input()) {
-            return  MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> new CreateKineticPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+            return  MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> new CreateKineticPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
         } else {
-            return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> new CreateKineticGenPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+            return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> new CreateKineticGenPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
         }
     }
 

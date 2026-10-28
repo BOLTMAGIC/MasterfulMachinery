@@ -1,12 +1,13 @@
 package io.ticticboom.mods.mm.port.energy;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import net.minecraft.nbt.LongTag;
 import net.minecraft.nbt.NumericTag;
 import net.minecraft.nbt.Tag;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 
-public class EnergyPortHandler implements IEnergyStorage {
+public class EnergyPortHandler implements IEnergyStorage, TransferSnapshot {
     private final long capacity;
     private final long maxReceive;
     private final long maxExtract;
@@ -18,6 +19,17 @@ public class EnergyPortHandler implements IEnergyStorage {
         this.maxReceive = maxReceive;
         this.maxExtract = maxExtract;
         this.changed = changed;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return energy;
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        energy = (Long) snapshot;
+        changed.call();
     }
 
     public long getStored() {

@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.common;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -96,7 +99,20 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        var tag = new CompoundTag();
+        saveLegacy(tag, LegacyNbt.registries(level));
+        LegacyNbt.write(output, tag);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put(Ref.NBT_STORAGE_KEY, getStorage().save(new CompoundTag(), registries));
         if (autoIO != null) {
             autoIO.save(tag);
@@ -108,11 +124,9 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         if (machineColors != null) {
             tag.putIntArray(COLORS_KEY, machineColors);
         }
-        super.saveAdditional(tag, registries);
     }
 
-    @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         getStorage().load(tag.getCompoundOrEmpty(Ref.NBT_STORAGE_KEY), registries);
         if (autoIO != null) {
             autoIO.load(tag);
@@ -123,13 +137,12 @@ public abstract class AbstractPortBlockEntity extends BlockEntity implements IPo
         machineState = state >= 0 && state < states.length ? states[state] : ControllerState.UNFORMED;
         int[] colors = tag.getIntArray(COLORS_KEY).orElse(new int[0]);
         machineColors = colors.length == states.length ? colors : null;
-        super.loadAdditional(tag, registries);
     }
 
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag, registries);
+        saveLegacy(tag, registries);
         return tag;
     }
 

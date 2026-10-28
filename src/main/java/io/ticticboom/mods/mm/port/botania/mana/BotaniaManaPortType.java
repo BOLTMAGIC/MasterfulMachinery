@@ -28,7 +28,7 @@ public class BotaniaManaPortType extends PortType {
 
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
-        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((a, b) -> new BotaniaManaPortBlockEntity(model, groupHolder, a, b), groupHolder.getBlock().get()).build(null));
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((a, b) -> new BotaniaManaPortBlockEntity(model, groupHolder, a, b), groupHolder.getBlock().get()));
     }
 
     @Override

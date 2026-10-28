@@ -26,7 +26,7 @@ public class EntityTypes {
         if (type == null || tagId == null) {
             return false;
         }
-        var tag = BuiltInRegistries.ENTITY_TYPE.getTag(TagKey.create(Registries.ENTITY_TYPE, tagId));
+        var tag = BuiltInRegistries.ENTITY_TYPE.get(TagKey.create(Registries.ENTITY_TYPE, tagId));
         return tag.isPresent() && tag.get().stream().anyMatch(holder -> holder.value() == type);
     }
 
@@ -34,7 +34,7 @@ public class EntityTypes {
         if (tagId == null) {
             return null;
         }
-        var tag = BuiltInRegistries.ENTITY_TYPE.getTag(TagKey.create(Registries.ENTITY_TYPE, tagId));
+        var tag = BuiltInRegistries.ENTITY_TYPE.get(TagKey.create(Registries.ENTITY_TYPE, tagId));
         return tag.map(holders -> holders.stream().findFirst().map(holder -> (EntityType<?>) holder.value()).orElse(null)).orElse(null);
     }
 

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.gateway;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.item.ItemPortHandler;
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class GatewayItemHandler implements IItemHandler {
+public class GatewayItemHandler implements IItemHandler, TransferSnapshot {
     private final Supplier<List<IPortStorage>> inputs;
     private final Supplier<List<IPortStorage>> outputs;
 
@@ -39,6 +40,16 @@ public class GatewayItemHandler implements IItemHandler {
         var result = handlers(inputs.get());
         result.addAll(handlers(outputs.get()));
         return result;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return GatewaySnapshots.create(all());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        GatewaySnapshots.restore(snapshot);
     }
 
     @Override

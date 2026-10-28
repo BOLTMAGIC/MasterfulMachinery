@@ -31,9 +31,9 @@ public class EntityPortType extends PortType {
 
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
-        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of(
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>(
                 (p, s) -> new EntityPortBlockEntity(model, groupHolder, model.input(), p, s),
-                groupHolder.getBlock().get()).build(null));
+                groupHolder.getBlock().get()));
     }
 
     @Override

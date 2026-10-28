@@ -3,8 +3,16 @@ package io.ticticboom.mods.mm.cap;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.MMControllerRegistry;
 import io.ticticboom.mods.mm.controller.single.register.SingleMachineBlockEntity;
-import io.ticticboom.mods.mm.tool.ToolEnergy;
-import net.neoforged.neoforge.capabilities.ItemCapability;
+import io.ticticboom.mods.mm.cap.transfer.LegacyEnergyHandler;
+import io.ticticboom.mods.mm.cap.transfer.LegacyFluidResourceHandler;
+import io.ticticboom.mods.mm.cap.transfer.LegacyItemResourceHandler;
+import io.ticticboom.mods.mm.config.MMConfig;
+import io.ticticboom.mods.mm.tool.ToolComponents;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.neoforged.neoforge.capabilities.ICapabilityProvider;
+import net.neoforged.neoforge.transfer.energy.ItemAccessEnergyHandler;
+import org.jetbrains.annotations.Nullable;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.MMPortRegistry;
@@ -32,21 +40,48 @@ import java.util.List;
  * query is answered by a lookup function. The per-block-entity overrides are therefore gone, and
  * the delegation to IPortStorage happens here instead, once for every port type MM registered.
  * <p>
- * The capability objects are no longer created by the mod either. NeoForge ships the item, fluid
- * and energy block capabilities, so these constants are aliases kept only so the rest of the
- * codebase can carry on referring to MMCapabilities.
+ * Since 1.21.9 NeoForge's item, fluid and energy capabilities are its transfer API (ResourceHandler,
+ * EnergyHandler) rather than IItemHandler, IFluidHandler and IEnergyStorage. MM's storages and recipe
+ * code still work with the old handlers, so ITEM, FLUID and ENERGY are MM's own capabilities carrying
+ * them, and every block that answers one also answers NeoForge's through an adapter. Use item(),
+ * fluid() and energy() to query a block that may not be MM's.
  */
-@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber
 public class MMCapabilities {
-    public static final BlockCapability<IItemHandler, Direction> ITEM = Capabilities.ItemHandler.BLOCK;
-    public static final BlockCapability<IFluidHandler, Direction> FLUID = Capabilities.FluidHandler.BLOCK;
-    public static final BlockCapability<IEnergyStorage, Direction> ENERGY = Capabilities.EnergyStorage.BLOCK;
-    public static final ItemCapability<IEnergyStorage, Void> ENERGY_ITEM = Capabilities.EnergyStorage.ITEM;
+    public static final BlockCapability<IItemHandler, Direction> ITEM = BlockCapability.createSided(Ref.id("item_handler"), IItemHandler.class);
+    public static final BlockCapability<IFluidHandler, Direction> FLUID = BlockCapability.createSided(Ref.id("fluid_handler"), IFluidHandler.class);
+    public static final BlockCapability<IEnergyStorage, Direction> ENERGY = BlockCapability.createSided(Ref.id("energy_storage"), IEnergyStorage.class);
+
+    public static @Nullable IItemHandler item(Level level, BlockPos pos, @Nullable Direction side) {
+        var own = level.getCapability(ITEM, pos, side);
+        if (own != null) {
+            return own;
+        }
+        var handler = level.getCapability(Capabilities.Item.BLOCK, pos, side);
+        return handler == null ? null : IItemHandler.of(handler);
+    }
+
+    public static @Nullable IFluidHandler fluid(Level level, BlockPos pos, @Nullable Direction side) {
+        var own = level.getCapability(FLUID, pos, side);
+        if (own != null) {
+            return own;
+        }
+        var handler = level.getCapability(Capabilities.Fluid.BLOCK, pos, side);
+        return handler == null ? null : IFluidHandler.of(handler);
+    }
+
+    public static @Nullable IEnergyStorage energy(Level level, BlockPos pos, @Nullable Direction side) {
+        var own = level.getCapability(ENERGY, pos, side);
+        if (own != null) {
+            return own;
+        }
+        var handler = level.getCapability(Capabilities.Energy.BLOCK, pos, side);
+        return handler == null ? null : IEnergyStorage.of(handler);
+    }
 
     @SubscribeEvent
     public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        var capabilities = new ArrayList<BlockCapability<?, Direction>>(List.of(ITEM, FLUID, ENERGY));
-        capabilities.addAll(compatCapabilities());
+        var capabilities = compatCapabilities();
 
         // Port block entity types are built from data at load time rather than declared
         // statically, so this walks whatever MMPortRegistry ended up with.
@@ -55,6 +90,9 @@ public class MMCapabilities {
             if (beType == null) {
                 continue;
             }
+            @SuppressWarnings("unchecked")
+            var typed = (BlockEntityType<BlockEntity>) beType;
+            registerHandlers(event, typed, portLookup(ITEM), portLookup(FLUID), portLookup(ENERGY));
             for (var capability : capabilities) {
                 registerPortCapability(event, beType, capability);
             }
@@ -67,20 +105,17 @@ public class MMCapabilities {
             if (Ref.Controller.SINGLE.equals(holder.getRegistryId())) {
                 @SuppressWarnings("unchecked")
                 var single = (BlockEntityType<SingleMachineBlockEntity>) holder.getBe().get();
-                event.registerBlockEntity(ITEM, single, (be, side) -> be.itemHandler());
-                event.registerBlockEntity(FLUID, single, (be, side) -> be.fluidHandler());
-                event.registerBlockEntity(ENERGY, single, (be, side) -> be.energyHandler());
+                registerHandlers(event, single, (be, side) -> be.itemHandler(), (be, side) -> be.fluidHandler(), (be, side) -> be.energyHandler());
                 // [26.1-pending] Mekanism has no 26.1.2 release yet
                 // if (ModList.get().isLoaded("mekanism")) {
                 // MekCapabilities.registerSingle(event, single);
                 // }
             }
         }
-        event.registerItem(ENERGY_ITEM, (stack, context) -> ToolEnergy.of(stack), MMRegisters.MULTIBLOCK_TOOL.get());
-        var gateway = MMRegisters.INPUT_GATEWAY_BE.get();
-        event.registerBlockEntity(ITEM, gateway, (be, side) -> be.itemHandler());
-        event.registerBlockEntity(FLUID, gateway, (be, side) -> be.fluidHandler());
-        event.registerBlockEntity(ENERGY, gateway, (be, side) -> be.energyHandler());
+        event.registerItem(Capabilities.Energy.ITEM, (stack, access) -> new ItemAccessEnergyHandler(access, ToolComponents.ENERGY.get(),
+                MMConfig.TOOL_ENERGY_CAPACITY, MMConfig.TOOL_ENERGY_RECEIVE_RATE, MMConfig.TOOL_ENERGY_CAPACITY), MMRegisters.MULTIBLOCK_TOOL.get());
+        registerHandlers(event, MMRegisters.INPUT_GATEWAY_BE.get(), (be, side) -> be.itemHandler(), (be, side) -> be.fluidHandler(),
+                (be, side) -> be.energyHandler());
         // [26.1-pending] Mekanism has no 26.1.2 release yet
         // if (ModList.get().isLoaded("mekanism")) {
         // MekCapabilities.registerGateway(event, gateway);
@@ -121,6 +156,38 @@ public class MMCapabilities {
         // result.add(ProjectECapabilities.EMC_STORAGE);
         // }
         return result;
+    }
+
+    /** Registers MM's handlers under its own capabilities and, adapted, under NeoForge's transfer capabilities. */
+    private static <B extends BlockEntity> void registerHandlers(RegisterCapabilitiesEvent event, BlockEntityType<B> type,
+                                                                 ICapabilityProvider<B, Direction, IItemHandler> items,
+                                                                 ICapabilityProvider<B, Direction, IFluidHandler> fluids,
+                                                                 ICapabilityProvider<B, Direction, IEnergyStorage> energy) {
+        event.registerBlockEntity(ITEM, type, items);
+        event.registerBlockEntity(FLUID, type, fluids);
+        event.registerBlockEntity(ENERGY, type, energy);
+        event.registerBlockEntity(Capabilities.Item.BLOCK, type, (be, side) -> {
+            var handler = items.getCapability(be, side);
+            return handler == null ? null : new LegacyItemResourceHandler(handler);
+        });
+        event.registerBlockEntity(Capabilities.Fluid.BLOCK, type, (be, side) -> {
+            var handler = fluids.getCapability(be, side);
+            return handler == null ? null : new LegacyFluidResourceHandler(handler);
+        });
+        event.registerBlockEntity(Capabilities.Energy.BLOCK, type, (be, side) -> {
+            var handler = energy.getCapability(be, side);
+            return handler == null ? null : new LegacyEnergyHandler(handler);
+        });
+    }
+
+    private static <T> ICapabilityProvider<BlockEntity, Direction, T> portLookup(BlockCapability<T, Direction> capability) {
+        return (be, side) -> {
+            if (be instanceof IPortBlockEntity port) {
+                var storage = port.getStorage();
+                return storage == null ? null : storage.getCapability(capability);
+            }
+            return null;
+        };
     }
 
     private static <T> void registerPortCapability(RegisterCapabilitiesEvent event,

@@ -90,4 +90,10 @@ public class EntityPortBlockEntity extends AbstractPortBlockEntity {
     public void releaseHeldEntities() {
         storage.releaseAll();
     }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        releaseHeldEntities();
+        super.preRemoveSideEffects(pos, state);
+    }
 }

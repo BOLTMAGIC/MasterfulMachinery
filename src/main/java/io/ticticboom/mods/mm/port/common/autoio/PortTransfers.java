@@ -3,7 +3,9 @@ package io.ticticboom.mods.mm.port.common.autoio;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.capabilities.BlockCapability;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 import net.neoforged.neoforge.energy.IEnergyStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.FluidUtil;
@@ -20,16 +22,16 @@ public final class PortTransfers {
     }
 
     public static IPortTransfer items(Supplier<IItemHandler> self) {
-        return between(MMCapabilities.ITEM, self, PortTransfers::moveItems);
+        return between(MMCapabilities::item, self, PortTransfers::moveItems);
     }
 
     public static IPortTransfer fluids(Supplier<IFluidHandler> self) {
-        return between(MMCapabilities.FLUID, self, PortTransfers::moveFluids);
+        return between(MMCapabilities::fluid, self, PortTransfers::moveFluids);
     }
 
     public static IPortTransfer energy(Supplier<IEnergyStorage> self) {
         return (level, pos, face, pull, ticks) -> {
-            var other = level.getCapability(MMCapabilities.ENERGY, pos, face);
+            var other = MMCapabilities.energy(level, pos, face);
             if (other == null) {
                 return;
             }
@@ -42,9 +44,15 @@ public final class PortTransfers {
         };
     }
 
-    public static <H> IPortTransfer between(BlockCapability<H, Direction> cap, Supplier<H> self, BiConsumer<H, H> mover) {
+    /** Finds a handler of one kind on a block, MM's or another mod's. */
+    @FunctionalInterface
+    public interface HandlerLookup<H> {
+        @Nullable H find(Level level, BlockPos pos, @Nullable Direction side);
+    }
+
+    public static <H> IPortTransfer between(HandlerLookup<H> lookup, Supplier<H> self, BiConsumer<H, H> mover) {
         return (level, pos, face, pull, ticks) -> {
-            var other = level.getCapability(cap, pos, face);
+            var other = lookup.find(level, pos, face);
             if (other == null) {
                 return;
             }

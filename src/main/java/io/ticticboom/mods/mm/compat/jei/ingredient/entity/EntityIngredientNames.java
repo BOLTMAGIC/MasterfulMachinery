@@ -29,7 +29,7 @@ public class EntityIngredientNames {
         if (!ingredient.tag()) {
             return BuiltInRegistries.ENTITY_TYPE.getOptional(ingredient.id()).orElse(null);
         }
-        var tag = BuiltInRegistries.ENTITY_TYPE.getTag(TagKey.create(Registries.ENTITY_TYPE, ingredient.id()));
+        var tag = BuiltInRegistries.ENTITY_TYPE.get(TagKey.create(Registries.ENTITY_TYPE, ingredient.id()));
         return tag.flatMap(holders -> holders.stream().findFirst().map(holder -> (EntityType<?>) holder.value())).orElse(null);
     }
 

@@ -43,17 +43,8 @@ public class InputGatewayBlock extends BaseEntityBlock {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        for (int line = 1; line <= 4; line++) {
-            tooltip.add(Component.translatable("block.mm.input_gateway.tooltip." + line).withStyle(ChatFormatting.GRAY));
-        }
-    }
-
-    @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moved) {
-        if (!state.is(newState.getBlock()) && level instanceof ServerLevel serverLevel) {
-            WorldUtil.scheduleNearbyValidation(serverLevel, pos);
-        }
-        super.onRemove(state, level, pos, newState, moved);
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        WorldUtil.scheduleNearbyValidation(level, pos);
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
     }
 }

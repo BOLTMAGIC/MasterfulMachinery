@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.entity;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.entity.EntitySpawnReason;
 import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -96,8 +98,8 @@ public class EntityPortStorage implements IPortStorage {
             return false;
         }
         if (model.mode() == EntityPortMode.STORED) {
-            var data = new CompoundTag();
-            if (!entity.save(data)) {
+            var data = LegacyNbt.saveEntity(entity);
+            if (data == null) {
                 return false;
             }
             entities.add(PortEntity.stored(id, entity.getUUID(), data));
@@ -200,15 +202,15 @@ public class EntityPortStorage implements IPortStorage {
         }
         int created = 0;
         for (int i = 0; i < made; i++) {
-            var entity = type.create(serverLevel);
+            var entity = type.create(serverLevel, EntitySpawnReason.SPAWNER);
             if (entity == null) {
                 break;
             }
             var target = center();
-            entity.moveTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
+            entity.snapTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
             if (model.mode() == EntityPortMode.STORED) {
-                var data = new CompoundTag();
-                if (!entity.save(data)) {
+                var data = LegacyNbt.saveEntity(entity);
+                if (data == null) {
                     break;
                 }
                 entities.add(PortEntity.stored(id, entity.getUUID(), data));
@@ -250,8 +252,8 @@ public class EntityPortStorage implements IPortStorage {
 
     private void spawnStored(ServerLevel level, PortEntity entry) {
         var target = center();
-        var spawned = EntityType.loadEntityRecursive(entry.data().copy(), level, entity -> {
-            entity.moveTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
+        var spawned = EntityType.loadEntityRecursive(entry.data().copy(), level, EntitySpawnReason.LOAD, entity -> {
+            entity.snapTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
             return entity;
         });
         if (spawned != null) {
@@ -277,7 +279,7 @@ public class EntityPortStorage implements IPortStorage {
             }
             if (model.singleBlockZone()) {
                 var target = center();
-                entity.moveTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
+                entity.snapTo(target.x, target.y, target.z, entity.getYRot(), entity.getXRot());
             }
             entity.setDeltaMovement(Vec3.ZERO);
         }
@@ -376,7 +378,7 @@ public class EntityPortStorage implements IPortStorage {
         entities.clear();
         var list = tag.getListOrEmpty("Entities");
         for (int i = 0; i < list.size(); i++) {
-            var entry = PortEntity.load(list.getCompound(i));
+            var entry = PortEntity.load(list.getCompoundOrEmpty(i));
             if (entry != null) {
                 entities.add(entry);
             }

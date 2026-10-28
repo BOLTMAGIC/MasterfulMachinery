@@ -37,9 +37,10 @@ public final class PortDrainer {
         if (fluids != null) {
             moved |= drainFluids(fluids, network, source);
         }
-        if (CHEMICALS) {
-            moved |= ChemicalDrainer.drain(storage, network, source);
-        }
+        // [26.1-pending] Mekanism has no 26.1.2 release yet
+        // if (CHEMICALS) {
+        // moved |= ChemicalDrainer.drain(storage, network, source);
+        // }
         return moved;
     }
 

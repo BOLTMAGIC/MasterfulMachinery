@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.tool;
 
+import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.NineSliceUtil;
 import io.ticticboom.mods.mm.config.MMConfig;
@@ -393,7 +394,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     }
 
     private boolean canManageCategories() {
-        return this.minecraft != null && this.minecraft.player != null && this.minecraft.player.hasPermissions(2);
+        return this.minecraft != null && this.minecraft.player != null && this.minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
     }
 
     @Nullable
@@ -787,7 +788,7 @@ public class MultiblockToolScreen extends AbstractContainerScreen<MultiblockTool
     private Component meStatus() {
         var network = ToolData.network(tool());
         return network == null ? Component.translatable("gui.mm.tool.me.not_bound")
-                : Component.translatable("gui.mm.tool.me.bound", network.pos().toShortString(), network.dimension().location().getPath());
+                : Component.translatable("gui.mm.tool.me.bound", network.pos().toShortString(), network.dimension().identifier().getPath());
     }
 
     private int meStatusTop() {

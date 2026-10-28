@@ -65,11 +65,9 @@ public class EnergyPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean p_60519_) {
-        if (!state.is(newState.getBlock()) && level instanceof ServerLevel sl) {
-            WorldUtil.scheduleNearbyValidation(sl, pos);
-        }
-        super.onRemove(state, level, pos, newState, p_60519_);
+    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel level, BlockPos pos, boolean movedByPiston) {
+        WorldUtil.scheduleNearbyValidation(level, pos);
+        super.affectNeighborsAfterRemoval(state, level, pos, movedByPiston);
     }
 
     /**

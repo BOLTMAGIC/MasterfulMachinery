@@ -929,7 +929,7 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
                     if (link != null) {
                         lines.add(Component.translatable("gui.mm.controller.link.owner", link.ownerName()).withStyle(ChatFormatting.WHITE));
                         lines.add(Component.translatable("gui.mm.controller.link.network", link.network().pos().toShortString(),
-                                link.network().dimension().location().getPath()).withStyle(ChatFormatting.AQUA));
+                                link.network().dimension().identifier().getPath()).withStyle(ChatFormatting.AQUA));
                         lines.add(lastSentLine());
                         lines.add(Component.translatable("gui.mm.controller.row.link.hint.linked").withStyle(ChatFormatting.GRAY));
                     } else {

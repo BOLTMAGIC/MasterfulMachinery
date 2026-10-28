@@ -117,7 +117,7 @@ public final class ToolDismantles {
     }
 
     private static void start(ServerPlayer player, Prepared prepared) {
-        if (!AssemblyJobs.startDismantle(player, prepared.job(player.serverLevel()), prepared.sink())) {
+        if (!AssemblyJobs.startDismantle(player, prepared.job(player.level()), prepared.sink())) {
             refuseBusy(player);
         }
     }

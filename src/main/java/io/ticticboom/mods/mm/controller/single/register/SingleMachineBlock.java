@@ -23,15 +23,6 @@ public class SingleMachineBlock extends MachineControllerBlock {
                 && level.getBlockEntity(pos) instanceof SingleMachineBlockEntity machine) {
             machine.openSlots(serverPlayer);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
-    }
-
-    @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
-        if (oldState.getBlock() != newState.getBlock() && !level.isClientSide()
-                && level.getBlockEntity(pos) instanceof SingleMachineBlockEntity machine) {
-            machine.dropContents(level, pos);
-        }
-        super.onRemove(oldState, level, pos, newState, isMoving);
+        return InteractionResult.SUCCESS;
     }
 }

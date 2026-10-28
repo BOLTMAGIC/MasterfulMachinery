@@ -49,7 +49,7 @@ public final class Ae2MeAccess implements MeAccess {
         if (network == null || !ToolData.useMe(tool)) {
             return null;
         }
-        IGrid grid = NetworkAccess.grid(player.server, network);
+        IGrid grid = NetworkAccess.grid(player.level().getServer(), network);
         String key;
         if (grid == null) {
             key = "message.mm.tool.me_unreachable";
@@ -58,7 +58,7 @@ public final class Ae2MeAccess implements MeAccess {
         } else {
             return null;
         }
-        return Component.translatable(key, network.pos().toShortString(), network.dimension().location().getPath())
+        return Component.translatable(key, network.pos().toShortString(), network.dimension().identifier().getPath())
                 .withStyle(ChatFormatting.YELLOW);
     }
 
@@ -70,7 +70,7 @@ public final class Ae2MeAccess implements MeAccess {
 
     @Nullable
     private IGrid usableGrid() {
-        IGrid found = NetworkAccess.grid(player.server, network);
+        IGrid found = NetworkAccess.grid(player.level().getServer(), network);
         return found != null && NetworkAccess.mayUse(player, found) ? found : null;
     }
 
@@ -96,7 +96,7 @@ public final class Ae2MeAccess implements MeAccess {
         }
         AEItemKey key = AEItemKey.of(item);
         long got = StorageHelper.poweredExtraction(grid.getEnergyService(), grid.getStorageService().getInventory(), key, amount,
-                IActionSource.ofPlayer(player), Actionable.ofSimulate(simulate));
+                IActionSource.ofPlayer(player), simulate ? Actionable.SIMULATE : Actionable.MODULATE);
         if (got <= 0) {
             return ItemStack.EMPTY;
         }

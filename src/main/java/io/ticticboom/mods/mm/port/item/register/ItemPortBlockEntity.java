@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.port.item.register;
 
+import io.ticticboom.mods.mm.networklink.NetworkLink;
+import net.minecraft.world.Containers;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -58,5 +60,14 @@ public class ItemPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public PortModel getModel() {
         return model;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            NetworkLink.beforePortRemoved(level, pos);
+            Containers.dropContents(level, pos, ((ItemPortStorage) getStorage()).getHandler().getStacks());
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

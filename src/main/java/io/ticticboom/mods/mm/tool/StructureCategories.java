@@ -11,6 +11,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.saveddata.SavedData;
+import net.minecraft.world.level.saveddata.SavedDataType;
+import io.ticticboom.mods.mm.Ref;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -23,7 +25,8 @@ import java.util.Set;
 
 public final class StructureCategories extends SavedData {
     public static final String DEFAULT = "Uncategorized";
-    private static final String DATA_ID = "mm_structure_categories";
+    private static final SavedDataType<StructureCategories> TYPE = new SavedDataType<>(Ref.id("structure_categories"), StructureCategories::new,
+            CompoundTag.CODEC.xmap(StructureCategories::load, data -> data.save(new CompoundTag())));
     private static final int MAX_CATEGORIES = 64;
     private static final int MAX_ASSIGNMENTS = 4096;
 
@@ -51,7 +54,7 @@ public final class StructureCategories extends SavedData {
     }
 
     public static StructureCategories get(MinecraftServer server) {
-        StructureCategories data = server.overworld().getDataStorage().computeIfAbsent(new SavedData.Factory<>(StructureCategories::new, StructureCategories::load, null), DATA_ID);
+        StructureCategories data = server.overworld().getDataStorage().computeIfAbsent(TYPE);
         data.importDefaults(StructureManager.STRUCTURES.keySet(), BuildableStructureRegistry.SERVER.all());
         return data;
     }
@@ -98,7 +101,7 @@ public final class StructureCategories extends SavedData {
         return new Snapshot(List.copyOf(categories), Map.copyOf(assignments), 0);
     }
 
-    private static StructureCategories load(CompoundTag tag, HolderLookup.Provider registries) {
+    private static StructureCategories load(CompoundTag tag) {
         StructureCategories data = new StructureCategories();
         ListTag names = tag.getListOrEmpty("Categories");
         for (int i = 0; i < names.size() && data.categories.size() < MAX_CATEGORIES; i++) {
@@ -120,8 +123,7 @@ public final class StructureCategories extends SavedData {
         return data;
     }
 
-    @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    private CompoundTag save(CompoundTag tag) {
         ListTag names = new ListTag();
         for (String name : categories) names.add(StringTag.valueOf(name));
         tag.put("Categories", names);

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.gateway;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.cap.MMCapabilities;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import net.neoforged.neoforge.fluids.FluidStack;
@@ -9,7 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-public class GatewayFluidHandler implements IFluidHandler {
+public class GatewayFluidHandler implements IFluidHandler, TransferSnapshot {
     private final Supplier<List<IPortStorage>> inputs;
     private final Supplier<List<IPortStorage>> outputs;
 
@@ -37,6 +38,16 @@ public class GatewayFluidHandler implements IFluidHandler {
         var result = handlers(inputs.get());
         result.addAll(handlers(outputs.get()));
         return result;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return GatewaySnapshots.create(all());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        GatewaySnapshots.restore(snapshot);
     }
 
     @Override

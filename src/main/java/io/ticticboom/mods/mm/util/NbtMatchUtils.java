@@ -13,7 +13,7 @@ public class NbtMatchUtils {
         if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString()) {
             // try SNBT parsing
             try {
-                return TagParser.parseTag(el.getAsString());
+                return TagParser.parseCompoundFully(el.getAsString());
                 // if parsed is not a compound, wrap it into one under key "value"
             } catch (Exception e) {
                 throw new RuntimeException("Failed to parse SNBT: " + e.getMessage(), e);

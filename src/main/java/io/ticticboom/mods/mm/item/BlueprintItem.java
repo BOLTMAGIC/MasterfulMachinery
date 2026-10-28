@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.item;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
 import io.ticticboom.mods.mm.structure.StructureManager;
@@ -40,15 +42,15 @@ public class BlueprintItem extends Item {
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack stack, Item.TooltipContext context, @NotNull List<Component> texts, @NotNull TooltipFlag tipFlag) {
-        super.appendHoverText(stack, context, texts, tipFlag);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> texts, TooltipFlag tipFlag) {
+        super.appendHoverText(stack, context, display, texts, tipFlag);
         var structure = getStructure(stack);
         if (structure == null) {
             return;
         }
 
-        texts.add(Component.translatable("item.mm.blueprint.tooltip.structure", structure.displayName()));
-        texts.add(Component.translatable("item.mm.blueprint.tooltip.creative"));
+        texts.accept(Component.translatable("item.mm.blueprint.tooltip.structure", structure.displayName()));
+        texts.accept(Component.translatable("item.mm.blueprint.tooltip.creative"));
     }
 
     @Override
@@ -68,7 +70,7 @@ public class BlueprintItem extends Item {
             if (!level.isClientSide()) {
                 player.sendOverlayMessage(Component.translatable("item.mm.blueprint.message.no_structure"));
             }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
 
         if (level.isClientSide()) {

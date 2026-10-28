@@ -34,7 +34,7 @@ public final class Ae2ToolBinding {
         }
         ToolData.setNetwork(context.getItemInHand(), network);
         player.sendOverlayMessage(Component.translatable("message.mm.tool.me_bound",
-                network.pos().toShortString(), network.dimension().location().getPath()));
+                network.pos().toShortString(), network.dimension().identifier().getPath()));
         return true;
     }
 }

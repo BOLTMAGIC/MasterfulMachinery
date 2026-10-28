@@ -39,7 +39,7 @@ public record ToolAnchorPkt(InteractionHand hand) implements CustomPacketPayload
                 player.sendOverlayMessage(Component.translatable("message.mm.tool.target_missing"));
                 return;
             }
-            ToolData.setAnchor(stack, new ToolData.Anchor(player.level().dimension().location(), target.pos(), target.face(), target.facing()));
+            ToolData.setAnchor(stack, new ToolData.Anchor(player.level().dimension().identifier(), target.pos(), target.face(), target.facing()));
             player.sendOverlayMessage(Component.translatable("message.mm.tool.anchor.set", target.pos().toShortString()));
         });
     }

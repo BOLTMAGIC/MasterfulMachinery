@@ -20,7 +20,7 @@ public final class PlayerMaterials {
         if (item == Items.AIR) {
             return false;
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             if (buildable(stack, item)) {
                 return true;
             }
@@ -40,7 +40,7 @@ public final class PlayerMaterials {
         if (item == Items.AIR) {
             return null;
         }
-        var items = player.getInventory().items;
+        var items = player.getInventory().getNonEquipmentItems();
         int tagged = -1;
         for (int i = 0; i < items.size(); i++) {
             ItemStack stack = items.get(i);

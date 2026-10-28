@@ -29,7 +29,7 @@ public class BlockStructurePiece extends StructurePiece {
 
     @Override
     public void validateSetup(StructurePieceSetupMetadata meta) {
-        block = BuiltInRegistries.BLOCK.get(blockId);
+        block = BuiltInRegistries.BLOCK.getValue(blockId);
         if (block == null) {
             throw new RuntimeException(StructurePieceUtils.errorMessageFor("'block' field is not a valid block id", meta));
         }
@@ -40,7 +40,7 @@ public class BlockStructurePiece extends StructurePiece {
     public boolean formed(Level level, BlockPos pos, StructureModel model) {
         //just in case if block was not initialized yet
         if(block == null) {
-            block = BuiltInRegistries.BLOCK.get(blockId);
+            block = BuiltInRegistries.BLOCK.getValue(blockId);
         }
         return WorldUtil.getBlockState(pos, (ServerLevel) level).is(block);
     }

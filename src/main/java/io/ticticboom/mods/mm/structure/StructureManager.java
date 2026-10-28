@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.structure;
 
+import net.minecraft.resources.FileToIdConverter;
+import net.minecraft.util.ExtraCodecs;
 import io.ticticboom.mods.mm.controller.single.SingleMachines;
 import com.google.gson.JsonElement;
 import io.ticticboom.mods.mm.Ref;
@@ -20,10 +22,10 @@ import java.util.Map;
 // No @EventBusSubscriber here: this class has no @SubscribeEvent methods and never did. Forge
 // ignored the empty annotation, NeoForge rejects it outright. It is registered as a reload
 // listener from ForgeEventsListener.registerReloadListeners instead.
-public class StructureManager extends SimpleJsonResourceReloadListener {
+public class StructureManager extends SimpleJsonResourceReloadListener<JsonElement> {
 
     public StructureManager() {
-        super(Ref.GSON, "mm/structures");
+        super(ExtraCodecs.JSON, FileToIdConverter.json("mm/structures"));
     }
 
     public static final Map<Identifier, StructureModel> STRUCTURES = new HashMap<>();

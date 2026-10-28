@@ -65,7 +65,7 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
                 addBuildable(items, store.getStackInSlot(i));
             }
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             addBuildable(items, stack);
         }
         items.remove(Items.AIR);
@@ -92,7 +92,7 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
                 count += buildableCount(store.getStackInSlot(i), item);
             }
         }
-        for (ItemStack stack : player.getInventory().items) {
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
             count += buildableCount(stack, item);
         }
         return count + meStock(item);
@@ -228,14 +228,11 @@ public final class ChainedMaterialSource implements MaterialSource, ItemSink {
             return false;
         }
         ItemStack tool = store.toolStack();
-        var inventory = player.getInventory();
-        for (var compartment : List.of(inventory.items, inventory.offhand)) {
-            for (ItemStack stack : compartment) {
-                if (stack == tool) {
-                    return true;
-                }
+        for (ItemStack stack : player.getInventory().getNonEquipmentItems()) {
+            if (stack == tool) {
+                return true;
             }
         }
-        return false;
+        return player.getOffhandItem() == tool;
     }
 }

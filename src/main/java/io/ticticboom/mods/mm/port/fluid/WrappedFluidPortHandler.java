@@ -1,14 +1,25 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import net.neoforged.neoforge.fluids.FluidStack;
 import net.neoforged.neoforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
 
-public class WrappedFluidPortHandler implements IFluidHandler {
+public class WrappedFluidPortHandler implements IFluidHandler, TransferSnapshot {
     private final FluidPortHandler handler;
 
     public WrappedFluidPortHandler(FluidPortHandler handler) {
         this.handler = handler;
+    }
+
+    @Override
+    public Object createSnapshot() {
+        return handler.createSnapshot();
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        handler.restoreSnapshot(snapshot);
     }
 
     @Override

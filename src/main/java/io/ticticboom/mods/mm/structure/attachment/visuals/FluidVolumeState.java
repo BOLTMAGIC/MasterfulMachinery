@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.structure.attachment.visuals;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import lombok.Getter;
 import net.minecraft.core.BlockPos;
@@ -86,7 +87,7 @@ public final class FluidVolumeState {
         for (var state : states) {
             var tag = new CompoundTag();
             tag.putLongArray("Cells", state.cells);
-            tag.put("Fluid", state.fluid.saveOptional(registries));
+            tag.put("Fluid", LegacyNbt.saveFluid(state.fluid, registries));
             tag.putFloat("Fill", state.fill);
             list.add(tag);
         }
@@ -96,11 +97,11 @@ public final class FluidVolumeState {
     public static List<FluidVolumeState> loadAll(ListTag list, HolderLookup.Provider registries) {
         var states = new ArrayList<FluidVolumeState>();
         for (int i = 0; i < list.size(); i++) {
-            var tag = list.getCompound(i);
+            var tag = list.getCompoundOrEmpty(i);
             states.add(new FluidVolumeState(
-                    tag.getLongArray("Cells"),
-                    FluidStack.parseOptional(registries, tag.getCompound("Fluid")),
-                    tag.getFloat("Fill")));
+                    tag.getLongArray("Cells").orElse(new long[0]),
+                    LegacyNbt.parseFluid(registries, tag.getCompoundOrEmpty("Fluid")),
+                    tag.getFloatOr("Fill", 0f)));
         }
         return states;
     }

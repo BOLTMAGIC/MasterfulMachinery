@@ -182,9 +182,9 @@ public class EntityPortIngredient implements IPortIngredient {
     @Override
     public PortContent display() {
         var type = entityId != null ? EntityTypes.get(entityId) : EntityTypes.firstInTag(tagId);
-        var egg = type == null ? null : SpawnEggItem.byId(type);
-        if (egg != null) {
-            return PortContent.item(new ItemStack(egg), amount.max());
+        var egg = type == null ? java.util.Optional.<net.minecraft.core.Holder<net.minecraft.world.item.Item>>empty() : SpawnEggItem.byId(type);
+        if (egg.isPresent()) {
+            return PortContent.item(new ItemStack(egg.get()), amount.max());
         }
         return PortContent.gauge(Component.translatable("port.mm.entity.name"), 0x7A9A5A, amount.max(), 0, "");
     }

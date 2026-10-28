@@ -70,7 +70,7 @@ public class ReplicationMatterPortStorage implements IPortStorage, IRecipeDemand
         var tanks = tag.getListOrEmpty("Tanks");
         var handlerTanks = handler.tanks();
         for (int i = 0; i < handlerTanks.size(); i++) {
-            handlerTanks.get(i).readFromNBT(i < tanks.size() ? tanks.getCompound(i) : new CompoundTag());
+            handlerTanks.get(i).readFromNBT(i < tanks.size() ? tanks.getCompoundOrEmpty(i) : new CompoundTag());
         }
         priority = tag.contains("Priority")
                 ? ReplicationMatterPortStorageModel.clampPriority(tag.getIntOr("Priority", 0))

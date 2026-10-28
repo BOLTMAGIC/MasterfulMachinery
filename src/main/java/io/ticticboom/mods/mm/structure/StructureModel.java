@@ -85,7 +85,7 @@ public class StructureModel {
         this.layout = layout;
         this.attachments = attachments;
         this.config = config;
-        if (FMLEnvironment.dist == Dist.CLIENT) {
+        if (FMLEnvironment.getDist() == Dist.CLIENT) {
             renderer = new GuiStructureRenderer(this);
 //            countedPartItems = getCountedItemStacks();
         }

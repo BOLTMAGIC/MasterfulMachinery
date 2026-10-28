@@ -33,7 +33,7 @@ public class ReplicationLinkPortType extends PortType {
 
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
-        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> new ReplicationLinkPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> new ReplicationLinkPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
     }
 
     @Override

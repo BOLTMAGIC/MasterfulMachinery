@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.recipe;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -102,7 +103,7 @@ public class RecipeStateModel {
             var capturesTag = new CompoundTag();
             captures.forEach((name, stacks) -> {
                 var list = new ListTag();
-                stacks.forEach(stack -> list.add(stack.save(registries)));
+                stacks.forEach(stack -> list.add(LegacyNbt.saveItem(stack, registries)));
                 capturesTag.put(name, list);
             });
             tag.put("captures", capturesTag);
@@ -120,23 +121,23 @@ public class RecipeStateModel {
 
     public static RecipeStateModel load(CompoundTag tag, HolderLookup.Provider registries) {
         RecipeStateModel model = new RecipeStateModel();
-        model.setCanProcess(tag.getBoolean("canProcess"));
-        model.setTickProgress(tag.getInt("tickProgress"));
-        model.setTickPercentage(tag.getDouble("tickPercentage"));
-        model.setCanFinish(tag.getBoolean("canFinish"));
-        model.setProgressCarry(tag.getDouble("progressCarry"));
+        model.setCanProcess(tag.getBooleanOr("canProcess", false));
+        model.setTickProgress(tag.getIntOr("tickProgress", 0));
+        model.setTickPercentage(tag.getDoubleOr("tickPercentage", 0));
+        model.setCanFinish(tag.getBooleanOr("canFinish", false));
+        model.setProgressCarry(tag.getDoubleOr("progressCarry", 0));
         if (tag.contains(ROLL_TOKENS_KEY)) {
-            var rolls = tag.getCompound(ROLL_TOKENS_KEY);
+            var rolls = tag.getCompoundOrEmpty(ROLL_TOKENS_KEY);
             for (String key : rolls.keySet()) {
-                model.rollTokens.put(key, rolls.getDouble(key));
+                model.rollTokens.put(key, rolls.getDoubleOr(key, 0));
             }
         }
-        var capturesTag = tag.getCompound("captures");
+        var capturesTag = tag.getCompoundOrEmpty("captures");
         for (String name : capturesTag.keySet()) {
-            var list = capturesTag.getList(name, Tag.TAG_COMPOUND);
+            var list = capturesTag.getListOrEmpty(name);
             var stacks = new ArrayList<ItemStack>();
             for (int i = 0; i < list.size(); i++) {
-                ItemStack stack = ItemStack.parseOptional(registries, list.getCompound(i));
+                ItemStack stack = LegacyNbt.parseItem(registries, list.getCompoundOrEmpty(i));
                 if (!stack.isEmpty()) {
                     stacks.add(stack);
                 }
@@ -144,11 +145,11 @@ public class RecipeStateModel {
             model.setCaptured(name, stacks);
         }
         if (tag.contains("costMultiplier")) {
-            model.setCostMultiplier(tag.getDouble("costMultiplier"));
+            model.setCostMultiplier(tag.getDoubleOr("costMultiplier", 0));
         }
-        var countsTag = tag.getCompound("counts");
+        var countsTag = tag.getCompoundOrEmpty("counts");
         for (String name : countsTag.keySet()) {
-            model.setCount(name, countsTag.getInt(name));
+            model.setCount(name, countsTag.getIntOr(name, 0));
         }
         return model;
     }

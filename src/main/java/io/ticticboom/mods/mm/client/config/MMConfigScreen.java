@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.client.config;
 
+import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.client.network.ClientPacketDistributor;
 import io.ticticboom.mods.mm.client.util.TextRenderUtil;
 import io.ticticboom.mods.mm.config.MMConfigOptions;
@@ -61,7 +62,7 @@ public final class MMConfigScreen extends Screen {
     }
 
     private boolean canEditServer() {
-        return minecraft != null && minecraft.player != null && minecraft.player.hasPermissions(2);
+        return minecraft != null && minecraft.player != null && minecraft.player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
     }
 
     @Override

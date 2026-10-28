@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.ae2.pattern.feature;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import appeng.api.config.Actionable;
 import appeng.api.crafting.IPatternDetails;
 import appeng.api.crafting.PatternDetailsHelper;
@@ -86,11 +87,11 @@ public class Ae2PatternFeature implements ICraftingProvider {
     }
 
     public void saveNode(CompoundTag tag) {
-        node.saveToNBT(tag);
+        tag.merge(LegacyNbt.save(node, LegacyNbt.registries(null)));
     }
 
     public void loadNode(CompoundTag tag) {
-        node.loadFromNBT(tag);
+        LegacyNbt.load(node, LegacyNbt.registries(null), tag);
     }
 
     public void tick() {
@@ -209,7 +210,7 @@ public class Ae2PatternFeature implements ICraftingProvider {
             return new GenericStack(AEItemKey.of(item.outputStack()), item.getCount());
         }
         if (ingredient instanceof FluidPortIngredient fluid) {
-            var found = BuiltInRegistries.FLUID.get(fluid.getFluidId());
+            var found = BuiltInRegistries.FLUID.getValue(fluid.getFluidId());
             return found == null ? null : new GenericStack(AEFluidKey.of(found), fluid.getAmountRange().max());
         }
         return null;

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.fluid;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import com.mojang.serialization.Codec;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
@@ -15,7 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Predicate;
 
-public class FluidPortHandler implements IFluidHandler {
+public class FluidPortHandler implements IFluidHandler, TransferSnapshot {
 
     private final int tanks;
     private final int capacity;
@@ -91,6 +92,28 @@ public class FluidPortHandler implements IFluidHandler {
         return tanks;
     }
 
+    private record Snapshot(FluidStack[] stacks, Fluid[] lockedFluids) {
+    }
+
+    @Override
+    public Object createSnapshot() {
+        var copies = new FluidStack[stacks.size()];
+        for (int i = 0; i < copies.length; i++) {
+            copies[i] = stacks.get(i).copy();
+        }
+        return new Snapshot(copies, lockedFluids.clone());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        var saved = (Snapshot) snapshot;
+        for (int i = 0; i < stacks.size() && i < saved.stacks().length; i++) {
+            stacks.set(i, saved.stacks()[i].copy());
+        }
+        System.arraycopy(saved.lockedFluids(), 0, lockedFluids, 0, Math.min(lockedFluids.length, saved.lockedFluids().length));
+        changed.call();
+    }
+
     @Override
     public @NotNull FluidStack getFluidInTank(int i) {
         return stacks.get(i);
@@ -119,7 +142,7 @@ public class FluidPortHandler implements IFluidHandler {
             return false;
         }
         FluidStack slotStack = stacks.get(i);
-        return slotStack.isEmpty() || slotStack.isFluidEqual(fluidStack);
+        return slotStack.isEmpty() || FluidStack.isSameFluidSameComponents(slotStack, fluidStack);
     }
 
     @Override
@@ -147,7 +170,7 @@ public class FluidPortHandler implements IFluidHandler {
 
     private int tankFor(FluidStack stack) {
         for (int slot = 0; slot < stacks.size(); slot++) {
-            if (!stacks.get(slot).isEmpty() && stacks.get(slot).isFluidEqual(stack)) {
+            if (!stacks.get(slot).isEmpty() && FluidStack.isSameFluidSameComponents(stacks.get(slot), stack)) {
                 return slot;
             }
         }

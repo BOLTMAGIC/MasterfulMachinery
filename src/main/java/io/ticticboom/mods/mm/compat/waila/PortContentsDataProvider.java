@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.waila;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import net.minecraft.nbt.CompoundTag;
@@ -46,7 +47,7 @@ public class PortContentsDataProvider implements IServerDataProvider<BlockAccess
         var registries = accessor.getLevel().registryAccess();
         var list = new ListTag();
         for (var line : lines) {
-            list.add(StringTag.valueOf(Component.Serializer.toJson(line, registries)));
+            list.add(StringTag.valueOf(LegacyNbt.componentToJson(line, registries)));
         }
         data.put(KEY, list);
     }
@@ -61,7 +62,7 @@ public class PortContentsDataProvider implements IServerDataProvider<BlockAccess
         var list = data.getListOrEmpty(KEY);
         var fill = data.contains(FILL_KEY) ? data.getFloat(FILL_KEY) : -1;
         for (int i = 0; i < list.size(); i++) {
-            var line = Component.Serializer.fromJson(list.getString(i), registries);
+            var line = LegacyNbt.componentFromJson(list.getStringOr(i, ""), registries);
             if (line == null) {
                 continue;
             }

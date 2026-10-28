@@ -51,7 +51,7 @@ public final class BuildableStructureParser {
             if (blockId == null || !BuiltInRegistries.BLOCK.containsKey(blockId)) {
                 return Result.skip("unknown block " + name);
             }
-            states.add(readState(BuiltInRegistries.BLOCK.get(blockId), entry.getCompoundOrEmpty("Properties")));
+            states.add(readState(BuiltInRegistries.BLOCK.getValue(blockId), entry.getCompoundOrEmpty("Properties")));
         }
 
         Map<BlockPos, BlockState> placed = new LinkedHashMap<>();

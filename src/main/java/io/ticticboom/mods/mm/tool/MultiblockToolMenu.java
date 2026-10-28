@@ -7,7 +7,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.items.ItemHandlerHelper;
@@ -52,7 +52,7 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
             }
         }
         for (int col = 0; col < PLAYER_INV_COLS; col++) {
-            boolean isHeldSlot = hand == InteractionHand.MAIN_HAND && col == inv.selected;
+            boolean isHeldSlot = hand == InteractionHand.MAIN_HAND && col == inv.getSelectedSlot();
             int x = 8 + col * 18;
             addSlot(isHeldSlot ? new LockedSlot(inv, col, x, 198) : new Slot(inv, col, x, 198));
             if (isHeldSlot) {
@@ -112,16 +112,16 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public void clicked(int slotId, int button, @NotNull ClickType clickType, @NotNull Player clicker) {
+    public void clicked(int slotId, int button, @NotNull ContainerInput clickType, @NotNull Player clicker) {
         refreshClientStore();
         if (!isToolStackValid()) {
             return;
         }
-        if (clickType == ClickType.SWAP) {
+        if (clickType == ContainerInput.SWAP) {
             handleSwap(slotId, button, clicker);
             return;
         }
-        if (clickType == ClickType.PICKUP && slotId >= 0 && slotId < STORE_SLOTS) {
+        if (clickType == ContainerInput.PICKUP && slotId >= 0 && slotId < STORE_SLOTS) {
             Slot slot = this.slots.get(slotId);
             ItemStack slotStack = slot.getItem();
             ItemStack carried = getCarried();
@@ -142,7 +142,7 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
             return;
         }
         if (slotId < 0 || slotId >= STORE_SLOTS) {
-            super.clicked(slotId, button, ClickType.SWAP, clicker);
+            super.clicked(slotId, button, ContainerInput.SWAP, clicker);
             return;
         }
 

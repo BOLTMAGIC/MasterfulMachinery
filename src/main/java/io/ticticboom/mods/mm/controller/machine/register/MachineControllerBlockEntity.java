@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.controller.machine.register;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
 import java.util.TreeMap;
 import io.ticticboom.mods.mm.builder.TierPrefs;
 import io.ticticboom.mods.mm.builder.PortTiers;
@@ -10,6 +13,7 @@ import io.ticticboom.mods.mm.compat.interop.MMInteropManager;
 import io.ticticboom.mods.mm.recipe.condition.RecipeConditionContext;
 import io.ticticboom.mods.mm.util.ColorUtil;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.component.DataComponentGetter;
 import net.minecraft.core.component.DataComponentMap;
 import io.ticticboom.mods.mm.structure.StructureDiagnosis;
 import io.ticticboom.mods.mm.Ref;
@@ -1076,7 +1080,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Override
-    protected void applyImplicitComponents(DataComponentInput input) {
+    protected void applyImplicitComponents(DataComponentGetter input) {
         super.applyImplicitComponents(input);
         var name = input.get(DataComponents.CUSTOM_NAME);
         if (name != null) {
@@ -1093,8 +1097,8 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Override
-    public void removeComponentsFromTag(CompoundTag tag) {
-        tag.remove("CustomName");
+    public void removeComponentsFromTag(ValueOutput output) {
+        output.discard("CustomName");
     }
 
     public @Nullable LinkData getNetworkLink() {
@@ -1257,7 +1261,20 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     }
 
     @Override
-    protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
+    protected void saveAdditional(ValueOutput output) {
+        super.saveAdditional(output);
+        var tag = new CompoundTag();
+        saveLegacy(tag, LegacyNbt.registries(level));
+        LegacyNbt.write(output, tag);
+    }
+
+    @Override
+    protected void loadAdditional(ValueInput input) {
+        super.loadAdditional(input);
+        loadLegacy(LegacyNbt.read(input), input.lookup());
+    }
+
+    protected void saveLegacy(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
         CompoundTag recipesTag = new CompoundTag();
         for (Map.Entry<Identifier, RecipeStateModel> entry : activeRecipes.entrySet()) {
             recipesTag.put(entry.getKey().toString(), entry.getValue().save(new CompoundTag(), registries));
@@ -1316,12 +1333,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         tag.putBoolean("filler", true);
         tag.putInt("redstoneMode", redstoneMode.ordinal());
-        super.saveAdditional(tag, registries);
     }
 
-    @Override
-    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadLegacy(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
         loadFluidVolumes(tag, registries);
         activeRecipes.clear();
         patternRuns.clear();
@@ -1371,16 +1385,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     @Override
     public @NotNull CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag, registries);
+        saveLegacy(tag, registries);
         if (!fluidVolumes.isEmpty()) {
             tag.put("FluidVolumes", FluidVolumeState.saveAll(fluidVolumes, registries));
         }
         return tag;
-    }
-
-    @Override
-    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
-        loadAdditional(tag, registries);
     }
 
     @Nullable
@@ -1543,5 +1552,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
 
     public @Nullable RecipeStorages getPortStorages() {
         return portStorages;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        invalidateProgress();
+        super.preRemoveSideEffects(pos, state);
     }
 }

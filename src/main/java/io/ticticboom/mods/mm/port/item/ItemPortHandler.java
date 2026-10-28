@@ -14,6 +14,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.DynamicOps;
 
 import io.ticticboom.mods.mm.Ref;
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
 import io.ticticboom.mods.mm.port.common.INotifyChangeFunction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
@@ -26,7 +27,7 @@ import net.neoforged.neoforge.items.ItemStackHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class ItemPortHandler extends ItemStackHandler {
+public class ItemPortHandler extends ItemStackHandler implements TransferSnapshot {
 
     // OPTIONAL_CODEC, not CODEC: 1.20.5 split these, and the strict one rejects empty stacks
     // ("Value must be within range [1;99]", "Item must not be minecraft:air"). Port slots are
@@ -135,6 +136,31 @@ public class ItemPortHandler extends ItemStackHandler {
             reindexSlot(i);
         }
         contentRevision++;
+    }
+
+    private record Snapshot(ItemStack[] stacks, int[] actualCounts) {
+    }
+
+    @Override
+    public Object createSnapshot() {
+        var copies = new ItemStack[stacks.size()];
+        for (int i = 0; i < copies.length; i++) {
+            copies[i] = stacks.get(i).copy();
+        }
+        return new Snapshot(copies, actualCounts.clone());
+    }
+
+    @Override
+    public void restoreSnapshot(Object snapshot) {
+        var saved = (Snapshot) snapshot;
+        int size = Math.min(stacks.size(), saved.stacks().length);
+        for (int i = 0; i < size; i++) {
+            stacks.set(i, saved.stacks()[i].copy());
+            actualCounts[i] = saved.actualCounts()[i];
+            reindexSlot(i);
+        }
+        contentRevision++;
+        changed.call();
     }
 
     private static DynamicOps<Tag> ops(@Nullable HolderLookup.Provider registries) {

@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -29,7 +30,7 @@ public record StructureCategoryEditPkt(StructureCategories.Action action, String
     public static void handle(StructureCategoryEditPkt packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
-            if (sender == null || !sender.hasPermissions(2) || !(sender.containerMenu instanceof MultiblockToolMenu)) return;
+            if (sender == null || !sender.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || !(sender.containerMenu instanceof MultiblockToolMenu)) return;
             StructureCategories categories = StructureCategories.get(sender.getServer());
             if (categories.apply(packet.action, packet.target, packet.value)) {
                 PacketDistributor.sendToAllPlayers(new StructureCategoriesSyncPkt(categories.snapshot()));

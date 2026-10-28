@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.port.nuclear.radiation.register;
 
+import net.minecraft.world.Containers;
 import io.ticticboom.mods.mm.model.PortModel;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -96,5 +97,19 @@ public class NuclearRadiationPortBlockEntity extends AbstractPortBlockEntity {
     @Override
     public boolean isInput() {
         return isInput;
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            var items = getRadiationStorage().getItems();
+            for (int i = 0; i < items.getSlots(); i++) {
+                var stack = items.getStackInSlot(i);
+                if (!stack.isEmpty()) {
+                    Containers.dropItemStack(level, pos.getX(), pos.getY(), pos.getZ(), stack.copy());
+                }
+            }
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

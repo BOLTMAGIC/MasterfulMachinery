@@ -40,7 +40,7 @@ public class TagStructurePiece extends StructurePiece {
     public void validateSetup(StructurePieceSetupMetadata meta) {
         // Registry.getTag returns an Optional<HolderSet.Named<Block>> of holders rather than
         // Forge's ITag of values, so an absent tag is an empty list instead of a null.
-        tagBlocks = BuiltInRegistries.BLOCK.getTag(tagKey)
+        tagBlocks = BuiltInRegistries.BLOCK.get(tagKey)
                 .map(holders -> holders.stream().map(Holder::value).toList())
                 .orElse(List.of());
         if (tagBlocks.isEmpty()) {
@@ -86,7 +86,7 @@ public class TagStructurePiece extends StructurePiece {
         assert foundId != null;
         json.addProperty("block", foundId.toString());
         var tagsJson = new JsonArray();
-        foundState.getTags().map(x -> x.location().toString()).forEach(tagsJson::add);
+        foundState.typeHolder().tags().map(x -> x.location().toString()).forEach(tagsJson::add);
         json.add("foundTags", tagsJson);
         return json;
     }

@@ -39,7 +39,7 @@ public record ToolHudPkt(HudState state) implements CustomPacketPayload {
         List<Item> items = state.inProgress().subList(0, Math.min(HudState.ICONS, state.inProgress().size()));
         buf.writeVarInt(items.size());
         for (Item item : items) {
-            buf.writeResourceLocation(BuiltInRegistries.ITEM.getKey(item));
+            buf.writeIdentifier(BuiltInRegistries.ITEM.getKey(item));
         }
         buf.writeBoolean(state.failure() != null);
         if (state.failure() != null) {
@@ -54,8 +54,8 @@ public record ToolHudPkt(HudState state) implements CustomPacketPayload {
         int count = buf.readVarInt();
         List<Item> items = new ArrayList<>();
         for (int i = 0; i < count; i++) {
-            Identifier id = buf.readResourceLocation();
-            Item item = BuiltInRegistries.ITEM.get(id);
+            Identifier id = buf.readIdentifier();
+            Item item = BuiltInRegistries.ITEM.getValue(id);
             if (item != null && item != Items.AIR && items.size() < HudState.ICONS) {
                 items.add(item);
             }

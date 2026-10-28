@@ -69,6 +69,6 @@ public final class Ae2PatternSpecs {
         if (key instanceof AEFluidKey fluid) {
             return new PatternIngredient(Kind.FLUID, BuiltInRegistries.FLUID.getKey(fluid.getFluid()), amount);
         }
-        return APPMEK ? Ae2ChemicalKeys.ingredient(key, amount) : null;
+        return null; // [26.1-pending] Applied Mekanistics: APPMEK ? Ae2ChemicalKeys.ingredient(key, amount) : null
     }
 }

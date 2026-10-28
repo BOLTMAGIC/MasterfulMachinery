@@ -16,6 +16,7 @@ import io.ticticboom.mods.mm.debug.tool.DebugToolItem;
 import io.ticticboom.mods.mm.item.BlueprintItem;
 import io.ticticboom.mods.mm.item.MultiblockSaverItem;
 import io.ticticboom.mods.mm.item.PrioritySetterItem;
+import io.ticticboom.mods.mm.item.TooltipBlockItem;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -51,15 +52,15 @@ public class MMRegisters {
             () -> IMenuTypeExtension.create(SingleMachineMenu::new));
     public static final DeferredHolder<Item, WrenchItem> WRENCH = ITEMS.register("wrench", WrenchItem::new);
     public static final DeferredHolder<Block, InputGatewayBlock> INPUT_GATEWAY = BLOCKS.register("input_gateway", InputGatewayBlock::new);
-    public static final DeferredHolder<Item, BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new BlockItem(INPUT_GATEWAY.get(), new Item.Properties()));
+    public static final DeferredHolder<Item, BlockItem> INPUT_GATEWAY_ITEM = ITEMS.register("input_gateway", () -> new TooltipBlockItem(INPUT_GATEWAY.get(), new Item.Properties(), 4));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<InputGatewayBlockEntity>> INPUT_GATEWAY_BE = BLOCK_ENTITIES.register("input_gateway",
-            () -> BlockEntityType.Builder.of(InputGatewayBlockEntity::new, INPUT_GATEWAY.get()).build(null));
+            () -> new BlockEntityType<>(InputGatewayBlockEntity::new, INPUT_GATEWAY.get()));
 
     public static final DeferredHolder<Block, PatternPortBlock> PATTERN_PORT = BLOCKS.register("pattern_port", PatternPortBlock::new);
-    public static final DeferredHolder<Item, BlockItem> PATTERN_PORT_ITEM = ITEMS.register("pattern_port", () -> new BlockItem(PATTERN_PORT.get(), new Item.Properties()));
+    public static final DeferredHolder<Item, BlockItem> PATTERN_PORT_ITEM = ITEMS.register("pattern_port", () -> new TooltipBlockItem(PATTERN_PORT.get(), new Item.Properties(), 4));
     @SuppressWarnings("DataFlowIssue")
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<PatternPortBlockEntity>> PATTERN_PORT_BE = BLOCK_ENTITIES.register("pattern_port",
-            () -> BlockEntityType.Builder.of(PatternPortBlockEntity::new, PATTERN_PORT.get()).build(null));
+            () -> new BlockEntityType<>(PatternPortBlockEntity::new, PATTERN_PORT.get()));
 
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> MM_TAB = TABS.register("mm", () -> CreativeModeTab.builder().title(Component.translatable("tab.mm.main"))
             .icon(() -> BLUEPRINT.get().getDefaultInstance())

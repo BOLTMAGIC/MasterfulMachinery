@@ -111,8 +111,8 @@ public class SingleMachineBlockEntity extends MachineControllerBlockEntity {
     }
 
     @Override
-    protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveLegacy(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveLegacy(tag, registries);
         var slotsTag = new CompoundTag();
         for (int i = 0; i < slots.size(); i++) {
             slotsTag.put(slots.get(i).id(), storages.get(i).save(new CompoundTag(), registries));
@@ -121,13 +121,21 @@ public class SingleMachineBlockEntity extends MachineControllerBlockEntity {
     }
 
     @Override
-    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
-        var slotsTag = tag.getCompound("Slots");
+    protected void loadLegacy(@NotNull CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadLegacy(tag, registries);
+        var slotsTag = tag.getCompoundOrEmpty("Slots");
         for (int i = 0; i < slots.size(); i++) {
             if (slotsTag.contains(slots.get(i).id())) {
-                storages.get(i).load(slotsTag.getCompound(slots.get(i).id()), registries);
+                storages.get(i).load(slotsTag.getCompoundOrEmpty(slots.get(i).id()), registries);
             }
         }
+    }
+
+    @Override
+    public void preRemoveSideEffects(BlockPos pos, BlockState state) {
+        if (level != null) {
+            dropContents(level, pos);
+        }
+        super.preRemoveSideEffects(pos, state);
     }
 }

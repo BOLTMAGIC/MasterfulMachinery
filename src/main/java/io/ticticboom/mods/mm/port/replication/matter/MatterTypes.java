@@ -10,7 +10,7 @@ public class MatterTypes {
         if (id == null || ReplicationRegistry.MATTER_TYPES_REGISTRY == null) {
             return null;
         }
-        return ReplicationRegistry.MATTER_TYPES_REGISTRY.get(id);
+        return ReplicationRegistry.MATTER_TYPES_REGISTRY.getValue(id);
     }
 
     public static Identifier idOf(IMatterType type) {

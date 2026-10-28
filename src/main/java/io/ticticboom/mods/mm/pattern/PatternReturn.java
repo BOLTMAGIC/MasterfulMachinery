@@ -45,11 +45,11 @@ public final class PatternReturn {
     }
 
     private static long giveItems(ServerLevel level, PatternRun run, PatternIngredient items) {
-        var handler = level.getCapability(MMCapabilities.ITEM, run.getReturnPos(), run.getReturnFace());
+        var handler = MMCapabilities.item(level, run.getReturnPos(), run.getReturnFace());
         if (handler == null) {
             return 0;
         }
-        var template = new ItemStack(BuiltInRegistries.ITEM.get(items.id()));
+        var template = new ItemStack(BuiltInRegistries.ITEM.getValue(items.id()));
         template.applyComponents(items.components());
         long given = 0;
         while (given < items.amount()) {
@@ -64,11 +64,11 @@ public final class PatternReturn {
     }
 
     private static long giveFluid(ServerLevel level, PatternRun run, PatternIngredient fluid) {
-        var handler = level.getCapability(MMCapabilities.FLUID, run.getReturnPos(), run.getReturnFace());
+        var handler = MMCapabilities.fluid(level, run.getReturnPos(), run.getReturnFace());
         if (handler == null) {
             return 0;
         }
         int amount = (int) Math.min(Integer.MAX_VALUE, fluid.amount());
-        return handler.fill(new FluidStack(BuiltInRegistries.FLUID.get(fluid.id()), amount), IFluidHandler.FluidAction.EXECUTE);
+        return handler.fill(new FluidStack(BuiltInRegistries.FLUID.getValue(fluid.id()), amount), IFluidHandler.FluidAction.EXECUTE);
     }
 }

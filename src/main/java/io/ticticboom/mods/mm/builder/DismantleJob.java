@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.builder;
 
+import net.neoforged.neoforge.event.level.block.BreakBlockEvent;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerLevel;
@@ -89,7 +90,7 @@ public final class DismantleJob {
                 queue.clear();
                 break;
             }
-            if (NeoForge.EVENT_BUS.post(new BlockEvent.BreakEvent(level, pos, state, player)).isCanceled()) {
+            if (NeoForge.EVENT_BUS.post(new BreakBlockEvent(level, pos, state, player)).isCanceled()) {
                 sink.refundEnergy(perBlockFe);
                 blocked++;
                 continue;

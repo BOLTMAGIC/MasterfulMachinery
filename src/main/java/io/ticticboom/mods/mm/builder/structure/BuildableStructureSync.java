@@ -79,7 +79,7 @@ public final class BuildableStructureSync {
     }
 
     public static void write(FriendlyByteBuf buf, BuildableStructure structure) {
-        buf.writeResourceLocation(structure.id());
+        buf.writeIdentifier(structure.id());
         buf.writeVarInt(structure.size().getX());
         buf.writeVarInt(structure.size().getY());
         buf.writeVarInt(structure.size().getZ());
@@ -105,7 +105,7 @@ public final class BuildableStructureSync {
 
     @Nullable
     public static BuildableStructure read(FriendlyByteBuf buf) {
-        Identifier id = buf.readResourceLocation();
+        Identifier id = buf.readIdentifier();
         Vec3i size = new Vec3i(buf.readVarInt(), buf.readVarInt(), buf.readVarInt());
         int paletteSize = buf.readVarInt();
         List<BlockState> palette = new ArrayList<>(Math.min(paletteSize, 4096));

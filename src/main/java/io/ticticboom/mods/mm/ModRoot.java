@@ -39,7 +39,7 @@ public class ModRoot {
 
     private void registerClientPack(ModContainer modContainer) {
         try {
-            if (FMLEnvironment.dist == Dist.CLIENT) {
+            if (FMLEnvironment.getDist() == Dist.CLIENT) {
                 MMConfigClientSetup.register(modContainer);
                 Minecraft.getInstance().getResourcePackRepository()
                         .addPackFinder(new MMRepositorySource(MMRepoType.RESOURCES));

@@ -56,7 +56,7 @@ public final class FlexItems {
         if (outputId == null || !BuiltInRegistries.ITEM.containsKey(outputId)) {
             return ItemStack.EMPTY;
         }
-        return new ItemStack(BuiltInRegistries.ITEM.get(outputId));
+        return new ItemStack(BuiltInRegistries.ITEM.getValue(outputId));
     }
 
     /** @param part may return null (e.g. a crop without crux) */

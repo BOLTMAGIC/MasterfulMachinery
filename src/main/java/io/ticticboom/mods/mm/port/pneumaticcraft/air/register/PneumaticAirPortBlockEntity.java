@@ -122,21 +122,21 @@ public class PneumaticAirPortBlockEntity extends AbstractTickingBlockEntity impl
 
 
     @Override
-    public void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    public void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         tag.put(Ref.NBT_STORAGE_KEY, storage.save(new CompoundTag(), registries));
-        super.saveAdditional(tag, registries);
+        super.saveLegacy(tag, registries);
     }
 
     @Override
-    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    public void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
         storage.load(tag.getCompound(Ref.NBT_STORAGE_KEY), registries);
-        super.loadAdditional(tag, registries);
+        super.loadLegacy(tag, registries);
     }
 
     @Override
     public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
         var tag = new CompoundTag();
-        saveAdditional(tag, registries);
+        saveLegacy(tag, registries);
         return tag;
     }
 

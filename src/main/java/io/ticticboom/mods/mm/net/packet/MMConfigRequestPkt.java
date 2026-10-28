@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.net.packet;
 
+import net.minecraft.server.permissions.Permissions;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.network.codec.StreamCodec;
@@ -21,7 +22,7 @@ public record MMConfigRequestPkt() implements CustomPacketPayload {
     public static void handle(MMConfigRequestPkt packet, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             ServerPlayer player = ctx.player() instanceof ServerPlayer sp ? sp : null;
-            if (player != null && player.hasPermissions(2)) {
+            if (player != null && player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)) {
                 PacketDistributor.sendToPlayer(player, new MMConfigSyncPkt(MMConfigOptions.serverSnapshot()));
             }
         });

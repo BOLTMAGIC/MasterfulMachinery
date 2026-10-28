@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.item;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.common.autoio.PortAutoIO;
 import io.ticticboom.mods.mm.port.common.autoio.PortSides;
@@ -38,7 +40,7 @@ public class WrenchItem extends Item {
         if (!level.isClientSide()) {
             configurePort(player, context, port);
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static void configurePort(Player player, UseOnContext context, AbstractPortBlockEntity port) {
@@ -84,8 +86,8 @@ public class WrenchItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("tooltip.mm.wrench.usage.1").withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable("tooltip.mm.wrench.usage.2").withStyle(ChatFormatting.GRAY));
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
+        tooltip.accept(Component.translatable("tooltip.mm.wrench.usage.1").withStyle(ChatFormatting.GRAY));
+        tooltip.accept(Component.translatable("tooltip.mm.wrench.usage.2").withStyle(ChatFormatting.GRAY));
     }
 }

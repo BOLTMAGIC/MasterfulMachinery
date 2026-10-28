@@ -31,9 +31,9 @@ public class ReplicationMatterPortType extends PortType {
      */
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
-        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of((p, s) -> model.input()
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>((p, s) -> model.input()
                 ? new ReplicationMatterInputPortBlockEntity(model, groupHolder, p, s)
-                : new ReplicationMatterOutputPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()).build(null));
+                : new ReplicationMatterOutputPortBlockEntity(model, groupHolder, p, s), groupHolder.getBlock().get()));
     }
 
     @Override

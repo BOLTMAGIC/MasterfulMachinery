@@ -108,14 +108,14 @@ public class Ae2PatternPortBlockEntity extends AbstractPortBlockEntity implement
     }
 
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.saveAdditional(tag, registries);
+    protected void saveLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveLegacy(tag, registries);
         feature.saveNode(tag);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
-        super.loadAdditional(tag, registries);
+    protected void loadLegacy(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadLegacy(tag, registries);
         feature.loadNode(tag);
     }
 }

@@ -26,7 +26,7 @@ public record ToolTarget(BlockPos pos, Direction face, Direction facing) {
     public static ToolTarget resolve(Player player, ItemStack tool, int range) {
         ToolData.Anchor anchor = ToolData.anchor(tool);
         if (anchor != null) {
-            return anchor.dimension().equals(player.level().dimension().location()) && withinRange(player, anchor.pos(), range)
+            return anchor.dimension().equals(player.level().dimension().identifier()) && withinRange(player, anchor.pos(), range)
                     && usablePosition(player.level(), anchor.pos())
                     ? new ToolTarget(anchor.pos(), anchor.face(), anchor.facing()) : null;
         }

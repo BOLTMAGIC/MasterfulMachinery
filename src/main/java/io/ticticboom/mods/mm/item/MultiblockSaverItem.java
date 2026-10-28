@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.item;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
 import io.ticticboom.mods.mm.util.StructureCaptureUtil;
@@ -9,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import io.ticticboom.mods.mm.Ref;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -33,10 +34,10 @@ public class MultiblockSaverItem extends Item {
     }
 
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, @NotNull InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, @NotNull InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (level.isClientSide()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
 
         // if player is sneaking and clicks in air, clear stored corners from the item
@@ -46,18 +47,18 @@ public class MultiblockSaverItem extends Item {
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS2));
             }
             player.sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.cleared"));
-            return InteractionResultHolder.success(stack);
+            return InteractionResult.SUCCESS;
         }
 
         // check if both corners exist
         var tag = ItemNbtUtil.getTag(stack);
         if (tag == null || !tag.contains(NBT_POS1) || !tag.contains(NBT_POS2)) {
             player.sendOverlayMessage(Component.translatable("item.mm.multiblock_saver.message.mark_corners"));
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
 
         if (!(player instanceof ServerPlayer serverPlayer)) {
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
 
         long p1l = ItemNbtUtil.getTagOrEmpty(stack).getLongOr(NBT_POS1, 0L);
@@ -73,15 +74,15 @@ public class MultiblockSaverItem extends Item {
                 ItemNbtUtil.mutate(stack, __t -> __t.remove(NBT_POS2));
                 serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.saved", result.baseName).withStyle(net.minecraft.ChatFormatting.GREEN));
                 serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.files", result.jsonPath, result.jsPath));
-                return InteractionResultHolder.success(stack);
+                return InteractionResult.SUCCESS;
             } else {
                 serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.failed", result.error).withStyle(net.minecraft.ChatFormatting.RED));
-                return InteractionResultHolder.fail(stack);
+                return InteractionResult.FAIL;
             }
         } catch (Exception e) {
             Ref.LOG.error("Error during multiblock save", e);
             serverPlayer.sendSystemMessage(Component.translatable("item.mm.multiblock_saver.message.error", e.getMessage()).withStyle(net.minecraft.ChatFormatting.RED));
-            return InteractionResultHolder.fail(stack);
+            return InteractionResult.FAIL;
         }
     }
 
@@ -118,21 +119,21 @@ public class MultiblockSaverItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, @NotNull List<Component> pTooltipComponents, @NotNull TooltipFlag pIsAdvanced) {
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, TooltipDisplay display, Consumer<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
         var tag = ItemNbtUtil.getTag(pStack);
         if (tag != null) {
             if (tag.contains(NBT_POS1)) {
                 long l = tag.getLongOr(NBT_POS1, 0L);
                 BlockPos pos = BlockPos.of(l);
-                pTooltipComponents.add(Component.translatable("item.mm.multiblock_saver.tooltip.corner1", pos.getX(), pos.getY(), pos.getZ()));
+                pTooltipComponents.accept(Component.translatable("item.mm.multiblock_saver.tooltip.corner1", pos.getX(), pos.getY(), pos.getZ()));
             }
             if (tag.contains(NBT_POS2)) {
                 long l = tag.getLongOr(NBT_POS2, 0L);
                 BlockPos pos = BlockPos.of(l);
-                pTooltipComponents.add(Component.translatable("item.mm.multiblock_saver.tooltip.corner2", pos.getX(), pos.getY(), pos.getZ()));
+                pTooltipComponents.accept(Component.translatable("item.mm.multiblock_saver.tooltip.corner2", pos.getX(), pos.getY(), pos.getZ()));
             }
         }
-        super.appendHoverText(pStack, pContext, pTooltipComponents, pIsAdvanced);
+        super.appendHoverText(pStack, pContext, display, pTooltipComponents, pIsAdvanced);
     }
 }
 

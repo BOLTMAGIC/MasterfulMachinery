@@ -57,7 +57,7 @@ public final class ToolData {
 
     public static Direction placementFacing(ItemStack stack, net.minecraft.world.entity.player.Player player) {
         Anchor anchor = anchor(stack);
-        return anchor != null && anchor.dimension().equals(player.level().dimension().location())
+        return anchor != null && anchor.dimension().equals(player.level().dimension().identifier())
                 ? anchor.facing() : player.getDirection();
     }
 

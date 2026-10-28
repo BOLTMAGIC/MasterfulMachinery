@@ -1,5 +1,8 @@
 package io.ticticboom.mods.mm.port.nuclear.radiation;
 
+import io.ticticboom.mods.mm.cap.transfer.TransferSnapshot;
+import io.ticticboom.mods.mm.cap.MMCapabilities;
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import io.ticticboom.mods.mm.port.PortContent;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -424,7 +427,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
 
     @Override
     public <T> boolean hasCapability(BlockCapability<T, ?> capability) {
-        return capability == Capabilities.ItemHandler.BLOCK;
+        return capability == MMCapabilities.ITEM;
     }
 
     @Override
@@ -440,7 +443,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         }
         unresolved.forEach(entry -> list.add(entry.copy()));
         tag.put("Isotopes", list);
-        tag.put("Slot", items.serializeNBT(registries));
+        tag.put("Slot", LegacyNbt.save(items, registries));
         tag.putInt("Priority", priority);
         return tag;
     }
@@ -452,14 +455,14 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         displayBq.clear();
         var list = tag.getListOrEmpty("Isotopes");
         for (int i = 0; i < list.size(); i++) {
-            var entry = list.getCompound(i);
-            var id = entry.getString("Isotope");
-            displayBq.merge(id, entry.getDouble("Bq"), Double::sum);
+            var entry = list.getCompoundOrEmpty(i);
+            var id = entry.getStringOr("Isotope", "");
+            displayBq.merge(id, entry.getDoubleOr("Bq", 0), Double::sum);
             var isotope = IsotopeRegistry.get(id);
             if (isotope == null) {
                 unresolved.add(entry.copy());
             } else {
-                stored.put(id, new IsotopeStack(isotope, entry.getDouble("Atoms"), entry.getLong("Time")));
+                stored.put(id, new IsotopeStack(isotope, entry.getDoubleOr("Atoms", 0), entry.getLongOr("Time", 0L)));
             }
         }
         loading = true;
@@ -469,7 +472,7 @@ public class NuclearRadiationPortStorage implements IPortStorage {
             }
             if (tag.contains("Slot")) {
                 var saved = new ItemStackHandler();
-                saved.deserializeNBT(registries, tag.getCompound("Slot"));
+                LegacyNbt.load(saved, registries, tag.getCompoundOrEmpty("Slot"));
                 for (int i = 0; i < Math.min(saved.getSlots(), items.getSlots()); i++) {
                     items.setStackInSlot(i, saved.getStackInSlot(i));
                 }
@@ -518,7 +521,24 @@ public class NuclearRadiationPortStorage implements IPortStorage {
         this.priority = Math.max(0, Math.min(10, priority));
     }
 
-    private class AutomationHandler implements IItemHandler {
+    private class AutomationHandler implements IItemHandler, TransferSnapshot {
+        @Override
+        public Object createSnapshot() {
+            var copies = new ItemStack[items.getSlots()];
+            for (int i = 0; i < copies.length; i++) {
+                copies[i] = items.getStackInSlot(i).copy();
+            }
+            return copies;
+        }
+
+        @Override
+        public void restoreSnapshot(Object snapshot) {
+            var copies = (ItemStack[]) snapshot;
+            for (int i = 0; i < copies.length && i < items.getSlots(); i++) {
+                items.setStackInSlot(i, copies[i].copy());
+            }
+        }
+
         @Override
         public int getSlots() {
             return inputSide ? 1 : 2;

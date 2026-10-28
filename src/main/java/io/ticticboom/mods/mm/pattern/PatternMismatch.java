@@ -45,8 +45,8 @@ public record PatternMismatch(Reason reason, Identifier what, long patternAmount
             return null;
         }
         try {
-            return new PatternMismatch(Reason.valueOf(tag.getString("Reason").toUpperCase(Locale.ROOT)), what,
-                    tag.getLong("Pattern"), tag.getLong("Recipe"));
+            return new PatternMismatch(Reason.valueOf(tag.getStringOr("Reason", "").toUpperCase(Locale.ROOT)), what,
+                    tag.getLongOr("Pattern", 0L), tag.getLongOr("Recipe", 0L));
         } catch (IllegalArgumentException e) {
             return null;
         }

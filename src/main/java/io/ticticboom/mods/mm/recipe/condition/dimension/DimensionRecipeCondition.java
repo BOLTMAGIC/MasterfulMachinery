@@ -18,7 +18,7 @@ public class DimensionRecipeCondition implements IRecipeCondition {
 
     @Override
     public boolean canRun(RecipeConditionContext ctx) {
-        return ctx.level().dimension().location().equals(id);
+        return ctx.level().dimension().identifier().equals(id);
     }
 
     @Override

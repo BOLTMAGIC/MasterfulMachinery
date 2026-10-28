@@ -31,9 +31,9 @@ public class MekanismChemicalPortType extends PortType {
 
     @Override
     public DeferredHolder<BlockEntityType<?>, BlockEntityType<?>> registerBlockEntity(PortModel model, RegistryGroupHolder groupHolder) {
-        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> BlockEntityType.Builder.of(
+        return MMRegisters.BLOCK_ENTITIES.register(model.id(), () -> new BlockEntityType<>(
                 (i, o) -> new MekanismChemicalPortBlockEntity(model, groupHolder, model.input(), i, o),
-                groupHolder.getBlock().get()).build(null));
+                groupHolder.getBlock().get()));
     }
 
     @Override

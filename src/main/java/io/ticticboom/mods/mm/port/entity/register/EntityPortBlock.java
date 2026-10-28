@@ -61,15 +61,6 @@ public class EntityPortBlock extends Block implements IPortBlock, EntityBlock {
     }
 
     @Override
-    public void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean moving) {
-        if (!level.isClientSide() && !state.is(newState.getBlock())
-                && level.getBlockEntity(pos) instanceof EntityPortBlockEntity pbe) {
-            pbe.releaseHeldEntities();
-        }
-        super.onRemove(state, level, pos, newState, moving);
-    }
-
-    @Override
     public MutableComponent getName() {
         var name = model.displayName();
         return name != null ? name.copy() : super.getName();

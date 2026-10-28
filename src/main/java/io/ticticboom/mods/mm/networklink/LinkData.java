@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.networklink;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.registries.Registries;
@@ -15,7 +16,7 @@ public record LinkData(UUID owner, String ownerName, NetworkPos network) {
 
     public CompoundTag save() {
         CompoundTag tag = new CompoundTag();
-        tag.putUUID("Owner", owner);
+        LegacyNbt.putUuid(tag, "Owner", owner);
         tag.putString("OwnerName", ownerName);
         tag.put("Network", network.save());
         return tag;
@@ -24,17 +25,18 @@ public record LinkData(UUID owner, String ownerName, NetworkPos network) {
     @Nullable
     public static LinkData load(CompoundTag tag) {
         NetworkPos network = NetworkPos.load(tag.getCompoundOrEmpty("Network"));
-        if (!tag.hasUUID("Owner") || network == null) {
+        UUID owner = LegacyNbt.getUuid(tag, "Owner");
+        if (owner == null || network == null) {
             return null;
         }
-        return new LinkData(tag.getUUID("Owner"), tag.getString("OwnerName"), network);
+        return new LinkData(owner, tag.getStringOr("OwnerName", ""), network);
     }
 
     public record NetworkPos(ResourceKey<Level> dimension, BlockPos pos, @Nullable Direction face) {
 
         public CompoundTag save() {
             CompoundTag tag = new CompoundTag();
-            tag.putString("Dim", dimension.location().toString());
+            tag.putString("Dim", dimension.identifier().toString());
             tag.putLong("Pos", pos.asLong());
             tag.putInt("Face", face == null ? -1 : face.get3DDataValue());
             return tag;

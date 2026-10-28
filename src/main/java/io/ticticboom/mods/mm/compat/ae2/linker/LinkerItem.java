@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.ae2.linker;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import appeng.api.networking.IInWorldGridNodeHost;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.networklink.LinkData;
@@ -13,7 +15,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -49,34 +50,34 @@ public class LinkerItem extends Item {
             if (!level.isClientSide()) {
                 showOrRemoveLink((ServerLevel) level, player, context);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
         if (be instanceof MachineControllerBlockEntity controller) {
             if (!level.isClientSide()) {
                 useOnController(player, context.getItemInHand(), controller);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
         if (be instanceof IInWorldGridNodeHost host) {
             if (!level.isClientSide()) {
                 rememberNetwork(level, player, context, host);
             }
-            return InteractionResult.sidedSuccess(level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
         return InteractionResult.PASS;
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (!player.isShiftKeyDown() || LinkerMode.get(stack) != LinkerMode.INFO || getNetwork(stack) == null) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
         if (!level.isClientSide()) {
             setNetwork(stack, null);
             player.sendOverlayMessage(Component.translatable("message.mm.network_linker.network_cleared"));
         }
-        return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static void showOrRemoveLink(ServerLevel level, Player player, UseOnContext context) {
@@ -98,7 +99,7 @@ public class LinkerItem extends Item {
         LinkData.NetworkPos network = link.network();
         boolean online = NetworkAccess.storage(level.getServer(), network) != null;
         player.sendOverlayMessage(Component.translatable("message.mm.network_linker.info.linked",
-                        link.ownerName(), network.pos().toShortString(), network.dimension().location().getPath())
+                        link.ownerName(), network.pos().toShortString(), network.dimension().identifier().getPath())
                 .append(" ")
                 .append(Component.translatable(online ? "message.mm.network_linker.info.online" : "message.mm.network_linker.info.offline")
                         .withStyle(online ? ChatFormatting.GREEN : ChatFormatting.RED))
@@ -133,7 +134,7 @@ public class LinkerItem extends Item {
         }
         var link = existing != null
                 ? new LinkData(existing.owner(), existing.ownerName(), network)
-                : new LinkData(player.getUUID(), player.getGameProfile().getName(), network);
+                : new LinkData(player.getUUID(), player.getGameProfile().name(), network);
         controller.setNetworkLink(link);
         player.sendOverlayMessage(Component.translatable("message.mm.network_linker.linked", link.ownerName(), network.pos().toShortString()));
     }
@@ -168,20 +169,20 @@ public class LinkerItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, TooltipDisplay display, Consumer<Component> tooltip, TooltipFlag flag) {
         LinkData.NetworkPos network = getNetwork(stack);
         if (network == null) {
-            tooltip.add(Component.translatable("tooltip.mm.network_linker.empty").withStyle(ChatFormatting.GRAY));
+            tooltip.accept(Component.translatable("tooltip.mm.network_linker.empty").withStyle(ChatFormatting.GRAY));
         } else {
-            tooltip.add(Component.translatable("tooltip.mm.network_linker.network",
-                    network.pos().toShortString(), network.dimension().location().toString()).withStyle(ChatFormatting.AQUA));
+            tooltip.accept(Component.translatable("tooltip.mm.network_linker.network",
+                    network.pos().toShortString(), network.dimension().identifier().toString()).withStyle(ChatFormatting.AQUA));
         }
         var mode = LinkerMode.get(stack);
         String usageKey = "tooltip.mm.network_linker.usage." + mode.name().toLowerCase(Locale.ROOT);
         for (int line = 1; line <= (mode == LinkerMode.INFO ? 3 : 2); line++) {
-            tooltip.add(Component.translatable(usageKey + "." + line).withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.accept(Component.translatable(usageKey + "." + line).withStyle(ChatFormatting.DARK_GRAY));
         }
-        tooltip.add(Component.translatable("tooltip.mm.network_linker.mode_hint").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.accept(Component.translatable("tooltip.mm.network_linker.mode_hint").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Override

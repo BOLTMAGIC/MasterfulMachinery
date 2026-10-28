@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.waila;
 
+import io.ticticboom.mods.mm.util.LegacyNbt;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
@@ -31,7 +32,7 @@ public class PortMachineDataProvider implements IServerDataProvider<BlockAccesso
         data.putBoolean(PORT_KEY, true);
         var controller = port.getControllerPos() == null ? null : NetworkLink.controllerAt(blockAccessor.getLevel(), blockAccessor.getPosition());
         if (controller != null) {
-            data.putString(MACHINE_KEY, Component.Serializer.toJson(controller.getName(), blockAccessor.getLevel().registryAccess()));
+            data.putString(MACHINE_KEY, LegacyNbt.componentToJson(controller.getName(), blockAccessor.getLevel().registryAccess()));
             data.putString(STATUS_KEY, controller.statusKey());
         }
         var autoIO = port.getAutoIO();
@@ -51,7 +52,7 @@ public class PortMachineDataProvider implements IServerDataProvider<BlockAccesso
         CompoundTag data = blockAccessor.getServerData();
         if (data.contains(MACHINE_KEY)) {
             String status = data.getStringOr(STATUS_KEY, "");
-            Component name = Component.Serializer.fromJson(data.getString(MACHINE_KEY), blockAccessor.getLevel().registryAccess());
+            Component name = LegacyNbt.componentFromJson(data.getStringOr(MACHINE_KEY, ""), blockAccessor.getLevel().registryAccess());
             tooltip.add(Component.translatable("jade.mm.port.machine", name == null ? Component.empty() : name)
                     .append(Component.literal(" - ").withStyle(ChatFormatting.GRAY))
                     .append(Component.translatable("gui.mm.controller.status." + status).withStyle(ControllerDataProvider.statusColor(status))));

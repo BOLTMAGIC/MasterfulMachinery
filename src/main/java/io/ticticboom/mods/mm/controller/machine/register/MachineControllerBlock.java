@@ -103,7 +103,6 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
         builder.add(FACING, ControllerState.PROPERTY);
     }
 
-
     @Nullable
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext ctx) {
@@ -116,7 +115,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
                 && level.getBlockEntity(pos) instanceof MachineControllerBlockEntity controller) {
             serverPlayer.openMenu(controller, buf -> MachineControllerMenu.writeOpenData(buf, controller));
         }
-        return InteractionResult.sidedSuccess(level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     @Nullable
@@ -139,7 +138,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     }
 
     @Override
-    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+    protected int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos, Direction direction) {
         return level.getBlockEntity(pos) instanceof MachineControllerBlockEntity be ? be.getComparatorSignal() : 0;
     }
 
@@ -207,20 +206,6 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
 
     public boolean usesTintedScreen() {
         return model.customModel() == null && model.overlayTexture() == null;
-    }
-
-    @Override
-    public void onRemove(BlockState oldState, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
-        if (oldState.getBlock() != newState.getBlock()) {
-            if (!level.isClientSide() && level instanceof ServerLevel serverLevel) {
-                var be = WorldUtil.getBlockEntity(pos, serverLevel);
-                if (be instanceof MachineControllerBlockEntity mbe) {
-                    mbe.invalidateProgress();
-                }
-            }
-
-            super.onRemove(oldState, level, pos, newState, isMoving);
-        }
     }
 
     /**

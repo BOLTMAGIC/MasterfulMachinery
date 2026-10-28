@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.item;
 
+import java.util.function.Consumer;
+import net.minecraft.world.item.component.TooltipDisplay;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
 import io.ticticboom.mods.mm.port.IPortBlockEntity;
@@ -8,7 +10,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -30,10 +31,10 @@ public class PrioritySetterItem extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
         if (level.isClientSide()) {
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
 
         // If sneaking and used in air, reset priority. Use a raytrace to verify the player isn't targeting a block.
@@ -42,10 +43,10 @@ public class PrioritySetterItem extends Item {
             if (trace == null || trace.getType() == HitResult.Type.MISS) {
                 setPriorityInItem(stack, 0);
                 player.sendOverlayMessage(Component.translatable("item.mm.priority_setter.message.reset"));
-                return InteractionResultHolder.success(stack);
+                return InteractionResult.SUCCESS;
             }
             // if targeting a block, don't reset here; useOn will handle applying to a port
-            return InteractionResultHolder.pass(stack);
+            return InteractionResult.PASS;
         }
 
         int cur = getPriorityFromItem(stack);
@@ -53,7 +54,7 @@ public class PrioritySetterItem extends Item {
         if (next > MAX_PRIORITY) next = 0;
         setPriorityInItem(stack, next);
         player.sendOverlayMessage(Component.translatable("item.mm.priority_setter.message.set", next));
-        return InteractionResultHolder.success(stack);
+        return InteractionResult.SUCCESS;
     }
 
     @Override
@@ -103,12 +104,12 @@ public class PrioritySetterItem extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
+    public void appendHoverText(ItemStack pStack, Item.TooltipContext pContext, TooltipDisplay display, Consumer<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
         int prio = getPriorityFromItem(pStack);
-        pTooltipComponents.add(Component.translatable("item.mm.priority_setter.tooltip.line1", prio));
-        pTooltipComponents.add(Component.translatable("item.mm.priority_setter.tooltip.line2"));
-        pTooltipComponents.add(Component.translatable("item.mm.priority_setter.tooltip.line3"));
-        pTooltipComponents.add(Component.translatable("item.mm.priority_setter.tooltip.line4"));
-        super.appendHoverText(pStack, pContext, pTooltipComponents, pIsAdvanced);
+        pTooltipComponents.accept(Component.translatable("item.mm.priority_setter.tooltip.line1", prio));
+        pTooltipComponents.accept(Component.translatable("item.mm.priority_setter.tooltip.line2"));
+        pTooltipComponents.accept(Component.translatable("item.mm.priority_setter.tooltip.line3"));
+        pTooltipComponents.accept(Component.translatable("item.mm.priority_setter.tooltip.line4"));
+        super.appendHoverText(pStack, pContext, display, pTooltipComponents, pIsAdvanced);
     }
 }

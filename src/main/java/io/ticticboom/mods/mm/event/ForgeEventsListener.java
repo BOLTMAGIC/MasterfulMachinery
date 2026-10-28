@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.event;
 
+import net.minecraft.world.entity.EquipmentSlot;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructureLoader;
 import io.ticticboom.mods.mm.util.ItemNbtUtil;
 
@@ -9,7 +10,7 @@ import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
 import io.ticticboom.mods.mm.structure.StructureManager;
 import net.minecraft.server.level.ServerPlayer;
 import io.ticticboom.mods.mm.util.ItemComponentUtil;
-import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.AddServerReloadListenersEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -19,16 +20,17 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.network.PacketDistributor;
 import io.ticticboom.mods.mm.item.MultiblockSaverItem;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.Ref;
 
-@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME)
+@EventBusSubscriber
 public class ForgeEventsListener {
 
     @SubscribeEvent
-    public static void registerReloadListeners(AddReloadListenerEvent event) {
+    public static void registerReloadListeners(AddServerReloadListenersEvent event) {
         ItemComponentUtil.setRegistries(event.getRegistryAccess());
-        event.addListener(new StructureManager());
-        event.addListener(new MachineRecipeManager());
-        event.addListener(new BuildableStructureLoader());
+        event.addListener(Ref.id("structures"), new StructureManager());
+        event.addListener(Ref.id("recipes"), new MachineRecipeManager());
+        event.addListener(Ref.id("buildable_structures"), new BuildableStructureLoader());
     }
 
     @SubscribeEvent
@@ -58,7 +60,7 @@ public class ForgeEventsListener {
     private static void clearSavedCorners(ServerPlayer player) {
         var inv = player.getInventory();
         // main inventory
-        for (var stack : inv.items) {
+        for (var stack : inv.getNonEquipmentItems()) {
             if (stack != null && stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get()) {
                 if (ItemNbtUtil.hasTag(stack)) {
                     ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
@@ -66,22 +68,12 @@ public class ForgeEventsListener {
                 }
             }
         }
-        // offhand
-        for (var stack : inv.offhand) {
-            if (stack != null && stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get()) {
-                if (ItemNbtUtil.hasTag(stack)) {
-                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
-                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS2));
-                }
-            }
-        }
-        // armour
-        for (var stack : inv.armor) {
-            if (stack != null && stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get()) {
-                if (ItemNbtUtil.hasTag(stack)) {
-                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
-                    ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS2));
-                }
+        // offhand and armour
+        for (var slot : EquipmentSlot.values()) {
+            var stack = player.getItemBySlot(slot);
+            if (stack.getItem() == MMRegisters.MULTIBLOCK_SAVER.get() && ItemNbtUtil.hasTag(stack)) {
+                ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS1));
+                ItemNbtUtil.mutate(stack, __t -> __t.remove(MultiblockSaverItem.NBT_POS2));
             }
         }
     }

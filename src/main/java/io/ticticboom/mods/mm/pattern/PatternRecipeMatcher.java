@@ -164,7 +164,7 @@ public final class PatternRecipeMatcher {
             return false;
         }
         if (ingredient instanceof BaseItemPortIngredient item) {
-            var stack = new ItemStack(BuiltInRegistries.ITEM.get(given.id()));
+            var stack = new ItemStack(BuiltInRegistries.ITEM.getValue(given.id()));
             stack.applyComponents(given.components());
             return item.matches(stack);
         }
