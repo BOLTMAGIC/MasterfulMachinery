@@ -30,6 +30,7 @@ public final class MMGameTests {
     static final List<Class<?>> HOLDERS = List.of(
             ItemPortInsertionGameTests.class,
             RegistrySmokeGameTests.class,
+            RuntimeModelGameTests.class,
             RemovedRegistryGameTests.class,
             StructureCategoriesGameTests.class,
             ControllerAnimationGameTests.class,
