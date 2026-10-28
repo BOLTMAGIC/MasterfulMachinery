@@ -15,7 +15,7 @@ import java.util.List;
 public class EnergyIngredientRenderer implements IIngredientRenderer<EnergyStack> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull EnergyStack ingredient) {
+    public void render(GuiGraphicsExtractor gfx, @NotNull EnergyStack ingredient) {
         gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 19, 62, 16, 16, 256, 256);
     }
 

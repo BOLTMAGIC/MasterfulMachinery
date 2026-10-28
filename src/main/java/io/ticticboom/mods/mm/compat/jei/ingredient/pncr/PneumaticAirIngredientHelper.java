@@ -21,12 +21,12 @@ public class PneumaticAirIngredientHelper  implements IIngredientHelper<Pneumati
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull PneumaticAirStack ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull PneumaticAirStack ingredient, @NotNull UidContext context) {
         return "pneumaticcraft/air";
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull PneumaticAirStack ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull PneumaticAirStack ingredient) {
         return Ref.id("pneumaticcraft/air");
     }
 

@@ -21,12 +21,12 @@ public class EnergyIngredientHelper implements IIngredientHelper<EnergyStack> {
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull EnergyStack ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull EnergyStack ingredient, @NotNull UidContext context) {
         return "energy";
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull EnergyStack ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull EnergyStack ingredient) {
         return Ref.id("energy");
     }
 

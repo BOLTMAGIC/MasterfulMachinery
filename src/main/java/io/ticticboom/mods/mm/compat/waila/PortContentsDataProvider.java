@@ -15,7 +15,8 @@ import snownee.jade.api.IServerDataProvider;
 import snownee.jade.api.ITooltip;
 import snownee.jade.api.config.IPluginConfig;
 import snownee.jade.api.ui.BoxStyle;
-import snownee.jade.api.ui.IElementHelper;
+import snownee.jade.api.ui.JadeUI;
+import snownee.jade.api.view.ProgressView;
 
 public class PortContentsDataProvider implements IServerDataProvider<BlockAccessor>, IBlockComponentProvider {
     public static final Identifier UID = Ref.id("port_contents");
@@ -60,19 +61,17 @@ public class PortContentsDataProvider implements IServerDataProvider<BlockAccess
         }
         var registries = accessor.getLevel().registryAccess();
         var list = data.getListOrEmpty(KEY);
-        var fill = data.contains(FILL_KEY) ? data.getFloat(FILL_KEY) : -1;
+        float fill = data.contains(FILL_KEY) ? data.getFloatOr(FILL_KEY, 0f) : -1;
         for (int i = 0; i < list.size(); i++) {
             var line = LegacyNbt.componentFromJson(list.getStringOr(i, ""), registries);
             if (line == null) {
                 continue;
             }
             if (i == 0 && fill >= 0) {
-                var helper = IElementHelper.get();
-                var color = data.contains(FILL_COLOR_KEY) ? data.getInt(FILL_COLOR_KEY) : 0;
-                var style = color == 0
-                        ? helper.progressStyle().color(DEFAULT_FILL_COLOR, DEFAULT_FILL_SHADE).textColor(0xFFFFFFFF)
-                        : helper.progressStyle().color(0xFF000000 | color, shade(color)).textColor(0xFFFFFFFF);
-                tooltip.add(helper.progress(fill, line, style, BoxStyle.getNestedBox(), true));
+                // Jade 26 colours a bar by its part's theme colour
+                int color = data.contains(FILL_COLOR_KEY) ? 0xFF000000 | data.getIntOr(FILL_COLOR_KEY, 0) : DEFAULT_FILL_COLOR;
+                var view = new ProgressView(ProgressView.Part.of(fill, color), line, JadeUI.progressStyle(), BoxStyle.nestedBox());
+                tooltip.add(JadeUI.progress(view));
             } else {
                 tooltip.add(line);
             }

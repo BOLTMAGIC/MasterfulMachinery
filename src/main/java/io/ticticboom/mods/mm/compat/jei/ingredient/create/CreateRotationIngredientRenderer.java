@@ -12,7 +12,7 @@ import java.util.List;
 public class CreateRotationIngredientRenderer implements IIngredientRenderer<CreateRotationStack> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull CreateRotationStack createRotationStack) {
+    public void render(GuiGraphicsExtractor guiGraphics, @NotNull CreateRotationStack createRotationStack) {
         GuiTextures.CREATE_PORT_SLOT.blit(guiGraphics, 0, 0);
     }
 

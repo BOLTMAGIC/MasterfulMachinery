@@ -12,7 +12,7 @@ import java.util.List;
 public class EntityIngredientRenderer implements IIngredientRenderer<EntityIngredient> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull EntityIngredient ingredient) {
+    public void render(GuiGraphicsExtractor gfx, @NotNull EntityIngredient ingredient) {
         var icon = EntityIngredientNames.icon(ingredient);
         if (!icon.isEmpty()) {
             gfx.item(icon, 0, 0);

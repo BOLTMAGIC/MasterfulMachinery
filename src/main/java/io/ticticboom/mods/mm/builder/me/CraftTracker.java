@@ -214,7 +214,7 @@ public final class CraftTracker {
     }
 
     public static MutableComponent amount(Item item, int count) {
-        return Component.empty().append(item.getDescription()).append(Component.literal(" ×" + count));
+        return Component.empty().append(item.getName(item.getDefaultInstance())).append(Component.literal(" ×" + count));
     }
 
     public static MutableComponent itemsWord(int count) {

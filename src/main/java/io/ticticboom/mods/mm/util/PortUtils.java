@@ -8,8 +8,6 @@ import io.ticticboom.mods.mm.setup.RegistryGroupHolder;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.block.state.properties.IntegerProperty;
-import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
-import net.neoforged.neoforge.client.model.generators.ModelFile;
 
 import java.util.Objects;
 
@@ -91,15 +89,13 @@ public class PortUtils {
         var overlay = isInput ? inputOverlay : outputOverlay;
         var id = groupHolder.getBlock().getId();
 
-        var models = new ModelFile[maxFill + 1];
+        var models = new Identifier[maxFill + 1];
         models[maxFill] = provider.dynamicBlock(id, base, stageTexture(overlay, maxFill));
         for (int stage = 0; stage < maxFill; stage++) {
             var stageId = Identifier.fromNamespaceAndPath(id.getNamespace(), id.getPath() + "_fill" + stage);
             models[stage] = provider.dynamicBlock(stageId, base, stageTexture(overlay, stage));
         }
-        provider.getVariantBuilder(block).forAllStates(state -> ConfiguredModel.builder()
-                .modelFile(models[state.getValue(fill)])
-                .build());
+        provider.variants(block, state -> new MMBlockstateProvider.Variant(models[state.getValue(fill)], 0));
     }
 
     private static Identifier stageTexture(Identifier overlay, int stage) {

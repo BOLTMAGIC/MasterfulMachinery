@@ -23,7 +23,7 @@ public class MatterIngredientRenderer implements IIngredientRenderer<MatterIngre
     private static final Map<Identifier, Optional<Identifier>> ICONS = new ConcurrentHashMap<>();
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull MatterIngredient ingredient) {
+    public void render(GuiGraphicsExtractor gfx, @NotNull MatterIngredient ingredient) {
         int color = ingredient.color();
         gfx.fill(0, 0, 16, 16, 0xFF1B1B1B);
         int tint = 0xFF000000 | color;

@@ -3,7 +3,8 @@ package io.ticticboom.mods.mm.client.structure;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.BlockAndTintGetter;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -48,14 +49,14 @@ public class GuiStructureLevel implements BlockAndTintGetter {
     }
 
     @Override
-    public float getShade(Direction direction, boolean shade) {
-        return 1f;
+    public CardinalLighting cardinalLighting() {
+        return CardinalLighting.DEFAULT;
     }
 
     @Override
     public LevelLightEngine getLightEngine() {
         var level = Minecraft.getInstance().level;
-        return level != null ? level.getLightEngine() : null;
+        return level != null ? level.getLightEngine() : LevelLightEngine.EMPTY;
     }
 
     @Override
@@ -70,7 +71,7 @@ public class GuiStructureLevel implements BlockAndTintGetter {
     }
 
     @Override
-    public int getMinBuildHeight() {
+    public int getMinY() {
         return -2048;
     }
 }

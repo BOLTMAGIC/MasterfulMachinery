@@ -26,7 +26,7 @@ public class NoCountItemRenderer implements IIngredientRenderer<ItemStack> {
     }
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, ItemStack ingredient) {
+    public void render(GuiGraphicsExtractor guiGraphics, ItemStack ingredient) {
         // Render the item model only; skip renderItemDecorations so the vanilla
         // count string is never drawn (we draw our own in MMRecipeCategory.draw).
         guiGraphics.item(ingredient, 0, 0);

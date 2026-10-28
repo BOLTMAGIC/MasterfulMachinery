@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.datagen.provider;
 
+import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.Gson;
@@ -69,7 +70,7 @@ public class MMLootTableProvider extends LootTableProvider {
             LootPool.Builder builder = LootPool.lootPool()
                     .setRolls(ConstantValue.exactly(1f))
                     .add(LootItem.lootTableItem(block)
-                            .apply(CopyComponentsFunction.copyComponents(CopyComponentsFunction.Source.BLOCK_ENTITY)
+                            .apply(CopyComponentsFunction.copyComponentsFromBlockEntity(LootContextParams.BLOCK_ENTITY)
                                     .include(DataComponents.CUSTOM_NAME)));
             return LootTable.lootTable().withPool(builder);
         }

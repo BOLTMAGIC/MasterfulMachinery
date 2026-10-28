@@ -22,8 +22,8 @@ public class VentBlock extends Block implements IExtraBlock {
 
     @Override
     public void generateModel(MMBlockstateProvider provider) {
-        var mdl = provider.connectedBlock(groupHolder.getBlock().getId(), Ref.Textures.VENT_OVERLAY);
-        provider.simpleBlock(groupHolder.getBlock().get(), mdl);
+        provider.connectedBlock(groupHolder.getBlock().getId(), Ref.Textures.VENT_OVERLAY);
+        provider.connectedState(groupHolder.getBlock().get(), Ref.Textures.VENT_OVERLAY);
     }
 
     @Override

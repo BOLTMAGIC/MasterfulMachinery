@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.client.blueprint;
 
+import net.minecraft.util.ARGB;
+import io.ticticboom.mods.mm.client.render.BlockModels;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import io.ticticboom.mods.mm.Ref;
@@ -10,7 +12,7 @@ import io.ticticboom.mods.mm.util.StructurePasteUtil;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;
@@ -104,8 +106,8 @@ public final class BlueprintPastePreviewRenderer {
     }
 
     @SubscribeEvent
-    public static void onRenderLevel(RenderLevelStageEvent event) {
-        if (event.getStage() != RenderLevelStageEvent.Stage.AFTER_TRANSLUCENT_BLOCKS || bounds == null) {
+    public static void onRenderLevel(RenderLevelStageEvent.AfterTranslucentBlocks event) {
+        if (bounds == null) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -113,18 +115,18 @@ public final class BlueprintPastePreviewRenderer {
             return;
         }
         PoseStack poseStack = event.getPoseStack();
-        Vec3 camera = event.getCamera().getPosition();
+        Vec3 camera = event.getLevelRenderState().cameraRenderState.pos;
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
-        GhostBlocks.render(poseStack, buffers, mc.getBlockRenderer(), ghosts);
-        VertexConsumer lines = buffers.getBuffer(RenderType.lines());
+        GhostBlocks.render(poseStack, buffers, ghosts);
+        VertexConsumer lines = buffers.getBuffer(RenderTypes.lines());
         for (BlockPos pos : obstructed) {
-            LevelRenderer.renderLineBox(poseStack, lines, new AABB(pos).inflate(0.01D), 1.0F, 0.0F, 0.0F, 1.0F);
+            BlockModels.lineBox(poseStack, lines, new AABB(pos).inflate(0.01D), ARGB.colorFromFloat(1.0F, 1.0F, 0.0F, 0.0F));
         }
         boolean clear = obstructed.isEmpty();
-        LevelRenderer.renderLineBox(poseStack, lines, bounds.inflate(0.02D), clear ? 0.0F : 1.0F, clear ? 1.0F : 0.0F, clear ? 0.05F : 0.0F, 1.0F);
-        buffers.endBatch(RenderType.lines());
+        BlockModels.lineBox(poseStack, lines, bounds.inflate(0.02D), ARGB.colorFromFloat(1.0F, clear ? 0.0F : 1.0F, clear ? 1.0F : 0.0F, clear ? 0.05F : 0.0F));
+        buffers.endBatch(RenderTypes.lines());
         poseStack.popPose();
     }
 

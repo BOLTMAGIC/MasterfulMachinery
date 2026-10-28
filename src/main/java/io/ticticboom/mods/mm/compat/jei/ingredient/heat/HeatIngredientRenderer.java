@@ -14,7 +14,7 @@ import java.util.List;
 public class HeatIngredientRenderer implements IIngredientRenderer<HeatStack> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull HeatStack ingredient) {
+    public void render(GuiGraphicsExtractor gfx, @NotNull HeatStack ingredient) {
         gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 0, 79, 16, 16, 256, 256);
     }
 

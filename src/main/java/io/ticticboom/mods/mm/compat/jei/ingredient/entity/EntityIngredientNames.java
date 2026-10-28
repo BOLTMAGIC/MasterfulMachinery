@@ -34,7 +34,7 @@ public class EntityIngredientNames {
     }
 
     public static ItemStack icon(EntityIngredient ingredient) {
-        var egg = SpawnEggItem.byId(type(ingredient));
-        return egg == null ? ItemStack.EMPTY : new ItemStack(egg);
+        var type = type(ingredient);
+        return type == null ? ItemStack.EMPTY : SpawnEggItem.byId(type).map(ItemStack::new).orElse(ItemStack.EMPTY);
     }
 }

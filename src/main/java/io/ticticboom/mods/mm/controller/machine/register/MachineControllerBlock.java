@@ -41,8 +41,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import org.jetbrains.annotations.Nullable;
 import java.util.EnumMap;
 import java.util.Objects;
-import net.neoforged.neoforge.client.model.generators.ConfiguredModel;
-import net.neoforged.neoforge.client.model.generators.ModelFile;
 
 public class MachineControllerBlock extends HorizontalDirectionalBlock implements IControllerPart, IControllerBlock {
 
@@ -75,7 +73,7 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
     @Override
     public void generateModel(MMBlockstateProvider provider) {
         var id = groupHolder.getBlock().getId();
-        var models = new EnumMap<ControllerState, ModelFile>(ControllerState.class);
+        var models = new EnumMap<ControllerState, Identifier>(ControllerState.class);
         var base = Objects.requireNonNullElse(model.baseTexture(), Ref.Textures.BASE_BLOCK);
         for (ControllerState state : ControllerState.values()) {
             var name = state.getSerializedName();
@@ -91,11 +89,8 @@ public class MachineControllerBlock extends HorizontalDirectionalBlock implement
                         Ref.Textures.controllerScreen(name)));
             }
         }
-        provider.getVariantBuilder(groupHolder.getBlock().get())
-                .forAllStates(state -> ConfiguredModel.builder()
-                        .modelFile(models.get(state.getValue(ControllerState.PROPERTY)))
-                        .rotationY((int) state.getValue(FACING).toYRot())
-                        .build());
+        provider.variants(groupHolder.getBlock().get(), state -> new MMBlockstateProvider.Variant(
+                models.get(state.getValue(ControllerState.PROPERTY)), (int) state.getValue(FACING).toYRot()));
     }
 
     @Override

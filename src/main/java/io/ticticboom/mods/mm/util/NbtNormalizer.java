@@ -43,10 +43,10 @@ public class NbtNormalizer {
 
             // Skip default/zero values for numeric tags
             if (value instanceof ByteTag) {
-                byte byteVal = ((ByteTag) value).getAsByte();
+                byte byteVal = ((ByteTag) value).byteValue();
                 if (byteVal == 0) continue;
             } else if (value instanceof IntTag) {
-                int intVal = ((IntTag) value).getAsInt();
+                int intVal = ((IntTag) value).intValue();
                 if (intVal == 0) continue;
             }
 

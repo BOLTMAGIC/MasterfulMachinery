@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.client.structure;
 
 import java.util.function.Supplier;
 import io.ticticboom.mods.mm.builder.structure.BuildableStructure;
-import io.ticticboom.mods.mm.client.RenderUtil;
 import io.ticticboom.mods.mm.client.blueprint.state.BlueprintStructureViewState;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
 import io.ticticboom.mods.mm.structure.StructureManager;
@@ -174,17 +173,25 @@ public class GuiStructureRenderer {
 
         viewTransform.run(mouseX, mouseY, overView);
         updatePreviewWorld();
-        renderSetup.preRender((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(), boundingRadius, viewTransform.getViewTransform());
+        var viewport = renderSetup.getViewportPos();
+        if (viewport == null || viewport.w() <= 0 || viewport.h() <= 0) {
+            return;
+        }
+        var blocks = new ArrayList<StructurePreviewRenderState.Block>(parts.size());
         for (PositionedCyclingBlockRenderer part : parts) {
             if (!canRenderPart(part)) {
                 continue;
             }
             GuiBlockRenderer next = part.part.next();
-            next.extractRenderState(gfx, mouseX, mouseY, viewTransform, previewWorld, worldGeneration);
+            if (next.getState() != null) {
+                blocks.add(new StructurePreviewRenderState.Block(part.pos, next.getState()));
+            }
         }
-        gfx.bufferSource().endBatch();
-        renderSetup.postRender();
-        RenderUtil.resetViewport();
+        var transform = renderSetup.transform((float) viewTransform.getYRotation(), (float) viewTransform.getXRotation(),
+                viewTransform.getViewTransform(), viewTransform.getModelTransform());
+        gfx.submitPictureInPictureRenderState(new StructurePreviewRenderState(blocks, previewWorld, transform,
+                viewport.x(), viewport.y(), viewport.x() + viewport.w(), viewport.y() + viewport.h(),
+                renderSetup.scale(boundingRadius), gfx.peekScissorStack()));
     }
 
     private void updatePreviewWorld() {

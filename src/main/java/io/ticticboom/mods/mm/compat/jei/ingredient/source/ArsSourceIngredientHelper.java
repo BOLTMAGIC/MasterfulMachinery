@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.source;
 
+import org.jetbrains.annotations.NotNull;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
@@ -20,12 +21,12 @@ public class ArsSourceIngredientHelper implements IIngredientHelper<ArsSourceSta
     }
 
     @Override
-    public String getUniqueId(ArsSourceStack stack, UidContext uidContext) {
+    public @NotNull Object getUid(ArsSourceStack stack, UidContext uidContext) {
         return "ars_nouveau/source";
     }
 
     @Override
-    public Identifier getResourceLocation(ArsSourceStack stack) {
+    public @NotNull Identifier getIdentifier(ArsSourceStack stack) {
         return Ref.id("ars_nouveau/source");
     }
 

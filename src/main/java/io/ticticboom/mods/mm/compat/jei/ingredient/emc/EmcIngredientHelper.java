@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.emc;
 
+import org.jetbrains.annotations.NotNull;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
@@ -20,12 +21,12 @@ public class EmcIngredientHelper implements IIngredientHelper<EmcStack> {
     }
 
     @Override
-    public String getUniqueId(EmcStack stack, UidContext uidContext) {
+    public @NotNull Object getUid(EmcStack stack, UidContext uidContext) {
         return "projecte/emc";
     }
 
     @Override
-    public Identifier getResourceLocation(EmcStack stack) {
+    public @NotNull Identifier getIdentifier(EmcStack stack) {
         return Ref.id("projecte/emc");
     }
 

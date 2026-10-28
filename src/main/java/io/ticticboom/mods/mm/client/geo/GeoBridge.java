@@ -4,14 +4,15 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.neoforged.fml.ModList;
 import org.jetbrains.annotations.Nullable;
 
 public interface GeoBridge {
 
     void render(MachineControllerBlockEntity be, GeoModelConfig config, ControllerState state, PoseStack pose,
-                MultiBufferSource buffers, int light, float partialTick);
+                SubmitNodeCollector collector, CameraRenderState camera, int light, float partialTick);
 
     @Nullable
     static GeoBridge get() {

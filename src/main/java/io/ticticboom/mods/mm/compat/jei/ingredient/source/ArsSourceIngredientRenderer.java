@@ -13,7 +13,7 @@ import java.util.List;
 public class ArsSourceIngredientRenderer implements IIngredientRenderer<ArsSourceStack> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull ArsSourceStack stack) {
+    public void render(GuiGraphicsExtractor guiGraphics, @NotNull ArsSourceStack stack) {
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 0, 160, 16, 16, 256, 256);
     }
 

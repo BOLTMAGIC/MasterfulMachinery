@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei;
 
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 import com.google.common.collect.ImmutableList;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
@@ -131,18 +133,26 @@ public class MMJeiPlugin implements IModPlugin {
     }
 
 
+    /**
+     * JEI 29 saves bookmarked ingredients through a codec. MM's own ingredient types (energy, mana...) are display
+     * only, so they encode to their type name and are not restored.
+     */
+    private static <V> Codec<V> unsaved(String name) {
+        return Codec.STRING.comapFlatMap(s -> DataResult.error(() -> "MM " + name + " ingredients are not saved"), v -> name);
+    }
+
     @Override
     public void registerIngredients(IModIngredientRegistration registration) {
-        registration.register(MMJeiIngredients.ENERGY, ImmutableList.of(), new EnergyIngredientHelper(), new EnergyIngredientRenderer());
-        registration.register(MMJeiIngredients.PNEUMATIC_AIR, ImmutableList.of(), new PneumaticAirIngredientHelper(), new PneumaticAirIngredientRender());
-        registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer());
-        registration.register(MMJeiIngredients.CREATE_ROTATION, ImmutableList.of(), new CreateRotationIngredientHelper(), new CreateRotationIngredientRenderer());
-        registration.register(MMJeiIngredients.MEKANISM_HEAT, ImmutableList.of(), new HeatIngredientHelper(), new HeatIngredientRenderer());
-        registration.register(MMJeiIngredients.REPLICATION_MATTER, ImmutableList.of(), new MatterIngredientHelper(), new MatterIngredientRenderer());
-        registration.register(MMJeiIngredients.NUCLEAR_RADIATION, ImmutableList.of(), new RadiationIngredientHelper(), new RadiationIngredientRenderer());
-        registration.register(MMJeiIngredients.ENTITY, ImmutableList.of(), new EntityIngredientHelper(), new EntityIngredientRenderer());
-        registration.register(MMJeiIngredients.ARS_SOURCE, ImmutableList.of(), new ArsSourceIngredientHelper(), new ArsSourceIngredientRenderer());
-        registration.register(MMJeiIngredients.PROJECTE_EMC, ImmutableList.of(), new EmcIngredientHelper(), new EmcIngredientRenderer());
+        registration.register(MMJeiIngredients.ENERGY, ImmutableList.of(), new EnergyIngredientHelper(), new EnergyIngredientRenderer(), unsaved("energy"));
+        registration.register(MMJeiIngredients.PNEUMATIC_AIR, ImmutableList.of(), new PneumaticAirIngredientHelper(), new PneumaticAirIngredientRender(), unsaved("pneumatic_air"));
+        registration.register(MMJeiIngredients.BOTANIA_MANA, ImmutableList.of(), new BotaniaManaIngredientHelper(), new BotaniaManaIngredientRenderer(), unsaved("botania_mana"));
+        registration.register(MMJeiIngredients.CREATE_ROTATION, ImmutableList.of(), new CreateRotationIngredientHelper(), new CreateRotationIngredientRenderer(), unsaved("create_rotation"));
+        registration.register(MMJeiIngredients.MEKANISM_HEAT, ImmutableList.of(), new HeatIngredientHelper(), new HeatIngredientRenderer(), unsaved("mekanism_heat"));
+        registration.register(MMJeiIngredients.REPLICATION_MATTER, ImmutableList.of(), new MatterIngredientHelper(), new MatterIngredientRenderer(), unsaved("replication_matter"));
+        registration.register(MMJeiIngredients.NUCLEAR_RADIATION, ImmutableList.of(), new RadiationIngredientHelper(), new RadiationIngredientRenderer(), unsaved("nuclear_radiation"));
+        registration.register(MMJeiIngredients.ENTITY, ImmutableList.of(), new EntityIngredientHelper(), new EntityIngredientRenderer(), unsaved("entity"));
+        registration.register(MMJeiIngredients.ARS_SOURCE, ImmutableList.of(), new ArsSourceIngredientHelper(), new ArsSourceIngredientRenderer(), unsaved("ars_source"));
+        registration.register(MMJeiIngredients.PROJECTE_EMC, ImmutableList.of(), new EmcIngredientHelper(), new EmcIngredientRenderer(), unsaved("projecte_emc"));
     }
 
     @Override

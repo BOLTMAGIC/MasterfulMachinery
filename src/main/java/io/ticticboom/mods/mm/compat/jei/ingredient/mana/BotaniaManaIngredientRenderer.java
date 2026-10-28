@@ -14,7 +14,7 @@ public class BotaniaManaIngredientRenderer implements IIngredientRenderer<Botani
 
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull BotaniaManaStack stack) {
+    public void render(GuiGraphicsExtractor guiGraphics, @NotNull BotaniaManaStack stack) {
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 18, 79, 16, 16, 256, 256);
     }
 

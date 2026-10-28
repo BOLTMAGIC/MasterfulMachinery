@@ -3,14 +3,13 @@ package io.ticticboom.mods.mm.compat.geckolib;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.animatable.GeoAnimatable;
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.animation.AnimatableManager;
-import software.bernie.geckolib.animation.AnimationController;
-import software.bernie.geckolib.animation.PlayState;
-import software.bernie.geckolib.animation.RawAnimation;
-import software.bernie.geckolib.util.GeckoLibUtil;
-import software.bernie.geckolib.util.RenderUtil;
+import com.geckolib.animatable.GeoAnimatable;
+import com.geckolib.animatable.instance.AnimatableInstanceCache;
+import com.geckolib.animatable.manager.AnimatableManager;
+import com.geckolib.animation.AnimationController;
+import com.geckolib.animation.RawAnimation;
+import com.geckolib.animation.object.PlayState;
+import com.geckolib.util.GeckoLibUtil;
 
 /**
  * One machine's model, client side: loops "idle" while formed and "working" while a recipe runs, unless its
@@ -52,7 +51,7 @@ public class MachineGeoAnimatable implements GeoAnimatable {
         if (idle == null && working == null) {
             return;
         }
-        controllers.add(new AnimationController<>(this, "machine", TRANSITION_TICKS, animState -> {
+        controllers.add(new AnimationController<MachineGeoAnimatable>("machine", TRANSITION_TICKS, animState -> {
             RawAnimation animation = animationsHidden ? null : state == ControllerState.WORKING ? working : idle;
             return animation == null ? PlayState.STOP : animState.setAndContinue(animation);
         }));
@@ -61,10 +60,5 @@ public class MachineGeoAnimatable implements GeoAnimatable {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return cache;
-    }
-
-    @Override
-    public double getTick(Object object) {
-        return RenderUtil.getCurrentTick();
     }
 }

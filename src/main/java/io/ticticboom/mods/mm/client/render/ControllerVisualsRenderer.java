@@ -3,43 +3,71 @@ package io.ticticboom.mods.mm.client.render;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
+import io.ticticboom.mods.mm.client.FluidSprites;
 import io.ticticboom.mods.mm.client.geo.GeoBridge;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
 import io.ticticboom.mods.mm.structure.attachment.visuals.FluidVolumeState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.blockentity.state.BlockEntityRenderState;
+import net.minecraft.client.renderer.feature.ModelFeatureRenderer;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.phys.AABB;
-import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions;
+import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
-public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineControllerBlockEntity> {
+/**
+ * Draws a formed machine's fluid volumes and its GeckoLib model. Since 1.21.9 block entity renderers extract a render
+ * state and submit geometry later in the frame; the state keeps the controller, read on the render thread.
+ */
+public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineControllerBlockEntity, ControllerVisualsRenderer.State> {
     private static final int MIN_ALPHA = 0xA0;
 
+    public static class State extends BlockEntityRenderState {
+        @Nullable
+        MachineControllerBlockEntity be;
+        float partialTick;
+    }
+
     @Override
-    public void render(MachineControllerBlockEntity be, float partialTick, PoseStack pose, MultiBufferSource buffers, int light, int overlay) {
-        if (be.getLevel() == null) {
+    public State createRenderState() {
+        return new State();
+    }
+
+    @Override
+    public void extractRenderState(MachineControllerBlockEntity be, State state, float partialTicks, Vec3 cameraPosition,
+                                   ModelFeatureRenderer.@Nullable CrumblingOverlay breakProgress) {
+        BlockEntityRenderer.super.extractRenderState(be, state, partialTicks, cameraPosition, breakProgress);
+        state.be = be.getLevel() == null ? null : be;
+        state.partialTick = partialTicks;
+    }
+
+    @Override
+    public void submit(State state, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera) {
+        var be = state.be;
+        if (be == null) {
             return;
         }
         for (FluidVolumeState volume : be.getFluidVolumes()) {
             if (!volume.getFluid().isEmpty() && volume.getFill() > 0 && volume.getBounds() != null) {
-                renderFluidVolume(be, volume, pose, buffers);
+                renderFluidVolume(be, volume, pose, collector);
             }
         }
-        renderGeoModel(be, pose, buffers, light, partialTick);
+        renderGeoModel(be, pose, collector, camera, state.lightCoords, state.partialTick);
     }
 
-    private void renderGeoModel(MachineControllerBlockEntity be, PoseStack pose, MultiBufferSource buffers, int light, float partialTick) {
+    private void renderGeoModel(MachineControllerBlockEntity be, PoseStack pose, SubmitNodeCollector collector, CameraRenderState camera,
+                                int light, float partialTick) {
         var blockState = be.getBlockState();
         if (!blockState.hasProperty(ControllerState.PROPERTY) || !blockState.hasProperty(HorizontalDirectionalBlock.FACING)) {
             return;
@@ -58,38 +86,36 @@ public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineCon
         double[] offset = config.worldOffset(facing);
         int modelLight = light;
         if (config.glow()) {
-            modelLight = LightTexture.FULL_BRIGHT;
+            modelLight = LightCoordsUtil.FULL_BRIGHT;
         } else {
             var at = BlockPos.containing(be.getBlockPos().getX() + 0.5 + offset[0], be.getBlockPos().getY() + offset[1], be.getBlockPos().getZ() + 0.5 + offset[2]);
-            modelLight = LevelRenderer.getLightColor(be.getLevel(), at);
+            modelLight = LevelRenderer.getLightCoords(be.getLevel(), at);
         }
         pose.pushPose();
         pose.translate(0.5 + offset[0], offset[1], 0.5 + offset[2]);
         pose.mulPose(Axis.YP.rotationDegrees(config.modelYRot(facing)));
         pose.scale(config.scale(), config.scale(), config.scale());
         pose.translate(-0.5, -0.51, -0.5);
-        bridge.render(be, config, state, pose, buffers, modelLight, partialTick);
+        bridge.render(be, config, state, pose, collector, camera, modelLight, partialTick);
         pose.popPose();
     }
 
-    private void renderFluidVolume(MachineControllerBlockEntity be, FluidVolumeState volume, PoseStack pose, MultiBufferSource buffers) {
+    private void renderFluidVolume(MachineControllerBlockEntity be, FluidVolumeState volume, PoseStack pose, SubmitNodeCollector collector) {
         var fluid = volume.getFluid();
-        var ext = IClientFluidTypeExtensions.of(fluid.getFluid());
-        TextureAtlasSprite sprite = Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(ext.getStillTexture(fluid));
+        TextureAtlasSprite sprite = FluidSprites.still(fluid);
 
         var center = volume.getBounds().getCenter();
         var centerPos = be.getBlockPos().offset((int) Math.floor(center.x), (int) Math.floor(center.y), (int) Math.floor(center.z));
-        int color = ext.getTintColor(fluid.getFluid().defaultFluidState(), be.getLevel(), centerPos);
-        color = Math.max(color >>> 24, MIN_ALPHA) << 24 | (color & 0xFFFFFF);
-        int packed = LevelRenderer.getLightColor(be.getLevel(), centerPos);
+        int tint = FluidSprites.tint(fluid);
+        int color = Math.max(tint >>> 24, MIN_ALPHA) << 24 | (tint & 0xFFFFFF);
+        int packed = LevelRenderer.getLightCoords(be.getLevel(), centerPos);
         int fluidLight = fluid.getFluid().getFluidType().getLightLevel(fluid);
-        int light = LightTexture.pack(Math.max(LightTexture.block(packed), fluidLight), LightTexture.sky(packed));
+        int light = LightCoordsUtil.pack(Math.max(LightCoordsUtil.block(packed), fluidLight), LightCoordsUtil.sky(packed));
 
         var cells = volume.getCellSet();
         boolean gas = volume.isGas();
         float level = volume.getLevel();
-        VertexConsumer vc = buffers.getBuffer(RenderType.translucent());
-        var last = pose.last();
+        collector.submitCustomGeometry(pose, RenderTypes.translucentMovingBlock(), (last, vc) -> {
         for (long cell : volume.getCells()) {
             int cx = BlockPos.getX(cell), cy = BlockPos.getY(cell), cz = BlockPos.getZ(cell);
             float lo = gas ? Math.max(cy, level) : cy;
@@ -125,6 +151,7 @@ public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineCon
                 face(vc, last, sprite, color, light, Direction.SOUTH, cx, cy, cz, ax, ay, az, bx, by, bz);
             }
         }
+        });
     }
 
     private static void face(VertexConsumer vc, PoseStack.Pose last, TextureAtlasSprite sprite, int color, int light, Direction face,
@@ -163,8 +190,9 @@ public class ControllerVisualsRenderer implements BlockEntityRenderer<MachineCon
     }
 
     @Override
-    public boolean shouldRenderOffScreen(MachineControllerBlockEntity be) {
-        return be.getVisualBounds() != null || be.geoModel() != null;
+    public boolean shouldRenderOffScreen() {
+        // fluid volumes and models reach outside the controller block
+        return true;
     }
 
     @Override

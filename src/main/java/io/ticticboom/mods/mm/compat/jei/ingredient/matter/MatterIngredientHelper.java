@@ -20,12 +20,12 @@ public class MatterIngredientHelper implements IIngredientHelper<MatterIngredien
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull MatterIngredient ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull MatterIngredient ingredient, @NotNull UidContext context) {
         return "replication/matter/" + ingredient.matter();
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull MatterIngredient ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull MatterIngredient ingredient) {
         return ingredient.matter();
     }
 

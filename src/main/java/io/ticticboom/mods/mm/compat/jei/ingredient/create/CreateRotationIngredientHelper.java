@@ -23,12 +23,12 @@ public class CreateRotationIngredientHelper implements IIngredientHelper<CreateR
     }
 
     @Override
-    public @NotNull String getUniqueId(CreateRotationStack createRotationStack, @NotNull UidContext uidContext) {
+    public @NotNull Object getUid(CreateRotationStack createRotationStack, @NotNull UidContext uidContext) {
         return "create-rotation-" + createRotationStack.speed();
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull CreateRotationStack createRotationStack) {
+    public @NotNull Identifier getIdentifier(@NotNull CreateRotationStack createRotationStack) {
         return ingredientId;
     }
 

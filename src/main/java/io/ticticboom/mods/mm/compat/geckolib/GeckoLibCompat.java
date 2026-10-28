@@ -7,11 +7,13 @@ import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import io.ticticboom.mods.mm.controller.machine.register.ControllerState;
 import io.ticticboom.mods.mm.controller.machine.register.ModelDisplay;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import org.jetbrains.annotations.Nullable;
-import software.bernie.geckolib.cache.GeckoLibCache;
-import software.bernie.geckolib.loading.object.BakedAnimations;
-import software.bernie.geckolib.renderer.GeoObjectRenderer;
+import com.geckolib.cache.GeckoLibResources;
+import com.geckolib.cache.animation.BakedAnimations;
+import com.geckolib.renderer.GeoObjectRenderer;
+import com.geckolib.renderer.base.GeoRenderState;
 
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -19,12 +21,12 @@ import java.util.Set;
 
 public class GeckoLibCompat implements GeoBridge {
 
-    private final GeoObjectRenderer<MachineGeoAnimatable> renderer = new GeoObjectRenderer<>(new MachineGeoModel());
+    private final GeoObjectRenderer<MachineGeoAnimatable, Void, GeoRenderState> renderer = new GeoObjectRenderer<>(new MachineGeoModel());
     private final Set<GeoModelConfig> broken = Collections.newSetFromMap(new IdentityHashMap<>());
 
     @Override
     public void render(MachineControllerBlockEntity be, GeoModelConfig config, ControllerState state, PoseStack pose,
-                       MultiBufferSource buffers, int light, float partialTick) {
+                       SubmitNodeCollector collector, CameraRenderState camera, int light, float partialTick) {
         if (broken.contains(config)) {
             return;
         }
@@ -34,11 +36,8 @@ public class GeckoLibCompat implements GeoBridge {
         }
         animatable.setState(state);
         animatable.setAnimationsHidden(be.getModelDisplay() != ModelDisplay.ON);
-        PoseStack local = new PoseStack();
-        local.last().pose().set(pose.last().pose());
-        local.last().normal().set(pose.last().normal());
         try {
-            renderer.render(local, animatable, buffers, null, null, light, partialTick);
+            renderer.performRenderPass(animatable, null, pose, collector, camera, light, partialTick);
         } catch (RuntimeException e) {
             fail(config, "GeckoLib failed to draw it: " + e);
         }
@@ -49,14 +48,14 @@ public class GeckoLibCompat implements GeoBridge {
         if (be.getGeoAnimatable() instanceof MachineGeoAnimatable current && current.config() == config) {
             return current;
         }
-        if (!GeckoLibCache.getBakedModels().containsKey(config.model())) {
+        if (!GeckoLibResources.getBakedModels().cache().containsKey(GeckoLibResources.stripPrefixAndSuffix(config.model()))) {
             fail(config, "model " + config.model() + " not found (assets/<ns>/geo/...)");
             return null;
         }
         String idle = null;
         String working = null;
         if (config.animations() != null) {
-            BakedAnimations animations = GeckoLibCache.getBakedAnimations().get(config.animations());
+            BakedAnimations animations = GeckoLibResources.getBakedAnimations().cache().get(GeckoLibResources.stripPrefixAndSuffix(config.animations()));
             if (animations == null) {
                 Ref.LOG.warn("geoModel {}: animations {} not found, the model stands still", config.model(), config.animations());
             } else {
@@ -71,7 +70,7 @@ public class GeckoLibCompat implements GeoBridge {
 
     @Nullable
     private static String known(GeoModelConfig config, BakedAnimations animations, @Nullable String name) {
-        if (name != null && !animations.animations().containsKey(name)) {
+        if (name != null && animations.getAnimation(name) == null) {
             Ref.LOG.warn("geoModel {}: no animation '{}' in {}", config.model(), name, config.animations());
             return null;
         }

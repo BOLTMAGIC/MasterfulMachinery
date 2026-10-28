@@ -1,5 +1,17 @@
 package io.ticticboom.mods.mm.client.event;
 
+import org.jetbrains.annotations.Nullable;
+import java.util.List;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.BlockItem;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.core.BlockPos;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
+import net.minecraft.client.color.item.ItemTintSource;
+import net.minecraft.client.color.block.BlockTintSource;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.render.ControllerVisualsRenderer;
 import io.ticticboom.mods.mm.client.render.PortStatusLightRenderer;
@@ -45,28 +57,46 @@ public final class ControllerColorEvents {
     }
 
     @SubscribeEvent
-    public static void onBlockColors(RegisterColorHandlersEvent.Block event) {
+    public static void onBlockColors(RegisterColorHandlersEvent.BlockTintSources event) {
         Block[] blocks = MMControllerRegistry.CONTROLLERS.stream()
                 .map(holder -> holder.getBlock().get())
                 .toArray(Block[]::new);
-        event.register((state, level, pos, tintIndex) -> {
-            if (tintIndex != 0 || !(state.getBlock() instanceof MachineControllerBlock block)) {
-                return NO_TINT;
+        // tint index 0 is the controller's screen
+        event.register(List.of(new BlockTintSource() {
+            @Override
+            public int color(BlockState state) {
+                return screenTint(state, ControllerState.IDLE);
             }
-            ControllerState machineState = level == null || pos == null
-                    ? ControllerState.IDLE
-                    : state.getValue(ControllerState.PROPERTY);
-            return screenColor(block, machineState);
-        }, blocks);
+
+            @Override
+            public int colorInWorld(BlockState state, BlockAndTintGetter level, BlockPos pos) {
+                return screenTint(state, state.hasProperty(ControllerState.PROPERTY) ? state.getValue(ControllerState.PROPERTY) : ControllerState.IDLE);
+            }
+        }), blocks);
     }
 
+    private static int screenTint(BlockState state, ControllerState machineState) {
+        return state.getBlock() instanceof MachineControllerBlock block ? 0xFF000000 | screenColor(block, machineState) : -1;
+    }
+
+    /** Item tints are data driven since 1.21.4: controller item definitions name mm:controller_screen. */
     @SubscribeEvent
-    public static void onItemColors(RegisterColorHandlersEvent.Item event) {
-        for (var holder : MMControllerRegistry.CONTROLLERS) {
-            if (holder.getBlock().get() instanceof MachineControllerBlock block) {
-                event.register((stack, tintIndex) -> tintIndex == 0 ? 0xFF000000 | screenColor(block, ControllerState.IDLE) : -1,
-                        holder.getItem().get());
-            }
+    public static void onItemTints(RegisterColorHandlersEvent.ItemTintSources event) {
+        event.register(Ref.id("controller_screen"), ScreenTint.CODEC);
+    }
+
+    public record ScreenTint() implements ItemTintSource {
+        public static final MapCodec<ScreenTint> CODEC = MapCodec.unit(new ScreenTint());
+
+        @Override
+        public int calculate(ItemStack stack, @Nullable ClientLevel level, @Nullable LivingEntity owner) {
+            return stack.getItem() instanceof BlockItem item && item.getBlock() instanceof MachineControllerBlock block
+                    ? 0xFF000000 | screenColor(block, ControllerState.IDLE) : -1;
+        }
+
+        @Override
+        public MapCodec<ScreenTint> type() {
+            return CODEC;
         }
     }
 

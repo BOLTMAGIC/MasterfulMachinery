@@ -1,5 +1,7 @@
 package io.ticticboom.mods.mm.compat.jei.category;
 
+import org.joml.Matrix3x2fStack;
+import org.joml.Vector2f;
 import com.mojang.blaze3d.vertex.PoseStack;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.gui.util.GuiPos;
@@ -97,7 +99,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
 
     @Override
     public void setRecipe(IRecipeLayoutBuilder builder, StructureModel recipe, @NotNull IFocusGroup focuses) {
-        var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST);
+        var catalysts = builder.addInvisibleIngredients(RecipeIngredientRole.CRAFTING_STATION);
         for (Identifier id : recipe.controllerIds().getIds()) {
             Item controller = MMControllerRegistry.getControllerItem(id);
             if (controller != null) {
@@ -146,7 +148,7 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
             slot.addRichTooltipCallback((a, b) -> b.add(countedItemStack.getDetail()));
         }
 
-        builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)
+        builder.addInvisibleIngredients(RecipeIngredientRole.CRAFTING_STATION)
                 .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
             builder.addInvisibleIngredients(RecipeIngredientRole.OUTPUT)
                 .addItemStack(MMRegisters.BLUEPRINT.get().getStructureInstance(recipe.id()));
@@ -266,9 +268,8 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
         return mouseX >= 1 && mouseX < 1 + RENDER_SIZE.x && mouseY >= 1 && mouseY < LAYER_WIDGET_Y;
     }
 
-    private Vector2i getGuiPosition(PoseStack poseStack) {
-        var transformedPosition = new Vector4f(0, 0, 0, 1);
-        transformedPosition.mul(poseStack.last().pose());
+    private Vector2i getGuiPosition(Matrix3x2fStack pose) {
+        var transformedPosition = pose.transformPosition(new Vector2f(0, 0));
         return new Vector2i((int) transformedPosition.x, (int) transformedPosition.y);
     }
 }

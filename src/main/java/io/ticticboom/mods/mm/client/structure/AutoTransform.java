@@ -67,7 +67,7 @@ public class AutoTransform {
             lastX = mouseX;
             lastY = mouseY;
         }
-        long window = mc.getWindow().getWindow();
+        long window = mc.getWindow().handle();
         boolean left = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         boolean right = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
         boolean middle = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_MIDDLE) == GLFW.GLFW_PRESS;

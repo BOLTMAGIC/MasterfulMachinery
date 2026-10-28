@@ -10,7 +10,7 @@ import net.minecraft.util.Util;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
-import net.minecraft.server.packs.metadata.MetadataSectionSerializer;
+import net.minecraft.server.packs.metadata.MetadataSectionType;
 import net.minecraft.server.packs.resources.IoSupplier;
 import net.minecraft.util.GsonHelper;
 import org.slf4j.Logger;
@@ -49,22 +49,10 @@ public class GeneratedPack implements PackResources {
     }
 
 
+    /** The pack's metadata comes from MMRepositorySource, which builds the Pack itself; there is no pack.mcmeta. */
     @Override
-    public <T> T getMetadataSection(MetadataSectionSerializer<T> deserializer) {
-        JsonObject jsonobject = new JsonObject();
-        JsonObject packObject = new JsonObject();
-        packObject.addProperty("pack_format", 15);
-        packObject.addProperty("description", "mm");
-        jsonobject.add("pack", packObject);
-        if (!jsonobject.has(deserializer.getMetadataSectionName())) {
-            return null;
-        } else {
-            try {
-                return deserializer.fromJson(GsonHelper.getAsJsonObject(jsonobject, deserializer.getMetadataSectionName()));
-            } catch (JsonParseException jsonparseexception) {
-                return null;
-            }
-        }
+    public <T> T getMetadataSection(MetadataSectionType<T> type) {
+        return null;
     }
 
     @Override

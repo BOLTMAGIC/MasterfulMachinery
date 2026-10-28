@@ -16,7 +16,6 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.server.packs.repository.PackRepository;
 import net.neoforged.api.distmarker.Dist;
-import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import net.neoforged.fml.ModLoader;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
@@ -51,19 +50,17 @@ public class DataGenManager {
 
     public static void registerDataProviders() {
         generator = createDataGenerator();
-        ExistingFileHelper efh = new ExistingFileHelper(ImmutableList.of(), ImmutableSet.of(), false, null, null);
         CompletableFuture<HolderLookup.Provider> lookupProvider = CompletableFuture.supplyAsync(() -> RegistryAccess.fromRegistryOfRegistries(BuiltInRegistries.REGISTRY));
         generator.addProvider(true, new MMLootTableProvider(generator, lookupProvider));
         generator.addProvider(true, new MMLangProvider(generator, "en_us"));
         generator.addProvider(true, new MMBlockTagsProvider(generator, lookupProvider));
-        if (FMLEnvironment.dist != Dist.DEDICATED_SERVER) {
-            generator.addProvider(true, new MMBlockstateProvider(generator, efh));
-            generator.addProvider(true, new MMItemModelProvider(generator, efh));
+        if (FMLEnvironment.getDist() != Dist.DEDICATED_SERVER) {
+            generator.addProvider(true, new MMBlockstateProvider(generator));
         }
     }
 
     public static DataGenerator createDataGenerator() {
-        generator = new DataGenerator(MMRepositorySource.CONFIG_DIR, DetectedVersion.tryDetectVersion(), true);
+        generator = new DataGenerator.Cached(MMRepositorySource.CONFIG_DIR, DetectedVersion.tryDetectVersion(), true);
         return generator;
     }
 }

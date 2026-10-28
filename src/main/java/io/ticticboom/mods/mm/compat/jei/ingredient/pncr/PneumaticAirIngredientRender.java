@@ -14,7 +14,7 @@ import java.util.List;
 public class PneumaticAirIngredientRender  implements IIngredientRenderer<PneumaticAirStack> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull PneumaticAirStack pneumaticAirStack) {
+    public void render(GuiGraphicsExtractor guiGraphics, @NotNull PneumaticAirStack pneumaticAirStack) {
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 0, 0, 1, 62, 16, 16, 256, 256);
     }
 

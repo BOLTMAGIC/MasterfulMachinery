@@ -17,7 +17,7 @@ import java.util.concurrent.CompletableFuture;
 public class MMBlockTagsProvider extends BlockTagsProvider {
 
     public MMBlockTagsProvider(DataGenerator generator, CompletableFuture<HolderLookup.Provider> lookupProvider) {
-        super(generator.getPackOutput(), lookupProvider, Ref.ID, null);
+        super(generator.getPackOutput(), lookupProvider, Ref.ID);
     }
 
     @Override

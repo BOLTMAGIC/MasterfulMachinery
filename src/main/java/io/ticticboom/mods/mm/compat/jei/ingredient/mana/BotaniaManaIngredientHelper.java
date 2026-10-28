@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.compat.jei.ingredient.mana;
 
+import org.jetbrains.annotations.NotNull;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.compat.jei.ingredient.MMJeiIngredients;
 import mezz.jei.api.ingredients.IIngredientHelper;
@@ -20,12 +21,12 @@ public class BotaniaManaIngredientHelper implements IIngredientHelper<BotaniaMan
     }
 
     @Override
-    public String getUniqueId(BotaniaManaStack botaniaManaStack, UidContext uidContext) {
+    public @NotNull Object getUid(BotaniaManaStack botaniaManaStack, UidContext uidContext) {
         return "botania/mana";
     }
 
     @Override
-    public Identifier getResourceLocation(BotaniaManaStack botaniaManaStack) {
+    public @NotNull Identifier getIdentifier(BotaniaManaStack botaniaManaStack) {
         return Ref.id("botania/mana");
     }
 

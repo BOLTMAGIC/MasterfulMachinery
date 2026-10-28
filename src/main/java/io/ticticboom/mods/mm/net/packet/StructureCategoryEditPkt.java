@@ -31,7 +31,7 @@ public record StructureCategoryEditPkt(StructureCategories.Action action, String
         ctx.enqueueWork(() -> {
             ServerPlayer sender = ctx.player() instanceof ServerPlayer sp ? sp : null;
             if (sender == null || !sender.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER) || !(sender.containerMenu instanceof MultiblockToolMenu)) return;
-            StructureCategories categories = StructureCategories.get(sender.getServer());
+            StructureCategories categories = StructureCategories.get(sender.level().getServer());
             if (categories.apply(packet.action, packet.target, packet.value)) {
                 PacketDistributor.sendToAllPlayers(new StructureCategoriesSyncPkt(categories.snapshot()));
             }

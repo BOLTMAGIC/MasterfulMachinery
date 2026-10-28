@@ -21,12 +21,12 @@ public class HeatIngredientHelper implements IIngredientHelper<HeatStack> {
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull HeatStack ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull HeatStack ingredient, @NotNull UidContext context) {
         return "mekanism/heat";
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull HeatStack ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull HeatStack ingredient) {
         return Ref.id("mekanism/heat");
     }
 

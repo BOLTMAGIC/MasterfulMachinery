@@ -22,12 +22,12 @@ public class RadiationIngredientHelper implements IIngredientHelper<RadiationIng
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull RadiationIngredient ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull RadiationIngredient ingredient, @NotNull UidContext context) {
         return "nuclear_radiation/" + (ingredient.isotope() == null ? "any" : ingredient.isotope());
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull RadiationIngredient ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull RadiationIngredient ingredient) {
         var parsed = ingredient.isotope() == null ? null : Identifier.tryParse(ingredient.isotope());
         return parsed != null ? parsed : Ref.id("nuclear_radiation/any");
     }

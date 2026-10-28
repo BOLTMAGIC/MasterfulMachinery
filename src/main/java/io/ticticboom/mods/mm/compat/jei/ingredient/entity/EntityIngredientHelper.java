@@ -20,12 +20,12 @@ public class EntityIngredientHelper implements IIngredientHelper<EntityIngredien
     }
 
     @Override
-    public @NotNull String getUniqueId(@NotNull EntityIngredient ingredient, @NotNull UidContext context) {
+    public @NotNull Object getUid(@NotNull EntityIngredient ingredient, @NotNull UidContext context) {
         return "entity/" + (ingredient.tag() ? "tag/" : "") + ingredient.id();
     }
 
     @Override
-    public @NotNull Identifier getResourceLocation(@NotNull EntityIngredient ingredient) {
+    public @NotNull Identifier getIdentifier(@NotNull EntityIngredient ingredient) {
         return ingredient.id();
     }
 

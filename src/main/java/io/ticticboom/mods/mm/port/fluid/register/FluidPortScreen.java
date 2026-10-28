@@ -39,9 +39,9 @@ public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
 
     @Override
     public void extractBackground(GuiGraphicsExtractor gfx, int mouseX, int mouseY, float partialTicks) {
+        // the slotted background; a single tank draws its gauge panel over it
         super.extractBackground(gfx, mouseX, mouseY, partialTicks);
         if (!singleTank()) {
-            super.renderBg(gfx, partialTicks, mouseX, mouseY);
             return;
         }
         gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.PORT_GUI, this.leftPos, this.topPos, 0, 0, this.imageWidth, this.imageHeight, 256, 256);
@@ -59,7 +59,7 @@ public class FluidPortScreen extends SlottedContainerScreen<FluidPortMenu> {
 
     @Override
     protected void extractLabels(GuiGraphicsExtractor gfx, int mouseX, int mouseY) {
-        super.renderLabels(gfx, mouseX, mouseY);
+        super.extractLabels(gfx, mouseX, mouseY);
         if (singleTank()) {
             return;
         }

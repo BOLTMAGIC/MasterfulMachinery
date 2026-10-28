@@ -109,7 +109,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         if (chance <= 0.0) {
             slot.setBadgeNotUsed();
             // Add a translated tooltip line to indicate the slot/item won't be used
-            rSlot.addTooltipCallback((v, list) -> list.add(Component.translatable("jei.mm.not_used").withStyle(ChatFormatting.DARK_AQUA)));
+            rSlot.addRichTooltipCallback((v, list) -> list.add(Component.translatable("jei.mm.not_used").withStyle(ChatFormatting.DARK_AQUA)));
         }
         if (slot.getBadgeCount() > 1 || slot.hasBadgeNotUsed()) {
             rSlot.setOverlay(new SlotBadgeDrawable(slot.getBadgeCount(), slot.hasBadgeNotUsed()), 0, 0);
@@ -117,7 +117,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
         ingredient.setRecipe(builder, model, focus, helpers, grid, rSlot);
         var range = ingredient.getAmountRange();
         if (range != null && range.isRanged()) {
-            rSlot.addTooltipCallback((v, list) -> {
+            rSlot.addRichTooltipCallback((v, list) -> {
                 list.add(Component.translatable("jei.mm.recipe.consumes_range", range.min(), range.max())
                         .withStyle(ChatFormatting.DARK_AQUA));
                 if (range.isGrouped()) {
@@ -127,7 +127,7 @@ public class ConsumeRecipeIngredientEntry implements IRecipeIngredientEntry {
             });
         }
         var fmtChance = String.format("%.2f", chance * 100);
-        rSlot.addTooltipCallback((v, list) -> {
+        rSlot.addRichTooltipCallback((v, list) -> {
             if (chance < 1) {
                 list.add(Component.translatable("jei.mm.recipe.chance_of_consumption", fmtChance).withStyle(ChatFormatting.DARK_AQUA));
             }

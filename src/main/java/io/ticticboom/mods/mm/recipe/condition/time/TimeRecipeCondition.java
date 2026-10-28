@@ -20,7 +20,7 @@ public class TimeRecipeCondition implements IRecipeCondition {
 
     @Override
     public boolean canRun(RecipeConditionContext ctx) {
-        long time = ctx.level().getDayTime() % 24000L;
+        long time = ctx.level().getOverworldClockTime() % 24000L;
         return (time < 13000L) == day;
     }
 

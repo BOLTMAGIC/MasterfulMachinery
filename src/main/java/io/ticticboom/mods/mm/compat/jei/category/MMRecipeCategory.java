@@ -85,10 +85,14 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
     }
 
-    @SuppressWarnings("removal")
     @Override
-    public IDrawable getBackground() {
-        return helpers.getGuiHelper().createBlankDrawable(162, height);
+    public int getWidth() {
+        return 162;
+    }
+
+    @Override
+    public int getHeight() {
+        return height;
     }
 
     @Override

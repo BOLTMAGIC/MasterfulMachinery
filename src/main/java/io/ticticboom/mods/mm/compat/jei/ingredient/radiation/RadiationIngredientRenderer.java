@@ -13,7 +13,7 @@ import java.util.List;
 public class RadiationIngredientRenderer implements IIngredientRenderer<RadiationIngredient> {
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor gfx, @NotNull RadiationIngredient ingredient) {
+    public void render(GuiGraphicsExtractor gfx, @NotNull RadiationIngredient ingredient) {
         gfx.fill(0, 0, 16, 16, 0xFF1B1B1B);
         gfx.fill(1, 1, 15, 15, 0xFFE0C21A);
         gfx.fill(6, 6, 10, 10, 0xFF1B1B1B);

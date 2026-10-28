@@ -99,6 +99,6 @@ public class EnergyPortHandler implements IEnergyStorage, TransferSnapshot {
     }
 
     public void deserialize(Tag tag) {
-        energy = tag instanceof NumericTag number ? Math.max(0, Math.min(capacity, number.getAsLong())) : 0;
+        energy = tag instanceof NumericTag number ? Math.max(0, Math.min(capacity, number.longValue())) : 0;
     }
 }

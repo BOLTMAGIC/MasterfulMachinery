@@ -19,7 +19,7 @@ public class EmcIngredientRenderer implements IIngredientRenderer<EmcStack> {
     private ItemStack icon;
 
     @Override
-    public void extractRenderState(GuiGraphicsExtractor guiGraphics, @NotNull EmcStack stack) {
+    public void render(GuiGraphicsExtractor guiGraphics, @NotNull EmcStack stack) {
         if (icon == null) {
             icon = BuiltInRegistries.ITEM.getValue(ICON).getDefaultInstance();
         }
