@@ -1121,6 +1121,11 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
     }
 
+    /** The structure picked in the assembly tab, if any (also read by the GameTests). */
+    public @Nullable Identifier getAssemblyStructureId() {
+        return assemblyStructureId;
+    }
+
     public void setAssemblyStructureId(Identifier id) {
         if (findAssemblyCandidate(id) == null || id.equals(assemblyStructureId)) {
             return;

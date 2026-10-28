@@ -34,7 +34,20 @@ public final class MMGameTests {
             StructureCategoriesGameTests.class,
             ControllerAnimationGameTests.class,
             ChunkReloadGameTests.class,
-            RecipePauseGameTests.class
+            RecipePauseGameTests.class,
+            AssemblyGameTests.class,
+            BuilderStructureBuildGameTests.class,
+            BuilderStructureGameTests.class,
+            DismantleGameTests.class,
+            FlexBatchGameTests.class,
+            FlexRecipeGameTests.class,
+            FlexRoundRobinGameTests.class,
+            PatternMatchGameTests.class,
+            PatternRunGameTests.class,
+            ToolBuildGameTests.class,
+            ToolGameTests.class,
+            ToolPlacementGameTests.class,
+            ToolSettingsGameTests.class
     );
 
     private static final DeferredRegister<Consumer<GameTestHelper>> FUNCTIONS = DeferredRegister.create(Registries.TEST_FUNCTION, NAMESPACE);
