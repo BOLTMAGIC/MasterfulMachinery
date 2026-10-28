@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.structure;
 
+import io.ticticboom.mods.mm.event.DeferredDataLoad;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.util.ExtraCodecs;
 import io.ticticboom.mods.mm.controller.single.SingleMachines;
@@ -54,7 +55,8 @@ public class StructureManager extends SimpleJsonResourceReloadListener<JsonEleme
     @Override
     protected void apply(@NotNull Map<Identifier, JsonElement> jsons, @NotNull ResourceManager resourceManager, ProfilerFiller profilerFiller) {
         profilerFiller.push("MM Structures");
-        receiveStructures(jsons);
+        // parsed once item components are bound (DeferredDataLoad)
+        DeferredDataLoad.structures(jsons);
         profilerFiller.pop();
     }
 

@@ -20,13 +20,13 @@ structures and processes used to exercise the mod in a dev environment.
 [[dependencies.mmtest]]
     modId="neoforge"
     type="required"
-    versionRange="[21.1.0,)"
+    versionRange="[26.1.2,)"
     ordering="NONE"
     side="BOTH"
 [[dependencies.mmtest]]
     modId="minecraft"
     type="required"
-    versionRange="[1.21.1,1.21.2)"
+    versionRange="[26.1.2,26.2)"
     ordering="NONE"
     side="BOTH"
 # The test data is all MM content, so it is useless without MM and must load after it.

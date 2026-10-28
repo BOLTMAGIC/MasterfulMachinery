@@ -13,15 +13,9 @@
     "I  "
   ],
   "key": {
-    "F": {
-      "item": "ae2:fluix_crystal"
-    },
-    "P": {
-      "item": "ae2:engineering_processor"
-    },
-    "I": {
-      "item": "minecraft:iron_ingot"
-    }
+    "F": "ae2:fluix_crystal",
+    "P": "ae2:engineering_processor",
+    "I": "minecraft:iron_ingot"
   },
   "result": {
     "id": "mm:network_linker",

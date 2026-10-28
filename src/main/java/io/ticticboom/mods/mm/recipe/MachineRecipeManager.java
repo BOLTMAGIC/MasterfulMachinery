@@ -1,5 +1,6 @@
 package io.ticticboom.mods.mm.recipe;
 
+import io.ticticboom.mods.mm.event.DeferredDataLoad;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.util.ExtraCodecs;
 import io.ticticboom.mods.mm.recipe.condition.biome.BiomeRecipeCondition;
@@ -95,7 +96,8 @@ public class MachineRecipeManager extends SimpleJsonResourceReloadListener<JsonE
     @Override
     protected void apply(Map<Identifier, JsonElement> jsons, ResourceManager resourceManager, ProfilerFiller profilerFiller) {
         profilerFiller.push("MM Machine Recipe Processes");
-        recieveRecipes(jsons);
+        // parsed once item components are bound (DeferredDataLoad)
+        DeferredDataLoad.recipes(jsons);
         profilerFiller.pop();
     }
 

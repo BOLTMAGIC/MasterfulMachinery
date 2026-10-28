@@ -196,6 +196,9 @@ repositories {
 // NeoForge ships Mixin, and production runs on Mojang mappings, so neither the Mixin
 // annotation processor nor MixinExtras needs to be declared the way ForgeGradle required.
 dependencies {
+    // plain JUnit tests of logic that needs no running game (src/test)
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
     implementation "net.neoforged:neoforge:${neoforge_version}"
 
     compileOnly 'org.projectlombok:lombok:1.18.48'
@@ -305,4 +308,8 @@ unifiedPublishing {
             }
         }
     }
+}
+
+test {
+    useJUnitPlatform()
 }
