@@ -21,6 +21,7 @@ import io.ticticboom.mods.mm.client.gui.widgets.PortContentIcon;
 import io.ticticboom.mods.mm.port.PortContent;
 import io.ticticboom.mods.mm.net.MMNetwork;
 import io.ticticboom.mods.mm.net.packet.ToggleRedstoneModePkt;
+import io.ticticboom.mods.mm.recipe.RecipeBlockReason;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.flex.RecipeMode;
@@ -67,6 +68,8 @@ import java.util.regex.Pattern;
 public class MachineControllerScreen extends AbstractContainerScreen<MachineControllerMenu> {
     private static final int TEXT = 0xDDDDDD;
     private static final int LABEL = 0x8A8A8A;
+    // why a recipe doesn't start: the paused status' orange
+    private static final int BLOCKED = 0xFFAA00;
     private static final int DIVIDER = 0xFF3A3A3A;
     private static final int LEFT = 10;
     private static final int VALUE_X = 80;
@@ -492,6 +495,14 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             }
         }
 
+        var blocked = rowBlockReason();
+        PortContent blockedContent = blocked == null ? null : blocked.content();
+        if (blockedContent != null) {
+            // what the recipe misses (or can't put out), in a slot like the missing block above
+            gfx.blit(Ref.UiTextures.SLOT_PARTS, x + LEFT, y + RECIPE_Y, 0, 26, 18, 18);
+            PortContentIcon.draw(gfx, blockedContent, x + LEFT, y + RECIPE_Y);
+        }
+
         var row = recipeRow();
         if (!row.slots().isEmpty()) {
             for (Shown s : row.slots()) {
@@ -589,6 +600,12 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             int countWidth = Math.min(this.font.width(count), right - LEFT - 9 - 40);
             drawClipped(gfx, count, right - countWidth, STATUS_Y, countWidth, Status.NOT_FORMED.color);
             statusWidth -= countWidth + 4;
+        } else if (status == Status.RUNNING && be.getBlockReason() != null) {
+            // the running recipe waits: why, right-aligned on the status line
+            var why = be.getBlockReason().title();
+            int whyWidth = Math.min(this.font.width(why), right - LEFT - 9 - 40);
+            drawClipped(gfx, why, right - whyWidth, STATUS_Y, whyWidth, BLOCKED);
+            statusWidth -= whyWidth + 4;
         }
         drawClipped(gfx, Component.translatable(status.key()), LEFT + 9, STATUS_Y, statusWidth, status.color);
 
@@ -598,6 +615,11 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
             var first = menu.getDiagnosis().missing().get(0);
             drawClipped(gfx, first.required(), LEFT + 21, RECIPE_Y, right - LEFT - 21, TEXT);
             drawClipped(gfx, offsetText(first.pos()), LEFT + 21, RECIPE_Y + 10, right - LEFT - 21, LABEL);
+        } else if (rowBlockReason() != null) {
+            var blocked = rowBlockReason();
+            int textX = blocked.content() != null ? LEFT + 21 : LEFT;
+            drawClipped(gfx, blocked.title(), textX, RECIPE_Y, right - textX, BLOCKED);
+            drawClipped(gfx, blocked.detail(), textX, RECIPE_Y + 10, right - textX, TEXT);
         } else if (recipe.slots().isEmpty()) {
             gfx.drawString(this.font, Component.translatable("gui.mm.controller.recipe.none"), LEFT, RECIPE_Y + 5, LABEL, false);
         } else {
@@ -680,6 +702,13 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
     /** While the multiblock isn't formed, the recipe section lists what is missing where. */
     private boolean showsDiagnosis() {
         return status() == Status.NOT_FORMED && !menu.getDiagnosis().missing().isEmpty();
+    }
+
+    /** Why the idle machine's recipes don't start, shown where the running recipe would be; null otherwise. */
+    @Nullable
+    private RecipeBlockReason rowBlockReason() {
+        if (showsDiagnosis() || be.getDisplayedRecipe() != null) return null;
+        return be.getBlockReason();
     }
 
     /**
@@ -788,6 +817,25 @@ public class MachineControllerScreen extends AbstractContainerScreen<MachineCont
         }
         if (isOnAssembleButton(mouseX, mouseY)) {
             gfx.renderComponentTooltip(this.font, List.of(Component.translatable("gui.mm.controller.assemble")), mouseX, mouseY);
+            return;
+        }
+        var blocked = rowBlockReason();
+        if (blocked != null && !onPortsPage() && WidgetUtils.isPointerWithinSized(mouseX, mouseY, this.leftPos + LEFT,
+                this.topPos + RECIPE_Y, right - LEFT, 20)) {
+            // the shown reason in full, then the next recipes that don't start and why
+            var lines = new ArrayList<Component>();
+            lines.add(blocked.title().copy().withStyle(ChatFormatting.GOLD));
+            lines.add(blocked.detail().copy().withStyle(ChatFormatting.GRAY));
+            var others = be.getOtherBlockReasons();
+            if (!others.isEmpty()) {
+                lines.add(Component.translatable("gui.mm.controller.blocked.others").withStyle(ChatFormatting.DARK_GRAY));
+                for (var other : others) {
+                    lines.add(other.title().copy().withStyle(ChatFormatting.YELLOW)
+                            .append(Component.literal(": ").withStyle(ChatFormatting.YELLOW))
+                            .append(other.detail().copy().withStyle(ChatFormatting.GRAY)));
+                }
+            }
+            gfx.renderComponentTooltip(this.font, lines, mouseX, mouseY);
             return;
         }
         if (isOnSizeButton(mouseX, mouseY)) {

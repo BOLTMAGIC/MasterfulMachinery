@@ -11,6 +11,7 @@ import io.ticticboom.mods.mm.port.item.BaseItemPortIngredient;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.port.item.SingleItemPortIngredient;
 import io.ticticboom.mods.mm.port.PortContent;
+import io.ticticboom.mods.mm.recipe.RecipeBlockReason;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -219,6 +220,7 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
         // matching items (e.g. cruxes) already counted for kinds picked before
         var reserved = new HashMap<Item, Integer>();
         OutputSimulation simulation = null;
+        boolean outputsBlocked = false;
         var iterator = candidates.iterator();
         while (picked.size() < maxTypes && iterator.hasNext()) {
             ItemStack stack = iterator.next();
@@ -243,7 +245,13 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                 for (FlexMatchIngredientEntry match : matches) {
                     reserved.merge(match.requiredFor(stack).getItem(), match.getCount(), Integer::sum);
                 }
+            } else {
+                outputsBlocked = true;
             }
+        }
+        if (picked.isEmpty() && outputsBlocked) {
+            // the inputs are there, only their outputs don't fit: say so instead of "missing input"
+            state.markBlocked(RecipeBlockReason.Kind.OUTPUT, -1);
         }
         return picked;
     }

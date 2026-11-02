@@ -6,6 +6,7 @@ import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockE
 import io.ticticboom.mods.mm.port.common.AbstractPortBlockEntity;
 import io.ticticboom.mods.mm.port.item.ItemPortStorage;
 import io.ticticboom.mods.mm.recipe.MachineRecipeManager;
+import io.ticticboom.mods.mm.recipe.RecipeBlockReason;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.output.IRecipeOutputEntry;
@@ -122,6 +123,68 @@ public class FlexRecipeGameTests {
             MMConfig.JEI_FLEX_INPUT_COPIES = before;
         }
         helper.succeed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void fullOutputIsShownAsTheReason(GameTestHelper helper) {
+        var controller = build(helper);
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    // every output slot taken by something else: the log is there, its planks have no room
+                    for (Item filler : List.of(Items.DIRT, Items.SAND, Items.GRAVEL, Items.GLASS)) {
+                        storage(helper, OUTPUT).insert(new ItemStack(filler), 1_000_000);
+                    }
+                    insert(helper, Items.OAK_LOG, 1);
+                })
+                .thenWaitUntil(() -> {
+                    var reason = ((MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER)).getBlockReason();
+                    check(helper, reason != null, "no reason yet");
+                    check(helper, reason.kind() == RecipeBlockReason.Kind.OUTPUT, "reason should be OUTPUT, got " + reason.kind());
+                })
+                .thenExecute(() -> check(helper, count(helper, INPUT, Items.OAK_LOG) == 1, "the log should stay"))
+                .thenSucceed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void missingSecondItemIsShownAsTheReason(GameTestHelper helper) {
+        // flex/near_miss needs 1 emerald block + 4 diamond blocks: with the emerald block alone the recipe isn't even
+        // a scan candidate, the near-miss check has to name the diamond blocks
+        var controller = build(helper);
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> insert(helper, Items.EMERALD_BLOCK, 1))
+                .thenWaitUntil(() -> {
+                    var reason = ((MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER)).getBlockReason();
+                    check(helper, reason != null, "no reason yet");
+                    check(helper, reason.recipeId().getPath().endsWith("near_miss"), "wrong recipe: " + reason.recipeId());
+                    check(helper, reason.kind() == RecipeBlockReason.Kind.INPUT && reason.index() == 1,
+                            "should be the diamond block input, got " + reason.kind() + " " + reason.index());
+                })
+                .thenExecute(() -> check(helper, count(helper, INPUT, Items.EMERALD_BLOCK) == 1, "the emerald block should stay"))
+                .thenSucceed();
+    }
+
+    @GameTest(template = TEMPLATE, timeoutTicks = 300)
+    public static void recipeWithMostInputsThereIsShown(GameTestHelper helper) {
+        // flex/pick_mostly_there (diamond block, emerald block, 2 gold) has 2 of its 3 inputs in the ports and fails
+        // at its first; flex/pick_later_input (2 gold, lapis block) has 1 of 2 and fails at its second
+        var controller = build(helper);
+        helper.startSequence()
+                .thenWaitUntil(() -> formed(helper, controller))
+                .thenExecute(() -> {
+                    insert(helper, Items.EMERALD_BLOCK, 1);
+                    insert(helper, Items.GOLD_INGOT, 64);
+                })
+                .thenWaitUntil(() -> {
+                    var be = (MachineControllerBlockEntity) helper.getBlockEntity(CONTROLLER);
+                    var reason = be.getBlockReason();
+                    check(helper, reason != null, "no reason yet");
+                    check(helper, reason.recipeId().getPath().endsWith("pick_mostly_there"), "wrong recipe: " + reason.recipeId());
+                    check(helper, be.getOtherBlockReasons().stream().anyMatch(r -> r.recipeId().getPath().endsWith("pick_later_input")),
+                            "the other recipe should be listed: " + be.getOtherBlockReasons());
+                })
+                .thenSucceed();
     }
 
     @GameTest(template = TEMPLATE, timeoutTicks = 300)

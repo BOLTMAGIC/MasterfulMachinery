@@ -30,7 +30,7 @@ public record RecipeOutputs(
             IRecipeOutputEntry output = outputs.get(i);
             boolean ok = output.canOutput(level, storages, model);
             if (!ok) {
-                // debug suppressed
+                model.markBlocked(RecipeBlockReason.Kind.OUTPUT, i);
                 return false;
             }
         }
@@ -40,7 +40,11 @@ public record RecipeOutputs(
         for (IRecipeOutputEntry output : outputs) {
             planned.addAll(output.plannedOutputs(level, model));
         }
-        return fitTogether(level, storages, planned);
+        if (!fitTogether(level, storages, planned)) {
+            model.markBlocked(RecipeBlockReason.Kind.OUTPUT, -1);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -54,10 +58,15 @@ public record RecipeOutputs(
         }
         for (IPortIngredient output : planned) {
             if (!output.canOutput(level, storages, model)) {
+                model.markBlocked(RecipeBlockReason.Kind.OUTPUT, -1);
                 return false;
             }
         }
-        return fitTogether(level, storages, planned);
+        if (!fitTogether(level, storages, planned)) {
+            model.markBlocked(RecipeBlockReason.Kind.OUTPUT, -1);
+            return false;
+        }
+        return true;
     }
 
     /** Outputs that each fit alone: do the ones that can be simulated fit next to each other? */

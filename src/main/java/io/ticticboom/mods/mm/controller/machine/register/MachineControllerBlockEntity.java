@@ -33,6 +33,7 @@ import io.ticticboom.mods.mm.pattern.PatternStartResult;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.recipe.input.consume.ConsumeRecipeIngredientEntry;
 import io.ticticboom.mods.mm.recipe.input.flex.FlexRecipeIngredientEntry;
+import io.ticticboom.mods.mm.recipe.RecipeBlockReason;
 import io.ticticboom.mods.mm.recipe.RecipeModel;
 import io.ticticboom.mods.mm.recipe.RecipeStateModel;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
@@ -68,6 +69,7 @@ import org.jetbrains.annotations.Nullable;
 import io.ticticboom.mods.mm.client.geo.GeoModelConfig;
 import net.minecraft.world.phys.AABB;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -191,6 +193,20 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     // track last-start sequence per recipe to break ties when multiple recipes
     // compete for the same input item key during round-robin selection
     private final Map<ResourceLocation, Long> recipeLastStartedSequence = new HashMap<>();
+    /** Why recipes failed their last check, with the game time of that check (server side). */
+    private final Map<ResourceLocation, BlockNote> blockReasons = new HashMap<>();
+    /** A reason not checked again for this long is dropped (the recipe left the candidates, say). */
+    private static final int BLOCK_REASON_TICKS = 100;
+    /** What the screen and Jade show: picked on the server, sent to clients. */
+    @Nullable
+    private RecipeBlockReason shownBlockReason = null;
+    /** The next failed recipes after the shown one, best first, listed in the screen's tooltip. */
+    private List<RecipeBlockReason> otherBlockReasons = List.of();
+    private static final int OTHER_BLOCK_REASONS = 5;
+
+    /** @param ready the share of the recipe's inputs the ports hold, see {@link #readyInputs} */
+    private record BlockNote(RecipeBlockReason reason, long time, double ready) {
+    }
 
     public void tick() {
         if (level == null || isRemoved()) {
@@ -241,6 +257,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private void syncAndSave() {
         if (level == null) return;
         boolean active = !activeRecipes.isEmpty() || !patternRuns.isEmpty();
+        updateShownBlockReason();
         int signature = clientSignature();
         boolean visibleChange = signature != lastClientSignature;
         if (active || wasActive || visibleChange || level.getGameTime() % SAVE_FALLBACK_TICKS == 0) {
@@ -257,7 +274,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
     private int clientSignature() {
         return Objects.hash(isFormed, structure == null ? null : structure.id(), activeRecipes.keySet(),
                 currentRecipe == null ? null : currentRecipe.id(), lastStartedRecipeId, lastRecipeStartTime,
-                redstoneMode, networkLink);
+                redstoneMode, networkLink, shownBlockReason, otherBlockReasons);
     }
 
     /** A player opened the controller's screen (server side). */
@@ -630,6 +647,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          if (candidatePositions == null) {
              candidatePositions = recipeIndex.candidates(storageCache, MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId));
          }
+         if (runningCount() == 0 && gameTime % RECIPE_SKIP_COOLDOWN_TICKS == 0) {
+             noteNearMisses(gameTime);
+         }
          int[] candidates = candidatePositions;
          if (candidates.length == 0) return;
          int total = candidates.length;
@@ -656,7 +676,9 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (activeRecipes.containsKey(recipe.id())) continue;
             if (recipeNextCheckTime.getOrDefault(recipe.id(), 0L) > gameTime) continue;
 
-            if (!recipe.conditions().canRun(conditionContext())) {
+            int failedCondition = recipe.conditions().firstFailing(conditionContext());
+            if (failedCondition >= 0) {
+                noteBlocked(recipe, RecipeBlockReason.Kind.CONDITION, failedCondition, gameTime);
                 continue;
             }
             // checked before the (costly) input and output checks, whose result would be thrown away
@@ -668,13 +690,16 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             if (!recipe.inputs().canProcess(level, portStorages, scanState)) {
                 // not enough of something; any change to the ports clears this wait
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
+                noteBlocked(recipe, scanState, gameTime);
                 continue;
             }
             if (!recipe.outputs().canProcess(level, portStorages, scanState)) {
                 // Do not consume inputs when the output ports are already full.
                 recipeNextCheckTime.put(recipe.id(), gameTime + RECIPE_SKIP_COOLDOWN_TICKS);
+                noteBlocked(recipe, scanState, gameTime);
                 continue;
             }
+            blockReasons.remove(recipe.id());
 
              if (canStartRecipeGivenParallelRules(recipe)) {
                  ResourceLocation primaryInputItemId = getPrimaryConsumedItemInputId(recipe, scanState);
@@ -911,6 +936,125 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         return "idle";
     }
 
+    /** How many left-out recipes {@link #noteNearMisses} checks at most, once a second. */
+    private static final int NEAR_MISS_CHECKS = 8;
+
+    /**
+     * The idle machine's recipes that use something in its ports but were left out of the scan (another of their
+     * inputs is surely missing): checked once a second, only to tell the player what they lack.
+     */
+    private void noteNearMisses(long gameTime) {
+        int[] missed = recipeIndex.nearMisses(storageCache, MMPortRegistry.PORT_TYPES_BY_CONTROLLER.get(controllerId), NEAR_MISS_CHECKS);
+        for (int position : missed) {
+            RecipeModel recipe = recipeIndex.get(position);
+            int failedCondition = recipe.conditions().firstFailing(conditionContext());
+            if (failedCondition >= 0) {
+                noteBlocked(recipe, RecipeBlockReason.Kind.CONDITION, failedCondition, gameTime);
+                continue;
+            }
+            RecipeStateModel probe = newRecipeProbe();
+            if (!recipe.inputs().canProcess(level, portStorages, probe) || !recipe.outputs().canProcess(level, portStorages, probe)) {
+                noteBlocked(recipe, probe, gameTime);
+            }
+        }
+    }
+
+    /** Remembers which entry the failed input or output check of {@code state} stopped at. */
+    private void noteBlocked(RecipeModel recipe, RecipeStateModel state, long gameTime) {
+        if (state.getBlockedKind() != null) {
+            noteBlocked(recipe, state.getBlockedKind(), state.getBlockedIndex(), gameTime);
+        }
+    }
+
+    private void noteBlocked(RecipeModel recipe, RecipeBlockReason.Kind kind, int index, long gameTime) {
+        blockReasons.put(recipe.id(), new BlockNote(new RecipeBlockReason(recipe.id(), kind, index), gameTime, readyInputs(recipe)));
+    }
+
+    /**
+     * How much of a recipe's inputs the ports hold, 0-1: the share of its input entries that could each be paid on
+     * their own. Tells the recipe the player is going for (its items are in the ports) from others that share some.
+     */
+    private double readyInputs(RecipeModel recipe) {
+        var inputs = recipe.inputs().inputs();
+        if (inputs.isEmpty() || portStorages == null) {
+            return inputs.isEmpty() ? 1 : 0;
+        }
+        int ready = 0;
+        for (var input : inputs) {
+            if (input.canProcess(level, portStorages, newRecipeProbe())) {
+                ready++;
+            }
+        }
+        return (double) ready / inputs.size();
+    }
+
+    /**
+     * Why the machine isn't working (or its running recipe waits), for the screen and Jade; null when it is
+     * working or nothing was found. Server side it is picked from the reasons the recipe checks left, clients
+     * get the result.
+     */
+    @Nullable
+    public RecipeBlockReason getBlockReason() {
+        return shownBlockReason;
+    }
+
+    private void updateShownBlockReason() {
+        if (level == null) return;
+        long gameTime = level.getGameTime();
+        blockReasons.values().removeIf(note -> gameTime - note.time() > BLOCK_REASON_TICKS
+                || MachineRecipeManager.RECIPES.get(note.reason().recipeId()) == null);
+        shownBlockReason = null;
+        otherBlockReasons = List.of();
+        if (!isFormed || structure == null || !isAllowedByRedstone()) {
+            return;
+        }
+        // a running recipe that waits (its outputs don't fit, its conditions stopped holding) comes first
+        for (ResourceLocation running : activeRecipes.keySet()) {
+            BlockNote note = blockReasons.get(running);
+            if (note != null) {
+                shownBlockReason = note.reason();
+                return;
+            }
+        }
+        if (getDisplayedRecipe() != null) {
+            return;
+        }
+        List<RecipeBlockReason> ranked = rankBlockReasons(blockReasons.values());
+        if (!ranked.isEmpty()) {
+            shownBlockReason = ranked.get(0);
+            otherBlockReasons = List.copyOf(ranked.subList(1, Math.min(ranked.size(), OTHER_BLOCK_REASONS + 1)));
+        }
+    }
+
+    /**
+     * The idle machine's recipes that were checked and failed, the one closest to running first: the most of its
+     * inputs in the ports (the recipe the player is going for), then outputs that don't fit before missing inputs (a
+     * later input first) before conditions; ties go to the recipe id, so the shown reason doesn't jump between recipes.
+     */
+    private static List<RecipeBlockReason> rankBlockReasons(Collection<BlockNote> notes) {
+        return notes.stream()
+                .sorted(Comparator.comparingDouble(BlockNote::ready)
+                        .thenComparingInt(note -> blockProgress(note.reason()))
+                        .reversed()
+                        .thenComparing(note -> note.reason().recipeId()))
+                .map(BlockNote::reason)
+                .toList();
+    }
+
+    /** The next recipes after the shown one, for the screen's tooltip (client side too). */
+    public List<RecipeBlockReason> getOtherBlockReasons() {
+        return otherBlockReasons;
+    }
+
+    /** How far a failed recipe got, for {@link #pickShownReason}. */
+    private static int blockProgress(RecipeBlockReason reason) {
+        return switch (reason.kind()) {
+            case OUTPUT -> 2_000_000;
+            case INPUT -> 1_000_000 + reason.index();
+            case CONDITION -> 0;
+        };
+    }
+
     /** Whether some recipe could start next to the running ones, whatever its own parallel setting. */
     private boolean hasFreeParallelSlot() {
         int controllerLimit = getParallelLimit();
@@ -1056,13 +1200,18 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
      * later).
      */
     private RunStep tickRun(RecipeModel recipe, RecipeStateModel state, RecipeStorages storages) {
-        if (!recipe.conditions().canRun(conditionContext())) {
+        long gameTime = level.getGameTime();
+        int failedCondition = recipe.conditions().firstFailing(conditionContext());
+        if (failedCondition >= 0) {
+            noteBlocked(recipe, RecipeBlockReason.Kind.CONDITION, failedCondition, gameTime);
             return RunStep.WAITING;
         }
         if (!recipe.outputs().canProcessTick(level, storages, state)) {
             // a per-tick output doesn't fit: wait for room instead of throwing it away
+            noteBlocked(recipe, state, gameTime);
             return RunStep.WAITING;
         }
+        blockReasons.remove(recipe.id());
         recipe.inputs().processTick(level, storages, state);
         recipe.outputs().processTick(level, storages, state);
         if (!state.isCanFinish()) state.proceedTick();
@@ -1072,6 +1221,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
         }
         state.setCanFinish(true);
         if (!recipe.outputs().canProcess(level, storages, state)) {
+            noteBlocked(recipe, state, gameTime);
             return RunStep.OUTPUTS_BLOCKED;
         }
         recipe.outputs().process(level, storages, state);
@@ -1315,6 +1465,7 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
          recipeNextCheckTime.clear();
          recipeIndex = null;
          candidatePositions = null;
+         blockReasons.clear();
      }
 
     @Override
@@ -1381,6 +1532,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             }
             tag.put("inputItemLastStartedSequence", inputHistoryTag);
         }
+        if (shownBlockReason != null) {
+            tag.put("BlockReason", shownBlockReason.save());
+        }
+        if (!otherBlockReasons.isEmpty()) {
+            var others = new ListTag();
+            otherBlockReasons.forEach(reason -> others.add(reason.save()));
+            tag.put("OtherBlockReasons", others);
+        }
         tag.putBoolean("filler", true);
         if (networkLink != null) {
             tag.put("NetworkLink", networkLink.save());
@@ -1444,6 +1603,14 @@ public class MachineControllerBlockEntity extends BlockEntity implements IContro
             isFormed = (structure != null);
         }
         lastStartedRecipeId = tag.contains("lastStartedRecipeId") ? ResourceLocation.tryParse(tag.getString("lastStartedRecipeId")) : null;
+        shownBlockReason = tag.contains("BlockReason") ? RecipeBlockReason.load(tag.getCompound("BlockReason")) : null;
+        var others = new ArrayList<RecipeBlockReason>();
+        var othersTag = tag.getList("OtherBlockReasons", Tag.TAG_COMPOUND);
+        for (int i = 0; i < othersTag.size(); i++) {
+            RecipeBlockReason reason = RecipeBlockReason.load(othersTag.getCompound(i));
+            if (reason != null) others.add(reason);
+        }
+        otherBlockReasons = List.copyOf(others);
         lastRecipeStartTime = tag.contains("lastRecipeStartTime") ? tag.getLong("lastRecipeStartTime") : Long.MIN_VALUE;
         lastStartedInputItemId = tag.contains("lastStartedInputItemId") ? ResourceLocation.tryParse(tag.getString("lastStartedInputItemId")) : null;
         recipeSelectionSequence = tag.contains("recipeSelectionSequence") ? tag.getLong("recipeSelectionSequence") : 0L;
