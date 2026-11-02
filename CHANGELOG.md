@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.3] - 2026-11-02
+
+### INFO:
+**Version 0.1.36.3** adds a "why isn't my recipe running" reason to the controller screen and Jade.
+
+**Special Thanks:**
+- **Knozyy** – Recipe block reasons.
+
+### Added
+
+#### #100 – Show Why a Recipe Isn't Running
+- **Controller screen**: an idle machine shows why its recipes don't start where "No recipe running" was: **Missing input**, **Not enough energy**, **Output doesn't fit** (output ports full or too small) or **Condition not met** (with the condition's text), with what the recipe makes ("Missing input for 256 Diamatine Crystal Block") and what it lacks ("256 Block of Diamond", with its icon).
+- **Running recipe that waits** (outputs full, condition stopped holding): the reason shows on the right of the status line.
+- **Tooltip**: hovering the reason lists up to 5 other recipes that don't start and why.
+- **Jade**: the controller shows the same reason as one line.
+- **Which recipe is shown**: the one with the most of its inputs in the ports (the recipe the player is going for), then the one closest to running.
+- **Recipes missing an input completely** (skipped before their check) are now checked once a second while the machine is idle, so they get a reason too.
+- **Flex recipes** with full output ports now say "Output doesn't fit" instead of "Missing input".
+
 ## [0.1.36.2] - 2026-10-27
 
 ### INFO:

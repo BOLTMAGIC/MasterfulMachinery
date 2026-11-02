@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.compat.waila;
 
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerBlockEntity;
+import io.ticticboom.mods.mm.recipe.RecipeBlockReason;
 import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -25,6 +26,7 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
     public static final String LIMIT_KEY = "ParallelLimit";
     public static final String REDSTONE_KEY = "RedstoneMode";
     public static final String OWNER_KEY = "Owner";
+    public static final String BLOCKED_KEY = "Blocked";
 
     public static final ControllerDataProvider INSTANCE = new ControllerDataProvider();
 
@@ -43,6 +45,9 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
             data.putInt(LIMIT_KEY, cbe.getDisplayedParallelLimit());
         }
         data.putString(REDSTONE_KEY, cbe.getRedstoneModeName().toLowerCase(Locale.ROOT));
+        if (cbe.getBlockReason() != null) {
+            data.put(BLOCKED_KEY, cbe.getBlockReason().save());
+        }
         if (cbe.getNetworkLink() != null) {
             data.putString(OWNER_KEY, cbe.getNetworkLink().ownerName());
         }
@@ -63,6 +68,12 @@ public class ControllerDataProvider implements IServerDataProvider<BlockAccessor
         tooltip.add(Component.translatable("gui.mm.controller.status." + status).withStyle(statusColor(status)));
         if (data.contains(PROGRESS_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.progress", String.format("%.0f%%", data.getFloat(PROGRESS_KEY))));
+        }
+        RecipeBlockReason blocked = data.contains(BLOCKED_KEY) ? RecipeBlockReason.load(data.getCompound(BLOCKED_KEY)) : null;
+        if (blocked != null) {
+            tooltip.add(blocked.title().copy().withStyle(ChatFormatting.GOLD)
+                    .append(Component.literal(": ").withStyle(ChatFormatting.GOLD))
+                    .append(blocked.detail().copy().withStyle(ChatFormatting.GRAY)));
         }
         if (data.contains(LIMIT_KEY)) {
             tooltip.add(Component.translatable("jade.mm.controller.parallel", data.getInt(RUNNING_KEY), data.getInt(LIMIT_KEY)));

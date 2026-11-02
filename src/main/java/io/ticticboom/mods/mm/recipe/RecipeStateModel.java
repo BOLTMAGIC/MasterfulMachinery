@@ -30,6 +30,9 @@ public class RecipeStateModel {
     private double costMultiplier = 1;
     /** Only used when probing a new run; the controller's saved history supplies this order. */
     private transient Comparator<ItemStack> flexInputOrder;
+    /** Which input or output entry the last failed check stopped at (see RecipeBlockReason); not saved. */
+    private transient RecipeBlockReason.Kind blockedKind;
+    private transient int blockedIndex = -1;
 
     public void proceedTick() {
         tickProgress++;
@@ -56,6 +59,11 @@ public class RecipeStateModel {
         counts.put(name, count);
     }
 
+    public void markBlocked(RecipeBlockReason.Kind kind, int index) {
+        blockedKind = kind;
+        blockedIndex = index;
+    }
+
     public void reset() {
         canProcess = false;
         tickProgress = 0;
@@ -65,6 +73,8 @@ public class RecipeStateModel {
         counts.clear();
         costMultiplier = 1;
         flexInputOrder = null;
+        blockedKind = null;
+        blockedIndex = -1;
     }
 
     public CompoundTag save(CompoundTag tag) {

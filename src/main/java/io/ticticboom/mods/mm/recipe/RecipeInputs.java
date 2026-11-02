@@ -24,10 +24,15 @@ public record RecipeInputs(
     }
 
     public boolean canProcess(Level level, RecipeStorages storages, RecipeStateModel model) {
+        model.markBlocked(null, -1);
         // flex and count inputs come first (RecipeModel orders them), so the other inputs see the run's cost multiplier
         int firstCost = 0;
         while (firstCost < inputs.size() && isSelecting(inputs.get(firstCost))) {
             if (!inputs.get(firstCost).canProcess(level, storages, model)) {
+                // a flex input already said why when its kinds are there but their outputs don't fit
+                if (model.getBlockedKind() == null) {
+                    model.markBlocked(RecipeBlockReason.Kind.INPUT, firstCost);
+                }
                 return false;
             }
             firstCost++;
@@ -40,6 +45,7 @@ public record RecipeInputs(
             }
             // can't pay this input for every kind the flex inputs took: try again with one kind less
             if (!dropOneKind(model)) {
+                model.markBlocked(RecipeBlockReason.Kind.INPUT, i);
                 return false;
             }
             i = firstCost;

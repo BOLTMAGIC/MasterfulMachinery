@@ -75,6 +75,37 @@ public class RecipeCandidateIndex {
         return result;
     }
 
+    /**
+     * Recipes {@link #candidates} leaves out although they use something in the ports (or need no specific item):
+     * the ports surely lack another of their inputs. Only checked to tell the player what is missing.
+     *
+     * @return at most {@code limit} positions, ascending
+     */
+    public int[] nearMisses(StorageCacheManager.StorageCache cache, @Nullable Set<ResourceLocation> portTypes, int limit) {
+        BitSet missed = new BitSet(recipes.size());
+        for (int position : unindexedPositions) {
+            addMissed(position, cache, portTypes, missed);
+        }
+        for (ResourceLocation item : cache.availableItemIds) {
+            int[] positions = positionsByItem.get(item);
+            if (positions == null) continue;
+            for (int position : positions) {
+                addMissed(position, cache, portTypes, missed);
+            }
+        }
+        int[] result = new int[Math.min(limit, missed.cardinality())];
+        int index = 0;
+        for (int position = missed.nextSetBit(0); position >= 0 && index < result.length; position = missed.nextSetBit(position + 1)) {
+            result[index++] = position;
+        }
+        return result;
+    }
+
+    private void addMissed(int position, StorageCacheManager.StorageCache cache, @Nullable Set<ResourceLocation> portTypes, BitSet out) {
+        var req = requirements[position];
+        if (req.hasPortTypes(portTypes) && !req.isMetBy(cache)) out.set(position);
+    }
+
     private void addMatching(int[] positions, StorageCacheManager.StorageCache cache,
                              @Nullable Set<ResourceLocation> portTypes, BitSet tested, BitSet out) {
         for (int position : positions) {

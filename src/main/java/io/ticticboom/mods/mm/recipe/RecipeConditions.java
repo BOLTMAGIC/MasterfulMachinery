@@ -36,6 +36,16 @@ public class RecipeConditions {
         return true;
     }
 
+    /** @return the place of the first condition that doesn't hold, -1 when they all do */
+    public int firstFailing(RecipeConditionContext ctx) {
+        for (int i = 0; i < conditions.size(); i++) {
+            if (!conditions.get(i).canRun(ctx)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
     public boolean isEmpty() {
         return conditions.isEmpty();
     }
