@@ -83,5 +83,8 @@ public class MMNetwork {
         INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolAnchorPkt.class,
                 io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::encode, io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::decode,
                 io.ticticboom.mods.mm.net.packet.ToolAnchorPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.ToolStoreFillPkt.class,
+                io.ticticboom.mods.mm.net.packet.ToolStoreFillPkt::encode, io.ticticboom.mods.mm.net.packet.ToolStoreFillPkt::decode,
+                io.ticticboom.mods.mm.net.packet.ToolStoreFillPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 }

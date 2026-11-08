@@ -99,6 +99,11 @@ public class MultiblockToolMenu extends AbstractContainerMenu {
         return checkPlayer == player && isToolStackValid();
     }
 
+    /** The store this menu shows (JEI's "+" fills it, see {@link ToolStoreFill}). */
+    public ToolStore store() {
+        return store;
+    }
+
     /**
      * True while the stack this menu was opened with is still the same instance, still actually held
      * in that hand, and still a real (non-empty) Multiblock Tool. A same-instance-but-emptied stack
