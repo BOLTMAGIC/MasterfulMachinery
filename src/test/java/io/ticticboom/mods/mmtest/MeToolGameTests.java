@@ -31,6 +31,7 @@ import io.ticticboom.mods.mm.structure.StructureManager;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.tool.ToolBuildPlan;
 import io.ticticboom.mods.mm.tool.ToolBuilds;
+import io.ticticboom.mods.mm.tool.MultiblockToolItem;
 import io.ticticboom.mods.mm.tool.ToolData;
 import io.ticticboom.mods.mm.tool.ToolEnergy;
 import io.ticticboom.mods.mm.tool.ToolStore;
@@ -368,6 +369,45 @@ public class MeToolGameTests {
     }
 
     /**
+     * One crafting CPU, two items to craft (mmtest:craft_two_test needs oak and birch planks, one log of each is in ME):
+     * the second craft finds the CPU busy and waits its turn instead of failing, and once both are done the build starts
+     * on its own where it was clicked (the anchor is used up and the crafts are forgotten), with no second click.
+     */
+    @GameTest(templateNamespace = NAMESPACE, template = TEMPLATE, timeoutTicks = CRAFT_TIMEOUT)
+    public static void oneCpuQueuesCraftsThenBuilds(GameTestHelper helper) {
+        BlockPos drive = craftingNetwork(helper, Items.OAK_LOG, Items.BIRCH_LOG);
+        TestPlayer player = player(helper);
+        ItemStack tool = tool(player);
+        ToolData.setStructure(tool, ResourceLocation.tryBuild("mmtest", "craft_two_test"));
+
+        helper.startSequence()
+                .thenWaitUntil(() -> {
+                    IGrid grid = NetworkAccess.grid(helper.getLevel().getServer(), networkPos(helper, drive));
+                    check(helper, grid != null, "the network is not up yet");
+                    check(helper, grid.getCraftingService().isCraftable(AEItemKey.of(Items.OAK_PLANKS))
+                            && grid.getCraftingService().isCraftable(AEItemKey.of(Items.BIRCH_PLANKS)), "the planks patterns are not known yet");
+                    check(helper, grid.getCraftingService().getCpus().size() == 1, "the one crafting CPU is not formed yet");
+                })
+                .thenExecute(() -> {
+                    bind(player, tool, drive);
+                    ToolData.setAnchor(tool, new ToolData.Anchor(helper.getLevel().dimension().location(),
+                            helper.absolutePos(CLICKED), Direction.UP, Direction.NORTH));
+                    MultiblockToolItem.buildTarget(player, tool);
+                    check(helper, CraftTracker.active(player, Items.OAK_PLANKS) == 1 && CraftTracker.active(player, Items.BIRCH_PLANKS) == 1,
+                            "both planks should be on their way: " + player.messages);
+                })
+                .thenWaitUntil(() -> {
+                    for (CraftTracker.Order order : CraftTracker.orders(player)) {
+                        check(helper, order.failed() == null, "a craft failed instead of waiting for the CPU: "
+                                + order.item() + " " + (order.failed() == null ? "" : order.failed().failure().getString()));
+                    }
+                    check(helper, ToolData.anchor(tool) == null, "the build has not started on its own yet: " + CraftTracker.orders(player));
+                })
+                .thenExecute(() -> check(helper, CraftTracker.orders(player).isEmpty(), "a started build forgets the crafts"))
+                .thenSucceed();
+    }
+
+    /**
      * The same setup, but the job is cancelled on its CPU as soon as it is submitted: the tool reports the craft as
      * cancelled (once), the log goes back into ME, and nothing is built.
      */
@@ -505,6 +545,11 @@ public class MeToolGameTests {
      * provider holding the oak planks crafting pattern with a molecular assembler beside it; returns the drive.
      */
     private static BlockPos craftingNetwork(GameTestHelper helper) {
+        return craftingNetwork(helper, Items.OAK_LOG);
+    }
+
+    /** {@link #craftingNetwork(GameTestHelper)} with one of each log and its planks pattern (the log's own namespace path). */
+    private static BlockPos craftingNetwork(GameTestHelper helper, Item... logs) {
         ServerLevel level = helper.getLevel();
         BlockPos energy = helper.absolutePos(CRAFT_ENERGY);
         BlockPos drive = helper.absolutePos(CRAFT_DRIVE);
@@ -521,18 +566,24 @@ public class MeToolGameTests {
         StorageCell cell = StorageCells.getCellInventory(cellStack, null);
         check(helper, cell != null, "no cell inventory for the 1k cell");
         fill(helper, cell, registered("craft_test"), 1);
-        fill(helper, cell, Items.OAK_LOG, 1);
+        for (Item log : logs) {
+            fill(helper, cell, log, 1);
+        }
         cell.persist();
         ((DriveBlockEntity) level.getBlockEntity(drive)).getInternalInventory().setItemDirect(0, cellStack);
 
-        CraftingRecipe recipe = (CraftingRecipe) level.getRecipeManager().byKey(ResourceLocation.tryBuild("minecraft", "oak_planks"))
-                .orElseThrow(() -> new IllegalStateException("no oak_planks recipe"));
-        ItemStack[] inputs = new ItemStack[9];
-        Arrays.fill(inputs, ItemStack.EMPTY);
-        inputs[0] = new ItemStack(Items.OAK_LOG);
-        ItemStack pattern = PatternDetailsHelper.encodeCraftingPattern(recipe, inputs, recipe.getResultItem(level.registryAccess()), false, false);
-        ItemStack rest = ((PatternProviderBlockEntity) level.getBlockEntity(provider)).getLogic().getPatternInv().addItems(pattern);
-        check(helper, rest.isEmpty(), "the pattern provider did not take the pattern");
+        for (Item log : logs) {
+            // oak_log -> minecraft:oak_planks
+            String wood = ForgeRegistries.ITEMS.getKey(log).getPath().replace("_log", "");
+            CraftingRecipe recipe = (CraftingRecipe) level.getRecipeManager().byKey(ResourceLocation.tryBuild("minecraft", wood + "_planks"))
+                    .orElseThrow(() -> new IllegalStateException("no " + wood + "_planks recipe"));
+            ItemStack[] inputs = new ItemStack[9];
+            Arrays.fill(inputs, ItemStack.EMPTY);
+            inputs[0] = new ItemStack(log);
+            ItemStack pattern = PatternDetailsHelper.encodeCraftingPattern(recipe, inputs, recipe.getResultItem(level.registryAccess()), false, false);
+            ItemStack rest = ((PatternProviderBlockEntity) level.getBlockEntity(provider)).getLogic().getPatternInv().addItems(pattern);
+            check(helper, rest.isEmpty(), "the pattern provider did not take the " + wood + " pattern");
+        }
         return drive;
     }
 

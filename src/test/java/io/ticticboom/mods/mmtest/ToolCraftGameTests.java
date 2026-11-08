@@ -51,8 +51,9 @@ import java.util.UUID;
 
 /**
  * Tool builds are all or nothing on materials, and ask the tool's ME network to craft what is missing: here with a fake
- * network ({@link FakeMe}) whose crafts the test moves on by hand. The build never starts on its own; a later
- * right-click (prepare) builds once everything is there. Uses mmtest:assembly_test ("FCGS", one of each block).
+ * network ({@link FakeMe}) whose crafts the test moves on by hand. prepare alone never starts a build; a later prepare
+ * builds once everything is there (a click starts it again on its own, see MeToolGameTests#oneCpuQueuesCraftsThenBuilds).
+ * Uses mmtest:assembly_test ("FCGS", one of each block).
  */
 @GameTestHolder("mmtest")
 @PrefixGameTestTemplate(false)

@@ -11,6 +11,7 @@ import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingService;
 import appeng.api.networking.crafting.ICraftingSimulationRequester;
 import appeng.api.networking.crafting.ICraftingSubmitResult;
+import appeng.api.networking.crafting.UnsuitableCpus;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import io.ticticboom.mods.mm.Ref;
@@ -19,6 +20,7 @@ import io.ticticboom.mods.mm.builder.me.CraftProgress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -50,7 +52,8 @@ final class Ae2CraftHandle implements CraftHandle {
     private IGrid grid;
     private final Supplier<IGrid> network;
     private final IActionSource source;
-    private final Future<ICraftingPlan> calculation;
+    private final Level level;
+    private Future<ICraftingPlan> calculation;
     private State state = State.CALCULATING;
     @Nullable
     private Component failure;
@@ -61,15 +64,21 @@ final class Ae2CraftHandle implements CraftHandle {
     private int shortPolls;
     /** The last poll found the network unreachable or unpowered. */
     private boolean waiting;
+    /**
+     * Every crafting CPU was busy when the plan was submitted (one CPU, the tool's other crafts on it): the craft waits
+     * its turn and is calculated again once a CPU is free, as the crafts before it may have used up what its old plan
+     * counted on.
+     */
+    private boolean queued;
 
-    private Ae2CraftHandle(Item item, int amount, IGrid grid, Supplier<IGrid> network, IActionSource source, Future<ICraftingPlan> calculation) {
+    private Ae2CraftHandle(Item item, int amount, IGrid grid, Supplier<IGrid> network, IActionSource source, Level level) {
         this.item = item;
         this.amount = amount;
         this.key = AEItemKey.of(item);
         this.grid = grid;
         this.network = network;
         this.source = source;
-        this.calculation = calculation;
+        this.level = level;
     }
 
     /**
@@ -78,7 +87,12 @@ final class Ae2CraftHandle implements CraftHandle {
      * @param network the bound network looked up again (null while it can't be reached or player may not use it)
      */
     static CraftHandle start(ServerPlayer player, IGrid grid, Supplier<IGrid> network, Item item, int amount) {
-        IActionSource source = IActionSource.ofPlayer(player);
+        var handle = new Ae2CraftHandle(item, amount, grid, network, IActionSource.ofPlayer(player), player.level());
+        handle.calculate();
+        return handle;
+    }
+
+    private void calculate() {
         // the calculation only looks for patterns on the requester's grid: without a node it finds none
         IGridNode node = grid.getPivot();
         ICraftingSimulationRequester requester = new ICraftingSimulationRequester() {
@@ -92,9 +106,8 @@ final class Ae2CraftHandle implements CraftHandle {
                 return node;
             }
         };
-        Future<ICraftingPlan> calculation = grid.getCraftingService().beginCraftingCalculation(player.level(), requester,
-                AEItemKey.of(item), amount, CalculationStrategy.REPORT_MISSING_ITEMS);
-        return new Ae2CraftHandle(item, amount, grid, network, source, calculation);
+        calculation = grid.getCraftingService().beginCraftingCalculation(level, requester, key, amount,
+                CalculationStrategy.REPORT_MISSING_ITEMS);
     }
 
     @Override
@@ -110,6 +123,14 @@ final class Ae2CraftHandle implements CraftHandle {
             return;
         }
         grid = now;
+        if (queued) {
+            if (now.getCraftingService().getCpus().stream().anyMatch(c -> !c.isBusy())) {
+                // our turn: a fresh plan, the stock changed while we waited
+                queued = false;
+                calculate();
+            }
+            return;
+        }
         if (state == State.CALCULATING && calculation.isDone()) {
             submit();
         } else if (state == State.CRAFTING) {
@@ -143,6 +164,13 @@ final class Ae2CraftHandle implements CraftHandle {
         ICraftingSubmitResult result = crafting.submitJob(plan, null, null, false, source);
         if (!result.successful()) {
             CraftingSubmitErrorCode code = result.errorCode();
+            if (code == CraftingSubmitErrorCode.CPU_BUSY || code == CraftingSubmitErrorCode.NO_SUITABLE_CPU_FOUND
+                    && result.errorDetail() instanceof UnsuitableCpus unsuitable && unsuitable.busy() > 0) {
+                // the CPUs that could take it are working (on the tool's other crafts, say): wait for one instead of
+                // giving up; a network without CPUs, or with only too small ones, still fails below
+                queued = true;
+                return;
+            }
             if (code == CraftingSubmitErrorCode.INCOMPLETE_PLAN || code == CraftingSubmitErrorCode.MISSING_INGREDIENT) {
                 fail("message.mm.tool.craft.missing_ingredients");
             } else {

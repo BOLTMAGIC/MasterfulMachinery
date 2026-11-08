@@ -2,6 +2,7 @@ package io.ticticboom.mods.mm.tool;
 
 import io.ticticboom.mods.mm.builder.AssemblyJobs;
 import io.ticticboom.mods.mm.builder.DismantlePlanner;
+import io.ticticboom.mods.mm.builder.me.CraftTracker;
 import io.ticticboom.mods.mm.config.MMConfigSetup;
 import io.ticticboom.mods.mm.networklink.NetworkLink;
 import net.minecraft.ChatFormatting;
@@ -160,7 +161,14 @@ public class MultiblockToolItem extends Item {
         return InteractionResult.sidedSuccess(level.isClientSide());
     }
 
+    /** A player's click (or build key): builds the selected structure at the target, or crafts what it lacks first. */
     public static InteractionResult buildTarget(ServerPlayer player, ItemStack stack) {
+        CraftTracker.resetAutoBuilds(player);
+        return build(player, stack);
+    }
+
+    /** {@link #buildTarget}, also started by {@link #buildWhenCrafted} once the crafts a build asked for are done. */
+    private static InteractionResult build(ServerPlayer player, ItemStack stack) {
         Level level = player.level();
         if (!player.isAlive() || player.isSpectator() || !(stack.getItem() instanceof MultiblockToolItem)) return InteractionResult.FAIL;
         if (player.getCooldowns().isOnCooldown(stack.getItem())) return InteractionResult.FAIL;
@@ -188,6 +196,9 @@ public class MultiblockToolItem extends Item {
         }
         if (result.prepared() == null) {
             player.displayClientMessage(result.error(), true);
+            if (CraftTracker.anyComing(player)) {
+                buildWhenCrafted(player, stack, target);
+            }
             return InteractionResult.FAIL;
         }
         ToolBuilds.Prepared build = result.prepared();
@@ -199,6 +210,28 @@ public class MultiblockToolItem extends Item {
         // The job owns its placement plan now; do not keep previewing it after building or dismantling.
         ToolData.setAnchor(stack, null);
         return InteractionResult.CONSUME;
+    }
+
+    /**
+     * One click builds after the crafts: the build waiting for its materials is anchored where it was clicked (the
+     * hologram stays there), and once every craft is done the tool carrying that anchor builds it. A failed craft, a
+     * removed anchor or a tool no longer carried leaves it to the player's next click.
+     */
+    private static void buildWhenCrafted(ServerPlayer player, ItemStack stack, ToolTarget target) {
+        var anchor = new ToolData.Anchor(player.level().dimension().location(), target.pos(), target.face(), target.facing());
+        ToolData.setAnchor(stack, anchor);
+        CraftTracker.whenReady(player, ready -> {
+            if (!(ready instanceof ServerPlayer serverPlayer)) return;
+            var inventory = serverPlayer.getInventory();
+            for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+                ItemStack carried = inventory.getItem(slot);
+                if (carried.getItem() instanceof MultiblockToolItem && anchor.equals(ToolData.anchor(carried))) {
+                    serverPlayer.getCooldowns().removeCooldown(carried.getItem());
+                    build(serverPlayer, carried);
+                    return;
+                }
+            }
+        });
     }
 
     /** Whether player may be told the ME notice again: once per {@value #NOTICE_TICKS} ticks, not on every right-click. */
