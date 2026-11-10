@@ -11,6 +11,7 @@ import lombok.Setter;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector3f;
 
 @Getter
 public class GuiRenderEnvSetup {
@@ -20,6 +21,9 @@ public class GuiRenderEnvSetup {
     private static final float FOV_DEGREES = 85;
     // a little room around the structure for the title and the layer selector drawn over the view
     private static final float FIT_MARGIN = 1.1f;
+    // slightly uneven so a diagonal face (crossed plants...) is not edge-on to both
+    private static final Vector3f FLAT_LIGHT_0 = new Vector3f(3.0f, 3.3f, 3.7f);
+    private static final Vector3f FLAT_LIGHT_1 = new Vector3f(-3.0f, -3.3f, -3.7f);
 
     public GuiRenderEnvSetup() {
     }
@@ -56,7 +60,9 @@ public class GuiRenderEnvSetup {
         RenderSystem.clear(256, Minecraft.ON_OSX);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        Lighting.setupFor3DItems();
+        // Blocks go through the entity sheets, which shade each face by two lights. Opposite diagonals, long enough
+        // to saturate, keep every axis-aligned face at full brightness: the flat look the preview always had.
+        RenderSystem.setShaderLights(FLAT_LIGHT_0, FLAT_LIGHT_1);
 
 
     }
