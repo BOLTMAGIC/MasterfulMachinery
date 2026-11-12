@@ -51,8 +51,8 @@ import java.util.stream.IntStream;
  * "chance" (default 1) is the chance each kind is consumed; 0 keeps the items in the port (like a catalyst).
  * The number of kinds is stored under the "as" name (usable by "scale_by") and sets the run's cost multiplier for
  * the recipe's other consumed inputs (see FlexCost).
- * "exclude" lists items that are never taken: ids, "#tags" and "modid:*". With Mystical Agriculture loaded, seeds
- * of disabled crops are never taken, and "min_tier" / "max_tier" keep only MA seeds of those crop tiers.
+ * "exclude" lists items that are never taken: ids, "#tags" and "modid:*". With Mystical Agriculture loaded,
+ * "min_tier" / "max_tier" keep only MA seeds of those crop tiers (seeds of crops MA has disabled count too).
  * "mm:input/flex_match" entries add a matching item each kind needs (e.g. its crux).
  */
 public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
@@ -176,10 +176,9 @@ public class FlexRecipeIngredientEntry implements IRecipeIngredientEntry {
                 return false;
             }
         }
+        // A crop MA has disabled (its mod isn't installed) still has its items, and a pack can hand them out
+        // itself: whether such seeds are taken is up to the recipe's tag and "exclude", not to MA's flag.
         MACrops.Info crop = MACrops.forSeeds(stack.getItem());
-        if (crop != null && !crop.enabled()) {
-            return false;
-        }
         if (minTier != null || maxTier != null) {
             if (crop == null || (minTier != null && crop.tier() < minTier) || (maxTier != null && crop.tier() > maxTier)) {
                 return false;
