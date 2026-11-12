@@ -92,7 +92,8 @@ MA isn't a dependency; its API is read when it's installed.
 - `{ma:essence}` / `{ma:crux}` as an item template: the seed's essence / crux straight from MA (crux blocks don't
   follow a naming pattern, e.g. allthemodium seeds -> `allthemodium:allthemodium_block`).
 - `min_tier` / `max_tier` on a flex input keep only seeds of those crop tiers.
-- Seeds of crops disabled in MA's config are never taken.
+- Seeds of crops MA has disabled (e.g. their mod isn't installed) are taken like any other seed the ingredient
+  matches (a pack can hand them out itself); `exclude` keeps them out.
 ```js
 .input({ type: 'mm:input/flex', as: 'seed', ingredient: { type: 'mm:item', tag: 'mysticalagriculture:seeds', count: 1 },
          chance: 0, min_tier: 6, max_tier: 6 })
