@@ -17,8 +17,8 @@ import java.util.Map;
 
 /**
  * What happens when a tool build lacks materials: it does not start, and the tool's ME network (when it has one and
- * auto-craft is on) is asked to craft whatever it has a pattern for. The player confirms the build with another
- * right-click once the crafts are done; nothing is built on its own.
+ * auto-craft is on) is asked to craft whatever it has a pattern for. Crafts that find every crafting CPU busy wait their
+ * turn; once all are done the build starts where it was clicked (MultiblockToolItem anchors it), no second click needed.
  */
 public final class ToolCrafts {
     /** Entries named in the one-line message; the rest are counted as "+N". */

@@ -277,6 +277,7 @@
   "message.mm.tool.dismantle.stopped": "Sökme durdu: çok uzaklaştın",
   "message.mm.tool.dismantle.busy": "Zaten bir makine sökülüyor",
   "message.mm.tool.dismantle.progress": "Sökülüyor %s",
+  "jei.mm.tool_store.nothing": "Envanterinde bu yapının depoda hâlâ eksik olan bloklarından hiç yok",
   "message.mm.tool.me_bound": "ME ağına bağlandı: %s (%s)",
   "message.mm.tool.me_unreachable": "%s (%s) konumundaki ME ağına ulaşılamıyor (chunk yüklü değil, blok kaldırılmış ya da enerjisiz): yalnızca depo ve envanter kullanılıyor",
   "message.mm.tool.me_no_access": "Bu ME ağına erişimin yok",

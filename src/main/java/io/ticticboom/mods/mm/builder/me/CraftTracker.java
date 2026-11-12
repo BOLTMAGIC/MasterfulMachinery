@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 /**
  * The crafts the Multiblock Tool asked a player's ME network for, in memory only: a relog or restart forgets them (AE2
@@ -102,10 +103,43 @@ public final class CraftTracker {
         /** The HUD state last sent to the player, and polls since. */
         HudState sent = HudState.NONE;
         int sentPolls;
+        /** The build to start again once nothing is on its way any more, see {@link #whenReady}; null when none. */
+        @Nullable
+        Consumer<Player> whenReady;
 
         Orders(Player player) {
             this.player = player;
         }
+    }
+
+    /**
+     * Builds started again on their own since the player's last click: a build that still lacks something after its
+     * crafts (the stock lagging, an item used up meanwhile) asks again, but only this many times.
+     */
+    private static final int MAX_AUTO_BUILDS = 5;
+    private static final Map<UUID, Integer> AUTO_BUILDS = new HashMap<>();
+
+    /** Whether any of player's crafts is still on its way (calculating, waiting for a CPU, crafting, just done). */
+    public static boolean anyComing(Player player) {
+        Orders orders = ORDERS.get(player.getUUID());
+        return orders != null && orders.byItem.values().stream().anyMatch(order -> order.coming() > 0);
+    }
+
+    /**
+     * Runs retry (the build that asked for the crafts) once every craft of player is done; never when one failed, as
+     * the build would only ask for it again. A later call replaces an earlier one.
+     */
+    public static void whenReady(Player player, Consumer<Player> retry) {
+        Orders orders = ORDERS.get(player.getUUID());
+        if (orders == null || AUTO_BUILDS.getOrDefault(player.getUUID(), 0) >= MAX_AUTO_BUILDS) {
+            return;
+        }
+        orders.whenReady = retry;
+    }
+
+    /** The player clicked: their builds may start again on their own as many times as at first. */
+    public static void resetAutoBuilds(Player player) {
+        AUTO_BUILDS.remove(player.getUUID());
     }
 
     /** How many of item are calculating or crafting for player. */
@@ -231,7 +265,7 @@ public final class CraftTracker {
 
     /**
      * Advances player's crafts once: a newly failed one is told in the action bar (once), and the HUD is updated (it says
-     * when all are done and the player can right-click again). The build itself never starts on its own.
+     * when all are done). Once nothing is on its way and none failed, the build waiting for them starts ({@link #whenReady}).
      */
     public static void update(Player player) {
         Orders orders = ORDERS.get(player.getUUID());
@@ -257,6 +291,15 @@ public final class CraftTracker {
         }
         orders.finishedPolls = active ? 0 : orders.finishedPolls + 1;
         sendHud(player, orders);
+        if (!active && orders.whenReady != null) {
+            Consumer<Player> retry = orders.whenReady;
+            orders.whenReady = null;
+            boolean failed = orders.byItem.values().stream().anyMatch(order -> order.failed() != null);
+            if (!failed) {
+                AUTO_BUILDS.merge(player.getUUID(), 1, Integer::sum);
+                retry.accept(player);
+            }
+        }
     }
 
     /** "Oak Planks ×12". */
@@ -301,10 +344,12 @@ public final class CraftTracker {
     @SubscribeEvent
     public static void onLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         ORDERS.remove(event.getEntity().getUUID());
+        AUTO_BUILDS.remove(event.getEntity().getUUID());
     }
 
     @SubscribeEvent
     public static void onServerStopping(ServerStoppingEvent event) {
         ORDERS.clear();
+        AUTO_BUILDS.clear();
     }
 }

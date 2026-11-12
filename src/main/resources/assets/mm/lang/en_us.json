@@ -277,6 +277,7 @@
   "message.mm.tool.dismantle.stopped": "Dismantling stopped: you went too far",
   "message.mm.tool.dismantle.busy": "You are already dismantling a machine",
   "message.mm.tool.dismantle.progress": "Dismantling %s",
+  "jei.mm.tool_store.nothing": "Nothing in your inventory that this structure still needs in the store",
   "message.mm.tool.me_bound": "Bound to ME network at %s (%s)",
   "message.mm.tool.me_unreachable": "ME network at %s (%s) can't be reached (chunk not loaded, block removed or unpowered): using the store and inventory only",
   "message.mm.tool.me_no_access": "You have no access to this ME network",

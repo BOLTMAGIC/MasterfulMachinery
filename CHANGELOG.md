@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.4] - 2026-11-09
+
+### INFO:
+**Version 0.1.36.4** makes the Structure Builder's auto-crafting work with few crafting CPUs, builds with one click, and adds JEI "+" transfers on structure pages.
+
+**Special Thanks:**
+- **Knozyy** – Craft queue, one-click builds and structure page transfers.
+
+### Added
+
+#### #101 – Structure Builder Craft Queue and Structure Page Transfers
+- **Craft queue**: when every crafting CPU that could take a craft is busy (one CPU, the tool's other crafts on it), the craft waits and starts once a CPU is free, calculated again then. Before, only the first missing item was crafted and the others failed with "no CPU". A network without CPUs, or with only too small ones, still reports the failure.
+- **One click**: a build that has to wait for crafts is anchored where it was clicked (the hologram stays) and starts on its own once every craft is done. It doesn't start after a failed craft, a removed anchor, or when the tool is no longer carried.
+- **JEI "+" with the Structure Builder's store open**: moves the blocks the structure needs from the inventory into the store, counting what the store already holds (main slots and offhand, never armor). Greyed out when there's nothing to move.
+- **JEI "+" with an AE2 Pattern Encoding Terminal open**: encodes a processing pattern with the structure's blocks (with counts) as inputs and its blueprint as output; requesting the blueprint crafts every block in one job. Only when AE2 is loaded.
+
 ## [0.1.36.3] - 2026-11-02
 
 ### INFO:

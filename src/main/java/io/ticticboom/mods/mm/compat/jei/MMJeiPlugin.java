@@ -1,6 +1,8 @@
 package io.ticticboom.mods.mm.compat.jei;
 
 import com.google.common.collect.ImmutableList;
+import io.ticticboom.mods.mm.compat.ae2.Ae2StructurePatternTransfer;
+import io.ticticboom.mods.mm.networklink.NetworkLink;
 import io.ticticboom.mods.mm.Ref;
 import io.ticticboom.mods.mm.client.tool.MultiblockToolScreen;
 import io.ticticboom.mods.mm.controller.machine.register.MachineControllerScreen;
@@ -135,6 +137,15 @@ public class MMJeiPlugin implements IModPlugin {
             ResourceLocation location = entry.getStructureModel().controllerIds().getIds().get(0);
             ItemStack stack = Objects.requireNonNull(ForgeRegistries.ITEMS.getValue(location)).getDefaultInstance();
             registration.addRecipeCatalyst(stack,entry.getRecipeType());
+        }
+    }
+
+    @Override
+    public void registerRecipeTransferHandlers(@NotNull IRecipeTransferRegistration registration) {
+        // "+" with the Structure Builder's store open fills it; with an AE2 pattern terminal open it encodes the structure
+        registration.addRecipeTransferHandler(new ToolStoreTransferHandler(registration.getTransferHelper()), MMStructureCategory.RECIPE_TYPE);
+        if (NetworkLink.AVAILABLE) {
+            Ae2StructurePatternTransfer.register(registration);
         }
     }
 
