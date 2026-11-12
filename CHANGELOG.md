@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.3.1+2] - 2026-11-12
+
+**Special Thanks:**
+- **Knozyy** – Fixing Flex Recipes
+- 
+### Changed
+#### #101 – Flex Recipes: Fix Disabled Seeds not showing in JEI
+
 ## [0.1.36.3] - 2026-11-02
 
 ### INFO:
