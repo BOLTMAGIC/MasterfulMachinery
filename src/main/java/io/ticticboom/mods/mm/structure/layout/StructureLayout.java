@@ -9,6 +9,7 @@ import io.ticticboom.mods.mm.port.IPortBlockEntity;
 import io.ticticboom.mods.mm.port.IPortStorage;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.setup.MMRegisters;
+import io.ticticboom.mods.mm.structure.HelperSlotOverrides;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WorldUtil;
 import lombok.Getter;
@@ -17,6 +18,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Rotation;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,11 +42,20 @@ public class StructureLayout {
     @Getter
     private boolean portsAnywhereGlobal;
 
-    public StructureLayout(StructureCharacterGrid rawLayout, Map<StructureKeyChar, StructureLayoutPiece> pieces, boolean portsAnywhereGlobal) {
+    /** How many Input Gateways / Pattern Ports may stand in for pieces at once; negative means no limit. */
+    @Getter
+    private final int maxHelpers;
+
+    public StructureLayout(StructureCharacterGrid rawLayout, Map<StructureKeyChar, StructureLayoutPiece> pieces, boolean portsAnywhereGlobal, int maxHelpers) {
         this.charGrid = rawLayout;
         this.pieces = pieces;
         this.portsAnywhereGlobal = portsAnywhereGlobal;
+        this.maxHelpers = maxHelpers;
         setupVariants();
+    }
+
+    public StructureLayout(StructureCharacterGrid rawLayout, Map<StructureKeyChar, StructureLayoutPiece> pieces, boolean portsAnywhereGlobal) {
+        this(rawLayout, pieces, portsAnywhereGlobal, -1);
     }
 
     // Backwards-compatible constructor
@@ -96,10 +107,15 @@ public class StructureLayout {
     private List<PositionedLayoutPiece> missingPieces(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
         var missing = new ArrayList<PositionedLayoutPiece>();
         var anywherePieces = new ArrayList<PositionedLayoutPiece>();
+        int helpers = 0;
+        HelperSlotOverrides.Rule rule = helperRule(level, model);
         for (PositionedLayoutPiece piece : positionedPieces) {
             if (isAnywhere(piece.piece().piece())) {
                 anywherePieces.add(piece);
-            } else if (!piece.formed(level, worldControllerPos, model, rot) && !isGatewayInPlace(level, worldControllerPos, piece)) {
+            } else if (!piece.formed(level, worldControllerPos, model, rot)) {
+                if (isHelperInPlace(level, worldControllerPos, piece, rule) && helperFits(rule, ++helpers)) {
+                    continue;
+                }
                 missing.add(piece);
             }
         }
@@ -155,6 +171,8 @@ public class StructureLayout {
     private boolean innerFormed(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
         // First pass: validate all non-anywhere pieces in-place
         List<PositionedLayoutPiece> anywherePieces = new ArrayList<>();
+        int helpers = 0;
+        HelperSlotOverrides.Rule rule = helperRule(level, model);
         for (PositionedLayoutPiece piece : positionedPieces) {
             var layoutPiece = piece.piece();
             var underlying = layoutPiece.piece();
@@ -164,7 +182,8 @@ public class StructureLayout {
                 anywherePieces.add(piece);
                 continue; // skip per-position check for anywhere pieces
             }
-            if (!piece.formed(level, worldControllerPos, model, rot) && !isGatewayInPlace(level, worldControllerPos, piece)) {
+            if (!piece.formed(level, worldControllerPos, model, rot)
+                    && !(isHelperInPlace(level, worldControllerPos, piece, rule) && helperFits(rule, ++helpers))) {
                 return false;
             }
         }
@@ -342,20 +361,48 @@ public class StructureLayout {
         return null;
     }
 
+    /** The admin rule for this structure on the level's side (Structure Builder admin tab), or null for its own settings. */
+    @Nullable
+    private static HelperSlotOverrides.Rule helperRule(Level level, @Nullable StructureModel model) {
+        return model == null ? null : HelperSlotOverrides.rule(model.id(), level.isClientSide());
+    }
+
     /**
-     * An Input Gateway or a Pattern Port may stand in for any plain structure block (casing, glass...), so it can
-     * be built into the machine; never for a port.
+     * Whether an Input Gateway or a Pattern Port may stand in for this piece of the structure: the admin rule's keys
+     * when there is one, else the key's own {@code "allowHelper": true}. Never for a port.
      */
-    private static boolean isGatewayInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece) {
-        var underlying = piece.piece().piece();
-        if (underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
+    public static boolean helperAllowed(Level level, @Nullable StructureModel model, PositionedLayoutPiece piece) {
+        return helperAllowed(piece, helperRule(level, model));
+    }
+
+    private static boolean helperAllowed(PositionedLayoutPiece piece, @Nullable HelperSlotOverrides.Rule rule) {
+        if (isPortPiece(piece.piece().piece())) {
+            return false;
+        }
+        return rule != null ? rule.keys().contains(piece.piece().valueId().charAt(0)) : piece.piece().allowsHelper();
+    }
+
+    public static boolean isPortPiece(Object underlying) {
+        return underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
                 || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece
                 || underlying instanceof PortAnywhereStructurePiece
-                || underlying instanceof PortTypeAnywhereStructurePiece) {
+                || underlying instanceof PortTypeAnywhereStructurePiece;
+    }
+
+    /** An Input Gateway or a Pattern Port stands in for a plain structure block only where {@link #helperAllowed} says so. */
+    private static boolean isHelperInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece,
+                                           @Nullable HelperSlotOverrides.Rule rule) {
+        if (!helperAllowed(piece, rule)) {
             return false;
         }
         var state = level.getBlockState(piece.findAbsolutePos(worldControllerPos));
         return state.is(MMRegisters.INPUT_GATEWAY.get()) || state.is(MMRegisters.PATTERN_PORT.get());
+    }
+
+    /** Whether the {@code count}-th helper standing in for a piece is still within the admin rule's or the structure's limit. */
+    private boolean helperFits(@Nullable HelperSlotOverrides.Rule rule, int count) {
+        int max = rule != null ? rule.maxHelpers() : maxHelpers;
+        return max < 0 || count <= max;
     }
 
     /**
@@ -427,7 +474,8 @@ public class StructureLayout {
                 portsAnywhere = json.get("portsAnywhere").getAsBoolean();
             }
         } catch (Exception ignored) {}
-        return new StructureLayout(raw, pieces, portsAnywhere);
+        int maxHelpers = json.has("maxHelpers") ? json.get("maxHelpers").getAsInt() : -1;
+        return new StructureLayout(raw, pieces, portsAnywhere, maxHelpers);
     }
 
     public JsonObject serialize(JsonObject json) {
@@ -437,6 +485,9 @@ public class StructureLayout {
             key.add("" + entry.getKey().character(), entry.getValue().json());
         }
         json.add("key", key);
+        if (maxHelpers >= 0) {
+            json.addProperty("maxHelpers", maxHelpers);
+        }
         return json;
     }
 

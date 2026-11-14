@@ -71,6 +71,14 @@ public class MMNetwork {
                 StructureCategoriesSyncPkt::decode, StructureCategoriesSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
         INSTANCE.registerMessage(index++, StructureCategoryEditPkt.class, StructureCategoryEditPkt::encode,
                 StructureCategoryEditPkt::decode, StructureCategoryEditPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.HelperSlotsSyncPkt.class,
+                io.ticticboom.mods.mm.net.packet.HelperSlotsSyncPkt::encode,
+                io.ticticboom.mods.mm.net.packet.HelperSlotsSyncPkt::decode,
+                io.ticticboom.mods.mm.net.packet.HelperSlotsSyncPkt::handle, Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+        INSTANCE.registerMessage(index++, io.ticticboom.mods.mm.net.packet.HelperSlotEditPkt.class,
+                io.ticticboom.mods.mm.net.packet.HelperSlotEditPkt::encode,
+                io.ticticboom.mods.mm.net.packet.HelperSlotEditPkt::decode,
+                io.ticticboom.mods.mm.net.packet.HelperSlotEditPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         INSTANCE.registerMessage(index++, MMConfigRequestPkt.class, MMConfigRequestPkt::encode,
                 MMConfigRequestPkt::decode, MMConfigRequestPkt::handle, Optional.of(NetworkDirection.PLAY_TO_SERVER));
         INSTANCE.registerMessage(index++, MMConfigEditPkt.class, MMConfigEditPkt::encode,

@@ -1,0 +1,30 @@
+{
+  "name": "Helper Admin Test",
+  "controllerIds": "mm:helper_admin_test",
+  "layout": [
+    [
+      "ICOXG"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "X": {
+      "block": "minecraft:glass"
+    },
+    "G": {
+      "block": "minecraft:glass",
+      "allowHelper": true
+    }
+  }
+}

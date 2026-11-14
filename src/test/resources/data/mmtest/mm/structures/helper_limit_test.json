@@ -1,0 +1,28 @@
+{
+  "name": "Helper Limit Test",
+  "controllerIds": "mm:helper_limit_test",
+  "layout": [
+    [
+      "ICOGG"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "G": {
+      "block": "minecraft:glass",
+      "allowHelper": true
+    }
+  },
+  "maxHelpers": 1
+}

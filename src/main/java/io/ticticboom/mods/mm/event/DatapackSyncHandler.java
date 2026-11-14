@@ -41,6 +41,8 @@ public class DatapackSyncHandler {
             MMNetwork.INSTANCE.send(target,
                     new StructureCategoriesSyncPkt(StructureCategories.get(event.getPlayer() != null
                             ? event.getPlayer().getServer() : event.getPlayerList().getServer()).snapshot()));
+            MMNetwork.INSTANCE.send(target, new io.ticticboom.mods.mm.net.packet.HelperSlotsSyncPkt(
+                    io.ticticboom.mods.mm.structure.HelperSlotOverrides.get(event.getPlayerList().getServer()).snapshot()));
         } catch (Throwable t) {
             Ref.LOG.error("Error syncing builder structures on datapack sync", t);
         }

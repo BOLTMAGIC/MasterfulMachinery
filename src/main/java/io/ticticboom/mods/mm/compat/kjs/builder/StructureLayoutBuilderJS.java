@@ -16,6 +16,7 @@ public class StructureLayoutBuilderJS {
     private final Map<StructureKeyChar, StructureLayoutPiece> pieces = new HashMap<>();
     private final StructureBuilderJS root;
     private boolean portsAnywhere = false;
+    private int maxHelpers = -1;
 
     public StructureLayoutBuilderJS(StructureBuilderJS root) {
         this.root = root;
@@ -36,9 +37,18 @@ public class StructureLayoutBuilderJS {
         return this;
     }
 
+    /**
+     * How many Input Gateways / Pattern Ports may stand in for blocks of this structure at once. Which blocks they
+     * may replace is set per key with {@code allowHelper: true}.
+     */
+    public StructureLayoutBuilderJS maxHelpers(int max) {
+        this.maxHelpers = max;
+        return this;
+    }
+
     @HideFromJS
     public StructureLayout build() {
         Collections.reverse(grid);
-        return new StructureLayout(new StructureCharacterGrid(grid), pieces, portsAnywhere);
+        return new StructureLayout(new StructureCharacterGrid(grid), pieces, portsAnywhere, maxHelpers);
     }
 }
