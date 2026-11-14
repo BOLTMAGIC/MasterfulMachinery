@@ -267,7 +267,8 @@ public final class DismantlePlanner {
 
     /**
      * How many pieces hold a fitting block in this rotation, as loosely as the server's formed check: a port that
-     * may go anywhere fits any anywhere-port candidate, and an input gateway stands in for a non-port piece.
+     * may go anywhere fits any anywhere-port candidate, and an input gateway stands in for a non-port piece whose
+     * key allows it.
      */
     private static int previewMatches(Level level, StructureModel structure, BlockPos controllerPos, Rotation rotation) {
         StructureLayout layout = structure.layout();
@@ -294,7 +295,8 @@ public final class DismantlePlanner {
             } else if (isPort(piece)) {
                 fits = candidates != null && candidates.contains(existing);
             } else {
-                fits = existing == gateway || existing == patternPort || (candidates != null && candidates.contains(existing));
+                boolean helper = StructureLayout.helperAllowed(level, structure, positioned) && (existing == gateway || existing == patternPort);
+                fits = helper || (candidates != null && candidates.contains(existing));
             }
             if (fits) {
                 count++;

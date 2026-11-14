@@ -48,6 +48,14 @@ public record StructureLayoutPiece(StructurePiece piece, List<StructurePieceModi
         return true;
     }
 
+    /**
+     * Whether an Input Gateway or a Pattern Port may be built in where this piece goes: the structure's key says
+     * {@code "allowHelper": true}. Off unless declared, so a pack chooses which blocks a helper may replace.
+     */
+    public boolean allowsHelper() {
+        return json != null && json.has("allowHelper") && json.get("allowHelper").getAsBoolean();
+    }
+
     @SuppressWarnings("unused")
     public static StructureLayoutPiece parse(JsonObject json, ResourceLocation structureId, String keyChar) {
         var piece = MMStructurePieceRegistry.findPieceType(json);

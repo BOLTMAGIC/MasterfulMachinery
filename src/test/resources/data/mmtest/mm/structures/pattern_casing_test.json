@@ -20,7 +20,8 @@
       "maxTier": 1
     },
     "G": {
-      "block": "minecraft:glass"
+      "block": "minecraft:glass",
+      "allowHelper": true
     }
   }
 }
