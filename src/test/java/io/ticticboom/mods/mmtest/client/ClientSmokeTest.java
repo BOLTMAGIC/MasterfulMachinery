@@ -526,7 +526,7 @@ public final class ClientSmokeTest {
         return tick >= 5 && hitting(aimed, null) && mc.player.getMainHandItem().is(MMRegisters.MULTIBLOCK_TOOL.get());
     }
 
-    /** V held for {@value #HOLD_TICKS} ticks: the machine is outlined while held, then dismantled. */
+    /** Dismantle key held for {@value #HOLD_TICKS} ticks: the machine is outlined while held, then dismantled. */
     private static boolean dismantleHold(int tick) throws Exception {
         Minecraft mc = Minecraft.getInstance();
         if (tick == 0) {
