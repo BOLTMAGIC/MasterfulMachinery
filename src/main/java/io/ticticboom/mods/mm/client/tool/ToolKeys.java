@@ -37,15 +37,18 @@ import java.util.Objects;
 
 /**
  * The multiblock tool's key: hold it while looking at a machine to dismantle it. Also tracks which machine a
- * dismantle is aimed at (V held, or waiting for the second Shift+right-click) so the hologram can outline it.
+ * dismantle is aimed at (key held, or waiting for the second Shift+right-click) so the hologram can outline it.
+ * <p>
+ * The key defaults to F, like the old Multiblock Builder Tool. F is also vanilla's swap-with-off-hand key, so while
+ * the tool is held and both share a key, the swap's presses are swallowed before vanilla handles them.
  */
 @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ToolKeys {
     public static final KeyMapping DISMANTLE = new KeyMapping("key.mm.dismantle", KeyConflictContext.IN_GAME,
-            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_V, "key.categories.mm");
+            InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_F, "key.categories.mm");
     public static final KeyMapping ANCHOR = new KeyMapping("key.mm.anchor", KeyConflictContext.IN_GAME,
             InputConstants.Type.KEYSYM, GLFW.GLFW_KEY_G, "key.categories.mm");
-    /** How long V must be held: 1 s. */
+    /** How long the key must be held: 1 s. */
     public static final int HOLD_TICKS = 20;
     private static final int BAR_SEGMENTS = 10;
 
@@ -54,7 +57,7 @@ public class ToolKeys {
     private static BlockPos holdController;
     private static List<BlockPos> holdPositions = List.of();
     private static int holdTicks;
-    // set once the packet went out; nothing more happens until V is released
+    // set once the packet went out; nothing more happens until the key is released
     private static boolean holdLatched;
     private static boolean barShown;
     private static boolean noMachineShown;
@@ -111,6 +114,31 @@ public class ToolKeys {
     @Mod.EventBusSubscriber(modid = Ref.ID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
     public static final class Input {
         private Input() {
+        }
+
+        /**
+         * Runs before vanilla's {@code handleKeybinds} in the same tick: when the dismantle key is the swap key, the
+         * swap's queued presses are dropped so holding it with the tool dismantles instead of moving the tool to the
+         * off hand. Rebinding dismantle to another key gives F back to vanilla.
+         */
+        @SubscribeEvent
+        public static void swallowOffhandSwap(TickEvent.ClientTickEvent event) {
+            if (event.phase != TickEvent.Phase.START) {
+                return;
+            }
+            Minecraft mc = Minecraft.getInstance();
+            Player player = mc.player;
+            // the dismantle key's own clicks are never read (only isDown is); drop them so they do not pile up
+            while (DISMANTLE.consumeClick()) {
+            }
+            if (player == null || mc.screen != null || heldTool(player).isEmpty()) {
+                return;
+            }
+            KeyMapping swap = mc.options.keySwapOffhand;
+            if (!DISMANTLE.isUnbound() && DISMANTLE.getKey().equals(swap.getKey())) {
+                while (swap.consumeClick()) {
+                }
+            }
         }
 
         @SubscribeEvent

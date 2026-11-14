@@ -49,7 +49,7 @@ public class MultiblockToolItem extends Item {
     /** Server tick each player was last told the notice (server thread only). */
     private static final Map<UUID, Integer> LAST_NOTICE = new HashMap<>();
     /** The dismantle key's name for the tooltip; the client points this at the bound key (common code cannot). */
-    private static Supplier<Component> dismantleKeyName = () -> Component.literal("V");
+    private static Supplier<Component> dismantleKeyName = () -> Component.literal("F");
     private static Supplier<Component> anchorKeyName = () -> Component.literal("G");
 
     public MultiblockToolItem() {
