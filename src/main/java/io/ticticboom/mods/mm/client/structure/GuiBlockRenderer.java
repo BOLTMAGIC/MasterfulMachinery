@@ -6,7 +6,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -105,10 +104,9 @@ public class GuiBlockRenderer {
             }
             modeldata = cachedModelData;
         }
-        var layers = model.getRenderTypes(state, randomSource, modeldata);
-        for (RenderType layer : layers) {
-            brd.renderSingleBlock(state, pose, bufferSource, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, modeldata, layer);
-        }
+        // No render type: each layer of the model goes to its entity sheet, the way blocks are drawn as items. The
+        // chunk types (solid, cutout...) are not meant for a GUI and come out dark with a shader pack (Oculus).
+        brd.renderSingleBlock(state, pose, bufferSource, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY, modeldata, null);
 
         if (ber != null) {
             try {
