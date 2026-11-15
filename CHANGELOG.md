@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.4] - 2026-11-15
+
+**Special Thanks:**
+- **Knozyy** – #102 - #105
+
+### Changed
+#### #102 - Structure preview: fix near-black blocks with a shader pack
+#### #103 - Flex recipes: take seeds of crops Mystical Agriculture has disabled
+#### #104 - Structure Builder: default the dismantle key to F
+#### #105 - Input Gateway / Pattern Port: per-key allowHelper, maxHelpers and admin rules
+
 ## [0.1.36.3.1+2] - 2026-11-12
 
 **Special Thanks:**
