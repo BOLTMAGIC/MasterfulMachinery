@@ -11,8 +11,10 @@ import io.ticticboom.mods.mm.model.IdList;
 import io.ticticboom.mods.mm.piece.StructurePieceSetupMetadata;
 import io.ticticboom.mods.mm.recipe.RecipeStorages;
 import io.ticticboom.mods.mm.structure.attachment.StructureAttachments;
+import io.ticticboom.mods.mm.structure.layout.PortLimit;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
+import io.ticticboom.mods.mm.structure.layout.StructureLayoutPiece;
 import lombok.Getter;
 import lombok.Setter;
 import net.minecraft.ChatFormatting;
@@ -208,8 +210,9 @@ public class StructureModel {
             var blocks = guiPiece.getBlocks().stream().map(x -> x.asItem().getDefaultInstance()).toList();
             String valueId = positionedPiece.piece().valueId();
             if (!result.containsKey(valueId)) {
-                result.put(valueId, new GuiCountedItemStack(1, blocks, guiPiece.getDisplay(),
-                        valueId));
+                var counted = new GuiCountedItemStack(1, blocks, guiPiece.getDisplay(), valueId);
+                portSlotNotes(positionedPiece.piece()).forEach(counted::addNote);
+                result.put(valueId, counted);
             } else {
                 result.get(valueId).addCount(1);
             }
@@ -223,6 +226,46 @@ public class StructureModel {
         }
         countedPartItems.add(new GuiCountedItemStack(1, controllerList, Component.translatable("mm.structure.piece.controller").withStyle(ChatFormatting.BOLD, ChatFormatting.GOLD), "C"));
         return countedPartItems;
+    }
+
+    /**
+     * What the structure page says under a key of a layout with port slots: that a port may go where this block
+     * is, or how many of this port the machine takes, whether they may stand on port slots and what goes where one
+     * is left out.
+     */
+    private List<Component> portSlotNotes(StructureLayoutPiece piece) {
+        if (!layout.hasPortSlots()) {
+            return List.of();
+        }
+        PortLimit limit = layout.portLimit(piece);
+        if (limit == null) {
+            return piece.allowsPort()
+                    ? List.of(Component.translatable("mm.structure.piece.port_slot").withStyle(ChatFormatting.GRAY))
+                    : List.of();
+        }
+        var notes = new ArrayList<Component>();
+        boolean slots = !layout.portFillers().isEmpty();
+        if (limit.ranged()) {
+            Component count;
+            if (limit.unlimited()) {
+                count = Component.translatable("mm.structure.piece.port_count.at_least", limit.min());
+            } else if (limit.min() == limit.max()) {
+                count = Component.translatable("mm.structure.piece.port_count.exact", limit.min());
+            } else {
+                count = Component.translatable("mm.structure.piece.port_count.range", limit.min(), limit.max());
+            }
+            notes.add(count.copy().withStyle(ChatFormatting.GRAY));
+        }
+        if (slots) {
+            notes.add(Component.translatable("mm.structure.piece.port_movable").withStyle(ChatFormatting.GRAY));
+        }
+        StructureLayoutPiece replacement = layout.portReplacement(piece);
+        if (replacement != null && limit.min() < limit.positions()) {
+            List<Block> blocks = replacement.guiPiece().getBlocks();
+            Component name = blocks.isEmpty() ? replacement.guiPiece().getDisplay() : blocks.get(0).getName();
+            notes.add(Component.translatable("mm.structure.piece.port_replace", name).withStyle(ChatFormatting.GRAY));
+        }
+        return notes;
     }
 
     @Override

@@ -46,12 +46,17 @@ public class StructureLayout {
     @Getter
     private final int maxHelpers;
 
+    /** Set when a key of the layout allows a port in its place; the layout is then checked by {@link PortSlots}. */
+    @Nullable
+    private final PortSlots portSlots;
+
     public StructureLayout(StructureCharacterGrid rawLayout, Map<StructureKeyChar, StructureLayoutPiece> pieces, boolean portsAnywhereGlobal, int maxHelpers) {
         this.charGrid = rawLayout;
         this.pieces = pieces;
         this.portsAnywhereGlobal = portsAnywhereGlobal;
         this.maxHelpers = maxHelpers;
         setupVariants();
+        this.portSlots = PortSlots.of(this, positionedPieces, pieces);
     }
 
     public StructureLayout(StructureCharacterGrid rawLayout, Map<StructureKeyChar, StructureLayoutPiece> pieces, boolean portsAnywhereGlobal) {
@@ -105,6 +110,9 @@ public class StructureLayout {
     }
 
     private List<PositionedLayoutPiece> missingPieces(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
+        if (portSlots != null) {
+            return portSlots.missing(level, worldControllerPos, model, positionedPieces, rot, false);
+        }
         var missing = new ArrayList<PositionedLayoutPiece>();
         var anywherePieces = new ArrayList<PositionedLayoutPiece>();
         int helpers = 0;
@@ -169,6 +177,9 @@ public class StructureLayout {
     }
 
     private boolean innerFormed(Level level, BlockPos worldControllerPos, StructureModel model, List<PositionedLayoutPiece> positionedPieces, Rotation rot) {
+        if (portSlots != null) {
+            return portSlots.missing(level, worldControllerPos, model, positionedPieces, rot, true).isEmpty();
+        }
         // First pass: validate all non-anywhere pieces in-place
         List<PositionedLayoutPiece> anywherePieces = new ArrayList<>();
         int helpers = 0;
@@ -290,7 +301,7 @@ public class StructureLayout {
         return false;
     }
 
-    private boolean candidateMatches(StructureLayoutPiece layoutReq, Object requiredPiece, Level level, BlockPos absPos, Rotation rot, StructureModel model) {
+    boolean candidateMatches(StructureLayoutPiece layoutReq, Object requiredPiece, Level level, BlockPos absPos, Rotation rot, StructureModel model) {
         // get block entity safely
         var be = level.getExistingBlockEntity(absPos);
         if (be == null) {
@@ -363,7 +374,7 @@ public class StructureLayout {
 
     /** The admin rule for this structure on the level's side (Structure Builder admin tab), or null for its own settings. */
     @Nullable
-    private static HelperSlotOverrides.Rule helperRule(Level level, @Nullable StructureModel model) {
+    static HelperSlotOverrides.Rule helperRule(Level level, @Nullable StructureModel model) {
         return model == null ? null : HelperSlotOverrides.rule(model.id(), level.isClientSide());
     }
 
@@ -382,6 +393,39 @@ public class StructureLayout {
         return rule != null ? rule.keys().contains(piece.piece().valueId().charAt(0)) : piece.piece().allowsHelper();
     }
 
+    /**
+     * Whether ports of this layout may move or be left out: a key takes a port in place of its block
+     * ({@code "allowPort": true}) or a port key names a {@code "replaceWith"}.
+     */
+    public boolean hasPortSlots() {
+        return portSlots != null;
+    }
+
+    /** The keys whose blocks a port may replace, which are also the blocks a position takes once its port has moved. */
+    public List<StructureLayoutPiece> portFillers() {
+        return portSlots == null ? List.of() : portSlots.fillers();
+    }
+
+    /**
+     * What may stand where a port of this key is drawn but left out: the key its {@code "replaceWith"} names, else the
+     * port slot keys. Empty when the layout has no port slots.
+     */
+    public List<StructureLayoutPiece> portReplacements(StructureLayoutPiece key) {
+        return portSlots == null ? List.of() : portSlots.replacementsFor(key);
+    }
+
+    /** The key a port key's {@code "replaceWith"} names, or null. */
+    @Nullable
+    public StructureLayoutPiece portReplacement(StructureLayoutPiece key) {
+        return portSlots == null ? null : portSlots.replacement(key);
+    }
+
+    /** How many ports of this port key the structure takes, or null when the layout has no port slots or it is no port key. */
+    @Nullable
+    public PortLimit portLimit(StructureLayoutPiece key) {
+        return portSlots == null ? null : portSlots.limit(key);
+    }
+
     public static boolean isPortPiece(Object underlying) {
         return underlying instanceof io.ticticboom.mods.mm.piece.type.port.PortStructurePiece
                 || underlying instanceof io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece
@@ -390,7 +434,7 @@ public class StructureLayout {
     }
 
     /** An Input Gateway or a Pattern Port stands in for a plain structure block only where {@link #helperAllowed} says so. */
-    private static boolean isHelperInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece,
+    static boolean isHelperInPlace(Level level, BlockPos worldControllerPos, PositionedLayoutPiece piece,
                                            @Nullable HelperSlotOverrides.Rule rule) {
         if (!helperAllowed(piece, rule)) {
             return false;
@@ -400,7 +444,7 @@ public class StructureLayout {
     }
 
     /** Whether the {@code count}-th helper standing in for a piece is still within the admin rule's or the structure's limit. */
-    private boolean helperFits(@Nullable HelperSlotOverrides.Rule rule, int count) {
+    boolean helperFits(@Nullable HelperSlotOverrides.Rule rule, int count) {
         int max = rule != null ? rule.maxHelpers() : maxHelpers;
         return max < 0 || count <= max;
     }

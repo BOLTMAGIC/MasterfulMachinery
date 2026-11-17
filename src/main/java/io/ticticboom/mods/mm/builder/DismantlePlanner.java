@@ -8,10 +8,12 @@ import io.ticticboom.mods.mm.piece.type.port.PortAnywhereStructurePiece;
 import io.ticticboom.mods.mm.piece.type.port.PortStructurePiece;
 import io.ticticboom.mods.mm.piece.type.porttype.PortTypeAnywhereStructurePiece;
 import io.ticticboom.mods.mm.piece.type.porttype.PortTypeStructurePiece;
+import io.ticticboom.mods.mm.port.IPortBlock;
 import io.ticticboom.mods.mm.setup.MMRegisters;
 import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.structure.layout.PositionedLayoutPiece;
 import io.ticticboom.mods.mm.structure.layout.StructureLayout;
+import io.ticticboom.mods.mm.structure.layout.StructureLayoutPiece;
 import io.ticticboom.mods.mm.tool.ToolData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -268,7 +270,8 @@ public final class DismantlePlanner {
     /**
      * How many pieces hold a fitting block in this rotation, as loosely as the server's formed check: a port that
      * may go anywhere fits any anywhere-port candidate, and an input gateway stands in for a non-port piece whose
-     * key allows it.
+     * key allows it. In a layout with port slots a port fits on a key that allows one, and where a port is drawn
+     * its key's replacement (or a port slot block) fits.
      */
     private static int previewMatches(Level level, StructureModel structure, BlockPos controllerPos, Rotation rotation) {
         StructureLayout layout = structure.layout();
@@ -298,11 +301,26 @@ public final class DismantlePlanner {
                 boolean helper = StructureLayout.helperAllowed(level, structure, positioned) && (existing == gateway || existing == patternPort);
                 fits = helper || (candidates != null && candidates.contains(existing));
             }
+            if (!fits && layout.hasPortSlots()) {
+                fits = isPort(piece) ? blocksOf(layout.portReplacements(positioned.piece())).contains(existing)
+                        : positioned.piece().allowsPort() && existing instanceof IPortBlock;
+            }
             if (fits) {
                 count++;
             }
         }
         return count;
+    }
+
+    private static Set<Block> blocksOf(List<StructureLayoutPiece> keys) {
+        Set<Block> blocks = new HashSet<>();
+        for (StructureLayoutPiece key : keys) {
+            List<Block> candidates = key.piece().createBlocksSupplier().get();
+            if (candidates != null) {
+                blocks.addAll(candidates);
+            }
+        }
+        return blocks;
     }
 
     private static boolean isPort(StructurePiece piece) {

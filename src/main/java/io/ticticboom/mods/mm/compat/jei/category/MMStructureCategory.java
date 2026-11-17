@@ -142,7 +142,12 @@ public class MMStructureCategory implements IRecipeCategory<StructureModel> {
                 return copy;
             }).toList();
             slot.addItemStacks(stacks);
-            slot.addRichTooltipCallback((a, b) -> b.add(countedItemStack.getDetail()));
+            slot.addRichTooltipCallback((a, b) -> {
+                b.add(countedItemStack.getDetail());
+                for (Component note : countedItemStack.getNotes()) {
+                    b.add(note);
+                }
+            });
         }
 
         builder.addInvisibleIngredients(RecipeIngredientRole.CATALYST)

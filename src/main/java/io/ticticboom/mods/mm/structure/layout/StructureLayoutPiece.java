@@ -16,6 +16,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Rotation;
 
 import java.util.List;
+import java.util.OptionalInt;
 
 /**
  * @param piece Expose underlying StructurePiece for special handling (e.g. anywhere-port matching)
@@ -54,6 +55,30 @@ public record StructureLayoutPiece(StructurePiece piece, List<StructurePieceModi
      */
     public boolean allowsHelper() {
         return json != null && json.has("allowHelper") && json.get("allowHelper").getAsBoolean();
+    }
+
+    /**
+     * Whether a port of the structure may be built in where this piece goes: the structure's key says
+     * {@code "allowPort": true}. Off unless declared, so a pack chooses which blocks are port slots.
+     */
+    public boolean allowsPort() {
+        return json != null && json.has("allowPort") && json.get("allowPort").getAsBoolean();
+    }
+
+    /**
+     * A port key's own {@code "minPorts"} or {@code "maxPorts"}; empty when the key leaves it out, which stands for
+     * as many ports as the layout draws of it. A negative {@code "maxPorts"} means no limit.
+     */
+    public OptionalInt declaredPorts(String field) {
+        if (json == null || !json.has(field)) {
+            return OptionalInt.empty();
+        }
+        try {
+            return OptionalInt.of(json.get(field).getAsInt());
+        } catch (RuntimeException e) {
+            Ref.LOG.error("MM ERROR: \"{}\" of structure key {} is not a number", field, valueId);
+            return OptionalInt.empty();
+        }
     }
 
     @SuppressWarnings("unused")

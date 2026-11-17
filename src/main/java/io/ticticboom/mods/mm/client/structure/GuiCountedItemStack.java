@@ -4,6 +4,7 @@ import lombok.Getter;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -13,6 +14,8 @@ public class GuiCountedItemStack {
     private final List<ItemStack> stacks;
     private final Component detail;
     private final String valueId;
+    /** Extra tooltip lines under the detail, e.g. that the key is a port slot. */
+    private final List<Component> notes = new ArrayList<>();
 
     public GuiCountedItemStack(int count, List<ItemStack> stacks, Component detail, String valueId) {
 
@@ -24,5 +27,9 @@ public class GuiCountedItemStack {
 
     public void addCount(int toAdd) {
         count += toAdd;
+    }
+
+    public void addNote(Component note) {
+        notes.add(note);
     }
 }
