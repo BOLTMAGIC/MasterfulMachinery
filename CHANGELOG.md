@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 
 The format is based on "Keep a Changelog" and this project follows [Semantic Versioning](https://semver.org/).
 
+## [0.1.36.5] - 2026-11-17
+**Special Thanks:**
+
+- **Knozyy** – Port slots: GregTech-style ports that move and can be left out.
+
+### Added
+#### 106 – Port slots: GregTech-style ports that move and can be left out
+- **GregTech-style multiblock ports**: a machine does not have to take exactly the ports its layout draws. Ports can be left out, with a block of the pack's choice in their place, and they can move onto marked casing blocks.
+
 ## [0.1.36.4] - 2026-11-15
 
 **Special Thanks:**
