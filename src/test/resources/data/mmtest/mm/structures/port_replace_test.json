@@ -1,0 +1,27 @@
+{
+  "name": "Port Replace Test",
+  "controllerIds": "mm:port_replace_test",
+  "layout": [
+    [
+      "IICOG"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1,
+      "replaceWith": "G"
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "G": {
+      "block": "minecraft:glass"
+    }
+  }
+}

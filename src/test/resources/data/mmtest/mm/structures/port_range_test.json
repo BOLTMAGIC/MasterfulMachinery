@@ -1,0 +1,29 @@
+{
+  "name": "Port Range Test",
+  "controllerIds": "mm:port_range_test",
+  "layout": [
+    [
+      "IICOGG"
+    ]
+  ],
+  "key": {
+    "I": {
+      "portType": "mm:item",
+      "input": true,
+      "minTier": 1,
+      "maxTier": 1,
+      "minPorts": 1,
+      "maxPorts": 3
+    },
+    "O": {
+      "portType": "mm:item",
+      "input": false,
+      "minTier": 1,
+      "maxTier": 1
+    },
+    "G": {
+      "block": "minecraft:glass",
+      "allowPort": true
+    }
+  }
+}
