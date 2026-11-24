@@ -8,5 +8,8 @@
     "ServerLifecycleHooksMixin",
     "ServerMixin"
   ],
+  "client": [
+    "jei.DecoratingIngredientRendererMixin"
+  ],
   "minVersion": "0.8"
 }
