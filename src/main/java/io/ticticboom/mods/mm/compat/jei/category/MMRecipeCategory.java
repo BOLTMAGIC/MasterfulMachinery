@@ -2,7 +2,6 @@ package io.ticticboom.mods.mm.compat.jei.category;
 
 import net.minecraft.client.renderer.RenderPipelines;
 import io.ticticboom.mods.mm.client.util.TextColors;
-import java.util.ArrayList;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.ChatFormatting;
@@ -19,6 +18,7 @@ import io.ticticboom.mods.mm.structure.StructureModel;
 import io.ticticboom.mods.mm.util.WidgetUtils;
 import lombok.Getter;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
+import mezz.jei.api.gui.builder.ITooltipBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.drawable.IDrawableAnimated;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;
@@ -179,39 +179,46 @@ public class MMRecipeCategory implements IRecipeCategory<RecipeModel> {
         }
     }
 
+    private int conditionIconX() {
+        return structureModel == null ? 86 : 77;
+    }
+
+    // Tooltips go through JEI instead of gfx.setTooltipForNextFrame in draw(): since 26.1 the deferred tooltip is drawn
+    // in screen space, but draw() gets recipe-local mouse coords, so it ended up near the top-left corner of the screen.
+    @Override
+    public void getTooltip(ITooltipBuilder tooltip, RecipeModel recipe, IRecipeSlotsView recipeSlotsView, double mouseX, double mouseY) {
+        int mx = (int) mouseX;
+        int my = (int) mouseY;
+        if (WidgetUtils.isPointerWithinSized(mx, my, 70, 12, 24, 17)) {
+            tooltip.add(Component.translatable("jei.mm.recipe.duration", String.format("%.2f", (double) recipe.ticks() / 20)));
+        }
+        if (structureModel == null && WidgetUtils.isPointerWithinSized(mx, my, 75, 28, 7, 9)) {
+            tooltip.add(Component.translatable("jei.mm.recipe.structure", recipe.structureId().toString()));
+        }
+        if (!recipe.conditions().isEmpty() && WidgetUtils.isPointerWithinSized(mx, my, conditionIconX(), 29, 10, 10)) {
+            tooltip.add(Component.translatable("jei.mm.condition.title").withStyle(ChatFormatting.GOLD));
+            tooltip.addAll(recipe.conditions().describe());
+        }
+    }
+
     @Override
     public void draw(RecipeModel recipe, @NotNull IRecipeSlotsView recipeSlotsView, GuiGraphicsExtractor gfx, double mouseX, double mouseY) {
         bgProgressBar.draw(gfx, 70, 12);
         fgProgressBar.draw(gfx, 70, 12);
         drawFlexPageLabel(recipe, gfx);
-        var seconds = (double) recipe.ticks() / 20;
-        var fmt = String.format("%.2f", seconds);
-
-        if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 70, 12, 24, 17)) {
-            gfx.setTooltipForNextFrame(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.duration", fmt), (int) mouseX, (int) mouseY);
-        }
 
         if (structureModel == null) {
             gfx.blit(RenderPipelines.GUI_TEXTURED, Ref.UiTextures.SLOT_PARTS, 75, 28, 19, 26, 7, 9, 256, 256);
-            if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, 75, 28, 7, 9)) {
-                gfx.setTooltipForNextFrame(Minecraft.getInstance().font, Component.translatable("jei.mm.recipe.structure", recipe.structureId().toString()), (int) mouseX, (int) mouseY);
-            }
         }
 
         if (!recipe.conditions().isEmpty()) {
-            int cx = structureModel == null ? 86 : 77;
+            int cx = conditionIconX();
             var pose = gfx.pose();
             pose.pushMatrix();
             pose.translate(cx, 29);
             pose.scale(10f / 16f, 10f / 16f);
             gfx.item(new ItemStack(Items.CLOCK), 0, 0);
             pose.popMatrix();
-            if (WidgetUtils.isPointerWithinSized((int) mouseX, (int) mouseY, cx, 29, 10, 10)) {
-                var lines = new ArrayList<Component>();
-                lines.add(Component.translatable("jei.mm.condition.title").withStyle(ChatFormatting.GOLD));
-                lines.addAll(recipe.conditions().describe());
-                gfx.setComponentTooltipForNextFrame(Minecraft.getInstance().font, lines, (int) mouseX, (int) mouseY);
-            }
         }
 
         // the slots setRecipe laid out (createRecipeExtras puts more than COLUMNS * VISIBLE_ROWS in a scroll grid, which
