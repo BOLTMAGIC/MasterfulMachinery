@@ -16,6 +16,9 @@ import java.util.List;
  * The count is instead rendered by {@link io.ticticboom.mods.mm.compat.jei.category.MMRecipeCategory#draw}
  * using AE2-style K/M suffixes so that the ItemStack retains its real count for
  * AE2 pattern encoding and other integrations.
+ * <p>
+ * JEI 15.75.0+ draws the vanilla count through an ingredient decorator even for custom renderers;
+ * {@link io.ticticboom.mods.mm.mixin.jei.DecoratingIngredientRendererMixin} turns that off for this renderer.
  */
 public class NoCountItemRenderer implements IIngredientRenderer<ItemStack> {
 
